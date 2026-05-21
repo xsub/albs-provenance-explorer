@@ -111,6 +111,13 @@ Show a trust path:
 albs-graph trust-path openssl-libs
 ```
 
+Show a focused trust graph for one RPM artifact from a live ALBS build:
+
+```bash
+albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64
+albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64 --format svg -o nginx-core-x86_64-trust.svg
+```
+
 ## Model
 
 Canonical node types include:

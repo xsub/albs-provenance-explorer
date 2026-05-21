@@ -13,7 +13,7 @@ from albs_graph.adapters.albs import graph_from_build_metadata, load_mock_build
 from albs_graph.adapters.sbom import import_sbom
 from albs_graph.mock_data import build_mock_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
-from albs_graph.provenance.trust import trust_path
+from albs_graph.provenance.trust import find_binary_rpm, focused_trust_graph, trust_path
 from albs_graph.render import SvgRenderError, graph_to_dot, graph_to_json, graph_to_svg
 
 app = typer.Typer(
@@ -85,7 +85,14 @@ def import_sbom_command(
 
 @app.command("trust-path")
 def trust_path_command(
-    package: str = typer.Argument("openssl-libs", help="Binary RPM node id or package name."),
+    package: Optional[str] = typer.Argument(None, help="Binary RPM node id or package name."),
+    rpm: Optional[str] = typer.Option(None, "--rpm", help="Binary RPM name or node id."),
+    arch: Optional[str] = typer.Option(None, "--arch", help="RPM architecture, for example x86_64."),
+    build_id: Optional[int] = typer.Option(None, "--build-id", "-b", help="Fetch a live ALBS build id."),
+    output_format: str = typer.Option("summary", "--format", "-f", help="summary, json, dot or svg."),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+    include_tests: bool = typer.Option(False, "--include-tests", help="Include test task nodes in rendered graph output."),
+    base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
     source: Optional[Path] = typer.Option(
         None,
         "--source",
@@ -93,15 +100,29 @@ def trust_path_command(
         help="Optional mock ALBS build JSON. Defaults to built-in openssl graph.",
     ),
 ) -> None:
-    graph = load_mock_build(source) if source else build_mock_package_graph("openssl")
-    report = trust_path(graph, package)
-    table = Table(title=f"Trust path: {package}")
+    if build_id is not None:
+        graph = graph_from_build_metadata(fetch_build_metadata(build_id, base_url=base_url))
+    else:
+        graph = load_mock_build(source) if source else build_mock_package_graph("openssl")
+
+    rpm_selector = rpm or package or "openssl-libs"
+    rpm_node = find_binary_rpm(graph, rpm_selector, arch=arch)
+    report = trust_path(graph, rpm_node.id)
+
+    if output_format.lower() != "summary" or output:
+        focused = focused_trust_graph(graph, rpm_node.id, include_tests=include_tests)
+        _emit_graph(focused, output_format, output)
+        return
+
+    table = Table(title=f"Trust path: {rpm_node.label}")
     table.add_column("Check")
     table.add_column("Result")
     for name, value in report["checks"].items():
         table.add_row(name, "ok" if value else "missing")
     console.print(table)
     console.print(f"Complete: {report['complete']}")
+    if report["missing"]:
+        console.print(f"Missing: {', '.join(report['missing'])}")
     console.print("Path:")
     for node_id in report["path"]:
         console.print(f"  {node_id}")
