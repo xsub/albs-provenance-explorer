@@ -1,0 +1,8 @@
+Package artifact: openssl-libs-3.0.7-28.el9_4.x86_64.rpm
+Trust path complete: True
+  - has_build_task: True
+  - has_signature: True
+  - has_release: True
+  - has_sbom: True
+  - has_errata_link: True
+  - has_notarized_source_ref: True

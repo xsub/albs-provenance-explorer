@@ -1,0 +1,229 @@
+{
+  "edges": [
+    {
+      "metadata": {},
+      "relation": "stored_in",
+      "source": "src:openssl",
+      "target": "repo:git.almalinux.org/rpms/openssl"
+    },
+    {
+      "metadata": {},
+      "relation": "points_to",
+      "source": "repo:git.almalinux.org/rpms/openssl",
+      "target": "commit:openssl:abc123"
+    },
+    {
+      "metadata": {},
+      "relation": "notarized_as",
+      "source": "commit:openssl:abc123",
+      "target": "notary:immudb:openssl:xyz789"
+    },
+    {
+      "metadata": {},
+      "relation": "used_by",
+      "source": "notary:immudb:openssl:xyz789",
+      "target": "build:albs:123456"
+    },
+    {
+      "metadata": {},
+      "relation": "built_in",
+      "source": "build:albs:123456",
+      "target": "buildenv:alma9:x86_64"
+    },
+    {
+      "metadata": {},
+      "relation": "produces",
+      "source": "build:albs:123456",
+      "target": "srpm:openssl:3.0.7-28.el9_4"
+    },
+    {
+      "metadata": {},
+      "relation": "produces",
+      "source": "build:albs:123456",
+      "target": "rpm:openssl-libs:3.0.7-28.el9_4:x86_64"
+    },
+    {
+      "metadata": {},
+      "relation": "tested_by",
+      "source": "build:albs:123456",
+      "target": "test:openssl:albs:123456"
+    },
+    {
+      "metadata": {},
+      "relation": "signed_as",
+      "source": "rpm:openssl-libs:3.0.7-28.el9_4:x86_64",
+      "target": "sig:gpg:alma9"
+    },
+    {
+      "metadata": {},
+      "relation": "released_to",
+      "source": "rpm:openssl-libs:3.0.7-28.el9_4:x86_64",
+      "target": "repo:alma9:baseos:x86_64"
+    },
+    {
+      "metadata": {},
+      "relation": "fixes",
+      "source": "rpm:openssl-libs:3.0.7-28.el9_4:x86_64",
+      "target": "errata:ALSA-2026-0001"
+    },
+    {
+      "metadata": {},
+      "relation": "fixes",
+      "source": "errata:ALSA-2026-0001",
+      "target": "cve:CVE-2026-0001"
+    },
+    {
+      "metadata": {},
+      "relation": "described_by",
+      "source": "rpm:openssl-libs:3.0.7-28.el9_4:x86_64",
+      "target": "sbom:openssl:cyclonedx"
+    },
+    {
+      "metadata": {},
+      "relation": "requires_runtime",
+      "source": "rpm:openssl-libs:3.0.7-28.el9_4:x86_64",
+      "target": "external:zlib"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "src:openssl",
+      "label": "openssl",
+      "metadata": {
+        "ecosystem": "rpm"
+      },
+      "type": "source_package"
+    },
+    {
+      "id": "repo:git.almalinux.org/rpms/openssl",
+      "label": "git.almalinux.org/rpms/openssl",
+      "metadata": {
+        "modified_package_possible": true,
+        "origin": "git.almalinux.org"
+      },
+      "type": "git_repository"
+    },
+    {
+      "id": "commit:openssl:abc123",
+      "label": "abc123",
+      "metadata": {
+        "branch": "a9",
+        "example": true
+      },
+      "type": "git_commit"
+    },
+    {
+      "id": "notary:immudb:openssl:xyz789",
+      "label": "immudb hash xyz789",
+      "metadata": {
+        "example": true,
+        "notary": "immudb",
+        "status": "notarized"
+      },
+      "type": "notarized_ref"
+    },
+    {
+      "id": "buildenv:alma9:x86_64",
+      "label": "AlmaLinux 9 x86_64 mock build environment",
+      "metadata": {
+        "arch": "x86_64",
+        "distribution": "AlmaLinux",
+        "major_version": "9"
+      },
+      "type": "build_environment"
+    },
+    {
+      "id": "build:albs:123456",
+      "label": "ALBS build task 123456",
+      "metadata": {
+        "example": true,
+        "status": "completed",
+        "system": "ALBS"
+      },
+      "type": "build_task"
+    },
+    {
+      "id": "srpm:openssl:3.0.7-28.el9_4",
+      "label": "openssl-3.0.7-28.el9_4.src.rpm",
+      "metadata": {
+        "nevra": "openssl-1:3.0.7-28.el9_4.src"
+      },
+      "type": "srpm"
+    },
+    {
+      "id": "rpm:openssl-libs:3.0.7-28.el9_4:x86_64",
+      "label": "openssl-libs-3.0.7-28.el9_4.x86_64.rpm",
+      "metadata": {
+        "arch": "x86_64",
+        "epoch": "1",
+        "name": "openssl-libs",
+        "release": "28.el9_4",
+        "version": "3.0.7"
+      },
+      "type": "binary_rpm"
+    },
+    {
+      "id": "test:openssl:albs:123456",
+      "label": "ALBS test result for openssl build 123456",
+      "metadata": {
+        "example": true,
+        "status": "passed"
+      },
+      "type": "test_result"
+    },
+    {
+      "id": "sig:gpg:alma9",
+      "label": "AlmaLinux 9 GPG signature",
+      "metadata": {
+        "example": true,
+        "status": "signed"
+      },
+      "type": "signature"
+    },
+    {
+      "id": "repo:alma9:baseos:x86_64",
+      "label": "AlmaLinux 9 BaseOS x86_64",
+      "metadata": {
+        "distribution": "AlmaLinux",
+        "major_version": "9",
+        "repository": "BaseOS"
+      },
+      "type": "repository_release"
+    },
+    {
+      "id": "errata:ALSA-2026-0001",
+      "label": "ALSA-2026-0001",
+      "metadata": {
+        "example": true,
+        "type": "security"
+      },
+      "type": "errata"
+    },
+    {
+      "id": "cve:CVE-2026-0001",
+      "label": "CVE-2026-0001",
+      "metadata": {
+        "example": true
+      },
+      "type": "cve"
+    },
+    {
+      "id": "sbom:openssl:cyclonedx",
+      "label": "CycloneDX SBOM for openssl",
+      "metadata": {
+        "example": true,
+        "format": "CycloneDX"
+      },
+      "type": "sbom"
+    },
+    {
+      "id": "external:zlib",
+      "label": "zlib runtime dependency",
+      "metadata": {
+        "ecosystem": "rpm",
+        "scope": "runtime"
+      },
+      "type": "external_package"
+    }
+  ]
+}

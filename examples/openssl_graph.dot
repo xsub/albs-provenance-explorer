@@ -1,0 +1,33 @@
+digraph albs_provenance {
+  rankdir=LR;
+  node [shape=box];
+  "src:openssl" [label="source_package\nopenssl"];
+  "repo:git.almalinux.org/rpms/openssl" [label="git_repository\ngit.almalinux.org/rpms/openssl"];
+  "commit:openssl:abc123" [label="git_commit\nabc123"];
+  "notary:immudb:openssl:xyz789" [label="notarized_ref\nimmudb hash xyz789"];
+  "buildenv:alma9:x86_64" [label="build_environment\nAlmaLinux 9 x86_64 mock build environment"];
+  "build:albs:123456" [label="build_task\nALBS build task 123456"];
+  "srpm:openssl:3.0.7-28.el9_4" [label="srpm\nopenssl-3.0.7-28.el9_4.src.rpm"];
+  "rpm:openssl-libs:3.0.7-28.el9_4:x86_64" [label="binary_rpm\nopenssl-libs-3.0.7-28.el9_4.x86_64.rpm"];
+  "test:openssl:albs:123456" [label="test_result\nALBS test result for openssl build 123456"];
+  "sig:gpg:alma9" [label="signature\nAlmaLinux 9 GPG signature"];
+  "repo:alma9:baseos:x86_64" [label="repository_release\nAlmaLinux 9 BaseOS x86_64"];
+  "errata:ALSA-2026-0001" [label="errata\nALSA-2026-0001"];
+  "cve:CVE-2026-0001" [label="cve\nCVE-2026-0001"];
+  "sbom:openssl:cyclonedx" [label="sbom\nCycloneDX SBOM for openssl"];
+  "external:zlib" [label="external_package\nzlib runtime dependency"];
+  "src:openssl" -> "repo:git.almalinux.org/rpms/openssl" [label="stored_in"];
+  "repo:git.almalinux.org/rpms/openssl" -> "commit:openssl:abc123" [label="points_to"];
+  "commit:openssl:abc123" -> "notary:immudb:openssl:xyz789" [label="notarized_as"];
+  "notary:immudb:openssl:xyz789" -> "build:albs:123456" [label="used_by"];
+  "build:albs:123456" -> "buildenv:alma9:x86_64" [label="built_in"];
+  "build:albs:123456" -> "srpm:openssl:3.0.7-28.el9_4" [label="produces"];
+  "build:albs:123456" -> "rpm:openssl-libs:3.0.7-28.el9_4:x86_64" [label="produces"];
+  "build:albs:123456" -> "test:openssl:albs:123456" [label="tested_by"];
+  "rpm:openssl-libs:3.0.7-28.el9_4:x86_64" -> "sig:gpg:alma9" [label="signed_as"];
+  "rpm:openssl-libs:3.0.7-28.el9_4:x86_64" -> "repo:alma9:baseos:x86_64" [label="released_to"];
+  "rpm:openssl-libs:3.0.7-28.el9_4:x86_64" -> "errata:ALSA-2026-0001" [label="fixes"];
+  "errata:ALSA-2026-0001" -> "cve:CVE-2026-0001" [label="fixes"];
+  "rpm:openssl-libs:3.0.7-28.el9_4:x86_64" -> "sbom:openssl:cyclonedx" [label="described_by"];
+  "rpm:openssl-libs:3.0.7-28.el9_4:x86_64" -> "external:zlib" [label="requires_runtime"];
+}

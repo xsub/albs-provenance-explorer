@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "albs-provenance-explorer"
+version = "0.1.0"
+description = "CLI-first provenance intelligence graph explorer for ALBS, RPM lineage and SBOM data"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  { name = "Paweł Suchanecki" }
+]
+license = { text = "MIT" }
+dependencies = [
+  "typer>=0.12",
+  "rich>=13.7",
+  "requests>=2.31",
+  "pydantic>=2.7",
+  "networkx>=3.2",
+  "graphviz>=0.20",
+  "rpmfile>=2.1",
+  "packageurl-python>=0.15",
+  "cyclonedx-python-lib>=7.0",
+  "spdx-tools>=0.8",
+  "beautifulsoup4>=4.12",
+  "lxml>=5.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.5.0",
+  "mypy>=1.10.0"
+]
+
+[project.scripts]
+albs-graph = "albs_graph.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["albs_graph*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
