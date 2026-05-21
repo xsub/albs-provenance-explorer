@@ -26,6 +26,33 @@ source package
   -> errata / CVE
 ```
 
+
+## Demo: nginx-core Trust Path
+
+This demo uses public ALBS build `17812`, an AlmaLinux 9 `nginx` build, and focuses the graph down to one binary RPM artifact: `nginx-core-1.20.1-16.el9_4.1.x86_64.rpm`.
+
+The full build graph is useful for analysis, but it is too dense for review. The focused trust graph keeps the source-to-artifact lineage and release evidence visible without rendering every package from every architecture.
+
+```bash
+albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64
+albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64 --format svg -o examples/demo-nginx-core/nginx-core-x86_64-trust.svg
+```
+
+Console trust-path report:
+
+![nginx-core trust-path console report](examples/demo-nginx-core/trust-path-console.png)
+
+Focused provenance graph, 11 nodes / 11 edges:
+
+![nginx-core focused trust graph](examples/demo-nginx-core/nginx-core-x86_64-trust.svg)
+
+<details>
+<summary>Full ALBS build graph for build 17812, 205 nodes / 388 edges</summary>
+
+![full ALBS build 17812 provenance graph](examples/demo-nginx-core/build-17812-full.svg)
+
+</details>
+
 ## Scope
 
 Implemented in this PoC:
