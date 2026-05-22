@@ -134,6 +134,12 @@ Regenerate the nginx-core demo artifacts in one verbose run. The script fetches 
 ./example--verbose.sh
 ```
 
+On an AlmaLinux host, install `cas` if missing and verify the source and RPM artifact CAS hashes from the cached ALBS metadata:
+
+```bash
+./example--almalinux.sh
+```
+
 Inspect local RPM metadata:
 
 ```bash
