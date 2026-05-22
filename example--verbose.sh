@@ -7,45 +7,129 @@ ARCH="${ARCH:-x86_64}"
 OUT_DIR="${OUT_DIR:-examples/demo-nginx-core}"
 LIVE_DIR="${LIVE_DIR:-examples/live-build-17812}"
 CACHE_FILE="${CACHE_FILE:-$LIVE_DIR/build-$BUILD_ID.albs.json}"
+CACHE_TTL="${CACHE_TTL:-300}"
 
 mkdir -p "$OUT_DIR" "$LIVE_DIR"
 
-run_albs_graph() {
-  if command -v albs-graph >/dev/null 2>&1; then
-    albs-graph "$@"
-  else
-    python -m albs_graph.cli.main "$@"
-  fi
-}
+if command -v python3 >/dev/null 2>&1; then
+  PYTHON_BIN="python3"
+elif command -v python >/dev/null 2>&1; then
+  PYTHON_BIN="python"
+else
+  printf 'ERROR: python3 or python is required to run this demo.\n' >&2
+  exit 1
+fi
 
-printf '==> Fetching full ALBS build %s once, then reusing cache for JSON/DOT/SVG
-' "$BUILD_ID"
-printf '==> Raw ALBS metadata cache: %s
-' "$CACHE_FILE"
-run_albs_graph fetch --build-id "$BUILD_ID" --cache "$CACHE_FILE" --format json --verbose -o "$LIVE_DIR/build-$BUILD_ID.json"
-run_albs_graph fetch --build-id "$BUILD_ID" --cache "$CACHE_FILE" --format dot --verbose -o "$LIVE_DIR/build-$BUILD_ID.dot"
-run_albs_graph fetch --build-id "$BUILD_ID" --cache "$CACHE_FILE" --format svg --verbose -o "$LIVE_DIR/build-$BUILD_ID.svg"
+if command -v albs-graph >/dev/null 2>&1; then
+  ALBS_GRAPH_TOOL="albs-graph installed; using Python orchestration for single-pass demo"
+else
+  ALBS_GRAPH_TOOL="python -m albs_graph.cli.main compatible; using Python orchestration for single-pass demo"
+fi
 
-printf '==> Copying full build graph into demo directory
-'
-cp "$LIVE_DIR/build-$BUILD_ID.json" "$OUT_DIR/build-$BUILD_ID-full.json"
-cp "$LIVE_DIR/build-$BUILD_ID.svg" "$OUT_DIR/build-$BUILD_ID-full.svg"
+printf '==> ALBS graph tool: %s\n' "$ALBS_GRAPH_TOOL"
+printf '==> Build: %s\n' "$BUILD_ID"
+printf '==> RPM: %s.%s\n' "$RPM_NAME" "$ARCH"
+printf '==> Raw ALBS metadata cache: %s\n' "$CACHE_FILE"
+printf '==> Cache TTL: %ss\n' "$CACHE_TTL"
 
-printf '==> Showing focused trust-path summary for %s.%s
-' "$RPM_NAME" "$ARCH"
-run_albs_graph trust-path --build-id "$BUILD_ID" --cache "$CACHE_FILE" --rpm "$RPM_NAME" --arch "$ARCH" --verbose
+BUILD_ID="$BUILD_ID" \
+RPM_NAME="$RPM_NAME" \
+ARCH="$ARCH" \
+OUT_DIR="$OUT_DIR" \
+LIVE_DIR="$LIVE_DIR" \
+CACHE_FILE="$CACHE_FILE" \
+CACHE_TTL="$CACHE_TTL" \
+"$PYTHON_BIN" <<'PY'
+from __future__ import annotations
 
-printf '==> Generating focused trust graph for %s.%s as JSON/DOT/SVG
-' "$RPM_NAME" "$ARCH"
-run_albs_graph trust-path --build-id "$BUILD_ID" --cache "$CACHE_FILE" --rpm "$RPM_NAME" --arch "$ARCH" --format json --verbose -o "$OUT_DIR/${RPM_NAME}-${ARCH}-trust.json"
-run_albs_graph trust-path --build-id "$BUILD_ID" --cache "$CACHE_FILE" --rpm "$RPM_NAME" --arch "$ARCH" --format dot --verbose -o "$OUT_DIR/${RPM_NAME}-${ARCH}-trust.dot"
-run_albs_graph trust-path --build-id "$BUILD_ID" --cache "$CACHE_FILE" --rpm "$RPM_NAME" --arch "$ARCH" --format svg --verbose -o "$OUT_DIR/${RPM_NAME}-${ARCH}-trust.svg"
+import os
+from pathlib import Path
 
-printf '==> Done
-'
-printf 'Metadata cache: %s
-' "$CACHE_FILE"
-printf 'Full graph:     %s
-' "$OUT_DIR/build-$BUILD_ID-full.svg"
-printf 'Focused graph:  %s
-' "$OUT_DIR/${RPM_NAME}-${ARCH}-trust.svg"
+from rich.console import Console
+from rich.table import Table
+
+from albs_graph.adapters.albs import fetch_build_metadata, graph_from_build_metadata
+from albs_graph.provenance.trust import find_binary_rpm, focused_trust_graph, trust_path
+from albs_graph.render import graph_to_dot, graph_to_json, graph_to_svg
+
+build_id = int(os.environ["BUILD_ID"])
+rpm_name = os.environ["RPM_NAME"]
+arch = os.environ["ARCH"]
+out_dir = Path(os.environ["OUT_DIR"])
+live_dir = Path(os.environ["LIVE_DIR"])
+cache_file = Path(os.environ["CACHE_FILE"])
+cache_ttl = int(os.environ["CACHE_TTL"])
+console = Console()
+
+
+def step(message: str) -> None:
+    console.print(f"[cyan]step[/cyan] {message}")
+
+
+def write(path: Path, content: str, label: str) -> None:
+    step(f"Writing {label} output to {path}")
+    path.write_text(content, encoding="utf-8")
+
+
+out_dir.mkdir(parents=True, exist_ok=True)
+live_dir.mkdir(parents=True, exist_ok=True)
+
+metadata = fetch_build_metadata(
+    build_id,
+    cache_path=cache_file,
+    cache_ttl_seconds=cache_ttl,
+    progress=step,
+)
+
+step("Building full provenance graph from ALBS metadata")
+graph = graph_from_build_metadata(metadata)
+cas_count = len(graph.find_by_type("cas_attestation"))
+step(f"Full graph: {len(graph.nodes)} nodes, {len(graph.edges)} edges, {cas_count} CAS attestations")
+
+step("Rendering full graph as JSON/DOT/SVG")
+full_json = graph_to_json(graph)
+full_dot = graph_to_dot(graph)
+full_svg = graph_to_svg(graph)
+write(live_dir / f"build-{build_id}.json", full_json, "full graph json")
+write(live_dir / f"build-{build_id}.dot", full_dot, "full graph dot")
+write(live_dir / f"build-{build_id}.svg", full_svg, "full graph svg")
+write(out_dir / f"build-{build_id}-full.json", full_json, "demo full graph json")
+write(out_dir / f"build-{build_id}-full.svg", full_svg, "demo full graph svg")
+
+step(f"Resolving binary RPM selector: {rpm_name}.{arch}")
+rpm_node = find_binary_rpm(graph, rpm_name, arch=arch)
+step(f"Selected RPM node: {rpm_node.id}")
+step("Analyzing source-to-artifact trust path")
+report = trust_path(graph, rpm_node.id)
+
+table = Table(title=f"Trust path: {rpm_node.label}")
+table.add_column("Check")
+table.add_column("Result")
+for name, value in report["checks"].items():
+    table.add_row(name, "ok" if value else "missing")
+console.print(table)
+console.print(f"Complete: {report['complete']}")
+if report["missing"]:
+    console.print(f"Missing: {', '.join(report['missing'])}")
+console.print("Path:")
+for node_id in report["path"]:
+    console.print(f"  {node_id}")
+
+step("Building focused trust graph")
+focused = focused_trust_graph(graph, rpm_node.id)
+focused_cas_count = len(focused.find_by_type("cas_attestation"))
+step(
+    f"Focused graph: {len(focused.nodes)} nodes, {len(focused.edges)} edges, "
+    f"{focused_cas_count} CAS attestations"
+)
+
+step("Rendering focused trust graph as JSON/DOT/SVG")
+write(out_dir / f"{rpm_name}-{arch}-trust.json", graph_to_json(focused), "focused graph json")
+write(out_dir / f"{rpm_name}-{arch}-trust.dot", graph_to_dot(focused), "focused graph dot")
+write(out_dir / f"{rpm_name}-{arch}-trust.svg", graph_to_svg(focused), "focused graph svg")
+
+console.print("==> Done")
+console.print(f"Metadata cache: {cache_file}")
+console.print(f"Full graph:     {out_dir / f'build-{build_id}-full.svg'}")
+console.print(f"Focused graph:  {out_dir / f'{rpm_name}-{arch}-trust.svg'}")
+PY

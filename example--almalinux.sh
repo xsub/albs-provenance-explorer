@@ -35,17 +35,12 @@ ensure_cas() {
     return
   fi
 
-  printf '==> CAS CLI not found; installing from %s\n' "$CAS_INSTALL_URL"
-  printf '==> The upstream installer may ask where to place the cas binary and may use sudo for system paths.\n'
-  curl -fsSL "$CAS_INSTALL_URL" | sh
-
-  if ! command -v cas >/dev/null 2>&1; then
-    printf 'ERROR: cas is still not in PATH after installation. Add the install directory to PATH and rerun.\n' >&2
-    exit 1
-  fi
-
-  printf '==> Installed CAS CLI: %s\n' "$(command -v cas)"
-  cas --version || true
+  printf 'ERROR: CAS CLI not found in PATH.\n' >&2
+  printf 'Install CAS manually, then rerun this script. Suggested first attempt:\n' >&2
+  printf '  curl -fsSL %s | sh\n' "$CAS_INSTALL_URL" >&2
+  printf '\nIf the upstream installer returns 404, check the current Codenotary CAS install docs/releases and install cas explicitly.\n' >&2
+  printf 'This script will not download or run a container image as a fallback.\n' >&2
+  exit 1
 }
 
 extract_hashes() {
