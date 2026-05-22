@@ -8,6 +8,7 @@ OUT_DIR="${OUT_DIR:-examples/demo-nginx-core}"
 LIVE_DIR="${LIVE_DIR:-examples/live-build-17812}"
 CACHE_FILE="${CACHE_FILE:-$LIVE_DIR/build-$BUILD_ID.albs.json}"
 CACHE_TTL="${CACHE_TTL:-300}"
+VERIFY_GIT="${VERIFY_GIT:-0}"
 
 mkdir -p "$OUT_DIR" "$LIVE_DIR"
 
@@ -31,6 +32,7 @@ printf '==> Build: %s\n' "$BUILD_ID"
 printf '==> RPM: %s.%s\n' "$RPM_NAME" "$ARCH"
 printf '==> Raw ALBS metadata cache: %s\n' "$CACHE_FILE"
 printf '==> Cache TTL: %ss\n' "$CACHE_TTL"
+printf '==> Verify git source commit: %s\n' "$VERIFY_GIT"
 
 BUILD_ID="$BUILD_ID" \
 RPM_NAME="$RPM_NAME" \
@@ -39,10 +41,14 @@ OUT_DIR="$OUT_DIR" \
 LIVE_DIR="$LIVE_DIR" \
 CACHE_FILE="$CACHE_FILE" \
 CACHE_TTL="$CACHE_TTL" \
+VERIFY_GIT="$VERIFY_GIT" \
 "$PYTHON_BIN" <<'PY'
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
 from rich.console import Console
@@ -59,6 +65,7 @@ out_dir = Path(os.environ["OUT_DIR"])
 live_dir = Path(os.environ["LIVE_DIR"])
 cache_file = Path(os.environ["CACHE_FILE"])
 cache_ttl = int(os.environ["CACHE_TTL"])
+verify_git = os.environ["VERIFY_GIT"].lower() in {"1", "true", "yes", "on"}
 console = Console()
 
 
@@ -85,6 +92,27 @@ step("Building full provenance graph from ALBS metadata")
 graph = graph_from_build_metadata(metadata)
 cas_count = len(graph.find_by_type("cas_attestation"))
 step(f"Full graph: {len(graph.nodes)} nodes, {len(graph.edges)} edges, {cas_count} CAS attestations")
+
+if verify_git:
+    repo_url = metadata.source_repository
+    commit = metadata.commit
+    step(f"Verifying git source commit {commit} in {repo_url}")
+    if shutil.which("git") is None:
+        raise SystemExit("VERIFY_GIT=1 requested, but git is not available in PATH")
+    with tempfile.TemporaryDirectory(prefix="albs-git-check-") as tmpdir:
+        subprocess.run(["git", "init", "-q", tmpdir], check=True)
+        subprocess.run(["git", "-C", tmpdir, "remote", "add", "origin", repo_url], check=True)
+        fetch = subprocess.run(
+            ["git", "-C", tmpdir, "fetch", "--depth=1", "origin", commit],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if fetch.returncode != 0:
+            detail = (fetch.stderr or fetch.stdout).strip()
+            raise SystemExit(f"git commit verification failed for {commit}: {detail}")
+        subprocess.run(["git", "-C", tmpdir, "cat-file", "-e", f"{commit}^{{commit}}"], check=True)
+    step("Git source commit verification: ok")
 
 step("Rendering full graph as JSON/DOT/SVG")
 full_json = graph_to_json(graph)
