@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
@@ -32,8 +33,24 @@ def fetch_build_metadata(
     build_id: int | str,
     base_url: str = "https://build.almalinux.org",
     progress: Callable[[str], None] | None = None,
+    cache_path: str | Path | None = None,
+    refresh_cache: bool = False,
+    cache_ttl_seconds: int = 300,
 ) -> AlbsBuildMetadata:
     import requests
+
+    cache = Path(cache_path) if cache_path else None
+    if cache and cache.exists() and not refresh_cache:
+        cache_age = time.time() - cache.stat().st_mtime
+        if cache_age <= cache_ttl_seconds:
+            if progress:
+                progress(f"Loading ALBS build metadata from fresh cache {cache}")
+            return parse_build_metadata(json.loads(cache.read_text(encoding="utf-8")))
+        if progress:
+            progress(
+                f"Ignoring stale ALBS metadata cache {cache} "
+                f"({cache_age:.0f}s old, ttl {cache_ttl_seconds}s)"
+            )
 
     root = base_url.rstrip("/")
     api_url = f"{root}/api/v1/builds/{build_id}/"
@@ -41,9 +58,15 @@ def fetch_build_metadata(
         progress(f"Fetching ALBS build metadata from {api_url}")
     api_response = requests.get(api_url, timeout=20)
     if api_response.ok and "application/json" in api_response.headers.get("content-type", ""):
+        data = api_response.json()
+        if cache:
+            if progress:
+                progress(f"Writing ALBS build metadata cache to {cache}")
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            cache.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         if progress:
             progress("Parsing ALBS API JSON response")
-        return parse_build_metadata(api_response.json())
+        return parse_build_metadata(data)
 
     url = f"{root}/build/{build_id}"
     if progress:

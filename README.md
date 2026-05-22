@@ -124,11 +124,11 @@ albs-graph fetch-build 12345 --format json
 Show step-by-step fetch, CAS extraction and render progress on stderr:
 
 ```bash
-albs-graph fetch --build-id 17812 --format json --verbose -o build-17812.json
-albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64 --format svg --verbose -o nginx-core_x86_64-trust.svg
+albs-graph fetch --build-id 17812 --cache examples/live-build-17812/build-17812.albs.json --format json --verbose -o build-17812.json
+albs-graph trust-path --build-id 17812 --cache examples/live-build-17812/build-17812.albs.json --rpm nginx-core --arch x86_64 --format svg --verbose -o nginx-core_x86_64-trust.svg
 ```
 
-Regenerate the nginx-core demo artifacts in one verbose run:
+Regenerate the nginx-core demo artifacts in one verbose run. The script fetches ALBS metadata once into a local cache and reuses it for JSON, DOT and SVG renders while the cache is fresh. Cache freshness defaults to 5 minutes and can be changed with `--cache-ttl`:
 
 ```bash
 ./example--verbose.sh

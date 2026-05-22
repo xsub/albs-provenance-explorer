@@ -46,11 +46,25 @@ def fetch_build(
     output_format: str = typer.Option("json", "--format", "-f", help="json, dot or svg."),
     output: Optional[Path] = typer.Option(None, "--output", "-o"),
     base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
+    cache: Optional[Path] = typer.Option(
+        None, "--cache", help="Read/write raw ALBS API metadata cache JSON."
+    ),
+    cache_ttl: int = typer.Option(300, "--cache-ttl", help="Cache freshness window in seconds."),
+    refresh_cache: bool = typer.Option(
+        False, "--refresh-cache", help="Ignore an existing ALBS metadata cache and fetch again."
+    ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Print step-by-step progress to stderr."
     ),
 ) -> None:
-    metadata = fetch_build_metadata(build_id, base_url=base_url, progress=_progress(verbose))
+    metadata = fetch_build_metadata(
+        build_id,
+        base_url=base_url,
+        progress=_progress(verbose),
+        cache_path=cache,
+        refresh_cache=refresh_cache,
+        cache_ttl_seconds=cache_ttl,
+    )
     _log_step(verbose, "Building provenance graph from ALBS metadata")
     graph = graph_from_build_metadata(metadata)
     _log_graph_stats(verbose, graph)
@@ -63,11 +77,25 @@ def fetch(
     output_format: str = typer.Option("json", "--format", "-f", help="json, dot or svg."),
     output: Optional[Path] = typer.Option(None, "--output", "-o"),
     base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
+    cache: Optional[Path] = typer.Option(
+        None, "--cache", help="Read/write raw ALBS API metadata cache JSON."
+    ),
+    cache_ttl: int = typer.Option(300, "--cache-ttl", help="Cache freshness window in seconds."),
+    refresh_cache: bool = typer.Option(
+        False, "--refresh-cache", help="Ignore an existing ALBS metadata cache and fetch again."
+    ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Print step-by-step progress to stderr."
     ),
 ) -> None:
-    metadata = fetch_build_metadata(build_id, base_url=base_url, progress=_progress(verbose))
+    metadata = fetch_build_metadata(
+        build_id,
+        base_url=base_url,
+        progress=_progress(verbose),
+        cache_path=cache,
+        refresh_cache=refresh_cache,
+        cache_ttl_seconds=cache_ttl,
+    )
     _log_step(verbose, "Building provenance graph from ALBS metadata")
     graph = graph_from_build_metadata(metadata)
     _log_graph_stats(verbose, graph)
@@ -114,6 +142,13 @@ def trust_path_command(
         False, "--include-tests", help="Include test task nodes in rendered graph output."
     ),
     base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
+    cache: Optional[Path] = typer.Option(
+        None, "--cache", help="Read/write raw ALBS API metadata cache JSON when using --build-id."
+    ),
+    cache_ttl: int = typer.Option(300, "--cache-ttl", help="Cache freshness window in seconds."),
+    refresh_cache: bool = typer.Option(
+        False, "--refresh-cache", help="Ignore an existing ALBS metadata cache and fetch again."
+    ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Print step-by-step progress to stderr."
     ),
@@ -125,7 +160,14 @@ def trust_path_command(
     ),
 ) -> None:
     if build_id is not None:
-        metadata = fetch_build_metadata(build_id, base_url=base_url, progress=_progress(verbose))
+        metadata = fetch_build_metadata(
+            build_id,
+            base_url=base_url,
+            progress=_progress(verbose),
+            cache_path=cache,
+            refresh_cache=refresh_cache,
+            cache_ttl_seconds=cache_ttl,
+        )
         _log_step(verbose, "Building provenance graph from ALBS metadata")
         graph = graph_from_build_metadata(metadata)
     else:
