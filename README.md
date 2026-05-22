@@ -2,7 +2,7 @@
 
 `albs-provenance-explorer` is a Python PoC for provenance-aware graph exploration over AlmaLinux Build System (ALBS), RPM, SBOM and errata data.
 
-It is a read-only intelligence layer. It does not replace ALBS, rebuild packages, or act as a generic dependency visualizer. The goal is to preserve Enterprise Linux supply-chain lineage from source package through notarized refs, build tasks, RPM artifacts, signatures, repository release context, SBOMs and security advisories.
+It is a read-only intelligence layer. It does not replace ALBS, rebuild packages, or act as a generic dependency visualizer. The goal is to preserve Enterprise Linux supply-chain lineage from source package through Codenotary CAS source and artifact attestations, build tasks, RPM artifacts, signatures, repository release context, SBOMs and security advisories.
 
 ## Why Provenance Matters
 
@@ -16,10 +16,11 @@ This project treats ALBS as the provenance backbone:
 source package
   -> git repository
   -> exact git commit
-  -> immudb-notarized ref
+  -> Codenotary CAS source attestation
   -> ALBS build task
   -> build environment
   -> SRPM / binary RPM
+  -> Codenotary CAS artifact attestation
   -> signature
   -> repository release
   -> SBOM
@@ -40,14 +41,14 @@ albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64 --format s
 
 Console trust-path report:
 
-![nginx-core trust-path console report](examples/demo-nginx-core/trust-path-console.png)
+![nginx-core trust-path console report](examples/demo-nginx-core/trust-path-console.svg)
 
-Focused provenance graph, 11 nodes / 11 edges:
+Focused provenance graph, 13 nodes / 13 edges:
 
 ![nginx-core focused trust graph](examples/demo-nginx-core/nginx-core-x86_64-trust.svg)
 
 <details>
-<summary>Full ALBS build graph for build 17812, 205 nodes / 388 edges</summary>
+<summary>Full ALBS build graph for build 17812, 289 nodes / 484 edges</summary>
 
 ![full ALBS build 17812 provenance graph](examples/demo-nginx-core/build-17812-full.svg)
 
@@ -120,6 +121,19 @@ Fetch and parse an ALBS build page:
 albs-graph fetch-build 12345 --format json
 ```
 
+Show step-by-step fetch, CAS extraction and render progress on stderr:
+
+```bash
+albs-graph fetch --build-id 17812 --format json --verbose -o build-17812.json
+albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64 --format svg --verbose -o nginx-core_x86_64-trust.svg
+```
+
+Regenerate the nginx-core demo artifacts in one verbose run:
+
+```bash
+./example--verbose.sh
+```
+
 Inspect local RPM metadata:
 
 ```bash
@@ -149,19 +163,19 @@ albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64 --format s
 
 Canonical node types include:
 
-`source_package`, `git_repository`, `git_commit`, `notarized_ref`, `build_task`, `build_environment`, `srpm`, `binary_rpm`, `signature`, `repository_release`, `errata`, `cve`, `sbom`.
+`source_package`, `git_repository`, `git_commit`, `cas_attestation`, `build_task`, `build_environment`, `srpm`, `binary_rpm`, `signature`, `repository_release`, `errata`, `cve`, `sbom`.
 
 Canonical edge types include:
 
-`stored_in`, `points_to`, `notarized_as`, `built_by`, `produces`, `tested_by`, `signed_as`, `released_to`, `described_by`, `fixes`, `affected_by`, `derived_from`.
+`stored_in`, `points_to`, `authenticated_by`, `built_by`, `produces`, `tested_by`, `signed_as`, `released_to`, `described_by`, `fixes`, `affected_by`, `derived_from`.
 
 Runtime package relationships such as `requires_runtime` exist, but they are deliberately secondary. RPM dependencies are facts inside the graph, not the graph's organizing principle.
 
-## SBOM And Notarization
+## SBOM And CAS Attestation
 
-The SBOM adapter imports SPDX JSON and CycloneDX JSON as provenance evidence using `sbom` nodes and `described_by` edges. The mock ALBS graph models immudb notarization as a `notarized_ref` node between an exact git commit and the ALBS build task, making the trust chain inspectable rather than implicit.
+The SBOM adapter imports SPDX JSON and CycloneDX JSON as provenance evidence using `sbom` nodes and `described_by` edges. ALBS source and RPM artifact trust evidence is modeled as `cas_attestation` nodes connected with `authenticated_by` edges, matching the Codenotary CAS/BOM shape used by AlmaLinux SBOM integration.
 
-The PoC does not perform real immudb verification yet. It preserves the graph semantics required for that verification step to be added cleanly.
+For live ALBS builds, the adapter preserves `alma_commit_cas_hash` on the source commit path and artifact `cas_hash` values on SRPM/RPM outputs. This PoC models the evidence and trust path; it does not independently verify Codenotary CAS proofs yet.
 
 ## Layout
 

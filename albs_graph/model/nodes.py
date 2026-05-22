@@ -9,7 +9,7 @@ class NodeType(StrEnum):
     SOURCE_PACKAGE = "source_package"
     GIT_REPOSITORY = "git_repository"
     GIT_COMMIT = "git_commit"
-    NOTARIZED_REF = "notarized_ref"
+    CAS_ATTESTATION = "cas_attestation"
     BUILD_TASK = "build_task"
     BUILD_ENVIRONMENT = "build_environment"
     SRPM = "srpm"

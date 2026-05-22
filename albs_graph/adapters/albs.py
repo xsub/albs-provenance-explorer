@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
-from typing import Any
+from typing import Any, Callable
 
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
 
@@ -15,7 +15,7 @@ class AlbsBuildMetadata:
     package: str
     source_repository: str
     commit: str
-    notarized_ref: str | None
+    source_cas_hash: str | None
     source_rpm: str | None
     binary_rpms: list[str]
     release_repository: str | None
@@ -28,18 +28,30 @@ def load_mock_build(path: str | Path) -> ProvenanceGraph:
     return graph_from_build_metadata(parse_build_metadata(data))
 
 
-def fetch_build_metadata(build_id: int | str, base_url: str = "https://build.almalinux.org") -> AlbsBuildMetadata:
+def fetch_build_metadata(
+    build_id: int | str,
+    base_url: str = "https://build.almalinux.org",
+    progress: Callable[[str], None] | None = None,
+) -> AlbsBuildMetadata:
     import requests
 
     root = base_url.rstrip("/")
     api_url = f"{root}/api/v1/builds/{build_id}/"
+    if progress:
+        progress(f"Fetching ALBS build metadata from {api_url}")
     api_response = requests.get(api_url, timeout=20)
     if api_response.ok and "application/json" in api_response.headers.get("content-type", ""):
+        if progress:
+            progress("Parsing ALBS API JSON response")
         return parse_build_metadata(api_response.json())
 
     url = f"{root}/build/{build_id}"
+    if progress:
+        progress(f"ALBS API JSON unavailable; fetching HTML fallback from {url}")
     response = requests.get(url, timeout=20)
     response.raise_for_status()
+    if progress:
+        progress("Parsing ALBS build HTML fallback")
     return parse_build_page(build_id=str(build_id), html=response.text, url=url)
 
 
@@ -65,16 +77,20 @@ def parse_build_metadata(data: dict[str, Any]) -> AlbsBuildMetadata:
             or first_ref.get("url")
             or f"git.almalinux.org/rpms/{package}"
         ),
-        commit=str(data.get("commit") or data.get("git_commit") or first_ref.get("git_commit_hash") or "unknown"),
-        notarized_ref=(
-            data.get("notarized_ref")
-            or data.get("immudb_ref")
-            or first_task.get("alma_commit_cas_hash")
-            if first_task
-            else None
+        commit=str(
+            data.get("commit")
+            or data.get("git_commit")
+            or first_ref.get("git_commit_hash")
+            or "unknown"
+        ),
+        source_cas_hash=(
+            data.get("source_cas_hash")
+            or data.get("alma_commit_cas_hash")
+            or (first_task.get("alma_commit_cas_hash") if first_task else None)
         ),
         source_rpm=data.get("source_rpm") or data.get("srpm") or _first_source_rpm(artifacts),
-        binary_rpms=[str(item) for item in data.get("binary_rpms", [])] or _binary_rpm_names(artifacts),
+        binary_rpms=[str(item) for item in data.get("binary_rpms", [])]
+        or _binary_rpm_names(artifacts),
         release_repository=data.get("release_repository") or _release_label(data),
         arch=data.get("arch") or first_task.get("arch") if first_task else data.get("arch"),
         raw=data,
@@ -90,7 +106,11 @@ def parse_build_page(build_id: str, html: str, url: str) -> AlbsBuildMetadata:
     package = _extract_after(text, ("Package", "Source package", "Name")) or title.split()[0]
     commit = _extract_after(text, ("Commit", "Git commit", "Ref")) or "unknown"
     repository = _extract_after(text, ("Repository", "Git repository", "Source repository"))
-    binary_rpms = [link.get_text(strip=True) for link in soup.find_all("a") if link.get_text(strip=True).endswith(".rpm")]
+    binary_rpms = [
+        link.get_text(strip=True)
+        for link in soup.find_all("a")
+        if link.get_text(strip=True).endswith(".rpm")
+    ]
     source_rpm = next((rpm for rpm in binary_rpms if rpm.endswith(".src.rpm")), None)
     binaries = [rpm for rpm in binary_rpms if not rpm.endswith(".src.rpm")]
     return AlbsBuildMetadata(
@@ -98,7 +118,7 @@ def parse_build_page(build_id: str, html: str, url: str) -> AlbsBuildMetadata:
         package=package,
         source_repository=repository or f"unknown-albs-source:{package}",
         commit=commit,
-        notarized_ref=_extract_after(text, ("immudb", "Notarized ref", "Notary")),
+        source_cas_hash=_extract_after(text, ("Codenotary CAS", "CAS hash", "Source CAS hash")),
         source_rpm=source_rpm,
         binary_rpms=binaries,
         release_repository=_extract_after(text, ("Release repository", "Repository release")),
@@ -116,31 +136,40 @@ def graph_from_build_metadata(build: AlbsBuildMetadata) -> ProvenanceGraph:
     source_id = f"src:{package}"
     repo_id = f"git:{build.source_repository}"
     commit_id = f"commit:{package}:{build.commit}"
-    notary_value = build.notarized_ref or f"unverified:{build.commit}"
-    notary_id = f"notary:immudb:{package}:{notary_value}"
+    cas_value = build.source_cas_hash
+    cas_id = f"cas:source:{package}:{cas_value or build.commit}"
     build_id = f"build:albs:{build.build_id}"
 
     graph.add_node(Node(source_id, NodeType.SOURCE_PACKAGE, package, {"ecosystem": "rpm"}))
-    graph.add_node(Node(repo_id, NodeType.GIT_REPOSITORY, build.source_repository, {"system": "ALBS"}))
+    graph.add_node(
+        Node(repo_id, NodeType.GIT_REPOSITORY, build.source_repository, {"system": "ALBS"})
+    )
     graph.add_node(Node(commit_id, NodeType.GIT_COMMIT, build.commit, {"package": package}))
     graph.add_node(
         Node(
-            notary_id,
-            NodeType.NOTARIZED_REF,
-            notary_value,
-            {"notary": "immudb", "verified": build.notarized_ref is not None},
+            cas_id,
+            NodeType.CAS_ATTESTATION,
+            cas_value or f"unverified source commit {build.commit}",
+            {
+                "system": "Codenotary CAS",
+                "subject_type": "source_commit",
+                "cas_hash": cas_value,
+                "trusted": build.source_cas_hash is not None,
+            },
         )
     )
     graph.add_node(Node(build_id, NodeType.BUILD_TASK, f"ALBS build {build.build_id}", build.raw))
 
     graph.add_edge(source_id, repo_id, Relation.STORED_IN)
     graph.add_edge(repo_id, commit_id, Relation.POINTS_TO)
-    graph.add_edge(commit_id, notary_id, Relation.NOTARIZED_AS)
-    graph.add_edge(notary_id, build_id, Relation.BUILT_BY)
+    graph.add_edge(commit_id, cas_id, Relation.AUTHENTICATED_BY)
+    graph.add_edge(cas_id, build_id, Relation.BUILT_BY)
 
     if build.arch:
         env_id = f"buildenv:alma:{build.arch}"
-        graph.add_node(Node(env_id, NodeType.BUILD_ENVIRONMENT, f"ALBS {build.arch}", {"arch": build.arch}))
+        graph.add_node(
+            Node(env_id, NodeType.BUILD_ENVIRONMENT, f"ALBS {build.arch}", {"arch": build.arch})
+        )
         graph.add_edge(build_id, env_id, Relation.BUILT_IN)
 
     if build.source_rpm:
@@ -173,19 +202,26 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
     source_id = f"src:{build.package}"
     repo_id = f"git:{build.source_repository}"
     commit_id = f"commit:{build.package}:{build.commit}"
-    notary_value = build.notarized_ref or f"unverified:{build.commit}"
-    notary_id = f"notary:immudb:{build.package}:{notary_value}"
+    source_cas_value = build.source_cas_hash
+    source_cas_id = f"cas:source:{build.package}:{source_cas_value or build.commit}"
     build_id = f"build:albs:{build.build_id}"
 
     graph.add_node(Node(source_id, NodeType.SOURCE_PACKAGE, build.package, {"ecosystem": "rpm"}))
-    graph.add_node(Node(repo_id, NodeType.GIT_REPOSITORY, build.source_repository, {"system": "ALBS"}))
+    graph.add_node(
+        Node(repo_id, NodeType.GIT_REPOSITORY, build.source_repository, {"system": "ALBS"})
+    )
     graph.add_node(Node(commit_id, NodeType.GIT_COMMIT, build.commit, {"package": build.package}))
     graph.add_node(
         Node(
-            notary_id,
-            NodeType.NOTARIZED_REF,
-            notary_value,
-            {"notary": "immudb", "verified": build.notarized_ref is not None},
+            source_cas_id,
+            NodeType.CAS_ATTESTATION,
+            source_cas_value or f"unverified source commit {build.commit}",
+            {
+                "system": "Codenotary CAS",
+                "subject_type": "source_commit",
+                "cas_hash": source_cas_value,
+                "trusted": build.source_cas_hash is not None,
+            },
         )
     )
     graph.add_node(
@@ -203,12 +239,19 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
     )
     graph.add_edge(source_id, repo_id, Relation.STORED_IN)
     graph.add_edge(repo_id, commit_id, Relation.POINTS_TO)
-    graph.add_edge(commit_id, notary_id, Relation.NOTARIZED_AS)
-    graph.add_edge(notary_id, build_id, Relation.BUILT_BY)
+    graph.add_edge(commit_id, source_cas_id, Relation.AUTHENTICATED_BY)
+    graph.add_edge(source_cas_id, build_id, Relation.BUILT_BY)
 
     release_id = _release_label(build.raw)
     if release_id:
-        graph.add_node(Node(f"repo-release:{release_id}", NodeType.REPOSITORY_RELEASE, release_id, {"source": "ALBS"}))
+        graph.add_node(
+            Node(
+                f"repo-release:{release_id}",
+                NodeType.REPOSITORY_RELEASE,
+                release_id,
+                {"source": "ALBS"},
+            )
+        )
 
     signature_nodes = _add_signature_nodes(graph, build.raw)
     for task in build.raw.get("tasks", []):
@@ -216,21 +259,26 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
         arch = str(task.get("arch") or "unknown")
         platform = task.get("platform") or {}
         ref = task.get("ref") or {}
-        task_notary = task.get("alma_commit_cas_hash") or build.notarized_ref
-        if task_notary and task_notary != notary_value:
-            task_notary_id = f"notary:immudb:{build.package}:{task_notary}"
-            if task_notary_id not in graph.nodes:
-                graph.add_node(
-                    Node(
-                        task_notary_id,
-                        NodeType.NOTARIZED_REF,
-                        str(task_notary),
-                        {"notary": "immudb", "verified": bool(task.get("is_cas_authenticated"))},
-                    )
+        task_cas = task.get("alma_commit_cas_hash") or build.source_cas_hash
+        task_cas_id = f"cas:source:{build.package}:{task_cas or build.commit}"
+        if task_cas_id not in graph.nodes:
+            graph.add_node(
+                Node(
+                    task_cas_id,
+                    NodeType.CAS_ATTESTATION,
+                    str(task_cas or f"unverified source commit {build.commit}"),
+                    {
+                        "system": "Codenotary CAS",
+                        "subject_type": "source_commit",
+                        "cas_hash": task_cas,
+                        "trusted": bool(task.get("is_cas_authenticated")),
+                        "git_commit": ref.get("git_commit_hash"),
+                        "git_ref": ref.get("git_ref"),
+                        "git_url": ref.get("url"),
+                    },
                 )
-                graph.add_edge(commit_id, task_notary_id, Relation.NOTARIZED_AS)
-        else:
-            task_notary_id = notary_id
+            )
+            graph.add_edge(commit_id, task_cas_id, Relation.AUTHENTICATED_BY)
 
         graph.add_node(
             Node(
@@ -249,7 +297,7 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
                 },
             )
         )
-        graph.add_edge(task_notary_id, task_id, Relation.BUILT_BY)
+        graph.add_edge(task_cas_id, task_id, Relation.BUILT_BY)
         graph.add_edge(build_id, task_id, Relation.DERIVED_FROM, role="albs_build_task")
 
         env_id = f"buildenv:{platform.get('name', 'albs')}:{arch}"
@@ -269,7 +317,9 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
                 continue
             name = str(artifact.get("name"))
             node_type = NodeType.SRPM if name.endswith(".src.rpm") else NodeType.BINARY_RPM
-            node_id = f"{'srpm' if node_type == NodeType.SRPM else 'rpm'}:{artifact.get('id')}:{name}"
+            node_id = (
+                f"{'srpm' if node_type == NodeType.SRPM else 'rpm'}:{artifact.get('id')}:{name}"
+            )
             graph.add_node(
                 Node(
                     node_id,
@@ -285,6 +335,28 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
                 )
             )
             graph.add_edge(task_id, node_id, Relation.PRODUCES)
+            artifact_cas_hash = artifact.get("cas_hash")
+            if artifact_cas_hash:
+                cas_subject = "srpm_artifact" if node_type == NodeType.SRPM else "rpm_artifact"
+                artifact_cas_id = f"cas:artifact:{artifact_cas_hash}"
+                if artifact_cas_id not in graph.nodes:
+                    graph.add_node(
+                        Node(
+                            artifact_cas_id,
+                            NodeType.CAS_ATTESTATION,
+                            str(artifact_cas_hash),
+                            {
+                                "system": "Codenotary CAS",
+                                "subject_type": cas_subject,
+                                "cas_hash": artifact_cas_hash,
+                                "trusted": True,
+                                "artifact_id": artifact.get("id"),
+                                "artifact_name": name,
+                                "href": artifact.get("href"),
+                            },
+                        )
+                    )
+                graph.add_edge(node_id, artifact_cas_id, Relation.AUTHENTICATED_BY)
             if node_type == NodeType.BINARY_RPM and release_id:
                 graph.add_edge(node_id, f"repo-release:{release_id}", Relation.RELEASED_TO)
             if node_type == NodeType.BINARY_RPM:
@@ -344,7 +416,11 @@ def _first_source_rpm(artifacts: list[dict[str, Any]]) -> str | None:
 
 
 def _binary_rpm_names(artifacts: list[dict[str, Any]]) -> list[str]:
-    return [str(artifact.get("name")) for artifact in artifacts if not str(artifact.get("name", "")).endswith(".src.rpm")]
+    return [
+        str(artifact.get("name"))
+        for artifact in artifacts
+        if not str(artifact.get("name", "")).endswith(".src.rpm")
+    ]
 
 
 def _package_from_repository(repository_url: str) -> str | None:

@@ -14,20 +14,20 @@
     },
     {
       "metadata": {},
-      "relation": "notarized_as",
+      "relation": "authenticated_by",
       "source": "commit:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
-      "target": "notary:immudb:nginx:911945c71710c83cf6f760447c32d8d6cae737dc"
+      "target": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc"
     },
     {
       "metadata": {},
       "relation": "built_by",
-      "source": "notary:immudb:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
+      "source": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
       "target": "build:albs:17812"
     },
     {
       "metadata": {},
       "relation": "built_by",
-      "source": "notary:immudb:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
+      "source": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
       "target": "build:albs-task:188077"
     },
     {
@@ -52,9 +52,21 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "srpm:3237035:nginx-1.20.1-16.el9_4.1.src.rpm",
+      "target": "cas:artifact:f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510"
+    },
+    {
+      "metadata": {},
       "relation": "produces",
       "source": "build:albs-task:188077",
       "target": "rpm:3237140:nginx-core-1.20.1-16.el9_4.1.x86_64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237140:nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3"
     },
     {
       "metadata": {},
@@ -71,14 +83,6 @@
   ],
   "nodes": [
     {
-      "id": "commit:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
-      "label": "911945c71710c83cf6f760447c32d8d6cae737dc",
-      "metadata": {
-        "package": "nginx"
-      },
-      "type": "git_commit"
-    },
-    {
       "id": "src:nginx",
       "label": "nginx",
       "metadata": {
@@ -87,20 +91,23 @@
       "type": "source_package"
     },
     {
-      "id": "rpm:3237140:nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
-      "label": "nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
+      "id": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
+      "label": "911945c71710c83cf6f760447c32d8d6cae737dc",
       "metadata": {
-        "arch": "x86_64",
-        "artifact_id": 3237140,
-        "cas_hash": "e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
-        "filename": "nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
-        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6053-791a-8ffd-132c5a548183/",
-        "name": "nginx-core",
-        "release": "16.el9_4.1",
-        "task_id": 188077,
-        "version": "1.20.1"
+        "cas_hash": "911945c71710c83cf6f760447c32d8d6cae737dc",
+        "subject_type": "source_commit",
+        "system": "Codenotary CAS",
+        "trusted": true
       },
-      "type": "binary_rpm"
+      "type": "cas_attestation"
+    },
+    {
+      "id": "repo-release:ALBS release 7396",
+      "label": "ALBS release 7396",
+      "metadata": {
+        "source": "ALBS"
+      },
+      "type": "repository_release"
     },
     {
       "id": "git:https://git.almalinux.org/rpms/nginx.git",
@@ -111,12 +118,41 @@
       "type": "git_repository"
     },
     {
-      "id": "repo-release:ALBS release 7396",
-      "label": "ALBS release 7396",
+      "id": "sig:albs:11754",
+      "label": "ALBS sign task 11754",
       "metadata": {
-        "source": "ALBS"
+        "finished_at": "2024-09-03T13:36:14.543733",
+        "started_at": "2024-09-03T13:31:58.839332",
+        "stats": {
+          "download_packages_time": 8,
+          "notarization_packages_time": 7,
+          "sign_packages_time": 22,
+          "signature_check_packages_time": 0,
+          "upload_packages_time": 187,
+          "web_server_processing_time": 29
+        },
+        "status": 3
       },
-      "type": "repository_release"
+      "type": "signature"
+    },
+    {
+      "id": "commit:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
+      "label": "911945c71710c83cf6f760447c32d8d6cae737dc",
+      "metadata": {
+        "package": "nginx"
+      },
+      "type": "git_commit"
+    },
+    {
+      "id": "build:albs:17812",
+      "label": "ALBS build 17812",
+      "metadata": {
+        "created_at": "2024-09-03T13:17:19.527127",
+        "finished_at": "2024-09-03T13:30:53.682871",
+        "release_id": 7396,
+        "released": true
+      },
+      "type": "build_task"
     },
     {
       "id": "buildenv:AlmaLinux-9:x86_64",
@@ -139,39 +175,18 @@
       "type": "build_environment"
     },
     {
-      "id": "notary:immudb:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
-      "label": "911945c71710c83cf6f760447c32d8d6cae737dc",
+      "id": "cas:artifact:f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510",
+      "label": "f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510",
       "metadata": {
-        "notary": "immudb",
-        "verified": true
+        "artifact_id": 3237038,
+        "artifact_name": "nginx-1.20.1-16.el9_4.1.src.rpm",
+        "cas_hash": "f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b80d-2335-71fb-94c9-7b7b674eea95/",
+        "subject_type": "srpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
       },
-      "type": "notarized_ref"
-    },
-    {
-      "id": "build:albs-task:188077",
-      "label": "ALBS task 188077 x86_64",
-      "metadata": {
-        "albs_build_id": "17812",
-        "arch": "x86_64",
-        "finished_at": "2024-09-03T13:29:29.159285",
-        "git_ref": "imports/c9/nginx-1.20.1-16.el9_4.1",
-        "platform": "AlmaLinux-9",
-        "secure_boot": false,
-        "started_at": "2024-09-03T13:22:50.946943",
-        "status": 2
-      },
-      "type": "build_task"
-    },
-    {
-      "id": "build:albs:17812",
-      "label": "ALBS build 17812",
-      "metadata": {
-        "created_at": "2024-09-03T13:17:19.527127",
-        "finished_at": "2024-09-03T13:30:53.682871",
-        "release_id": 7396,
-        "released": true
-      },
-      "type": "build_task"
+      "type": "cas_attestation"
     },
     {
       "id": "srpm:3237035:nginx-1.20.1-16.el9_4.1.src.rpm",
@@ -190,22 +205,49 @@
       "type": "srpm"
     },
     {
-      "id": "sig:albs:11754",
-      "label": "ALBS sign task 11754",
+      "id": "build:albs-task:188077",
+      "label": "ALBS task 188077 x86_64",
       "metadata": {
-        "finished_at": "2024-09-03T13:36:14.543733",
-        "started_at": "2024-09-03T13:31:58.839332",
-        "stats": {
-          "download_packages_time": 8,
-          "notarization_packages_time": 7,
-          "sign_packages_time": 22,
-          "signature_check_packages_time": 0,
-          "upload_packages_time": 187,
-          "web_server_processing_time": 29
-        },
-        "status": 3
+        "albs_build_id": "17812",
+        "arch": "x86_64",
+        "finished_at": "2024-09-03T13:29:29.159285",
+        "git_ref": "imports/c9/nginx-1.20.1-16.el9_4.1",
+        "platform": "AlmaLinux-9",
+        "secure_boot": false,
+        "started_at": "2024-09-03T13:22:50.946943",
+        "status": 2
       },
-      "type": "signature"
+      "type": "build_task"
+    },
+    {
+      "id": "rpm:3237140:nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
+      "label": "nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
+      "metadata": {
+        "arch": "x86_64",
+        "artifact_id": 3237140,
+        "cas_hash": "e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
+        "filename": "nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6053-791a-8ffd-132c5a548183/",
+        "name": "nginx-core",
+        "release": "16.el9_4.1",
+        "task_id": 188077,
+        "version": "1.20.1"
+      },
+      "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
+      "label": "e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
+      "metadata": {
+        "artifact_id": 3237140,
+        "artifact_name": "nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6053-791a-8ffd-132c5a548183/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     }
   ],
   "schema": "albs-provenance-explorer/v1"

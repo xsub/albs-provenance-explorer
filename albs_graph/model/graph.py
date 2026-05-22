@@ -48,7 +48,12 @@ class ProvenanceGraph:
         if target not in self.nodes:
             raise ValueError(f"Missing target node: {target}")
         self.edges.append(
-            Edge(source=source, target=target, relation=Relation.canonical(relation), metadata=metadata)
+            Edge(
+                source=source,
+                target=target,
+                relation=Relation.canonical(relation),
+                metadata=metadata,
+            )
         )
 
     def outgoing(self, node_id: str, relation: Relation | str | None = None) -> list[Edge]:
@@ -75,7 +80,9 @@ class ProvenanceGraph:
     def first_binary_rpm(self, package: str) -> Node | None:
         for node in self.find_by_type(NodeType.BINARY_RPM):
             name = str(node.metadata.get("name", node.label)).lower()
-            if package.lower() in {name, node.label.lower()} or node.label.lower().startswith(package.lower()):
+            if package.lower() in {name, node.label.lower()} or node.label.lower().startswith(
+                package.lower()
+            ):
                 return node
         return None
 
@@ -104,9 +111,9 @@ class ProvenanceGraph:
             return [rpm_node_id]
 
         build_id = producers[0].source
-        notary_edges = self.incoming(build_id, Relation.BUILT_BY)
-        notary_id = notary_edges[0].source if notary_edges else None
-        commit_edges = self.incoming(notary_id, Relation.NOTARIZED_AS) if notary_id else []
+        cas_edges = self.incoming(build_id, Relation.BUILT_BY)
+        cas_id = cas_edges[0].source if cas_edges else None
+        commit_edges = self.incoming(cas_id, Relation.AUTHENTICATED_BY) if cas_id else []
         commit_id = commit_edges[0].source if commit_edges else None
         repo_edges = self.incoming(commit_id, Relation.POINTS_TO) if commit_id else []
         repo_id = repo_edges[0].source if repo_edges else None
@@ -115,7 +122,7 @@ class ProvenanceGraph:
 
         return [
             node_id
-            for node_id in (source_id, repo_id, commit_id, notary_id, build_id, rpm_node_id)
+            for node_id in (source_id, repo_id, commit_id, cas_id, build_id, rpm_node_id)
             if node_id is not None
         ]
 
@@ -129,10 +136,14 @@ class ProvenanceGraph:
         incoming_relations = {edge.relation for edge in self.incoming(rpm_node_id)}
         outgoing_relations = {edge.relation for edge in self.outgoing(rpm_node_id)}
         build_tasks = [edge.source for edge in self.incoming(rpm_node_id, Relation.PRODUCES)]
-        has_notarized_source = any(
-            any(edge.relation == Relation.NOTARIZED_AS for edge in self.incoming(notary_edge.source))
+        has_source_cas_attestation = any(
+            any(
+                edge.relation == Relation.AUTHENTICATED_BY
+                for edge in self.incoming(cas_edge.source)
+            )
+            and self.nodes[cas_edge.source].type == NodeType.CAS_ATTESTATION
             for build_task in build_tasks
-            for notary_edge in self.incoming(build_task, Relation.BUILT_BY)
+            for cas_edge in self.incoming(build_task, Relation.BUILT_BY)
         )
 
         checks = {
@@ -143,7 +154,12 @@ class ProvenanceGraph:
             "has_errata_link": (
                 Relation.FIXES in outgoing_relations or Relation.AFFECTED_BY in outgoing_relations
             ),
-            "has_notarized_source_ref": has_notarized_source,
+            "has_source_cas_attestation": has_source_cas_attestation,
+            "has_artifact_cas_attestation": any(
+                edge.relation == Relation.AUTHENTICATED_BY
+                and self.nodes[edge.target].type == NodeType.CAS_ATTESTATION
+                for edge in self.outgoing(rpm_node_id)
+            ),
         }
         missing = [name for name, passed in checks.items() if not passed]
         return TrustPathReport(

@@ -5,4 +5,5 @@ Trust path complete: True
   - has_release: True
   - has_sbom: True
   - has_errata_link: True
-  - has_notarized_source_ref: True
+  - has_source_cas_attestation: True
+  - has_artifact_cas_attestation: True

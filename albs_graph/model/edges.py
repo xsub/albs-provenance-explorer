@@ -8,7 +8,7 @@ from typing import Any
 class Relation(StrEnum):
     STORED_IN = "stored_in"
     POINTS_TO = "points_to"
-    NOTARIZED_AS = "notarized_as"
+    AUTHENTICATED_BY = "authenticated_by"
     BUILT_BY = "built_by"
     BUILT_IN = "built_in"
     PRODUCES = "produces"

@@ -11,7 +11,8 @@ def test_mock_openssl_graph_has_complete_trust_path() -> None:
     assert report["checks"]["has_release"] is True
     assert report["checks"]["has_sbom"] is True
     assert report["checks"]["has_errata_link"] is True
-    assert report["checks"]["has_notarized_source_ref"] is True
+    assert report["checks"]["has_source_cas_attestation"] is True
+    assert report["checks"]["has_artifact_cas_attestation"] is True
 
 
 def test_mock_openssl_graph_contains_expected_nodes() -> None:
@@ -19,5 +20,5 @@ def test_mock_openssl_graph_contains_expected_nodes() -> None:
 
     assert "src:openssl" in graph.nodes
     assert "repo:git.almalinux.org/rpms/openssl" in graph.nodes
-    assert "notary:immudb:openssl:xyz789" in graph.nodes
+    assert "cas:source:openssl:xyz789" in graph.nodes
     assert "build:albs:123456" in graph.nodes

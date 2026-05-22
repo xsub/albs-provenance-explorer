@@ -14,20 +14,20 @@
     },
     {
       "metadata": {},
-      "relation": "notarized_as",
+      "relation": "authenticated_by",
       "source": "commit:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
-      "target": "notary:immudb:nginx:911945c71710c83cf6f760447c32d8d6cae737dc"
+      "target": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc"
     },
     {
       "metadata": {},
       "relation": "built_by",
-      "source": "notary:immudb:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
+      "source": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
       "target": "build:albs:17812"
     },
     {
       "metadata": {},
       "relation": "built_by",
-      "source": "notary:immudb:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
+      "source": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
       "target": "build:albs-task:188080"
     },
     {
@@ -52,9 +52,21 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "srpm:3237038:nginx-1.20.1-16.el9_4.1.src.rpm",
+      "target": "cas:artifact:f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510"
+    },
+    {
+      "metadata": {},
       "relation": "produces",
       "source": "build:albs-task:188080",
       "target": "rpm:3237100:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237100:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:b3bc50079581190727d6ec2fe1e0113a25f444503522f299d2a2884819b4fb60"
     },
     {
       "metadata": {},
@@ -76,6 +88,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237085:nginx-mod-http-perl-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:336da4c7f79d5b21a9ef6e521edda5a14178aafcc215a6c84811efa87943c75d"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237085:nginx-mod-http-perl-1.20.1-16.el9_4.1.ppc64le.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -91,6 +109,12 @@
       "relation": "produces",
       "source": "build:albs-task:188080",
       "target": "rpm:3237086:nginx-core-1.20.1-16.el9_4.1.ppc64le.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237086:nginx-core-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:3e32ea857035de3155945c8870a62c1db6b05576e7dfe1c1416a2fd971e8a419"
     },
     {
       "metadata": {},
@@ -112,6 +136,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237087:nginx-mod-devel-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:76550ddae72de68a078ba83b97468d77ebdac99a0417d056b8496a24b287b1a5"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237087:nginx-mod-devel-1.20.1-16.el9_4.1.ppc64le.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -127,6 +157,12 @@
       "relation": "produces",
       "source": "build:albs-task:188080",
       "target": "rpm:3237088:nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.ppc64le.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237088:nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:beec5e2c96289725af495f029d136ef62c7d80096cfefa6e8b5c08ad3dc0a722"
     },
     {
       "metadata": {},
@@ -148,6 +184,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237089:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:998ba1b0d093feda73bb9a397535bcdc6824193a4b2df807cbb860dc6fb48ac5"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237089:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.ppc64le.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -163,6 +205,12 @@
       "relation": "produces",
       "source": "build:albs-task:188080",
       "target": "rpm:3237090:nginx-mod-mail-1.20.1-16.el9_4.1.ppc64le.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237090:nginx-mod-mail-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:7247e9a9294758b29aedba0d304f76c06992840bacdd4a6608eda529158d90e3"
     },
     {
       "metadata": {},
@@ -184,6 +232,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237091:nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
+      "target": "cas:artifact:44dbfe6a4c12ba0391ce9b03b3714845843f9beff53166562581273827afc5c4"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237091:nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -199,6 +253,12 @@
       "relation": "produces",
       "source": "build:albs-task:188080",
       "target": "rpm:3237092:nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237092:nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
+      "target": "cas:artifact:ccee764327d86f43d4eda940071b5201cc0e403af38c6a1f42d10885a259b276"
     },
     {
       "metadata": {},
@@ -220,6 +280,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237093:nginx-mod-stream-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:6ffca1fa491c7dc3a72567ae270cc84795e0128dff37fea13ab40847fe9bf30f"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237093:nginx-mod-stream-1.20.1-16.el9_4.1.ppc64le.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -235,6 +301,12 @@
       "relation": "produces",
       "source": "build:albs-task:188080",
       "target": "rpm:3237094:nginx-1.20.1-16.el9_4.1.ppc64le.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237094:nginx-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:6c8e71b5bedfdd4f5be1cf91764eed11ff5c39fb223192b24707d8f7afe49c0e"
     },
     {
       "metadata": {},
@@ -256,6 +328,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237095:nginx-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:5d38ee02c0c3f4d67ea0c45aa848eb2751090e408fcea0082319fdc27d5436a2"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237095:nginx-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -271,6 +349,12 @@
       "relation": "produces",
       "source": "build:albs-task:188080",
       "target": "rpm:3237096:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237096:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:762cb1006dcec332b32958536f3ef22c4e8141a3fc18cf41762e69ef0f3d5b8f"
     },
     {
       "metadata": {},
@@ -292,6 +376,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237097:nginx-core-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:faa205389c5b94f331648588ef6ff009723e98d04d2a0d4fbe9e1b99620e1ce3"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237097:nginx-core-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -307,6 +397,12 @@
       "relation": "produces",
       "source": "build:albs-task:188080",
       "target": "rpm:3237098:nginx-debugsource-1.20.1-16.el9_4.1.ppc64le.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237098:nginx-debugsource-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:6fea19ce899185318f77432479e1f75105b6635d39082629fd9d2ea63148e516"
     },
     {
       "metadata": {},
@@ -328,6 +424,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237099:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:4b3083aca980c8fd7d335911a356039a939d1d8c00045c3aaa957b4b72a77b20"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237099:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -346,6 +448,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237101:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:a04756c7d2c21a6e3f10c24b981f120b559d95ef9ca16e7ce8d6f7dce75939bf"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237101:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -361,6 +469,12 @@
       "relation": "produces",
       "source": "build:albs-task:188080",
       "target": "rpm:3237102:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237102:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "target": "cas:artifact:685c9d3d6cd3c2411c29ffa3c83d8e8278e4f11cab174fac3b911f6c280df487"
     },
     {
       "metadata": {},
@@ -485,7 +599,7 @@
     {
       "metadata": {},
       "relation": "built_by",
-      "source": "notary:immudb:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
+      "source": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
       "target": "build:albs-task:188078"
     },
     {
@@ -510,9 +624,21 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "srpm:3237036:nginx-1.20.1-16.el9_4.1.src.rpm",
+      "target": "cas:artifact:f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510"
+    },
+    {
+      "metadata": {},
       "relation": "produces",
       "source": "build:albs-task:188078",
       "target": "rpm:3237194:nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237194:nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
+      "target": "cas:artifact:44dbfe6a4c12ba0391ce9b03b3714845843f9beff53166562581273827afc5c4"
     },
     {
       "metadata": {},
@@ -534,6 +660,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237195:nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
+      "target": "cas:artifact:ccee764327d86f43d4eda940071b5201cc0e403af38c6a1f42d10885a259b276"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237195:nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -549,6 +681,12 @@
       "relation": "produces",
       "source": "build:albs-task:188078",
       "target": "rpm:3237196:nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.aarch64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237196:nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:14dd6acf0ee53514e36af4a8981873b6731dcc274acb50cbf742ea262d0a5f81"
     },
     {
       "metadata": {},
@@ -570,6 +708,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237197:nginx-mod-stream-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:b6c233e81dd87ca6f653e88c3890c7bf70738ee2d69c68769611533b17a89dd2"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237197:nginx-mod-stream-1.20.1-16.el9_4.1.aarch64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -585,6 +729,12 @@
       "relation": "produces",
       "source": "build:albs-task:188078",
       "target": "rpm:3237198:nginx-mod-devel-1.20.1-16.el9_4.1.aarch64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237198:nginx-mod-devel-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:dd1ba7bf45d776d674b69ad39cc59473df5fbf6d87f19cfaee4cdb96930a7fee"
     },
     {
       "metadata": {},
@@ -606,6 +756,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237199:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:3851e2cf3206fe84f88b8b0090f0934fa5c075ef3af9769ffff04cd7029fb71b"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237199:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.aarch64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -621,6 +777,12 @@
       "relation": "produces",
       "source": "build:albs-task:188078",
       "target": "rpm:3237200:nginx-mod-http-perl-1.20.1-16.el9_4.1.aarch64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237200:nginx-mod-http-perl-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:6c7c88500cc384777bc5c627e0e25555dc79db66fd6a5fcae745f659568ed82d"
     },
     {
       "metadata": {},
@@ -642,6 +804,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237201:nginx-mod-mail-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:03b123c3d3218903175dc8638d36dc3f1f80e223465bdfee22018a1021605320"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237201:nginx-mod-mail-1.20.1-16.el9_4.1.aarch64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -657,6 +825,12 @@
       "relation": "produces",
       "source": "build:albs-task:188078",
       "target": "rpm:3237202:nginx-1.20.1-16.el9_4.1.aarch64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237202:nginx-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:c2b1673153907da1798c8b8050feaaab679efdb5b44d8d5b4b8aed03a4d2d969"
     },
     {
       "metadata": {},
@@ -678,6 +852,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237203:nginx-core-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:dc661dd5c0830a1eadfeaae057091a363f533ea5e6197945e679764ad63b8fd8"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237203:nginx-core-1.20.1-16.el9_4.1.aarch64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -693,6 +873,12 @@
       "relation": "produces",
       "source": "build:albs-task:188078",
       "target": "rpm:3237204:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237204:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:528a210a0d5a00420a4ad22533828bfc766fd1d565716856b30929100ba1a359"
     },
     {
       "metadata": {},
@@ -714,6 +900,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237205:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:405310297925db12c1f00d34bd7bc53b38b1465b8fd1b31569b4dd767395802a"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237205:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -729,6 +921,12 @@
       "relation": "produces",
       "source": "build:albs-task:188078",
       "target": "rpm:3237206:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237206:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:3506e229cc9099523324ce2019801ee36c5c4ede6f7fb495f50cae8528a58930"
     },
     {
       "metadata": {},
@@ -750,6 +948,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237207:nginx-debugsource-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:0317a0b28d9475b7d165e1cb4ca832162d048f6ff95b0d27e099ff30f591aeeb"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237207:nginx-debugsource-1.20.1-16.el9_4.1.aarch64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -765,6 +969,12 @@
       "relation": "produces",
       "source": "build:albs-task:188078",
       "target": "rpm:3237208:nginx-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237208:nginx-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:32f45bf48b4703279a64501d80d226125c676529924d4eb765b7e68b424f37cf"
     },
     {
       "metadata": {},
@@ -786,6 +996,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237209:nginx-core-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:51f68de663baf80858cbacf00d9c87c0f2e45e06b3ba369fdc138813b0ddd3e9"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237209:nginx-core-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -804,6 +1020,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237210:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:d8fea01f936216afa6ae80894d3b4692153765103709b6923c1aa07f684c2a33"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237210:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -819,6 +1041,12 @@
       "relation": "produces",
       "source": "build:albs-task:188078",
       "target": "rpm:3237211:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237211:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+      "target": "cas:artifact:60e65cd793f1b84394ef7169765f743ccaf2513cf5e851361f67949652352d97"
     },
     {
       "metadata": {},
@@ -943,7 +1171,7 @@
     {
       "metadata": {},
       "relation": "built_by",
-      "source": "notary:immudb:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
+      "source": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
       "target": "build:albs-task:188077"
     },
     {
@@ -968,9 +1196,21 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "srpm:3237035:nginx-1.20.1-16.el9_4.1.src.rpm",
+      "target": "cas:artifact:f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510"
+    },
+    {
+      "metadata": {},
       "relation": "produces",
       "source": "build:albs-task:188077",
       "target": "rpm:3237137:nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237137:nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
+      "target": "cas:artifact:ccee764327d86f43d4eda940071b5201cc0e403af38c6a1f42d10885a259b276"
     },
     {
       "metadata": {},
@@ -992,6 +1232,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237138:nginx-mod-devel-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:cdcf09a29370641180c91293d6e7792abfb5b948b84122773fbb323aee48dd44"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237138:nginx-mod-devel-1.20.1-16.el9_4.1.x86_64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1007,6 +1253,12 @@
       "relation": "produces",
       "source": "build:albs-task:188077",
       "target": "rpm:3237139:nginx-mod-http-perl-1.20.1-16.el9_4.1.x86_64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237139:nginx-mod-http-perl-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:5b87d86de9e9e1d72893d6eb7f4419db124b33b5d6dc71a39323c96514d8ed39"
     },
     {
       "metadata": {},
@@ -1028,6 +1280,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237140:nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237140:nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1043,6 +1301,12 @@
       "relation": "produces",
       "source": "build:albs-task:188077",
       "target": "rpm:3237141:nginx-core-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237141:nginx-core-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:7d211ce70d11b3581a44ca1deae63fa73f264660f95c7fca4d42b96f3e1a1d5b"
     },
     {
       "metadata": {},
@@ -1064,6 +1328,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237142:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:866034c4c112cbb221c0b19edc19e6226e522673cc136e6837706c76d39e115f"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237142:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1079,6 +1349,12 @@
       "relation": "produces",
       "source": "build:albs-task:188077",
       "target": "rpm:3237143:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237143:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:1ec3f66d70386b181754dabc14cc454ebacfb257d6496735f26a67f8321cc5a2"
     },
     {
       "metadata": {},
@@ -1100,6 +1376,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237144:nginx-debugsource-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:11b97ff474af55625a77e8cb0fbb40de3408071caa610ef1eacfa4a35619ffee"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237144:nginx-debugsource-1.20.1-16.el9_4.1.x86_64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1115,6 +1397,12 @@
       "relation": "produces",
       "source": "build:albs-task:188077",
       "target": "rpm:3237145:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237145:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:2a88bc41dccfaa482d557531e14c94a83f68b7e33d1144f3ca0cbe0930b92657"
     },
     {
       "metadata": {},
@@ -1136,6 +1424,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237146:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:748d385a8352368768418352f1a49049b5401df657f62b2a3c11f49ff6c6cd31"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237146:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1151,6 +1445,12 @@
       "relation": "produces",
       "source": "build:albs-task:188077",
       "target": "rpm:3237147:nginx-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237147:nginx-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:2527491726eba5b1fd003f9aa1851fd90e2cc519f5488d768f01d3e3e0ae4a56"
     },
     {
       "metadata": {},
@@ -1172,6 +1472,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237148:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:7d4f7e65d5f9009d6d0949c9c9601669fd37575fc2eee1127774adbd8c85c06b"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237148:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1187,6 +1493,12 @@
       "relation": "produces",
       "source": "build:albs-task:188077",
       "target": "rpm:3237131:nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237131:nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
+      "target": "cas:artifact:44dbfe6a4c12ba0391ce9b03b3714845843f9beff53166562581273827afc5c4"
     },
     {
       "metadata": {},
@@ -1208,6 +1520,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237132:nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:74a83ff84ed5f655bc2d251540892e975f1820c767414329b0526b8f5f400595"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237132:nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.x86_64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1223,6 +1541,12 @@
       "relation": "produces",
       "source": "build:albs-task:188077",
       "target": "rpm:3237133:nginx-1.20.1-16.el9_4.1.x86_64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237133:nginx-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:c9eb94574cde7178cb275a8273fdf401a87792905d75660adf854c88c637762a"
     },
     {
       "metadata": {},
@@ -1244,6 +1568,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237134:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:ed526204fea30241976e91b2a40f2cbd7d4b67d090ae9e46df841c9c31c68862"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237134:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.x86_64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1262,6 +1592,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237135:nginx-mod-mail-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:0290064a87b4115ccdc83d4fa47f0c0d90004043cba547d7c77d7caf248926ce"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237135:nginx-mod-mail-1.20.1-16.el9_4.1.x86_64.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1277,6 +1613,12 @@
       "relation": "produces",
       "source": "build:albs-task:188077",
       "target": "rpm:3237136:nginx-mod-stream-1.20.1-16.el9_4.1.x86_64.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237136:nginx-mod-stream-1.20.1-16.el9_4.1.x86_64.rpm",
+      "target": "cas:artifact:cf6b51fff661b2dc80c36b10c0089d3a57b255798f3063ca860c0714e92b8bd5"
     },
     {
       "metadata": {},
@@ -1401,7 +1743,7 @@
     {
       "metadata": {},
       "relation": "built_by",
-      "source": "notary:immudb:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
+      "source": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
       "target": "build:albs-task:188079"
     },
     {
@@ -1426,9 +1768,21 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "srpm:3237037:nginx-1.20.1-16.el9_4.1.src.rpm",
+      "target": "cas:artifact:f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510"
+    },
+    {
+      "metadata": {},
       "relation": "produces",
       "source": "build:albs-task:188079",
       "target": "rpm:3237053:nginx-core-1.20.1-16.el9_4.1.s390x.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237053:nginx-core-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:1c85a6f12e5656b52d6f259e63dbcda2a33ab28d13db4a4bc00aa91e8e548f32"
     },
     {
       "metadata": {},
@@ -1450,6 +1804,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237054:nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:481e7192557121e4fdea8aaa98e8156a817cab6294efd0ebcde917b8cf8c9e81"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237054:nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.s390x.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1465,6 +1825,12 @@
       "relation": "produces",
       "source": "build:albs-task:188079",
       "target": "rpm:3237055:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.s390x.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237055:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:0517f8ebebab2dc6aa42947c70376cd0a88d9f4e9e703e8e386ef24ceb87efa0"
     },
     {
       "metadata": {},
@@ -1486,6 +1852,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237056:nginx-mod-stream-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:3504df88de665b2e368e1c90e79e2560a6985214f4a3fba3c1f0ffe0e0f62d4a"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237056:nginx-mod-stream-1.20.1-16.el9_4.1.s390x.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1501,6 +1873,12 @@
       "relation": "produces",
       "source": "build:albs-task:188079",
       "target": "rpm:3237057:nginx-1.20.1-16.el9_4.1.s390x.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237057:nginx-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:b5a432b9a0d798e7c3a969ec56c75c6678be3e64825ddd34cfdea073fa377c14"
     },
     {
       "metadata": {},
@@ -1522,6 +1900,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237058:nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
+      "target": "cas:artifact:44dbfe6a4c12ba0391ce9b03b3714845843f9beff53166562581273827afc5c4"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237058:nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1537,6 +1921,12 @@
       "relation": "produces",
       "source": "build:albs-task:188079",
       "target": "rpm:3237059:nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237059:nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
+      "target": "cas:artifact:ccee764327d86f43d4eda940071b5201cc0e403af38c6a1f42d10885a259b276"
     },
     {
       "metadata": {},
@@ -1558,6 +1948,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237060:nginx-mod-mail-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:32c4e465e85a5692d183452c0f3f7613692a3dbea8ccc2cd97c9149df67e739e"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237060:nginx-mod-mail-1.20.1-16.el9_4.1.s390x.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1573,6 +1969,12 @@
       "relation": "produces",
       "source": "build:albs-task:188079",
       "target": "rpm:3237061:nginx-mod-http-perl-1.20.1-16.el9_4.1.s390x.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237061:nginx-mod-http-perl-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:9458fb39fe63b8b82185a30679c273a903e796d72fc69ca9401715cb602d2c55"
     },
     {
       "metadata": {},
@@ -1594,6 +1996,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237062:nginx-mod-devel-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:91314fe43ff676bc956d569c9557f170dbea5c87557c1793757ace9936e92f0d"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237062:nginx-mod-devel-1.20.1-16.el9_4.1.s390x.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1609,6 +2017,12 @@
       "relation": "produces",
       "source": "build:albs-task:188079",
       "target": "rpm:3237063:nginx-core-debuginfo-1.20.1-16.el9_4.1.s390x.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237063:nginx-core-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:988261fe607aa172cad5b4cd440c43580ca12ba63081ff5fa24b81efd6db01d6"
     },
     {
       "metadata": {},
@@ -1630,6 +2044,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237064:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:d94dd58d63f2b7da312d30682e0738e3117bc5e28d4b1ac4ff0d71bc760d714e"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237064:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1645,6 +2065,12 @@
       "relation": "produces",
       "source": "build:albs-task:188079",
       "target": "rpm:3237065:nginx-debugsource-1.20.1-16.el9_4.1.s390x.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237065:nginx-debugsource-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:cf46c04a4d85300015d81bb1a0ae0bbc170a98ee7695d2bbb38bbe21e147f0ee"
     },
     {
       "metadata": {},
@@ -1666,6 +2092,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237066:nginx-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:5b137268047c93ee002c217cff44224ac70b1823af8f0df279e5ccd1b86f26b1"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237066:nginx-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1681,6 +2113,12 @@
       "relation": "produces",
       "source": "build:albs-task:188079",
       "target": "rpm:3237067:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.s390x.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237067:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:469b598146893fc0386276ad7cd9c7c8ae0246f885fdc77145cba6ab6896d2ed"
     },
     {
       "metadata": {},
@@ -1702,6 +2140,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237068:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:9cc5971737c36cdbc0bd7b08943949e7ead51c4cbe6db2834cb1d05b58682d6e"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237068:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1720,6 +2164,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237069:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:b374c3733cb03140d974063085142eaabfaedf954c6db8a7d2580a75b38ee58f"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237069:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1735,6 +2185,12 @@
       "relation": "produces",
       "source": "build:albs-task:188079",
       "target": "rpm:3237070:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.s390x.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237070:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+      "target": "cas:artifact:d37257e932daae7c9855393feeb8c96f6fd17223e682b5793660edc698cb042e"
     },
     {
       "metadata": {},
@@ -1859,7 +2315,7 @@
     {
       "metadata": {},
       "relation": "built_by",
-      "source": "notary:immudb:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
+      "source": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
       "target": "build:albs-task:188075"
     },
     {
@@ -1884,8 +2340,14 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "srpm:3237033:nginx-1.20.1-16.el9_4.1.src.rpm",
+      "target": "cas:artifact:11e9fd63660caf3843c7f8635e94c1554126a15a58ab789d50fd414ff86b152e"
+    },
+    {
+      "metadata": {},
       "relation": "built_by",
-      "source": "notary:immudb:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
+      "source": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
       "target": "build:albs-task:188076"
     },
     {
@@ -1910,9 +2372,21 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "srpm:3237034:nginx-1.20.1-16.el9_4.1.src.rpm",
+      "target": "cas:artifact:f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510"
+    },
+    {
+      "metadata": {},
       "relation": "produces",
       "source": "build:albs-task:188076",
       "target": "rpm:3237149:nginx-core-1.20.1-16.el9_4.1.i686.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237149:nginx-core-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:90e474e42f82349277a43079b8a6604dce1fa9f99c7a0a6d8ce3be2e6d030637"
     },
     {
       "metadata": {},
@@ -1934,6 +2408,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237150:nginx-mod-devel-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:199922f3af965b42e6de78c3d78e7251c6a67295c753516cd4d764b7e7917809"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237150:nginx-mod-devel-1.20.1-16.el9_4.1.i686.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1949,6 +2429,12 @@
       "relation": "produces",
       "source": "build:albs-task:188076",
       "target": "rpm:3237151:nginx-mod-stream-1.20.1-16.el9_4.1.i686.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237151:nginx-mod-stream-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:82d0c3c980f830b1563e8a0bdbf15a63a330a4fe8bf3a75f28861d3ce81a3973"
     },
     {
       "metadata": {},
@@ -1970,6 +2456,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237152:nginx-mod-mail-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:dcb12ff870643a51198230e29fa445764bd933736a2eb567137ea87988718937"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237152:nginx-mod-mail-1.20.1-16.el9_4.1.i686.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -1985,6 +2477,12 @@
       "relation": "produces",
       "source": "build:albs-task:188076",
       "target": "rpm:3237153:nginx-1.20.1-16.el9_4.1.i686.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237153:nginx-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:0a24313fbb09bc8edccfdb0ff8721a9a7066dca5de281638c58692dc602054af"
     },
     {
       "metadata": {},
@@ -2006,6 +2504,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237154:nginx-mod-http-perl-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:62fb9e98ca2b172d5c235a6b91404d0f409999ced78b95d7913728a70ca7d761"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237154:nginx-mod-http-perl-1.20.1-16.el9_4.1.i686.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -2021,6 +2525,12 @@
       "relation": "produces",
       "source": "build:albs-task:188076",
       "target": "rpm:3237155:nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.i686.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237155:nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:02873ae86211e8b8384c80d6f7eaf3ee15fecec308ce4507dd3660b71713dff7"
     },
     {
       "metadata": {},
@@ -2042,6 +2552,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237156:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:15706dc9df3cf1bd5f6f8c33d5c4fa446647bd4b52364db7121e6aafcedd9fa0"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237156:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.i686.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -2057,6 +2573,12 @@
       "relation": "produces",
       "source": "build:albs-task:188076",
       "target": "rpm:3237157:nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237157:nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
+      "target": "cas:artifact:44dbfe6a4c12ba0391ce9b03b3714845843f9beff53166562581273827afc5c4"
     },
     {
       "metadata": {},
@@ -2078,6 +2600,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237158:nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
+      "target": "cas:artifact:ccee764327d86f43d4eda940071b5201cc0e403af38c6a1f42d10885a259b276"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237158:nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -2093,6 +2621,12 @@
       "relation": "produces",
       "source": "build:albs-task:188076",
       "target": "rpm:3237159:nginx-core-debuginfo-1.20.1-16.el9_4.1.i686.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237159:nginx-core-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:8703254068be1cf242be38e3a4a38248333078cc2f1953bba06f5e22e2ecad52"
     },
     {
       "metadata": {},
@@ -2114,6 +2648,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237160:nginx-debugsource-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:34d5e19264b0887cf0295e160fd9d4fcde29b2895a06ba8ab1d689fb768e505e"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237160:nginx-debugsource-1.20.1-16.el9_4.1.i686.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -2129,6 +2669,12 @@
       "relation": "produces",
       "source": "build:albs-task:188076",
       "target": "rpm:3237161:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.i686.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237161:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:10b00cd758d8897dd1a48afaa133971ed5ceab3f4bcf6c7b70b8278f7b722cf6"
     },
     {
       "metadata": {},
@@ -2150,6 +2696,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237162:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:1fe09ea34b8bc672da84a052f2cf06992fbec2c44852ef681e4ce96d61120325"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237162:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -2165,6 +2717,12 @@
       "relation": "produces",
       "source": "build:albs-task:188076",
       "target": "rpm:3237163:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.i686.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237163:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:88485b2d4fe5c9b4c6b66b19f740a9cc4e101a3d1ff408088a75fc6ffc66eea2"
     },
     {
       "metadata": {},
@@ -2186,6 +2744,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237164:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:39622393e1c30774cdb99cf8ce86d35414962c30c81c99c0fcfa6342621d5d2a"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237164:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -2204,6 +2768,12 @@
     },
     {
       "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237165:nginx-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:fc018ba6d2a2d6954300f3445ca30e94866f3be2ccc509bca64872ea0ef2ff23"
+    },
+    {
+      "metadata": {},
       "relation": "released_to",
       "source": "rpm:3237165:nginx-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
       "target": "repo-release:ALBS release 7396"
@@ -2219,6 +2789,12 @@
       "relation": "produces",
       "source": "build:albs-task:188076",
       "target": "rpm:3237166:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.i686.rpm"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:3237166:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+      "target": "cas:artifact:62b496fbd5145e3cda45c6903135e911a350ef2932c6017a2812c57d43c8e311"
     },
     {
       "metadata": {},
@@ -2367,13 +2943,15 @@
       "type": "git_commit"
     },
     {
-      "id": "notary:immudb:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
+      "id": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
       "label": "911945c71710c83cf6f760447c32d8d6cae737dc",
       "metadata": {
-        "notary": "immudb",
-        "verified": true
+        "cas_hash": "911945c71710c83cf6f760447c32d8d6cae737dc",
+        "subject_type": "source_commit",
+        "system": "Codenotary CAS",
+        "trusted": true
       },
-      "type": "notarized_ref"
+      "type": "cas_attestation"
     },
     {
       "id": "build:albs:17812",
@@ -2464,6 +3042,20 @@
       "type": "srpm"
     },
     {
+      "id": "cas:artifact:f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510",
+      "label": "f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510",
+      "metadata": {
+        "artifact_id": 3237038,
+        "artifact_name": "nginx-1.20.1-16.el9_4.1.src.rpm",
+        "cas_hash": "f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b80d-2335-71fb-94c9-7b7b674eea95/",
+        "subject_type": "srpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237100:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
       "label": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
       "metadata": {
@@ -2478,6 +3070,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:b3bc50079581190727d6ec2fe1e0113a25f444503522f299d2a2884819b4fb60",
+      "label": "b3bc50079581190727d6ec2fe1e0113a25f444503522f299d2a2884819b4fb60",
+      "metadata": {
+        "artifact_id": 3237100,
+        "artifact_name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "b3bc50079581190727d6ec2fe1e0113a25f444503522f299d2a2884819b4fb60",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5d6c-7dcf-92eb-c72615579883/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237085:nginx-mod-http-perl-1.20.1-16.el9_4.1.ppc64le.rpm",
@@ -2496,6 +3102,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:336da4c7f79d5b21a9ef6e521edda5a14178aafcc215a6c84811efa87943c75d",
+      "label": "336da4c7f79d5b21a9ef6e521edda5a14178aafcc215a6c84811efa87943c75d",
+      "metadata": {
+        "artifact_id": 3237085,
+        "artifact_name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "336da4c7f79d5b21a9ef6e521edda5a14178aafcc215a6c84811efa87943c75d",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-595c-7947-a37e-cfbd8b28592b/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237086:nginx-core-1.20.1-16.el9_4.1.ppc64le.rpm",
       "label": "nginx-core-1.20.1-16.el9_4.1.ppc64le.rpm",
       "metadata": {
@@ -2510,6 +3130,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:3e32ea857035de3155945c8870a62c1db6b05576e7dfe1c1416a2fd971e8a419",
+      "label": "3e32ea857035de3155945c8870a62c1db6b05576e7dfe1c1416a2fd971e8a419",
+      "metadata": {
+        "artifact_id": 3237086,
+        "artifact_name": "nginx-core-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "3e32ea857035de3155945c8870a62c1db6b05576e7dfe1c1416a2fd971e8a419",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-59f9-7c6c-8214-f2926ca16fd1/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237087:nginx-mod-devel-1.20.1-16.el9_4.1.ppc64le.rpm",
@@ -2528,6 +3162,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:76550ddae72de68a078ba83b97468d77ebdac99a0417d056b8496a24b287b1a5",
+      "label": "76550ddae72de68a078ba83b97468d77ebdac99a0417d056b8496a24b287b1a5",
+      "metadata": {
+        "artifact_id": 3237087,
+        "artifact_name": "nginx-mod-devel-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "76550ddae72de68a078ba83b97468d77ebdac99a0417d056b8496a24b287b1a5",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5a06-7b74-b267-2a3bf1400f2f/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237088:nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.ppc64le.rpm",
       "label": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.ppc64le.rpm",
       "metadata": {
@@ -2542,6 +3190,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:beec5e2c96289725af495f029d136ef62c7d80096cfefa6e8b5c08ad3dc0a722",
+      "label": "beec5e2c96289725af495f029d136ef62c7d80096cfefa6e8b5c08ad3dc0a722",
+      "metadata": {
+        "artifact_id": 3237088,
+        "artifact_name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "beec5e2c96289725af495f029d136ef62c7d80096cfefa6e8b5c08ad3dc0a722",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5a44-7ffa-8bc5-dd01d6251286/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237089:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.ppc64le.rpm",
@@ -2560,6 +3222,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:998ba1b0d093feda73bb9a397535bcdc6824193a4b2df807cbb860dc6fb48ac5",
+      "label": "998ba1b0d093feda73bb9a397535bcdc6824193a4b2df807cbb860dc6fb48ac5",
+      "metadata": {
+        "artifact_id": 3237089,
+        "artifact_name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "998ba1b0d093feda73bb9a397535bcdc6824193a4b2df807cbb860dc6fb48ac5",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5a90-7904-aed3-ab52f6fe0a1c/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237090:nginx-mod-mail-1.20.1-16.el9_4.1.ppc64le.rpm",
       "label": "nginx-mod-mail-1.20.1-16.el9_4.1.ppc64le.rpm",
       "metadata": {
@@ -2574,6 +3250,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:7247e9a9294758b29aedba0d304f76c06992840bacdd4a6608eda529158d90e3",
+      "label": "7247e9a9294758b29aedba0d304f76c06992840bacdd4a6608eda529158d90e3",
+      "metadata": {
+        "artifact_id": 3237090,
+        "artifact_name": "nginx-mod-mail-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "7247e9a9294758b29aedba0d304f76c06992840bacdd4a6608eda529158d90e3",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5b83-7030-b530-9f1829df2cbc/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237091:nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
@@ -2592,6 +3282,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:44dbfe6a4c12ba0391ce9b03b3714845843f9beff53166562581273827afc5c4",
+      "label": "44dbfe6a4c12ba0391ce9b03b3714845843f9beff53166562581273827afc5c4",
+      "metadata": {
+        "artifact_id": 3237091,
+        "artifact_name": "nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
+        "cas_hash": "44dbfe6a4c12ba0391ce9b03b3714845843f9beff53166562581273827afc5c4",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-56ca-7f0c-819f-3547b2e54f06/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237092:nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
       "label": "nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
       "metadata": {
@@ -2606,6 +3310,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:ccee764327d86f43d4eda940071b5201cc0e403af38c6a1f42d10885a259b276",
+      "label": "ccee764327d86f43d4eda940071b5201cc0e403af38c6a1f42d10885a259b276",
+      "metadata": {
+        "artifact_id": 3237092,
+        "artifact_name": "nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
+        "cas_hash": "ccee764327d86f43d4eda940071b5201cc0e403af38c6a1f42d10885a259b276",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-55d6-74cc-93e5-04ea1714ff12/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237093:nginx-mod-stream-1.20.1-16.el9_4.1.ppc64le.rpm",
@@ -2624,6 +3342,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:6ffca1fa491c7dc3a72567ae270cc84795e0128dff37fea13ab40847fe9bf30f",
+      "label": "6ffca1fa491c7dc3a72567ae270cc84795e0128dff37fea13ab40847fe9bf30f",
+      "metadata": {
+        "artifact_id": 3237093,
+        "artifact_name": "nginx-mod-stream-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "6ffca1fa491c7dc3a72567ae270cc84795e0128dff37fea13ab40847fe9bf30f",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5b9a-7d91-bd7c-a9659bef71be/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237094:nginx-1.20.1-16.el9_4.1.ppc64le.rpm",
       "label": "nginx-1.20.1-16.el9_4.1.ppc64le.rpm",
       "metadata": {
@@ -2638,6 +3370,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:6c8e71b5bedfdd4f5be1cf91764eed11ff5c39fb223192b24707d8f7afe49c0e",
+      "label": "6c8e71b5bedfdd4f5be1cf91764eed11ff5c39fb223192b24707d8f7afe49c0e",
+      "metadata": {
+        "artifact_id": 3237094,
+        "artifact_name": "nginx-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "6c8e71b5bedfdd4f5be1cf91764eed11ff5c39fb223192b24707d8f7afe49c0e",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5c0c-7fba-9e86-44eb78a88cfe/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237095:nginx-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
@@ -2656,6 +3402,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:5d38ee02c0c3f4d67ea0c45aa848eb2751090e408fcea0082319fdc27d5436a2",
+      "label": "5d38ee02c0c3f4d67ea0c45aa848eb2751090e408fcea0082319fdc27d5436a2",
+      "metadata": {
+        "artifact_id": 3237095,
+        "artifact_name": "nginx-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "5d38ee02c0c3f4d67ea0c45aa848eb2751090e408fcea0082319fdc27d5436a2",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5c02-7ab4-8536-2311b9e33667/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237096:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
       "label": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
       "metadata": {
@@ -2670,6 +3430,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:762cb1006dcec332b32958536f3ef22c4e8141a3fc18cf41762e69ef0f3d5b8f",
+      "label": "762cb1006dcec332b32958536f3ef22c4e8141a3fc18cf41762e69ef0f3d5b8f",
+      "metadata": {
+        "artifact_id": 3237096,
+        "artifact_name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "762cb1006dcec332b32958536f3ef22c4e8141a3fc18cf41762e69ef0f3d5b8f",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5cd3-77fb-81d2-b89edf1889f4/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237097:nginx-core-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
@@ -2688,6 +3462,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:faa205389c5b94f331648588ef6ff009723e98d04d2a0d4fbe9e1b99620e1ce3",
+      "label": "faa205389c5b94f331648588ef6ff009723e98d04d2a0d4fbe9e1b99620e1ce3",
+      "metadata": {
+        "artifact_id": 3237097,
+        "artifact_name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "faa205389c5b94f331648588ef6ff009723e98d04d2a0d4fbe9e1b99620e1ce3",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5c9b-75ee-8f80-fcd5d9fc763a/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237098:nginx-debugsource-1.20.1-16.el9_4.1.ppc64le.rpm",
       "label": "nginx-debugsource-1.20.1-16.el9_4.1.ppc64le.rpm",
       "metadata": {
@@ -2702,6 +3490,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:6fea19ce899185318f77432479e1f75105b6635d39082629fd9d2ea63148e516",
+      "label": "6fea19ce899185318f77432479e1f75105b6635d39082629fd9d2ea63148e516",
+      "metadata": {
+        "artifact_id": 3237098,
+        "artifact_name": "nginx-debugsource-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "6fea19ce899185318f77432479e1f75105b6635d39082629fd9d2ea63148e516",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5e54-770e-a6c4-46fe0e6935c0/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237099:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
@@ -2720,6 +3522,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:4b3083aca980c8fd7d335911a356039a939d1d8c00045c3aaa957b4b72a77b20",
+      "label": "4b3083aca980c8fd7d335911a356039a939d1d8c00045c3aaa957b4b72a77b20",
+      "metadata": {
+        "artifact_id": 3237099,
+        "artifact_name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "4b3083aca980c8fd7d335911a356039a939d1d8c00045c3aaa957b4b72a77b20",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5e48-7bc3-b1e7-5d791f7dda1f/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237101:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
       "label": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
       "metadata": {
@@ -2736,6 +3552,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:a04756c7d2c21a6e3f10c24b981f120b559d95ef9ca16e7ce8d6f7dce75939bf",
+      "label": "a04756c7d2c21a6e3f10c24b981f120b559d95ef9ca16e7ce8d6f7dce75939bf",
+      "metadata": {
+        "artifact_id": 3237101,
+        "artifact_name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "a04756c7d2c21a6e3f10c24b981f120b559d95ef9ca16e7ce8d6f7dce75939bf",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5d41-74e5-8f53-a0736c874671/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237102:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
       "label": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
       "metadata": {
@@ -2750,6 +3580,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:685c9d3d6cd3c2411c29ffa3c83d8e8278e4f11cab174fac3b911f6c280df487",
+      "label": "685c9d3d6cd3c2411c29ffa3c83d8e8278e4f11cab174fac3b911f6c280df487",
+      "metadata": {
+        "artifact_id": 3237102,
+        "artifact_name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+        "cas_hash": "685c9d3d6cd3c2411c29ffa3c83d8e8278e4f11cab174fac3b911f6c280df487",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5d0a-7efe-878d-edd078bee268/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "test:985692",
@@ -3013,6 +3857,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:14dd6acf0ee53514e36af4a8981873b6731dcc274acb50cbf742ea262d0a5f81",
+      "label": "14dd6acf0ee53514e36af4a8981873b6731dcc274acb50cbf742ea262d0a5f81",
+      "metadata": {
+        "artifact_id": 3237196,
+        "artifact_name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "14dd6acf0ee53514e36af4a8981873b6731dcc274acb50cbf742ea262d0a5f81",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-67dc-7c97-8995-9c7543289674/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237197:nginx-mod-stream-1.20.1-16.el9_4.1.aarch64.rpm",
       "label": "nginx-mod-stream-1.20.1-16.el9_4.1.aarch64.rpm",
       "metadata": {
@@ -3027,6 +3885,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:b6c233e81dd87ca6f653e88c3890c7bf70738ee2d69c68769611533b17a89dd2",
+      "label": "b6c233e81dd87ca6f653e88c3890c7bf70738ee2d69c68769611533b17a89dd2",
+      "metadata": {
+        "artifact_id": 3237197,
+        "artifact_name": "nginx-mod-stream-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "b6c233e81dd87ca6f653e88c3890c7bf70738ee2d69c68769611533b17a89dd2",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-67ef-7475-9170-63bd6099c436/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237198:nginx-mod-devel-1.20.1-16.el9_4.1.aarch64.rpm",
@@ -3045,6 +3917,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:dd1ba7bf45d776d674b69ad39cc59473df5fbf6d87f19cfaee4cdb96930a7fee",
+      "label": "dd1ba7bf45d776d674b69ad39cc59473df5fbf6d87f19cfaee4cdb96930a7fee",
+      "metadata": {
+        "artifact_id": 3237198,
+        "artifact_name": "nginx-mod-devel-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "dd1ba7bf45d776d674b69ad39cc59473df5fbf6d87f19cfaee4cdb96930a7fee",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-68ba-7755-8ee7-b52821891c0c/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237199:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.aarch64.rpm",
       "label": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.aarch64.rpm",
       "metadata": {
@@ -3059,6 +3945,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:3851e2cf3206fe84f88b8b0090f0934fa5c075ef3af9769ffff04cd7029fb71b",
+      "label": "3851e2cf3206fe84f88b8b0090f0934fa5c075ef3af9769ffff04cd7029fb71b",
+      "metadata": {
+        "artifact_id": 3237199,
+        "artifact_name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "3851e2cf3206fe84f88b8b0090f0934fa5c075ef3af9769ffff04cd7029fb71b",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6974-7b07-9ecb-8bf514e321b2/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237200:nginx-mod-http-perl-1.20.1-16.el9_4.1.aarch64.rpm",
@@ -3077,6 +3977,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:6c7c88500cc384777bc5c627e0e25555dc79db66fd6a5fcae745f659568ed82d",
+      "label": "6c7c88500cc384777bc5c627e0e25555dc79db66fd6a5fcae745f659568ed82d",
+      "metadata": {
+        "artifact_id": 3237200,
+        "artifact_name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "6c7c88500cc384777bc5c627e0e25555dc79db66fd6a5fcae745f659568ed82d",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6983-7dca-b1fe-339016963ed7/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237201:nginx-mod-mail-1.20.1-16.el9_4.1.aarch64.rpm",
       "label": "nginx-mod-mail-1.20.1-16.el9_4.1.aarch64.rpm",
       "metadata": {
@@ -3091,6 +4005,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:03b123c3d3218903175dc8638d36dc3f1f80e223465bdfee22018a1021605320",
+      "label": "03b123c3d3218903175dc8638d36dc3f1f80e223465bdfee22018a1021605320",
+      "metadata": {
+        "artifact_id": 3237201,
+        "artifact_name": "nginx-mod-mail-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "03b123c3d3218903175dc8638d36dc3f1f80e223465bdfee22018a1021605320",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-694e-7064-a59a-be88f2d0af82/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237202:nginx-1.20.1-16.el9_4.1.aarch64.rpm",
@@ -3109,6 +4037,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:c2b1673153907da1798c8b8050feaaab679efdb5b44d8d5b4b8aed03a4d2d969",
+      "label": "c2b1673153907da1798c8b8050feaaab679efdb5b44d8d5b4b8aed03a4d2d969",
+      "metadata": {
+        "artifact_id": 3237202,
+        "artifact_name": "nginx-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "c2b1673153907da1798c8b8050feaaab679efdb5b44d8d5b4b8aed03a4d2d969",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6a0b-739c-891c-9ff323c448be/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237203:nginx-core-1.20.1-16.el9_4.1.aarch64.rpm",
       "label": "nginx-core-1.20.1-16.el9_4.1.aarch64.rpm",
       "metadata": {
@@ -3123,6 +4065,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:dc661dd5c0830a1eadfeaae057091a363f533ea5e6197945e679764ad63b8fd8",
+      "label": "dc661dd5c0830a1eadfeaae057091a363f533ea5e6197945e679764ad63b8fd8",
+      "metadata": {
+        "artifact_id": 3237203,
+        "artifact_name": "nginx-core-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "dc661dd5c0830a1eadfeaae057091a363f533ea5e6197945e679764ad63b8fd8",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6a78-7cd9-bd7c-f5c8db619102/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237204:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
@@ -3141,6 +4097,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:528a210a0d5a00420a4ad22533828bfc766fd1d565716856b30929100ba1a359",
+      "label": "528a210a0d5a00420a4ad22533828bfc766fd1d565716856b30929100ba1a359",
+      "metadata": {
+        "artifact_id": 3237204,
+        "artifact_name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "528a210a0d5a00420a4ad22533828bfc766fd1d565716856b30929100ba1a359",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-69b0-742d-9029-a31ae11b8b57/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237205:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
       "label": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
       "metadata": {
@@ -3155,6 +4125,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:405310297925db12c1f00d34bd7bc53b38b1465b8fd1b31569b4dd767395802a",
+      "label": "405310297925db12c1f00d34bd7bc53b38b1465b8fd1b31569b4dd767395802a",
+      "metadata": {
+        "artifact_id": 3237205,
+        "artifact_name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "405310297925db12c1f00d34bd7bc53b38b1465b8fd1b31569b4dd767395802a",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6bb3-78db-95d6-db86f9ee4aaa/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237206:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
@@ -3173,6 +4157,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:3506e229cc9099523324ce2019801ee36c5c4ede6f7fb495f50cae8528a58930",
+      "label": "3506e229cc9099523324ce2019801ee36c5c4ede6f7fb495f50cae8528a58930",
+      "metadata": {
+        "artifact_id": 3237206,
+        "artifact_name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "3506e229cc9099523324ce2019801ee36c5c4ede6f7fb495f50cae8528a58930",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6b14-7c6d-8d1a-cecfb63db593/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237207:nginx-debugsource-1.20.1-16.el9_4.1.aarch64.rpm",
       "label": "nginx-debugsource-1.20.1-16.el9_4.1.aarch64.rpm",
       "metadata": {
@@ -3187,6 +4185,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:0317a0b28d9475b7d165e1cb4ca832162d048f6ff95b0d27e099ff30f591aeeb",
+      "label": "0317a0b28d9475b7d165e1cb4ca832162d048f6ff95b0d27e099ff30f591aeeb",
+      "metadata": {
+        "artifact_id": 3237207,
+        "artifact_name": "nginx-debugsource-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "0317a0b28d9475b7d165e1cb4ca832162d048f6ff95b0d27e099ff30f591aeeb",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6b5e-772e-aafe-9c891c0780d5/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237208:nginx-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
@@ -3205,6 +4217,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:32f45bf48b4703279a64501d80d226125c676529924d4eb765b7e68b424f37cf",
+      "label": "32f45bf48b4703279a64501d80d226125c676529924d4eb765b7e68b424f37cf",
+      "metadata": {
+        "artifact_id": 3237208,
+        "artifact_name": "nginx-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "32f45bf48b4703279a64501d80d226125c676529924d4eb765b7e68b424f37cf",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6bba-7c5c-8442-6b3cccf701f2/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237209:nginx-core-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
       "label": "nginx-core-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
       "metadata": {
@@ -3219,6 +4245,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:51f68de663baf80858cbacf00d9c87c0f2e45e06b3ba369fdc138813b0ddd3e9",
+      "label": "51f68de663baf80858cbacf00d9c87c0f2e45e06b3ba369fdc138813b0ddd3e9",
+      "metadata": {
+        "artifact_id": 3237209,
+        "artifact_name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "51f68de663baf80858cbacf00d9c87c0f2e45e06b3ba369fdc138813b0ddd3e9",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6cb8-7459-83fe-50b2ac9afefb/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237210:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
@@ -3237,6 +4277,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:d8fea01f936216afa6ae80894d3b4692153765103709b6923c1aa07f684c2a33",
+      "label": "d8fea01f936216afa6ae80894d3b4692153765103709b6923c1aa07f684c2a33",
+      "metadata": {
+        "artifact_id": 3237210,
+        "artifact_name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "d8fea01f936216afa6ae80894d3b4692153765103709b6923c1aa07f684c2a33",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6c77-758e-b727-ec39e7fe02ae/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237211:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
       "label": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
       "metadata": {
@@ -3251,6 +4305,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:60e65cd793f1b84394ef7169765f743ccaf2513cf5e851361f67949652352d97",
+      "label": "60e65cd793f1b84394ef7169765f743ccaf2513cf5e851361f67949652352d97",
+      "metadata": {
+        "artifact_id": 3237211,
+        "artifact_name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+        "cas_hash": "60e65cd793f1b84394ef7169765f743ccaf2513cf5e851361f67949652352d97",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6c9e-7d0f-b3cc-995154e9a8cb/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "test:985710",
@@ -3498,6 +4566,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:cdcf09a29370641180c91293d6e7792abfb5b948b84122773fbb323aee48dd44",
+      "label": "cdcf09a29370641180c91293d6e7792abfb5b948b84122773fbb323aee48dd44",
+      "metadata": {
+        "artifact_id": 3237138,
+        "artifact_name": "nginx-mod-devel-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "cdcf09a29370641180c91293d6e7792abfb5b948b84122773fbb323aee48dd44",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-605c-72bc-898e-d28340a3dc7c/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237139:nginx-mod-http-perl-1.20.1-16.el9_4.1.x86_64.rpm",
       "label": "nginx-mod-http-perl-1.20.1-16.el9_4.1.x86_64.rpm",
       "metadata": {
@@ -3512,6 +4594,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:5b87d86de9e9e1d72893d6eb7f4419db124b33b5d6dc71a39323c96514d8ed39",
+      "label": "5b87d86de9e9e1d72893d6eb7f4419db124b33b5d6dc71a39323c96514d8ed39",
+      "metadata": {
+        "artifact_id": 3237139,
+        "artifact_name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "5b87d86de9e9e1d72893d6eb7f4419db124b33b5d6dc71a39323c96514d8ed39",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-60c4-75e0-8ad1-dc808a893aaf/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237140:nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
@@ -3530,6 +4626,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
+      "label": "e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
+      "metadata": {
+        "artifact_id": 3237140,
+        "artifact_name": "nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6053-791a-8ffd-132c5a548183/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237141:nginx-core-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
       "label": "nginx-core-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
       "metadata": {
@@ -3544,6 +4654,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:7d211ce70d11b3581a44ca1deae63fa73f264660f95c7fca4d42b96f3e1a1d5b",
+      "label": "7d211ce70d11b3581a44ca1deae63fa73f264660f95c7fca4d42b96f3e1a1d5b",
+      "metadata": {
+        "artifact_id": 3237141,
+        "artifact_name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "7d211ce70d11b3581a44ca1deae63fa73f264660f95c7fca4d42b96f3e1a1d5b",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-61a6-7fe2-9093-16be2309ea75/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237142:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
@@ -3562,6 +4686,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:866034c4c112cbb221c0b19edc19e6226e522673cc136e6837706c76d39e115f",
+      "label": "866034c4c112cbb221c0b19edc19e6226e522673cc136e6837706c76d39e115f",
+      "metadata": {
+        "artifact_id": 3237142,
+        "artifact_name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "866034c4c112cbb221c0b19edc19e6226e522673cc136e6837706c76d39e115f",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-60c8-79e5-a077-c4d49026ad7b/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237143:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
       "label": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
       "metadata": {
@@ -3576,6 +4714,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:1ec3f66d70386b181754dabc14cc454ebacfb257d6496735f26a67f8321cc5a2",
+      "label": "1ec3f66d70386b181754dabc14cc454ebacfb257d6496735f26a67f8321cc5a2",
+      "metadata": {
+        "artifact_id": 3237143,
+        "artifact_name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "1ec3f66d70386b181754dabc14cc454ebacfb257d6496735f26a67f8321cc5a2",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-617f-791b-ac21-65b6361c6b18/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237144:nginx-debugsource-1.20.1-16.el9_4.1.x86_64.rpm",
@@ -3594,6 +4746,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:11b97ff474af55625a77e8cb0fbb40de3408071caa610ef1eacfa4a35619ffee",
+      "label": "11b97ff474af55625a77e8cb0fbb40de3408071caa610ef1eacfa4a35619ffee",
+      "metadata": {
+        "artifact_id": 3237144,
+        "artifact_name": "nginx-debugsource-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "11b97ff474af55625a77e8cb0fbb40de3408071caa610ef1eacfa4a35619ffee",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-61d6-773e-b542-ce7c6d118692/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237145:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
       "label": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
       "metadata": {
@@ -3608,6 +4774,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:2a88bc41dccfaa482d557531e14c94a83f68b7e33d1144f3ca0cbe0930b92657",
+      "label": "2a88bc41dccfaa482d557531e14c94a83f68b7e33d1144f3ca0cbe0930b92657",
+      "metadata": {
+        "artifact_id": 3237145,
+        "artifact_name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "2a88bc41dccfaa482d557531e14c94a83f68b7e33d1144f3ca0cbe0930b92657",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-61b1-7f39-bcf0-03ffc28a0700/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237146:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
@@ -3626,6 +4806,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:748d385a8352368768418352f1a49049b5401df657f62b2a3c11f49ff6c6cd31",
+      "label": "748d385a8352368768418352f1a49049b5401df657f62b2a3c11f49ff6c6cd31",
+      "metadata": {
+        "artifact_id": 3237146,
+        "artifact_name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "748d385a8352368768418352f1a49049b5401df657f62b2a3c11f49ff6c6cd31",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6251-78c3-95e9-042fafa45e31/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237147:nginx-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
       "label": "nginx-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
       "metadata": {
@@ -3642,6 +4836,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:2527491726eba5b1fd003f9aa1851fd90e2cc519f5488d768f01d3e3e0ae4a56",
+      "label": "2527491726eba5b1fd003f9aa1851fd90e2cc519f5488d768f01d3e3e0ae4a56",
+      "metadata": {
+        "artifact_id": 3237147,
+        "artifact_name": "nginx-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "2527491726eba5b1fd003f9aa1851fd90e2cc519f5488d768f01d3e3e0ae4a56",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-626c-7bca-9b3f-3dd09a461687/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237148:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
       "label": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
       "metadata": {
@@ -3656,6 +4864,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:7d4f7e65d5f9009d6d0949c9c9601669fd37575fc2eee1127774adbd8c85c06b",
+      "label": "7d4f7e65d5f9009d6d0949c9c9601669fd37575fc2eee1127774adbd8c85c06b",
+      "metadata": {
+        "artifact_id": 3237148,
+        "artifact_name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "7d4f7e65d5f9009d6d0949c9c9601669fd37575fc2eee1127774adbd8c85c06b",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-632a-761e-b2c4-bae701d0bf2c/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237131:nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
@@ -3690,6 +4912,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:74a83ff84ed5f655bc2d251540892e975f1820c767414329b0526b8f5f400595",
+      "label": "74a83ff84ed5f655bc2d251540892e975f1820c767414329b0526b8f5f400595",
+      "metadata": {
+        "artifact_id": 3237132,
+        "artifact_name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "74a83ff84ed5f655bc2d251540892e975f1820c767414329b0526b8f5f400595",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5e56-7da6-a022-ede3804cfbd0/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237133:nginx-1.20.1-16.el9_4.1.x86_64.rpm",
       "label": "nginx-1.20.1-16.el9_4.1.x86_64.rpm",
       "metadata": {
@@ -3704,6 +4940,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:c9eb94574cde7178cb275a8273fdf401a87792905d75660adf854c88c637762a",
+      "label": "c9eb94574cde7178cb275a8273fdf401a87792905d75660adf854c88c637762a",
+      "metadata": {
+        "artifact_id": 3237133,
+        "artifact_name": "nginx-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "c9eb94574cde7178cb275a8273fdf401a87792905d75660adf854c88c637762a",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5f01-7495-9903-1fdc0dc2e91e/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237134:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.x86_64.rpm",
@@ -3722,6 +4972,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:ed526204fea30241976e91b2a40f2cbd7d4b67d090ae9e46df841c9c31c68862",
+      "label": "ed526204fea30241976e91b2a40f2cbd7d4b67d090ae9e46df841c9c31c68862",
+      "metadata": {
+        "artifact_id": 3237134,
+        "artifact_name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "ed526204fea30241976e91b2a40f2cbd7d4b67d090ae9e46df841c9c31c68862",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5edd-7bae-ba85-292e6e1fcd33/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237135:nginx-mod-mail-1.20.1-16.el9_4.1.x86_64.rpm",
       "label": "nginx-mod-mail-1.20.1-16.el9_4.1.x86_64.rpm",
       "metadata": {
@@ -3738,6 +5002,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:0290064a87b4115ccdc83d4fa47f0c0d90004043cba547d7c77d7caf248926ce",
+      "label": "0290064a87b4115ccdc83d4fa47f0c0d90004043cba547d7c77d7caf248926ce",
+      "metadata": {
+        "artifact_id": 3237135,
+        "artifact_name": "nginx-mod-mail-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "0290064a87b4115ccdc83d4fa47f0c0d90004043cba547d7c77d7caf248926ce",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5ef2-74aa-854e-ba10f50e629b/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237136:nginx-mod-stream-1.20.1-16.el9_4.1.x86_64.rpm",
       "label": "nginx-mod-stream-1.20.1-16.el9_4.1.x86_64.rpm",
       "metadata": {
@@ -3752,6 +5030,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:cf6b51fff661b2dc80c36b10c0089d3a57b255798f3063ca860c0714e92b8bd5",
+      "label": "cf6b51fff661b2dc80c36b10c0089d3a57b255798f3063ca860c0714e92b8bd5",
+      "metadata": {
+        "artifact_id": 3237136,
+        "artifact_name": "nginx-mod-stream-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "cf6b51fff661b2dc80c36b10c0089d3a57b255798f3063ca860c0714e92b8bd5",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-605d-76bf-9a21-a27eaf52c4aa/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "test:985727",
@@ -3983,6 +5275,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:1c85a6f12e5656b52d6f259e63dbcda2a33ab28d13db4a4bc00aa91e8e548f32",
+      "label": "1c85a6f12e5656b52d6f259e63dbcda2a33ab28d13db4a4bc00aa91e8e548f32",
+      "metadata": {
+        "artifact_id": 3237053,
+        "artifact_name": "nginx-core-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "1c85a6f12e5656b52d6f259e63dbcda2a33ab28d13db4a4bc00aa91e8e548f32",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5575-751f-9edc-ebb2f3803254/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237054:nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.s390x.rpm",
       "label": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.s390x.rpm",
       "metadata": {
@@ -3997,6 +5303,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:481e7192557121e4fdea8aaa98e8156a817cab6294efd0ebcde917b8cf8c9e81",
+      "label": "481e7192557121e4fdea8aaa98e8156a817cab6294efd0ebcde917b8cf8c9e81",
+      "metadata": {
+        "artifact_id": 3237054,
+        "artifact_name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "481e7192557121e4fdea8aaa98e8156a817cab6294efd0ebcde917b8cf8c9e81",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5576-7199-b3cc-4d3e4328e668/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237055:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.s390x.rpm",
@@ -4015,6 +5335,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:0517f8ebebab2dc6aa42947c70376cd0a88d9f4e9e703e8e386ef24ceb87efa0",
+      "label": "0517f8ebebab2dc6aa42947c70376cd0a88d9f4e9e703e8e386ef24ceb87efa0",
+      "metadata": {
+        "artifact_id": 3237055,
+        "artifact_name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "0517f8ebebab2dc6aa42947c70376cd0a88d9f4e9e703e8e386ef24ceb87efa0",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-54a3-7f91-851b-a71fe7aed0d3/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237056:nginx-mod-stream-1.20.1-16.el9_4.1.s390x.rpm",
       "label": "nginx-mod-stream-1.20.1-16.el9_4.1.s390x.rpm",
       "metadata": {
@@ -4031,6 +5365,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:3504df88de665b2e368e1c90e79e2560a6985214f4a3fba3c1f0ffe0e0f62d4a",
+      "label": "3504df88de665b2e368e1c90e79e2560a6985214f4a3fba3c1f0ffe0e0f62d4a",
+      "metadata": {
+        "artifact_id": 3237056,
+        "artifact_name": "nginx-mod-stream-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "3504df88de665b2e368e1c90e79e2560a6985214f4a3fba3c1f0ffe0e0f62d4a",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5488-73a0-8195-b2fbb9ccd243/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237057:nginx-1.20.1-16.el9_4.1.s390x.rpm",
       "label": "nginx-1.20.1-16.el9_4.1.s390x.rpm",
       "metadata": {
@@ -4045,6 +5393,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:b5a432b9a0d798e7c3a969ec56c75c6678be3e64825ddd34cfdea073fa377c14",
+      "label": "b5a432b9a0d798e7c3a969ec56c75c6678be3e64825ddd34cfdea073fa377c14",
+      "metadata": {
+        "artifact_id": 3237057,
+        "artifact_name": "nginx-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "b5a432b9a0d798e7c3a969ec56c75c6678be3e64825ddd34cfdea073fa377c14",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-55d7-7a1d-8153-6bd29360187f/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237058:nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
@@ -4095,6 +5457,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:32c4e465e85a5692d183452c0f3f7613692a3dbea8ccc2cd97c9149df67e739e",
+      "label": "32c4e465e85a5692d183452c0f3f7613692a3dbea8ccc2cd97c9149df67e739e",
+      "metadata": {
+        "artifact_id": 3237060,
+        "artifact_name": "nginx-mod-mail-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "32c4e465e85a5692d183452c0f3f7613692a3dbea8ccc2cd97c9149df67e739e",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-55e2-7aaf-b2f7-27e94ef686d1/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237061:nginx-mod-http-perl-1.20.1-16.el9_4.1.s390x.rpm",
       "label": "nginx-mod-http-perl-1.20.1-16.el9_4.1.s390x.rpm",
       "metadata": {
@@ -4109,6 +5485,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:9458fb39fe63b8b82185a30679c273a903e796d72fc69ca9401715cb602d2c55",
+      "label": "9458fb39fe63b8b82185a30679c273a903e796d72fc69ca9401715cb602d2c55",
+      "metadata": {
+        "artifact_id": 3237061,
+        "artifact_name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "9458fb39fe63b8b82185a30679c273a903e796d72fc69ca9401715cb602d2c55",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5718-7ffe-9e2f-d8beb2622752/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237062:nginx-mod-devel-1.20.1-16.el9_4.1.s390x.rpm",
@@ -4127,6 +5517,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:91314fe43ff676bc956d569c9557f170dbea5c87557c1793757ace9936e92f0d",
+      "label": "91314fe43ff676bc956d569c9557f170dbea5c87557c1793757ace9936e92f0d",
+      "metadata": {
+        "artifact_id": 3237062,
+        "artifact_name": "nginx-mod-devel-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "91314fe43ff676bc956d569c9557f170dbea5c87557c1793757ace9936e92f0d",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-570f-767d-b1c6-77a58e271377/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237063:nginx-core-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
       "label": "nginx-core-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
       "metadata": {
@@ -4141,6 +5545,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:988261fe607aa172cad5b4cd440c43580ca12ba63081ff5fa24b81efd6db01d6",
+      "label": "988261fe607aa172cad5b4cd440c43580ca12ba63081ff5fa24b81efd6db01d6",
+      "metadata": {
+        "artifact_id": 3237063,
+        "artifact_name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "988261fe607aa172cad5b4cd440c43580ca12ba63081ff5fa24b81efd6db01d6",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-58d1-7762-bf6d-65aa5596ea10/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237064:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
@@ -4159,6 +5577,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:d94dd58d63f2b7da312d30682e0738e3117bc5e28d4b1ac4ff0d71bc760d714e",
+      "label": "d94dd58d63f2b7da312d30682e0738e3117bc5e28d4b1ac4ff0d71bc760d714e",
+      "metadata": {
+        "artifact_id": 3237064,
+        "artifact_name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "d94dd58d63f2b7da312d30682e0738e3117bc5e28d4b1ac4ff0d71bc760d714e",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-574c-7663-9137-65ae853860e1/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237065:nginx-debugsource-1.20.1-16.el9_4.1.s390x.rpm",
       "label": "nginx-debugsource-1.20.1-16.el9_4.1.s390x.rpm",
       "metadata": {
@@ -4173,6 +5605,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:cf46c04a4d85300015d81bb1a0ae0bbc170a98ee7695d2bbb38bbe21e147f0ee",
+      "label": "cf46c04a4d85300015d81bb1a0ae0bbc170a98ee7695d2bbb38bbe21e147f0ee",
+      "metadata": {
+        "artifact_id": 3237065,
+        "artifact_name": "nginx-debugsource-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "cf46c04a4d85300015d81bb1a0ae0bbc170a98ee7695d2bbb38bbe21e147f0ee",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-57da-7481-a2ae-8c922bec359d/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237066:nginx-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
@@ -4191,6 +5637,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:5b137268047c93ee002c217cff44224ac70b1823af8f0df279e5ccd1b86f26b1",
+      "label": "5b137268047c93ee002c217cff44224ac70b1823af8f0df279e5ccd1b86f26b1",
+      "metadata": {
+        "artifact_id": 3237066,
+        "artifact_name": "nginx-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "5b137268047c93ee002c217cff44224ac70b1823af8f0df279e5ccd1b86f26b1",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5755-7c93-8edd-3aa8631738e0/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237067:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
       "label": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
       "metadata": {
@@ -4205,6 +5665,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:469b598146893fc0386276ad7cd9c7c8ae0246f885fdc77145cba6ab6896d2ed",
+      "label": "469b598146893fc0386276ad7cd9c7c8ae0246f885fdc77145cba6ab6896d2ed",
+      "metadata": {
+        "artifact_id": 3237067,
+        "artifact_name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "469b598146893fc0386276ad7cd9c7c8ae0246f885fdc77145cba6ab6896d2ed",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-58c3-7932-9ee0-d3aff3e6bae1/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237068:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
@@ -4223,6 +5697,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:9cc5971737c36cdbc0bd7b08943949e7ead51c4cbe6db2834cb1d05b58682d6e",
+      "label": "9cc5971737c36cdbc0bd7b08943949e7ead51c4cbe6db2834cb1d05b58682d6e",
+      "metadata": {
+        "artifact_id": 3237068,
+        "artifact_name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "9cc5971737c36cdbc0bd7b08943949e7ead51c4cbe6db2834cb1d05b58682d6e",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5971-7ca0-a76f-c5ec3a9af7f1/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237069:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
       "label": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
       "metadata": {
@@ -4239,6 +5727,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:b374c3733cb03140d974063085142eaabfaedf954c6db8a7d2580a75b38ee58f",
+      "label": "b374c3733cb03140d974063085142eaabfaedf954c6db8a7d2580a75b38ee58f",
+      "metadata": {
+        "artifact_id": 3237069,
+        "artifact_name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "b374c3733cb03140d974063085142eaabfaedf954c6db8a7d2580a75b38ee58f",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-588a-727e-947d-b601c5f2fe5b/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237070:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
       "label": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
       "metadata": {
@@ -4253,6 +5755,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:d37257e932daae7c9855393feeb8c96f6fd17223e682b5793660edc698cb042e",
+      "label": "d37257e932daae7c9855393feeb8c96f6fd17223e682b5793660edc698cb042e",
+      "metadata": {
+        "artifact_id": 3237070,
+        "artifact_name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+        "cas_hash": "d37257e932daae7c9855393feeb8c96f6fd17223e682b5793660edc698cb042e",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-5a96-7511-a117-3fd7e65d2f0b/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "test:985745",
@@ -4468,6 +5984,20 @@
       "type": "srpm"
     },
     {
+      "id": "cas:artifact:11e9fd63660caf3843c7f8635e94c1554126a15a58ab789d50fd414ff86b152e",
+      "label": "11e9fd63660caf3843c7f8635e94c1554126a15a58ab789d50fd414ff86b152e",
+      "metadata": {
+        "artifact_id": 3237033,
+        "artifact_name": "nginx-1.20.1-16.el9_4.1.src.rpm",
+        "cas_hash": "11e9fd63660caf3843c7f8635e94c1554126a15a58ab789d50fd414ff86b152e",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-54bf-71ef-9d4b-a85aa26af417/",
+        "subject_type": "srpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "build:albs-task:188076",
       "label": "ALBS task 188076 i686",
       "metadata": {
@@ -4535,6 +6065,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:90e474e42f82349277a43079b8a6604dce1fa9f99c7a0a6d8ce3be2e6d030637",
+      "label": "90e474e42f82349277a43079b8a6604dce1fa9f99c7a0a6d8ce3be2e6d030637",
+      "metadata": {
+        "artifact_id": 3237149,
+        "artifact_name": "nginx-core-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "90e474e42f82349277a43079b8a6604dce1fa9f99c7a0a6d8ce3be2e6d030637",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-63e0-72f6-94b4-7f15a3912157/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237150:nginx-mod-devel-1.20.1-16.el9_4.1.i686.rpm",
       "label": "nginx-mod-devel-1.20.1-16.el9_4.1.i686.rpm",
       "metadata": {
@@ -4549,6 +6093,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:199922f3af965b42e6de78c3d78e7251c6a67295c753516cd4d764b7e7917809",
+      "label": "199922f3af965b42e6de78c3d78e7251c6a67295c753516cd4d764b7e7917809",
+      "metadata": {
+        "artifact_id": 3237150,
+        "artifact_name": "nginx-mod-devel-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "199922f3af965b42e6de78c3d78e7251c6a67295c753516cd4d764b7e7917809",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-642a-7cfe-b751-db6c6cd8f1d9/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237151:nginx-mod-stream-1.20.1-16.el9_4.1.i686.rpm",
@@ -4567,6 +6125,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:82d0c3c980f830b1563e8a0bdbf15a63a330a4fe8bf3a75f28861d3ce81a3973",
+      "label": "82d0c3c980f830b1563e8a0bdbf15a63a330a4fe8bf3a75f28861d3ce81a3973",
+      "metadata": {
+        "artifact_id": 3237151,
+        "artifact_name": "nginx-mod-stream-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "82d0c3c980f830b1563e8a0bdbf15a63a330a4fe8bf3a75f28861d3ce81a3973",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-63f6-7035-8866-69a09a8f16b3/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237152:nginx-mod-mail-1.20.1-16.el9_4.1.i686.rpm",
       "label": "nginx-mod-mail-1.20.1-16.el9_4.1.i686.rpm",
       "metadata": {
@@ -4581,6 +6153,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:dcb12ff870643a51198230e29fa445764bd933736a2eb567137ea87988718937",
+      "label": "dcb12ff870643a51198230e29fa445764bd933736a2eb567137ea87988718937",
+      "metadata": {
+        "artifact_id": 3237152,
+        "artifact_name": "nginx-mod-mail-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "dcb12ff870643a51198230e29fa445764bd933736a2eb567137ea87988718937",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-630f-7fec-9d14-9b0913c723ed/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237153:nginx-1.20.1-16.el9_4.1.i686.rpm",
@@ -4599,6 +6185,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:0a24313fbb09bc8edccfdb0ff8721a9a7066dca5de281638c58692dc602054af",
+      "label": "0a24313fbb09bc8edccfdb0ff8721a9a7066dca5de281638c58692dc602054af",
+      "metadata": {
+        "artifact_id": 3237153,
+        "artifact_name": "nginx-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "0a24313fbb09bc8edccfdb0ff8721a9a7066dca5de281638c58692dc602054af",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-642e-724d-a31e-e06672b7b698/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237154:nginx-mod-http-perl-1.20.1-16.el9_4.1.i686.rpm",
       "label": "nginx-mod-http-perl-1.20.1-16.el9_4.1.i686.rpm",
       "metadata": {
@@ -4613,6 +6213,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:62fb9e98ca2b172d5c235a6b91404d0f409999ced78b95d7913728a70ca7d761",
+      "label": "62fb9e98ca2b172d5c235a6b91404d0f409999ced78b95d7913728a70ca7d761",
+      "metadata": {
+        "artifact_id": 3237154,
+        "artifact_name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "62fb9e98ca2b172d5c235a6b91404d0f409999ced78b95d7913728a70ca7d761",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-651b-7f0e-887b-a0db59e29585/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237155:nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.i686.rpm",
@@ -4631,6 +6245,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:02873ae86211e8b8384c80d6f7eaf3ee15fecec308ce4507dd3660b71713dff7",
+      "label": "02873ae86211e8b8384c80d6f7eaf3ee15fecec308ce4507dd3660b71713dff7",
+      "metadata": {
+        "artifact_id": 3237155,
+        "artifact_name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "02873ae86211e8b8384c80d6f7eaf3ee15fecec308ce4507dd3660b71713dff7",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-64bb-7f46-a704-94bc6fd46ddd/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237156:nginx-mod-http-image-filter-1.20.1-16.el9_4.1.i686.rpm",
       "label": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.i686.rpm",
       "metadata": {
@@ -4645,6 +6273,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:15706dc9df3cf1bd5f6f8c33d5c4fa446647bd4b52364db7121e6aafcedd9fa0",
+      "label": "15706dc9df3cf1bd5f6f8c33d5c4fa446647bd4b52364db7121e6aafcedd9fa0",
+      "metadata": {
+        "artifact_id": 3237156,
+        "artifact_name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "15706dc9df3cf1bd5f6f8c33d5c4fa446647bd4b52364db7121e6aafcedd9fa0",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-64b1-71a7-9dba-926e376414f4/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237157:nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
@@ -4695,6 +6337,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:8703254068be1cf242be38e3a4a38248333078cc2f1953bba06f5e22e2ecad52",
+      "label": "8703254068be1cf242be38e3a4a38248333078cc2f1953bba06f5e22e2ecad52",
+      "metadata": {
+        "artifact_id": 3237159,
+        "artifact_name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "8703254068be1cf242be38e3a4a38248333078cc2f1953bba06f5e22e2ecad52",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6602-7e0a-8bfb-b8d6ca5462a9/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237160:nginx-debugsource-1.20.1-16.el9_4.1.i686.rpm",
       "label": "nginx-debugsource-1.20.1-16.el9_4.1.i686.rpm",
       "metadata": {
@@ -4709,6 +6365,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:34d5e19264b0887cf0295e160fd9d4fcde29b2895a06ba8ab1d689fb768e505e",
+      "label": "34d5e19264b0887cf0295e160fd9d4fcde29b2895a06ba8ab1d689fb768e505e",
+      "metadata": {
+        "artifact_id": 3237160,
+        "artifact_name": "nginx-debugsource-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "34d5e19264b0887cf0295e160fd9d4fcde29b2895a06ba8ab1d689fb768e505e",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-660c-75ee-b377-d309c9a27978/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237161:nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
@@ -4727,6 +6397,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:10b00cd758d8897dd1a48afaa133971ed5ceab3f4bcf6c7b70b8278f7b722cf6",
+      "label": "10b00cd758d8897dd1a48afaa133971ed5ceab3f4bcf6c7b70b8278f7b722cf6",
+      "metadata": {
+        "artifact_id": 3237161,
+        "artifact_name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "10b00cd758d8897dd1a48afaa133971ed5ceab3f4bcf6c7b70b8278f7b722cf6",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-65dc-743c-97b1-d5184d302ad5/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237162:nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
       "label": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
       "metadata": {
@@ -4741,6 +6425,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:1fe09ea34b8bc672da84a052f2cf06992fbec2c44852ef681e4ce96d61120325",
+      "label": "1fe09ea34b8bc672da84a052f2cf06992fbec2c44852ef681e4ce96d61120325",
+      "metadata": {
+        "artifact_id": 3237162,
+        "artifact_name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "1fe09ea34b8bc672da84a052f2cf06992fbec2c44852ef681e4ce96d61120325",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-66f3-72dc-985c-cbbaa940d83b/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237163:nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
@@ -4759,6 +6457,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:88485b2d4fe5c9b4c6b66b19f740a9cc4e101a3d1ff408088a75fc6ffc66eea2",
+      "label": "88485b2d4fe5c9b4c6b66b19f740a9cc4e101a3d1ff408088a75fc6ffc66eea2",
+      "metadata": {
+        "artifact_id": 3237163,
+        "artifact_name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "88485b2d4fe5c9b4c6b66b19f740a9cc4e101a3d1ff408088a75fc6ffc66eea2",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-66d5-7a66-ab76-f800a327bcf7/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237164:nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
       "label": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
       "metadata": {
@@ -4773,6 +6485,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:39622393e1c30774cdb99cf8ce86d35414962c30c81c99c0fcfa6342621d5d2a",
+      "label": "39622393e1c30774cdb99cf8ce86d35414962c30c81c99c0fcfa6342621d5d2a",
+      "metadata": {
+        "artifact_id": 3237164,
+        "artifact_name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "39622393e1c30774cdb99cf8ce86d35414962c30c81c99c0fcfa6342621d5d2a",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-677c-7126-9338-82fbc4d32cb5/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "rpm:3237165:nginx-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
@@ -4791,6 +6517,20 @@
       "type": "binary_rpm"
     },
     {
+      "id": "cas:artifact:fc018ba6d2a2d6954300f3445ca30e94866f3be2ccc509bca64872ea0ef2ff23",
+      "label": "fc018ba6d2a2d6954300f3445ca30e94866f3be2ccc509bca64872ea0ef2ff23",
+      "metadata": {
+        "artifact_id": 3237165,
+        "artifact_name": "nginx-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "fc018ba6d2a2d6954300f3445ca30e94866f3be2ccc509bca64872ea0ef2ff23",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6724-7f3f-af7a-e7ab2ec7728a/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "rpm:3237166:nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
       "label": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
       "metadata": {
@@ -4805,6 +6545,20 @@
         "version": "1.20.1"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:62b496fbd5145e3cda45c6903135e911a350ef2932c6017a2812c57d43c8e311",
+      "label": "62b496fbd5145e3cda45c6903135e911a350ef2932c6017a2812c57d43c8e311",
+      "metadata": {
+        "artifact_id": 3237166,
+        "artifact_name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+        "cas_hash": "62b496fbd5145e3cda45c6903135e911a350ef2932c6017a2812c57d43c8e311",
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6869-755a-bcb2-5cf7f47d26f8/",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "test:985766",

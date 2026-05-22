@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1212" viewBox="0 0 1200 1212">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1290" viewBox="0 0 1200 1290">
 <style>text{font-family:Inter,Arial,sans-serif;font-size:13px}.meta{fill:#607D8B;font-size:11px}.node{fill:#F8FAFC;stroke:#90A4AE;rx:6}.edge{stroke:#546E7A;stroke-width:1.4;marker-end:url(#arrow)}</style>
 <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#546E7A"/></marker></defs>
 <rect width="100%" height="100%" fill="white"/>
@@ -24,13 +24,13 @@
 <text x="52" y="268">abc123</text>
 <text class="meta" x="52" y="286">git_commit</text>
 <line class="edge" x1="318" y1="272" x2="538" y2="272"/>
-<text class="meta" text-anchor="middle" x="430" y="266">notarized_as</text>
+<text class="meta" text-anchor="middle" x="430" y="266">authenticated_by</text>
 <rect class="node" x="560" y="248" width="260" height="48"/>
-<text x="572" y="268">immudb hash xyz789</text>
-<text class="meta" x="572" y="286">notarized_ref</text>
+<text x="572" y="268">CAS source attestation xyz789</text>
+<text class="meta" x="572" y="286">cas_attestation</text>
 <rect class="node" x="40" y="326" width="260" height="48"/>
-<text x="52" y="346">immudb hash xyz789</text>
-<text class="meta" x="52" y="364">notarized_ref</text>
+<text x="52" y="346">CAS source attestation xyz789</text>
+<text class="meta" x="52" y="364">cas_attestation</text>
 <line class="edge" x1="318" y1="350" x2="538" y2="350"/>
 <text class="meta" text-anchor="middle" x="430" y="344">built_by</text>
 <rect class="node" x="560" y="326" width="260" height="48"/>
@@ -61,59 +61,67 @@
 <text x="572" y="580">openssl-libs-3.0.7-28.el9_4.x86_64</text>
 <text class="meta" x="572" y="598">binary_rpm</text>
 <rect class="node" x="40" y="638" width="260" height="48"/>
-<text x="52" y="658">ALBS build task 123456</text>
-<text class="meta" x="52" y="676">build_task</text>
+<text x="52" y="658">openssl-libs-3.0.7-28.el9_4.x86_64</text>
+<text class="meta" x="52" y="676">binary_rpm</text>
 <line class="edge" x1="318" y1="662" x2="538" y2="662"/>
-<text class="meta" text-anchor="middle" x="430" y="656">tested_by</text>
+<text class="meta" text-anchor="middle" x="430" y="656">authenticated_by</text>
 <rect class="node" x="560" y="638" width="260" height="48"/>
-<text x="572" y="658">ALBS test result for openssl build</text>
-<text class="meta" x="572" y="676">test_result</text>
+<text x="572" y="658">CAS artifact attestation for opens</text>
+<text class="meta" x="572" y="676">cas_attestation</text>
 <rect class="node" x="40" y="716" width="260" height="48"/>
-<text x="52" y="736">openssl-libs-3.0.7-28.el9_4.x86_64</text>
-<text class="meta" x="52" y="754">binary_rpm</text>
+<text x="52" y="736">ALBS build task 123456</text>
+<text class="meta" x="52" y="754">build_task</text>
 <line class="edge" x1="318" y1="740" x2="538" y2="740"/>
-<text class="meta" text-anchor="middle" x="430" y="734">signed_as</text>
+<text class="meta" text-anchor="middle" x="430" y="734">tested_by</text>
 <rect class="node" x="560" y="716" width="260" height="48"/>
-<text x="572" y="736">AlmaLinux 9 GPG signature</text>
-<text class="meta" x="572" y="754">signature</text>
+<text x="572" y="736">ALBS test result for openssl build</text>
+<text class="meta" x="572" y="754">test_result</text>
 <rect class="node" x="40" y="794" width="260" height="48"/>
 <text x="52" y="814">openssl-libs-3.0.7-28.el9_4.x86_64</text>
 <text class="meta" x="52" y="832">binary_rpm</text>
 <line class="edge" x1="318" y1="818" x2="538" y2="818"/>
-<text class="meta" text-anchor="middle" x="430" y="812">released_to</text>
+<text class="meta" text-anchor="middle" x="430" y="812">signed_as</text>
 <rect class="node" x="560" y="794" width="260" height="48"/>
-<text x="572" y="814">AlmaLinux 9 BaseOS x86_64</text>
-<text class="meta" x="572" y="832">repository_release</text>
+<text x="572" y="814">AlmaLinux 9 GPG signature</text>
+<text class="meta" x="572" y="832">signature</text>
 <rect class="node" x="40" y="872" width="260" height="48"/>
 <text x="52" y="892">openssl-libs-3.0.7-28.el9_4.x86_64</text>
 <text class="meta" x="52" y="910">binary_rpm</text>
 <line class="edge" x1="318" y1="896" x2="538" y2="896"/>
-<text class="meta" text-anchor="middle" x="430" y="890">fixes</text>
+<text class="meta" text-anchor="middle" x="430" y="890">released_to</text>
 <rect class="node" x="560" y="872" width="260" height="48"/>
-<text x="572" y="892">ALSA-2026-0001</text>
-<text class="meta" x="572" y="910">errata</text>
+<text x="572" y="892">AlmaLinux 9 BaseOS x86_64</text>
+<text class="meta" x="572" y="910">repository_release</text>
 <rect class="node" x="40" y="950" width="260" height="48"/>
-<text x="52" y="970">ALSA-2026-0001</text>
-<text class="meta" x="52" y="988">errata</text>
+<text x="52" y="970">openssl-libs-3.0.7-28.el9_4.x86_64</text>
+<text class="meta" x="52" y="988">binary_rpm</text>
 <line class="edge" x1="318" y1="974" x2="538" y2="974"/>
 <text class="meta" text-anchor="middle" x="430" y="968">fixes</text>
 <rect class="node" x="560" y="950" width="260" height="48"/>
-<text x="572" y="970">CVE-2026-0001</text>
-<text class="meta" x="572" y="988">cve</text>
+<text x="572" y="970">ALSA-2026-0001</text>
+<text class="meta" x="572" y="988">errata</text>
 <rect class="node" x="40" y="1028" width="260" height="48"/>
-<text x="52" y="1048">openssl-libs-3.0.7-28.el9_4.x86_64</text>
-<text class="meta" x="52" y="1066">binary_rpm</text>
+<text x="52" y="1048">ALSA-2026-0001</text>
+<text class="meta" x="52" y="1066">errata</text>
 <line class="edge" x1="318" y1="1052" x2="538" y2="1052"/>
-<text class="meta" text-anchor="middle" x="430" y="1046">described_by</text>
+<text class="meta" text-anchor="middle" x="430" y="1046">fixes</text>
 <rect class="node" x="560" y="1028" width="260" height="48"/>
-<text x="572" y="1048">CycloneDX SBOM for openssl</text>
-<text class="meta" x="572" y="1066">sbom</text>
+<text x="572" y="1048">CVE-2026-0001</text>
+<text class="meta" x="572" y="1066">cve</text>
 <rect class="node" x="40" y="1106" width="260" height="48"/>
 <text x="52" y="1126">openssl-libs-3.0.7-28.el9_4.x86_64</text>
 <text class="meta" x="52" y="1144">binary_rpm</text>
 <line class="edge" x1="318" y1="1130" x2="538" y2="1130"/>
-<text class="meta" text-anchor="middle" x="430" y="1124">requires_runtime</text>
+<text class="meta" text-anchor="middle" x="430" y="1124">described_by</text>
 <rect class="node" x="560" y="1106" width="260" height="48"/>
-<text x="572" y="1126">zlib runtime dependency</text>
-<text class="meta" x="572" y="1144">external_package</text>
+<text x="572" y="1126">CycloneDX SBOM for openssl</text>
+<text class="meta" x="572" y="1144">sbom</text>
+<rect class="node" x="40" y="1184" width="260" height="48"/>
+<text x="52" y="1204">openssl-libs-3.0.7-28.el9_4.x86_64</text>
+<text class="meta" x="52" y="1222">binary_rpm</text>
+<line class="edge" x1="318" y1="1208" x2="538" y2="1208"/>
+<text class="meta" text-anchor="middle" x="430" y="1202">requires_runtime</text>
+<rect class="node" x="560" y="1184" width="260" height="48"/>
+<text x="572" y="1204">zlib runtime dependency</text>
+<text class="meta" x="572" y="1222">external_package</text>
 </svg>

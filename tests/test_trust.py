@@ -28,7 +28,9 @@ def test_lineage_queries_include_artifacts_and_cves() -> None:
 
 
 def test_focused_trust_graph_for_live_build_artifact_is_small() -> None:
-    data = json.loads(Path("examples/live-build-17812/build-17812.json").read_text(encoding="utf-8"))
+    data = json.loads(
+        Path("examples/live-build-17812/build-17812.json").read_text(encoding="utf-8")
+    )
     graph = _graph_from_export(data)
     rpm = find_binary_rpm(graph, "nginx-core", arch="x86_64")
 
@@ -40,7 +42,12 @@ def test_focused_trust_graph_for_live_build_artifact_is_small() -> None:
     assert "git:https://git.almalinux.org/rpms/nginx.git" in focused_ids
     assert "repo-release:ALBS release 7396" in focused_ids
     assert "sig:albs:11754" in focused_ids
-    assert len(focused.nodes) < 15
+    assert "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc" in focused_ids
+    assert any(
+        node.type == "cas_attestation" and node.metadata.get("subject_type") == "rpm_artifact"
+        for node in focused.nodes.values()
+    )
+    assert len(focused.nodes) < 20
 
 
 def _graph_from_export(data: dict[str, Any]) -> ProvenanceGraph:

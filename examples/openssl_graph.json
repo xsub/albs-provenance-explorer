@@ -14,14 +14,14 @@
     },
     {
       "metadata": {},
-      "relation": "notarized_as",
+      "relation": "authenticated_by",
       "source": "commit:openssl:abc123",
-      "target": "notary:immudb:openssl:xyz789"
+      "target": "cas:source:openssl:xyz789"
     },
     {
       "metadata": {},
-      "relation": "used_by",
-      "source": "notary:immudb:openssl:xyz789",
+      "relation": "built_by",
+      "source": "cas:source:openssl:xyz789",
       "target": "build:albs:123456"
     },
     {
@@ -41,6 +41,12 @@
       "relation": "produces",
       "source": "build:albs:123456",
       "target": "rpm:openssl-libs:3.0.7-28.el9_4:x86_64"
+    },
+    {
+      "metadata": {},
+      "relation": "authenticated_by",
+      "source": "rpm:openssl-libs:3.0.7-28.el9_4:x86_64",
+      "target": "cas:artifact:openssl-libs:x86_64"
     },
     {
       "metadata": {},
@@ -113,14 +119,16 @@
       "type": "git_commit"
     },
     {
-      "id": "notary:immudb:openssl:xyz789",
-      "label": "immudb hash xyz789",
+      "id": "cas:source:openssl:xyz789",
+      "label": "CAS source attestation xyz789",
       "metadata": {
+        "cas_hash": "xyz789",
         "example": true,
-        "notary": "immudb",
-        "status": "notarized"
+        "subject_type": "source_commit",
+        "system": "Codenotary CAS",
+        "trusted": true
       },
-      "type": "notarized_ref"
+      "type": "cas_attestation"
     },
     {
       "id": "buildenv:alma9:x86_64",
@@ -161,6 +169,18 @@
         "version": "3.0.7"
       },
       "type": "binary_rpm"
+    },
+    {
+      "id": "cas:artifact:openssl-libs:x86_64",
+      "label": "CAS artifact attestation for openssl-libs",
+      "metadata": {
+        "cas_hash": "openssl-libs-x86_64-cas",
+        "example": true,
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS",
+        "trusted": true
+      },
+      "type": "cas_attestation"
     },
     {
       "id": "test:openssl:albs:123456",
@@ -225,5 +245,6 @@
       },
       "type": "external_package"
     }
-  ]
+  ],
+  "schema": "albs-provenance-explorer/v1"
 }
