@@ -4,8 +4,8 @@ This directory contains a compact demo built from public ALBS build `17812`. The
 
 ## Files
 
-- `trust-path-console.svg` - current Rich render of the CLI trust-path report.
-- `trust-path-console.png` - original terminal screenshot kept as a demo artifact.
+- `trust-path-console.png` - terminal screenshot of the verbose single-pass trust-path demo with optional git commit verification.
+- `trust-path-console.txt` - text capture of the same demo output.
 - `nginx-core-x86_64-trust.svg` - focused source-to-artifact trust graph.
 - `nginx-core-x86_64-trust.dot` - Graphviz DOT for the focused graph.
 - `nginx-core-x86_64-trust.json` - JSON export for the focused graph.
@@ -28,4 +28,10 @@ albs-graph fetch --build-id 17812 --format svg -o examples/demo-nginx-core/build
 
 ## Console Report
 
-![nginx-core trust-path console report](trust-path-console.svg)
+```bash
+VERIFY_GIT=1 ./example--verbose.sh
+```
+
+![nginx-core trust-path console report](trust-path-console.png)
+
+See [`trust-path-console.txt`](trust-path-console.txt) for the full text output.

@@ -1,0 +1,56 @@
+[almalinux@vps-ac97e687 albs-provenance-explorer]$ VERIFY_GIT=1 ./example--verbose.sh
+==> ALBS graph tool: albs-graph installed; using Python orchestration for single-pass demo
+==> Build: 17812
+==> RPM: nginx-core.x86_64
+==> Raw ALBS metadata cache: examples/live-build-17812/build-17812.albs.json
+==> Cache TTL: 300s
+==> Verify git source commit: 1
+step Ignoring stale ALBS metadata cache examples/live-build-17812/build-17812.albs.json (635s old, ttl 300s)
+step Fetching ALBS build metadata from https://build.almalinux.org/api/v1/builds/17812/
+step Writing ALBS build metadata cache to examples/live-build-17812/build-17812.albs.json
+step Parsing ALBS API JSON response
+step Building full provenance graph from ALBS metadata
+step Full graph: 289 nodes, 484 edges, 85 CAS attestations
+step Verifying git source commit 911945c71710c83cf6f760447c32d8d6cae737dc in https://git.almalinux.org/rpms/nginx.git
+step Git source commit verification: ok
+step Rendering full graph as JSON/DOT/SVG
+step Writing full graph json output to examples/live-build-17812/build-17812.json
+step Writing full graph dot output to examples/live-build-17812/build-17812.dot
+step Writing full graph svg output to examples/live-build-17812/build-17812.svg
+step Writing demo full graph json output to examples/demo-nginx-core/build-17812-full.json
+step Writing demo full graph svg output to examples/demo-nginx-core/build-17812-full.svg
+step Resolving binary RPM selector: nginx-core.x86_64
+step Selected RPM node: rpm:3237140:nginx-core-1.20.1-16.el9_4.1.x86_64.rpm
+step Analyzing source-to-artifact trust path
+               Trust path:                
+ nginx-core-1.20.1-16.el9_4.1.x86_64.rpm  
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
+┃ Check                        ┃ Result  ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
+│ has_build_task               │ ok      │
+│ has_signature                │ ok      │
+│ has_release                  │ ok      │
+│ has_sbom                     │ missing │
+│ has_errata_link              │ missing │
+│ has_source_cas_attestation   │ ok      │
+│ has_artifact_cas_attestation │ ok      │
+└──────────────────────────────┴─────────┘
+Complete: False
+Missing: has_sbom, has_errata_link
+Path:
+  src:nginx
+  git:https://git.almalinux.org/rpms/nginx.git
+  commit:nginx:911945c71710c83cf6f760447c32d8d6cae737dc
+  cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc
+  build:albs-task:188077
+  rpm:3237140:nginx-core-1.20.1-16.el9_4.1.x86_64.rpm
+step Building focused trust graph
+step Focused graph: 13 nodes, 13 edges, 3 CAS attestations
+step Rendering focused trust graph as JSON/DOT/SVG
+step Writing focused graph json output to examples/demo-nginx-core/nginx-core-x86_64-trust.json
+step Writing focused graph dot output to examples/demo-nginx-core/nginx-core-x86_64-trust.dot
+step Writing focused graph svg output to examples/demo-nginx-core/nginx-core-x86_64-trust.svg
+==> Done
+Metadata cache: examples/live-build-17812/build-17812.albs.json
+Full graph:     examples/demo-nginx-core/build-17812-full.svg
+Focused graph:  examples/demo-nginx-core/nginx-core_x86_64-trust.svg

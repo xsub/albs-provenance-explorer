@@ -39,9 +39,15 @@ albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64
 albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64 --format svg -o examples/demo-nginx-core/nginx-core-x86_64-trust.svg
 ```
 
-Console trust-path report:
+Console trust-path report from an AlmaLinux host, using a five-minute ALBS metadata cache and optional git source commit verification:
 
-![nginx-core trust-path console report](examples/demo-nginx-core/trust-path-console.svg)
+```bash
+VERIFY_GIT=1 ./example--verbose.sh
+```
+
+![nginx-core trust-path console report](examples/demo-nginx-core/trust-path-console.png)
+
+Full text output is kept in [`examples/demo-nginx-core/trust-path-console.txt`](examples/demo-nginx-core/trust-path-console.txt).
 
 Focused provenance graph, 13 nodes / 13 edges:
 
