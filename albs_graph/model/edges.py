@@ -24,6 +24,8 @@ class Relation(StrEnum):
     DECLARES_DEPENDENCY = "declares_dependency"
     PROVIDES = "provides"
     SUPERSEDES = "supersedes"
+    CONTAINS = "contains"
+    REFERENCES = "references"
 
     @classmethod
     def canonical(cls, relation: "Relation | str") -> "Relation | str":

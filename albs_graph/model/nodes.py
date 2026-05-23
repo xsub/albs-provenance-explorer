@@ -22,6 +22,9 @@ class NodeType(StrEnum):
     TEST_RESULT = "test_result"
     EXTERNAL_PACKAGE = "external_package"
     DEPENDENCY_SPEC = "dependency_spec"
+    SOURCE_TREE = "source_tree"
+    SOURCE_FILE = "source_file"
+    SOURCE_MANIFEST = "source_manifest"
 
 
 @dataclass(frozen=True)

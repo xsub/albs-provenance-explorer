@@ -9,6 +9,7 @@ class Ecosystem(StrEnum):
     RPM = "rpm"
     PYPI = "pypi"
     MAVEN = "maven"
+    GRADLE = "gradle"
     NPM = "npm"
     CARGO = "cargo"
     GO = "go"
@@ -186,6 +187,7 @@ def _ecosystem_from_purl_type(value: str) -> Ecosystem:
         "rpm": Ecosystem.RPM,
         "pypi": Ecosystem.PYPI,
         "maven": Ecosystem.MAVEN,
+        "gradle": Ecosystem.GRADLE,
         "npm": Ecosystem.NPM,
         "cargo": Ecosystem.CARGO,
         "golang": Ecosystem.GO,

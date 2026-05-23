@@ -9,7 +9,15 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from albs_graph.adapters import RpmQueryError, fetch_build_metadata, graph_from_local_rpm
+from albs_graph.adapters import (
+    RpmQueryError,
+    SourceCheckoutError,
+    SourceEvidenceSummary,
+    attach_source_evidence,
+    checkout_git_source,
+    fetch_build_metadata,
+    graph_from_local_rpm,
+)
 from albs_graph.adapters.albs import graph_from_build_metadata, load_synthetic_build_fixture
 from albs_graph.adapters.sbom import import_sbom
 from albs_graph.fixtures import build_synthetic_package_graph
@@ -123,6 +131,106 @@ def fetch(
     _log_step(verbose, "Building provenance graph from ALBS metadata")
     graph = graph_from_build_metadata(metadata)
     _log_graph_stats(verbose, graph)
+    _emit_graph(graph, output_format, output, verbose=verbose)
+
+
+@app.command(
+    "checkout-source",
+    help="Checkout the exact git source commit referenced by an ALBS build.",
+    short_help="Checkout ALBS git source.",
+    no_args_is_help=True,
+)
+def checkout_source(
+    build_id: int = typer.Option(..., "--build-id", "-b", help="ALBS build id."),
+    destination: Path = typer.Option(..., "--dest", "-d", help="Destination checkout directory."),
+    base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
+    cache: Optional[Path] = typer.Option(
+        None, "--cache", help="Read/write raw ALBS API metadata cache JSON."
+    ),
+    cache_ttl: int = typer.Option(300, "--cache-ttl", help="Cache freshness window in seconds."),
+    refresh_cache: bool = typer.Option(
+        False, "--refresh-cache", help="Ignore an existing ALBS metadata cache and fetch again."
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Print step-by-step progress to stderr."
+    ),
+) -> None:
+    metadata = fetch_build_metadata(
+        build_id,
+        base_url=base_url,
+        progress=_progress(verbose),
+        cache_path=cache,
+        refresh_cache=refresh_cache,
+        cache_ttl_seconds=cache_ttl,
+    )
+    _log_package_metadata(verbose, metadata.package, metadata.package_source)
+    _log_step(
+        verbose,
+        f"Checking out {metadata.source_repository} at commit {metadata.commit}",
+    )
+    checkout_git_source(metadata, destination)
+    console.print(f"Checked out {metadata.package} source at {metadata.commit} to {destination}")
+
+
+@app.command(
+    "source-evidence",
+    help="Attach source tree evidence discovered from an ALBS-referenced checkout.",
+    short_help="Analyze source evidence for an ALBS build.",
+    no_args_is_help=True,
+)
+def source_evidence(
+    source_dir: Path = typer.Argument(..., exists=True, file_okay=False, help="Source checkout."),
+    build_id: int = typer.Option(..., "--build-id", "-b", help="ALBS build id."),
+    output_format: str = typer.Option(
+        "summary", "--format", "-f", help="summary, json, dot or svg."
+    ),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+    base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
+    cache: Optional[Path] = typer.Option(
+        None, "--cache", help="Read/write raw ALBS API metadata cache JSON."
+    ),
+    cache_ttl: int = typer.Option(300, "--cache-ttl", help="Cache freshness window in seconds."),
+    refresh_cache: bool = typer.Option(
+        False, "--refresh-cache", help="Ignore an existing ALBS metadata cache and fetch again."
+    ),
+    file_inventory: bool = typer.Option(
+        True,
+        "--file-inventory/--no-file-inventory",
+        help="Include every source file as a hashed graph node.",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Print step-by-step progress to stderr."
+    ),
+) -> None:
+    metadata = fetch_build_metadata(
+        build_id,
+        base_url=base_url,
+        progress=_progress(verbose),
+        cache_path=cache,
+        refresh_cache=refresh_cache,
+        cache_ttl_seconds=cache_ttl,
+    )
+    _log_package_metadata(verbose, metadata.package, metadata.package_source)
+    _log_step(verbose, "Building provenance graph from ALBS metadata")
+    graph = graph_from_build_metadata(metadata)
+    _log_step(verbose, f"Scanning source evidence from {source_dir}")
+    summary = attach_source_evidence(
+        graph,
+        metadata,
+        source_dir,
+        include_file_inventory=file_inventory,
+    )
+    _log_step(
+        verbose,
+        (
+            "Source evidence: "
+            f"{summary.files} files, {summary.manifests} manifests, "
+            f"{summary.spec_files} spec files, {summary.dependency_specs} dependencies"
+        ),
+    )
+    if output_format.lower() == "summary" and not output:
+        _print_source_evidence_summary(summary)
+        return
     _emit_graph(graph, output_format, output, verbose=verbose)
 
 
@@ -309,7 +417,13 @@ def main(argv: list[str] | None = None) -> int:
     except click.ClickException as exc:
         exc.show()
         return int(exc.exit_code)
-    except (RpmQueryError, FileNotFoundError, ValueError, SvgRenderError) as exc:
+    except (
+        RpmQueryError,
+        SourceCheckoutError,
+        FileNotFoundError,
+        ValueError,
+        SvgRenderError,
+    ) as exc:
         console.print(f"[red]error:[/red] {exc}")
         return 2
     except typer.Exit as exc:
@@ -366,6 +480,24 @@ def _log_graph_stats(verbose: bool, graph: ProvenanceGraph, label: str = "Graph"
         verbose_console.print(
             f"[cyan]step[/cyan] {label}: {len(graph.nodes)} nodes, {len(graph.edges)} edges, {cas_count} CAS attestations"
         )
+
+
+def _print_source_evidence_summary(summary: SourceEvidenceSummary) -> None:
+    table = Table(title="Source Evidence")
+    table.add_column("Metric")
+    table.add_column("Value", justify="right")
+    for key in (
+        "files",
+        "manifests",
+        "spec_files",
+        "dependency_specs",
+        "source_refs",
+        "patch_refs",
+    ):
+        table.add_row(key, str(getattr(summary, key)))
+    ecosystems = ", ".join(summary.ecosystems) or "none"
+    table.add_row("ecosystems", ecosystems)
+    console.print(table)
 
 
 def _summary(graph: ProvenanceGraph) -> str:

@@ -124,7 +124,7 @@ Show step-by-step fetch, CAS extraction and render progress on stderr:
 
 ```bash
 albs-graph fetch --build-id 17812 --cache examples/live-build-17812/build-17812.albs.json --format json --verbose -o build-17812.json
-albs-graph trust-path --build-id 17812 --cache examples/live-build-17812/build-17812.albs.json --rpm nginx-core --arch x86_64 --format svg --verbose -o nginx-core_x86_64-trust.svg
+albs-graph trust-path --build-id 17812 --cache examples/live-build-17812/build-17812.albs.json --format svg --verbose -o build-17812-derived-trust.svg
 ```
 
 Regenerate the nginx-core demo artifacts in one verbose run. The script fetches ALBS metadata once into a local cache and reuses it for JSON, DOT and SVG renders while the cache is fresh. Cache freshness defaults to 5 minutes and can be changed with `--cache-ttl`:
@@ -154,19 +154,30 @@ albs-graph import-sbom sbom.json --format dot
 Show a focused trust graph for one RPM artifact from a live ALBS build:
 
 ```bash
+albs-graph trust-path --build-id 17812
+albs-graph trust-path --build-id 17812 --arch x86_64
 albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64
 albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64 --format svg -o nginx-core-x86_64-trust.svg
 ```
+
+Checkout and analyze source evidence referenced by an ALBS build:
+
+```bash
+albs-graph checkout-source --build-id 17812 --dest sources/build-17812
+albs-graph source-evidence sources/build-17812 --build-id 17812 --format json -o build-17812-source-evidence.json
+```
+
+`source-evidence` starts from ALBS build metadata, attaches a hashed source-file inventory, parses RPM `.spec` files for `BuildRequires`, `Requires`, `Source` and `Patch`, and records detected ecosystem manifests such as `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `pom.xml` and Gradle build files. Detection is evidence, not resolution; native package-manager resolvers are a later layer.
 
 ## Model
 
 Canonical node types include:
 
-`source_package`, `git_repository`, `git_commit`, `cas_attestation`, `build_task`, `build_environment`, `srpm`, `binary_rpm`, `signature`, `repository_release`, `errata`, `cve`, `sbom`, `external_package`, `dependency_spec`.
+`source_package`, `git_repository`, `git_commit`, `cas_attestation`, `build_task`, `build_environment`, `srpm`, `binary_rpm`, `signature`, `repository_release`, `errata`, `cve`, `sbom`, `external_package`, `dependency_spec`, `source_tree`, `source_file`, `source_manifest`.
 
 Canonical edge types include:
 
-`stored_in`, `points_to`, `authenticated_by`, `built_by`, `produces`, `tested_by`, `signed_as`, `released_to`, `described_by`, `fixes`, `affected_by`, `derived_from`, `declares_dependency`, `requires_runtime`, `requires_buildtime`, `provides`.
+`stored_in`, `points_to`, `authenticated_by`, `built_by`, `produces`, `tested_by`, `signed_as`, `released_to`, `described_by`, `fixes`, `affected_by`, `derived_from`, `declares_dependency`, `requires_runtime`, `requires_buildtime`, `provides`, `contains`, `references`.
 
 Runtime package relationships such as `requires_runtime` exist, but they are deliberately secondary. RPM dependencies are facts inside the graph, not the graph's organizing principle.
 
@@ -181,7 +192,7 @@ This PoC is not a full unified dependency resolver yet. It now establishes the d
 
 That distinction matters. Pip markers, Poetry extras, Maven scopes, Gradle configurations, npm optional dependencies, Cargo features and Go module constraints do not mean the same thing. The graph stores dependency facts in a normalized shape while preserving ecosystem-specific raw metadata for auditability.
 
-Current adapters populate this model from RPM `requires`/`provides` and SPDX/CycloneDX components. Future resolver adapters can add package-manager-specific resolution outputs without changing the ALBS provenance graph contract.
+Current adapters populate this model from RPM `requires`/`provides`, SPDX/CycloneDX components and source `.spec` declarations. Source manifest detection records ecosystem evidence from actual files; it does not assume npm, Cargo, Go, Python, Maven or Gradle participation unless a corresponding file exists in the source tree. Future resolver adapters can add package-manager-specific resolution outputs without changing the ALBS provenance graph contract.
 
 ## Unified Graph Strategy
 
@@ -191,7 +202,7 @@ The system separates three concerns that are often conflated in dependency graph
 - dependency facts: normalized package identities, scopes, constraints, contexts and observed components
 - resolver implementations: ecosystem-specific logic that can later mimic Pip, Poetry, Maven, Gradle, npm, Cargo or Go
 
-The current code implements the first two layers for the Enterprise Linux/RPM case and SBOM evidence. It deliberately does not claim to solve package-manager resolution yet. That next layer would consume project manifests and lockfiles, run ecosystem-specific resolution strategies, and emit the same normalized dependency facts back into this graph.
+The current code implements the provenance layer, RPM/SBOM evidence and source evidence discovery for the Enterprise Linux case. It deliberately does not claim to solve package-manager resolution yet. That next layer would consume the detected project manifests and lockfiles, run ecosystem-specific resolution strategies, and emit resolved dependency facts back into this graph.
 
 ## Trust Semantics
 
