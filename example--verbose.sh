@@ -2,9 +2,9 @@
 set -euo pipefail
 
 BUILD_ID="${BUILD_ID:-17812}"
-RPM_NAME="${RPM_NAME:-nginx-core}"
-ARCH="${ARCH:-x86_64}"
-OUT_DIR="${OUT_DIR:-examples/demo-nginx-core}"
+RPM_NAME="${RPM_NAME:-}"
+ARCH="${ARCH:-}"
+OUT_DIR="${OUT_DIR:-examples/demo-build-$BUILD_ID}"
 LIVE_DIR="${LIVE_DIR:-examples/live-build-17812}"
 CACHE_FILE="${CACHE_FILE:-$LIVE_DIR/build-$BUILD_ID.albs.json}"
 CACHE_TTL="${CACHE_TTL:-300}"
@@ -29,7 +29,11 @@ fi
 
 printf '==> ALBS graph tool: %s\n' "$ALBS_GRAPH_TOOL"
 printf '==> Build: %s\n' "$BUILD_ID"
-printf '==> RPM: %s.%s\n' "$RPM_NAME" "$ARCH"
+if [[ -n "$RPM_NAME" || -n "$ARCH" ]]; then
+  printf '==> RPM selector: %s%s%s\n' "${RPM_NAME:-<derived>}" "$([[ -n "$ARCH" ]] && printf .)" "$ARCH"
+else
+  printf '==> RPM selector: <derived from ALBS build metadata>\n'
+fi
 printf '==> Raw ALBS metadata cache: %s\n' "$CACHE_FILE"
 printf '==> Cache TTL: %ss\n' "$CACHE_TTL"
 printf '==> Verify git source commit: %s\n' "$VERIFY_GIT"
@@ -55,12 +59,17 @@ from rich.console import Console
 from rich.table import Table
 
 from albs_graph.adapters.albs import fetch_build_metadata, graph_from_build_metadata
-from albs_graph.provenance.trust import find_binary_rpm, focused_trust_graph, trust_path
+from albs_graph.provenance.trust import (
+    find_binary_rpm,
+    focused_trust_graph,
+    select_default_binary_rpm,
+    trust_path,
+)
 from albs_graph.render import graph_to_dot, graph_to_json, graph_to_svg
 
 build_id = int(os.environ["BUILD_ID"])
-rpm_name = os.environ["RPM_NAME"]
-arch = os.environ["ARCH"]
+rpm_name = os.environ["RPM_NAME"].strip()
+arch = os.environ["ARCH"].strip() or None
 out_dir = Path(os.environ["OUT_DIR"])
 live_dir = Path(os.environ["LIVE_DIR"])
 cache_file = Path(os.environ["CACHE_FILE"])
@@ -125,8 +134,16 @@ write(live_dir / f"build-{build_id}.svg", full_svg, "full graph svg")
 write(out_dir / f"build-{build_id}-full.json", full_json, "demo full graph json")
 write(out_dir / f"build-{build_id}-full.svg", full_svg, "demo full graph svg")
 
-step(f"Resolving binary RPM selector: {rpm_name}.{arch}")
-rpm_node = find_binary_rpm(graph, rpm_name, arch=arch)
+if rpm_name:
+    suffix = f".{arch}" if arch else ""
+    step(f"Resolving binary RPM selector: {rpm_name}{suffix}")
+    rpm_node = find_binary_rpm(graph, rpm_name, arch=arch)
+else:
+    if arch:
+        step(f"No RPM name provided; selecting binary RPM from ALBS graph for arch {arch}")
+    else:
+        step("No RPM selector provided; selecting binary RPM from ALBS graph")
+    rpm_node = select_default_binary_rpm(graph, arch=arch)
 step(f"Selected RPM node: {rpm_node.id}")
 step("Analyzing source-to-artifact trust path")
 report = trust_path(graph, rpm_node.id)
@@ -156,13 +173,17 @@ step(
     f"{focused_cas_count} CAS attestations"
 )
 
+selected_name = str(rpm_node.metadata.get("name") or rpm_node.label.removesuffix(".rpm"))
+selected_arch = str(rpm_node.metadata.get("arch") or "unknown")
+selected_slug = f"{selected_name}-{selected_arch}"
+
 step("Rendering focused trust graph as JSON/DOT/SVG")
-write(out_dir / f"{rpm_name}-{arch}-trust.json", graph_to_json(focused), "focused graph json")
-write(out_dir / f"{rpm_name}-{arch}-trust.dot", graph_to_dot(focused), "focused graph dot")
-write(out_dir / f"{rpm_name}-{arch}-trust.svg", graph_to_svg(focused), "focused graph svg")
+write(out_dir / f"{selected_slug}-trust.json", graph_to_json(focused), "focused graph json")
+write(out_dir / f"{selected_slug}-trust.dot", graph_to_dot(focused), "focused graph dot")
+write(out_dir / f"{selected_slug}-trust.svg", graph_to_svg(focused), "focused graph svg")
 
 console.print("==> Done")
 console.print(f"Metadata cache: {cache_file}")
 console.print(f"Full graph:     {out_dir / f'build-{build_id}-full.svg'}")
-console.print(f"Focused graph:  {out_dir / f'{rpm_name}-{arch}-trust.svg'}")
+console.print(f"Focused graph:  {out_dir / f'{selected_slug}-trust.svg'}")
 PY

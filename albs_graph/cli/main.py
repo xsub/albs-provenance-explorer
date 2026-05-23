@@ -14,7 +14,12 @@ from albs_graph.adapters.albs import graph_from_build_metadata, load_synthetic_b
 from albs_graph.adapters.sbom import import_sbom
 from albs_graph.fixtures import build_synthetic_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
-from albs_graph.provenance.trust import find_binary_rpm, focused_trust_graph, trust_path
+from albs_graph.provenance.trust import (
+    find_binary_rpm,
+    focused_trust_graph,
+    select_default_binary_rpm,
+    trust_path,
+)
 from albs_graph.render import SvgRenderError, graph_to_dot, graph_to_json, graph_to_svg
 
 app = typer.Typer(
@@ -160,8 +165,15 @@ def import_sbom_command(
     no_args_is_help=True,
 )
 def trust_path_command(
-    package: Optional[str] = typer.Argument(None, help="Binary RPM node id or package name."),
-    rpm: Optional[str] = typer.Option(None, "--rpm", help="Binary RPM name or node id."),
+    package: Optional[str] = typer.Argument(
+        None,
+        help="Optional binary RPM node id or package name. Defaults to an ALBS-derived artifact.",
+    ),
+    rpm: Optional[str] = typer.Option(
+        None,
+        "--rpm",
+        help="Optional binary RPM name or node id. Omit to select from ALBS build metadata.",
+    ),
     arch: Optional[str] = typer.Option(
         None, "--arch", help="RPM architecture, for example x86_64."
     ),
@@ -214,9 +226,11 @@ def trust_path_command(
 
     rpm_selector = rpm or package
     if rpm_selector is None:
-        raise ValueError("trust-path requires --rpm or a binary RPM node/package argument")
-    _log_step(verbose, f"Resolving binary RPM selector: {rpm_selector}")
-    rpm_node = find_binary_rpm(graph, rpm_selector, arch=arch)
+        _log_step(verbose, "No RPM selector provided; selecting binary RPM from ALBS graph")
+        rpm_node = select_default_binary_rpm(graph, arch=arch)
+    else:
+        _log_step(verbose, f"Resolving binary RPM selector: {rpm_selector}")
+        rpm_node = find_binary_rpm(graph, rpm_selector, arch=arch)
     _log_step(verbose, f"Selected RPM node: {rpm_node.id}")
     _log_step(verbose, "Analyzing source-to-artifact trust path")
     report = trust_path(graph, rpm_node.id)

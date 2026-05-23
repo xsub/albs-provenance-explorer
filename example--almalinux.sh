@@ -2,8 +2,8 @@
 set -euo pipefail
 
 BUILD_ID="${BUILD_ID:-17812}"
-RPM_NAME="${RPM_NAME:-nginx-core}"
-ARCH="${ARCH:-x86_64}"
+RPM_NAME="${RPM_NAME:-}"
+ARCH="${ARCH:-}"
 LIVE_DIR="${LIVE_DIR:-examples/live-build-17812}"
 CACHE_FILE="${CACHE_FILE:-$LIVE_DIR/build-$BUILD_ID.albs.json}"
 CAS_INSTALL_URL="${CAS_INSTALL_URL:-https://getcas.codenotary.io}"
@@ -51,13 +51,15 @@ import json
 import sys
 from pathlib import Path
 
-from albs_graph.adapters.albs import parse_build_metadata
+from albs_graph.adapters.albs import graph_from_build_metadata, parse_build_metadata
+from albs_graph.provenance.trust import find_binary_rpm, select_default_binary_rpm
 
 cache = Path(sys.argv[1])
 rpm_name = sys.argv[2]
-arch = sys.argv[3]
+arch = sys.argv[3] or None
 data = json.loads(cache.read_text(encoding="utf-8"))
 metadata = parse_build_metadata(data)
+graph = graph_from_build_metadata(metadata)
 
 def first_task_hash() -> str:
     for task in data.get("tasks", []):
@@ -66,18 +68,17 @@ def first_task_hash() -> str:
             return str(value)
     raise SystemExit("missing alma_commit_cas_hash in ALBS metadata")
 
-def artifact_hash() -> tuple[str, str]:
-    prefix = f"{rpm_name}-"
-    suffix = f".{arch}.rpm"
-    for task in data.get("tasks", []):
-        for artifact in task.get("artifacts", []):
-            name = str(artifact.get("name", ""))
-            value = artifact.get("cas_hash")
-            if name.startswith(prefix) and name.endswith(suffix) and value:
-                return name, str(value)
-    raise SystemExit(f"missing cas_hash for {rpm_name}.{arch} in ALBS metadata")
+def selected_rpm() -> tuple[str, str]:
+    if rpm_name:
+        node = find_binary_rpm(graph, rpm_name, arch=arch)
+    else:
+        node = select_default_binary_rpm(graph, arch=arch)
+    value = node.metadata.get("cas_hash")
+    if not value:
+        raise SystemExit(f"missing cas_hash for selected RPM {node.label} in ALBS metadata")
+    return node.label, str(value)
 
-artifact_name, artifact_cas_hash = artifact_hash()
+artifact_name, artifact_cas_hash = selected_rpm()
 print(f"SOURCE_PACKAGE={metadata.package}")
 print(f"SOURCE_PACKAGE_SOURCE={metadata.package_source}")
 print(f"SOURCE_CAS_HASH={first_task_hash()}")
@@ -113,7 +114,11 @@ cas_authenticate_hash() {
 
 printf '==> AlmaLinux CAS verification demo\n'
 printf 'build: %s\n' "$BUILD_ID"
-printf 'rpm:   %s.%s\n' "$RPM_NAME" "$ARCH"
+if [[ -n "$RPM_NAME" || -n "$ARCH" ]]; then
+  printf 'rpm selector: %s%s%s\n' "${RPM_NAME:-<derived>}" "$([[ -n "$ARCH" ]] && printf .)" "$ARCH"
+else
+  printf 'rpm selector: <derived from ALBS build metadata>\n'
+fi
 printf 'cache: %s\n' "$CACHE_FILE"
 if [[ -n "$SIGNER_ID" ]]; then
   printf 'signer: %s\n' "$SIGNER_ID"

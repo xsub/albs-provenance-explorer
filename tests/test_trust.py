@@ -5,7 +5,12 @@ from pathlib import Path
 from albs_graph.fixtures import build_synthetic_fixture_graph
 from albs_graph.model import Node, ProvenanceGraph
 from albs_graph.provenance.lineage import artifacts_from_source, cves_for_artifact
-from albs_graph.provenance.trust import find_binary_rpm, focused_trust_graph, trust_path
+from albs_graph.provenance.trust import (
+    find_binary_rpm,
+    focused_trust_graph,
+    select_default_binary_rpm,
+    trust_path,
+)
 
 
 def test_trust_path_resolves_package_name() -> None:
@@ -50,6 +55,19 @@ def test_focused_trust_graph_for_live_build_artifact_is_small() -> None:
         for node in focused.nodes.values()
     )
     assert len(focused.nodes) < 20
+
+
+def test_default_binary_rpm_selection_comes_from_graph_metadata() -> None:
+    data = json.loads(
+        Path("examples/live-build-17812/build-17812.json").read_text(encoding="utf-8")
+    )
+    graph = _graph_from_export(data)
+
+    rpm = select_default_binary_rpm(graph)
+
+    assert rpm.metadata["name"] == "nginx"
+    assert rpm.metadata["arch"] == "s390x"
+    assert rpm.id == "rpm:3237057:nginx-1.20.1-16.el9_4.1.s390x.rpm"
 
 
 def _graph_from_export(data: dict[str, Any]) -> ProvenanceGraph:

@@ -16,6 +16,30 @@ def trust_reports(graph: ProvenanceGraph) -> list[dict[str, Any]]:
     ]
 
 
+def select_default_binary_rpm(graph: ProvenanceGraph, arch: str | None = None) -> Node:
+    candidates = graph.find_by_type(NodeType.BINARY_RPM)
+    if arch:
+        candidates = [node for node in candidates if node.metadata.get("arch") == arch]
+    if not candidates:
+        suffix = f" for arch {arch}" if arch else ""
+        raise ValueError(f"No binary RPM artifacts found{suffix}")
+
+    source_names = {
+        node.label
+        for node in graph.find_by_type(NodeType.SOURCE_PACKAGE)
+        if node.label
+    }
+
+    def score(node: Node) -> tuple[int, int, int, str]:
+        name = str(node.metadata.get("name") or node.label)
+        artifact_id = _artifact_sort_key(node.metadata.get("artifact_id"))
+        is_source_named = 0 if name in source_names else 1
+        is_debug = 1 if _is_debug_artifact(name) else 0
+        return (is_source_named, is_debug, artifact_id, node.label)
+
+    return sorted(candidates, key=score)[0]
+
+
 def find_binary_rpm(graph: ProvenanceGraph, name_or_node: str, arch: str | None = None) -> Node:
     if name_or_node in graph.nodes:
         node = graph.nodes[name_or_node]
@@ -46,6 +70,24 @@ def find_binary_rpm(graph: ProvenanceGraph, name_or_node: str, arch: str | None 
             f"Ambiguous RPM {name_or_node}; use --arch or a full node id. Matches: {choices}{more}"
         )
     return matches[0]
+
+
+def _artifact_sort_key(value: Any) -> int:
+    if isinstance(value, int):
+        return value
+    try:
+        return int(str(value))
+    except (TypeError, ValueError):
+        return 2**63 - 1
+
+
+def _is_debug_artifact(name: str) -> bool:
+    return (
+        name.endswith("-debuginfo")
+        or name.endswith("-debugsource")
+        or "-debuginfo-" in name
+        or "-debugsource-" in name
+    )
 
 
 def focused_trust_graph(
