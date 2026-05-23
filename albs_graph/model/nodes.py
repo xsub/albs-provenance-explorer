@@ -21,6 +21,7 @@ class NodeType(StrEnum):
     SBOM = "sbom"
     TEST_RESULT = "test_result"
     EXTERNAL_PACKAGE = "external_package"
+    DEPENDENCY_SPEC = "dependency_spec"
 
 
 @dataclass(frozen=True)

@@ -9,9 +9,9 @@ from rich.console import Console
 from rich.table import Table
 
 from albs_graph.adapters import RpmQueryError, fetch_build_metadata, graph_from_local_rpm
-from albs_graph.adapters.albs import graph_from_build_metadata, load_mock_build
+from albs_graph.adapters.albs import graph_from_build_metadata, load_synthetic_build_fixture
 from albs_graph.adapters.sbom import import_sbom
-from albs_graph.mock_data import build_mock_package_graph
+from albs_graph.fixtures import build_synthetic_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
 from albs_graph.provenance.trust import find_binary_rpm, focused_trust_graph, trust_path
 from albs_graph.render import SvgRenderError, graph_to_dot, graph_to_json, graph_to_svg
@@ -25,9 +25,9 @@ console = Console()
 verbose_console = Console(stderr=True)
 
 
-@app.command()
-def mock(
-    package: str = typer.Argument("openssl", help="Mock package to build."),
+@app.command("fixture")
+def fixture(
+    package: str = typer.Argument(..., help="Synthetic package fixture to build."),
     output_format: str = typer.Option(
         "summary",
         "--format",
@@ -36,7 +36,7 @@ def mock(
     ),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Write output to a file."),
 ) -> None:
-    graph = build_mock_package_graph(package)
+    graph = build_synthetic_package_graph(package)
     _emit_graph(graph, output_format, output)
 
 
@@ -156,7 +156,7 @@ def trust_path_command(
         None,
         "--source",
         "-s",
-        help="Optional mock ALBS build JSON. Defaults to built-in openssl graph.",
+        help="Optional synthetic ALBS build metadata JSON.",
     ),
 ) -> None:
     if build_id is not None:
@@ -170,16 +170,16 @@ def trust_path_command(
         )
         _log_step(verbose, "Building provenance graph from ALBS metadata")
         graph = graph_from_build_metadata(metadata)
+    elif source:
+        _log_step(verbose, f"Loading synthetic ALBS build metadata from {source}")
+        graph = load_synthetic_build_fixture(source)
     else:
-        if source:
-            _log_step(verbose, f"Loading mock ALBS build metadata from {source}")
-            graph = load_mock_build(source)
-        else:
-            _log_step(verbose, "Building built-in OpenSSL mock provenance graph")
-            graph = build_mock_package_graph("openssl")
+        raise ValueError("trust-path requires --build-id or --source")
     _log_graph_stats(verbose, graph)
 
-    rpm_selector = rpm or package or "openssl-libs"
+    rpm_selector = rpm or package
+    if rpm_selector is None:
+        raise ValueError("trust-path requires --rpm or a binary RPM node/package argument")
     _log_step(verbose, f"Resolving binary RPM selector: {rpm_selector}")
     rpm_node = find_binary_rpm(graph, rpm_selector, arch=arch)
     _log_step(verbose, f"Selected RPM node: {rpm_node.id}")
@@ -199,29 +199,35 @@ def trust_path_command(
     for name, value in report["checks"].items():
         table.add_row(name, "ok" if value else "missing")
     console.print(table)
+    console.print(f"Provenance complete: {report['provenance_complete']}")
+    console.print(f"Security context complete: {report['security_context_complete']}")
     console.print(f"Complete: {report['complete']}")
-    if report["missing"]:
-        console.print(f"Missing: {', '.join(report['missing'])}")
+    if report["missing_provenance"]:
+        console.print(f"Missing provenance: {', '.join(report['missing_provenance'])}")
+    if report["missing_security_context"]:
+        console.print(
+            f"Missing security context: {', '.join(report['missing_security_context'])}"
+        )
     console.print("Path:")
     for node_id in report["path"]:
         console.print(f"  {node_id}")
 
 
-@app.command()
-def render(
-    package: str = typer.Argument("openssl", help="Mock package to render."),
+@app.command("render-fixture")
+def render_fixture(
+    package: str = typer.Argument(..., help="Synthetic package fixture to render."),
     output_format: str = typer.Option("svg", "--format", "-f", help="svg, dot or json."),
     output: Optional[Path] = typer.Option(None, "--output", "-o"),
 ) -> None:
-    graph = build_mock_package_graph(package)
+    graph = build_synthetic_package_graph(package)
     _emit_graph(graph, output_format, output)
 
 
-@app.command()
-def inspect(
-    package: str = typer.Argument("openssl", help="Mock package to inspect."),
+@app.command("inspect-fixture")
+def inspect_fixture(
+    package: str = typer.Argument(..., help="Synthetic package fixture to inspect."),
 ) -> None:
-    graph = build_mock_package_graph(package)
+    graph = build_synthetic_package_graph(package)
     table = Table(title=f"ALBS provenance graph: {package}")
     table.add_column("Type")
     table.add_column("Count", justify="right")
@@ -232,7 +238,10 @@ def inspect(
     console.print(table)
     for node in graph.find_by_type(NodeType.BINARY_RPM):
         report = graph.trust_path_report(node.id)
-        console.print(f"{node.label}: trust path complete={report.complete}")
+        console.print(
+            f"{node.label}: provenance complete={report.provenance_complete}, "
+            f"security context complete={report.security_context_complete}"
+        )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -298,6 +307,8 @@ def _summary(graph: ProvenanceGraph) -> str:
     for rpm in graph.find_by_type(NodeType.BINARY_RPM):
         report = graph.trust_path_report(rpm.id)
         lines.append(f"Package artifact: {rpm.label}")
+        lines.append(f"Provenance complete: {report.provenance_complete}")
+        lines.append(f"Security context complete: {report.security_context_complete}")
         lines.append(f"Trust path complete: {report.complete}")
         for name, value in report.checks.items():
             lines.append(f"  - {name}: {value}")

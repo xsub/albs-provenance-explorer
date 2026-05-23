@@ -21,6 +21,7 @@ class Relation(StrEnum):
     DERIVED_FROM = "derived_from"
     REQUIRES_RUNTIME = "requires_runtime"
     REQUIRES_BUILDTIME = "requires_buildtime"
+    DECLARES_DEPENDENCY = "declares_dependency"
     PROVIDES = "provides"
     SUPERSEDES = "supersedes"
 

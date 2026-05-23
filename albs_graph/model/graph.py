@@ -12,17 +12,29 @@ from .nodes import Node, NodeType
 class TrustPathReport:
     subject: str
     complete: bool
+    provenance_complete: bool
+    security_context_complete: bool
     checks: dict[str, bool]
+    provenance_checks: dict[str, bool]
+    security_context_checks: dict[str, bool]
     path: list[str]
     missing: list[str]
+    missing_provenance: list[str]
+    missing_security_context: list[str]
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "subject": self.subject,
             "complete": self.complete,
+            "provenance_complete": self.provenance_complete,
+            "security_context_complete": self.security_context_complete,
             "checks": self.checks,
+            "provenance_checks": self.provenance_checks,
+            "security_context_checks": self.security_context_checks,
             "path": self.path,
             "missing": self.missing,
+            "missing_provenance": self.missing_provenance,
+            "missing_security_context": self.missing_security_context,
         }
 
 
@@ -106,18 +118,18 @@ class ProvenanceGraph:
         return target in self.reachable(source)
 
     def source_to_artifact_path(self, rpm_node_id: str) -> list[str]:
-        producers = self.incoming(rpm_node_id, Relation.PRODUCES)
+        producers = _sorted_edges(self.incoming(rpm_node_id, Relation.PRODUCES))
         if not producers:
             return [rpm_node_id]
 
         build_id = producers[0].source
-        cas_edges = self.incoming(build_id, Relation.BUILT_BY)
+        cas_edges = _prefer_cas_evidence_edges(self.incoming(build_id, Relation.BUILT_BY), self)
         cas_id = cas_edges[0].source if cas_edges else None
-        commit_edges = self.incoming(cas_id, Relation.AUTHENTICATED_BY) if cas_id else []
+        commit_edges = _sorted_edges(self.incoming(cas_id, Relation.AUTHENTICATED_BY)) if cas_id else []
         commit_id = commit_edges[0].source if commit_edges else None
-        repo_edges = self.incoming(commit_id, Relation.POINTS_TO) if commit_id else []
+        repo_edges = _sorted_edges(self.incoming(commit_id, Relation.POINTS_TO)) if commit_id else []
         repo_id = repo_edges[0].source if repo_edges else None
-        source_edges = self.incoming(repo_id, Relation.STORED_IN) if repo_id else []
+        source_edges = _sorted_edges(self.incoming(repo_id, Relation.STORED_IN)) if repo_id else []
         source_id = source_edges[0].source if source_edges else None
 
         return [
@@ -142,32 +154,49 @@ class ProvenanceGraph:
                 for edge in self.incoming(cas_edge.source)
             )
             and self.nodes[cas_edge.source].type == NodeType.CAS_ATTESTATION
+            and _has_cas_evidence(self.nodes[cas_edge.source])
             for build_task in build_tasks
             for cas_edge in self.incoming(build_task, Relation.BUILT_BY)
         )
 
-        checks = {
+        provenance_checks = {
             "has_build_task": Relation.PRODUCES in incoming_relations,
             "has_signature": Relation.SIGNED_AS in outgoing_relations,
             "has_release": Relation.RELEASED_TO in outgoing_relations,
-            "has_sbom": Relation.DESCRIBED_BY in outgoing_relations,
-            "has_errata_link": (
-                Relation.FIXES in outgoing_relations or Relation.AFFECTED_BY in outgoing_relations
-            ),
             "has_source_cas_attestation": has_source_cas_attestation,
             "has_artifact_cas_attestation": any(
                 edge.relation == Relation.AUTHENTICATED_BY
                 and self.nodes[edge.target].type == NodeType.CAS_ATTESTATION
+                and _has_cas_evidence(self.nodes[edge.target])
                 for edge in self.outgoing(rpm_node_id)
             ),
         }
+        security_context_checks = {
+            "has_sbom": Relation.DESCRIBED_BY in outgoing_relations,
+            "has_errata_link": (
+                Relation.FIXES in outgoing_relations or Relation.AFFECTED_BY in outgoing_relations
+            ),
+        }
+        checks = provenance_checks | security_context_checks
+        missing_provenance = [name for name, passed in provenance_checks.items() if not passed]
+        missing_security_context = [
+            name for name, passed in security_context_checks.items() if not passed
+        ]
         missing = [name for name, passed in checks.items() if not passed]
+        provenance_complete = not missing_provenance
+        security_context_complete = not missing_security_context
         return TrustPathReport(
             subject=rpm_node_id,
-            complete=not missing,
+            complete=provenance_complete and security_context_complete,
+            provenance_complete=provenance_complete,
+            security_context_complete=security_context_complete,
             checks=checks,
+            provenance_checks=provenance_checks,
+            security_context_checks=security_context_checks,
             path=self.source_to_artifact_path(rpm_node_id),
             missing=missing,
+            missing_provenance=missing_provenance,
+            missing_security_context=missing_security_context,
         )
 
     def neighborhood(self, node_id: str, depth: int = 1) -> "ProvenanceGraph":
@@ -189,7 +218,7 @@ class ProvenanceGraph:
     def subgraph(self, node_ids: Iterable[str]) -> "ProvenanceGraph":
         selected = set(node_ids)
         graph = ProvenanceGraph()
-        for node_id in selected:
+        for node_id in sorted(selected):
             graph.add_node(self.nodes[node_id])
         for edge in self.edges:
             if edge.source in selected and edge.target in selected:
@@ -214,3 +243,23 @@ class ProvenanceGraph:
             "nodes": [node.to_dict() for node in self.nodes.values()],
             "edges": [edge.to_dict() for edge in self.edges],
         }
+
+
+def _sorted_edges(edges: Iterable[Edge]) -> list[Edge]:
+    return sorted(edges, key=lambda edge: (edge.source, edge.target, str(edge.relation)))
+
+
+def _prefer_cas_evidence_edges(edges: Iterable[Edge], graph: ProvenanceGraph) -> list[Edge]:
+    return sorted(
+        edges,
+        key=lambda edge: (
+            not _has_cas_evidence(graph.nodes[edge.source]),
+            edge.source,
+            edge.target,
+            str(edge.relation),
+        ),
+    )
+
+
+def _has_cas_evidence(node: Node) -> bool:
+    return node.type == NodeType.CAS_ATTESTATION and bool(node.metadata.get("cas_hash"))

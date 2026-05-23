@@ -83,18 +83,12 @@
   ],
   "nodes": [
     {
-      "id": "cas:artifact:f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510",
-      "label": "f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510",
+      "id": "src:nginx",
+      "label": "nginx",
       "metadata": {
-        "artifact_id": 3237038,
-        "artifact_name": "nginx-1.20.1-16.el9_4.1.src.rpm",
-        "cas_hash": "f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510",
-        "href": "/pulp/api/v3/content/rpm/packages/0191b80d-2335-71fb-94c9-7b7b674eea95/",
-        "subject_type": "srpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "ecosystem": "rpm"
       },
-      "type": "cas_attestation"
+      "type": "source_package"
     },
     {
       "id": "sig:albs:11754",
@@ -115,6 +109,30 @@
       "type": "signature"
     },
     {
+      "id": "cas:artifact:f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510",
+      "label": "f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510",
+      "metadata": {
+        "artifact_id": 3237038,
+        "artifact_name": "nginx-1.20.1-16.el9_4.1.src.rpm",
+        "cas_hash": "f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510",
+        "evidence_present": true,
+        "externally_verified": false,
+        "href": "/pulp/api/v3/content/rpm/packages/0191b80d-2335-71fb-94c9-7b7b674eea95/",
+        "reported_by": "ALBS",
+        "subject_type": "srpm_artifact",
+        "system": "Codenotary CAS"
+      },
+      "type": "cas_attestation"
+    },
+    {
+      "id": "repo-release:ALBS release 7396",
+      "label": "ALBS release 7396",
+      "metadata": {
+        "source": "ALBS"
+      },
+      "type": "repository_release"
+    },
+    {
       "id": "build:albs:17812",
       "label": "ALBS build 17812",
       "metadata": {
@@ -126,12 +144,12 @@
       "type": "build_task"
     },
     {
-      "id": "src:nginx",
-      "label": "nginx",
+      "id": "git:https://git.almalinux.org/rpms/nginx.git",
+      "label": "https://git.almalinux.org/rpms/nginx.git",
       "metadata": {
-        "ecosystem": "rpm"
+        "system": "ALBS"
       },
-      "type": "source_package"
+      "type": "git_repository"
     },
     {
       "id": "rpm:3237140:nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
@@ -170,55 +188,6 @@
       "type": "build_environment"
     },
     {
-      "id": "cas:artifact:e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
-      "label": "e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
-      "metadata": {
-        "artifact_id": 3237140,
-        "artifact_name": "nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
-        "cas_hash": "e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
-        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6053-791a-8ffd-132c5a548183/",
-        "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
-      },
-      "type": "cas_attestation"
-    },
-    {
-      "id": "git:https://git.almalinux.org/rpms/nginx.git",
-      "label": "https://git.almalinux.org/rpms/nginx.git",
-      "metadata": {
-        "system": "ALBS"
-      },
-      "type": "git_repository"
-    },
-    {
-      "id": "repo-release:ALBS release 7396",
-      "label": "ALBS release 7396",
-      "metadata": {
-        "source": "ALBS"
-      },
-      "type": "repository_release"
-    },
-    {
-      "id": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
-      "label": "911945c71710c83cf6f760447c32d8d6cae737dc",
-      "metadata": {
-        "cas_hash": "911945c71710c83cf6f760447c32d8d6cae737dc",
-        "subject_type": "source_commit",
-        "system": "Codenotary CAS",
-        "trusted": true
-      },
-      "type": "cas_attestation"
-    },
-    {
-      "id": "commit:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
-      "label": "911945c71710c83cf6f760447c32d8d6cae737dc",
-      "metadata": {
-        "package": "nginx"
-      },
-      "type": "git_commit"
-    },
-    {
       "id": "srpm:3237035:nginx-1.20.1-16.el9_4.1.src.rpm",
       "label": "nginx-1.20.1-16.el9_4.1.src.rpm",
       "metadata": {
@@ -235,6 +204,39 @@
       "type": "srpm"
     },
     {
+      "id": "cas:artifact:e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
+      "label": "e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
+      "metadata": {
+        "artifact_id": 3237140,
+        "artifact_name": "nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
+        "cas_hash": "e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
+        "evidence_present": true,
+        "externally_verified": false,
+        "href": "/pulp/api/v3/content/rpm/packages/0191b819-6053-791a-8ffd-132c5a548183/",
+        "reported_by": "ALBS",
+        "subject_type": "rpm_artifact",
+        "system": "Codenotary CAS"
+      },
+      "type": "cas_attestation"
+    },
+    {
+      "id": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
+      "label": "911945c71710c83cf6f760447c32d8d6cae737dc",
+      "metadata": {
+        "albs_authenticated": true,
+        "cas_hash": "911945c71710c83cf6f760447c32d8d6cae737dc",
+        "evidence_present": true,
+        "externally_verified": false,
+        "git_commit": "911945c71710c83cf6f760447c32d8d6cae737dc",
+        "git_ref": "imports/c9/nginx-1.20.1-16.el9_4.1",
+        "git_url": "https://git.almalinux.org/rpms/nginx.git",
+        "reported_by": "ALBS",
+        "subject_type": "source_commit",
+        "system": "Codenotary CAS"
+      },
+      "type": "cas_attestation"
+    },
+    {
       "id": "build:albs-task:188077",
       "label": "ALBS task 188077 x86_64",
       "metadata": {
@@ -248,6 +250,14 @@
         "status": 2
       },
       "type": "build_task"
+    },
+    {
+      "id": "commit:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
+      "label": "911945c71710c83cf6f760447c32d8d6cae737dc",
+      "metadata": {
+        "package": "nginx"
+      },
+      "type": "git_commit"
     }
   ],
   "schema": "albs-provenance-explorer/v1"

@@ -2946,10 +2946,16 @@
       "id": "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc",
       "label": "911945c71710c83cf6f760447c32d8d6cae737dc",
       "metadata": {
+        "albs_authenticated": true,
         "cas_hash": "911945c71710c83cf6f760447c32d8d6cae737dc",
+        "evidence_present": true,
+        "externally_verified": false,
+        "git_commit": "911945c71710c83cf6f760447c32d8d6cae737dc",
+        "git_ref": "imports/c9/nginx-1.20.1-16.el9_4.1",
+        "git_url": "https://git.almalinux.org/rpms/nginx.git",
+        "reported_by": "ALBS",
         "subject_type": "source_commit",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3048,10 +3054,12 @@
         "artifact_id": 3237038,
         "artifact_name": "nginx-1.20.1-16.el9_4.1.src.rpm",
         "cas_hash": "f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b80d-2335-71fb-94c9-7b7b674eea95/",
+        "reported_by": "ALBS",
         "subject_type": "srpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3078,10 +3086,12 @@
         "artifact_id": 3237100,
         "artifact_name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "b3bc50079581190727d6ec2fe1e0113a25f444503522f299d2a2884819b4fb60",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5d6c-7dcf-92eb-c72615579883/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3108,10 +3118,12 @@
         "artifact_id": 3237085,
         "artifact_name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "336da4c7f79d5b21a9ef6e521edda5a14178aafcc215a6c84811efa87943c75d",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-595c-7947-a37e-cfbd8b28592b/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3138,10 +3150,12 @@
         "artifact_id": 3237086,
         "artifact_name": "nginx-core-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "3e32ea857035de3155945c8870a62c1db6b05576e7dfe1c1416a2fd971e8a419",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-59f9-7c6c-8214-f2926ca16fd1/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3168,10 +3182,12 @@
         "artifact_id": 3237087,
         "artifact_name": "nginx-mod-devel-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "76550ddae72de68a078ba83b97468d77ebdac99a0417d056b8496a24b287b1a5",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5a06-7b74-b267-2a3bf1400f2f/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3198,10 +3214,12 @@
         "artifact_id": 3237088,
         "artifact_name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "beec5e2c96289725af495f029d136ef62c7d80096cfefa6e8b5c08ad3dc0a722",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5a44-7ffa-8bc5-dd01d6251286/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3228,10 +3246,12 @@
         "artifact_id": 3237089,
         "artifact_name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "998ba1b0d093feda73bb9a397535bcdc6824193a4b2df807cbb860dc6fb48ac5",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5a90-7904-aed3-ab52f6fe0a1c/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3258,10 +3278,12 @@
         "artifact_id": 3237090,
         "artifact_name": "nginx-mod-mail-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "7247e9a9294758b29aedba0d304f76c06992840bacdd4a6608eda529158d90e3",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5b83-7030-b530-9f1829df2cbc/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3288,10 +3310,12 @@
         "artifact_id": 3237091,
         "artifact_name": "nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
         "cas_hash": "44dbfe6a4c12ba0391ce9b03b3714845843f9beff53166562581273827afc5c4",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-56ca-7f0c-819f-3547b2e54f06/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3318,10 +3342,12 @@
         "artifact_id": 3237092,
         "artifact_name": "nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
         "cas_hash": "ccee764327d86f43d4eda940071b5201cc0e403af38c6a1f42d10885a259b276",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-55d6-74cc-93e5-04ea1714ff12/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3348,10 +3374,12 @@
         "artifact_id": 3237093,
         "artifact_name": "nginx-mod-stream-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "6ffca1fa491c7dc3a72567ae270cc84795e0128dff37fea13ab40847fe9bf30f",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5b9a-7d91-bd7c-a9659bef71be/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3378,10 +3406,12 @@
         "artifact_id": 3237094,
         "artifact_name": "nginx-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "6c8e71b5bedfdd4f5be1cf91764eed11ff5c39fb223192b24707d8f7afe49c0e",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5c0c-7fba-9e86-44eb78a88cfe/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3408,10 +3438,12 @@
         "artifact_id": 3237095,
         "artifact_name": "nginx-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "5d38ee02c0c3f4d67ea0c45aa848eb2751090e408fcea0082319fdc27d5436a2",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5c02-7ab4-8536-2311b9e33667/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3438,10 +3470,12 @@
         "artifact_id": 3237096,
         "artifact_name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "762cb1006dcec332b32958536f3ef22c4e8141a3fc18cf41762e69ef0f3d5b8f",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5cd3-77fb-81d2-b89edf1889f4/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3468,10 +3502,12 @@
         "artifact_id": 3237097,
         "artifact_name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "faa205389c5b94f331648588ef6ff009723e98d04d2a0d4fbe9e1b99620e1ce3",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5c9b-75ee-8f80-fcd5d9fc763a/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3498,10 +3534,12 @@
         "artifact_id": 3237098,
         "artifact_name": "nginx-debugsource-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "6fea19ce899185318f77432479e1f75105b6635d39082629fd9d2ea63148e516",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5e54-770e-a6c4-46fe0e6935c0/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3528,10 +3566,12 @@
         "artifact_id": 3237099,
         "artifact_name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "4b3083aca980c8fd7d335911a356039a939d1d8c00045c3aaa957b4b72a77b20",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5e48-7bc3-b1e7-5d791f7dda1f/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3558,10 +3598,12 @@
         "artifact_id": 3237101,
         "artifact_name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "a04756c7d2c21a6e3f10c24b981f120b559d95ef9ca16e7ce8d6f7dce75939bf",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5d41-74e5-8f53-a0736c874671/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3588,10 +3630,12 @@
         "artifact_id": 3237102,
         "artifact_name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
         "cas_hash": "685c9d3d6cd3c2411c29ffa3c83d8e8278e4f11cab174fac3b911f6c280df487",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5d0a-7efe-878d-edd078bee268/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3863,10 +3907,12 @@
         "artifact_id": 3237196,
         "artifact_name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "14dd6acf0ee53514e36af4a8981873b6731dcc274acb50cbf742ea262d0a5f81",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-67dc-7c97-8995-9c7543289674/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3893,10 +3939,12 @@
         "artifact_id": 3237197,
         "artifact_name": "nginx-mod-stream-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "b6c233e81dd87ca6f653e88c3890c7bf70738ee2d69c68769611533b17a89dd2",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-67ef-7475-9170-63bd6099c436/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3923,10 +3971,12 @@
         "artifact_id": 3237198,
         "artifact_name": "nginx-mod-devel-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "dd1ba7bf45d776d674b69ad39cc59473df5fbf6d87f19cfaee4cdb96930a7fee",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-68ba-7755-8ee7-b52821891c0c/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3953,10 +4003,12 @@
         "artifact_id": 3237199,
         "artifact_name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "3851e2cf3206fe84f88b8b0090f0934fa5c075ef3af9769ffff04cd7029fb71b",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6974-7b07-9ecb-8bf514e321b2/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -3983,10 +4035,12 @@
         "artifact_id": 3237200,
         "artifact_name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "6c7c88500cc384777bc5c627e0e25555dc79db66fd6a5fcae745f659568ed82d",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6983-7dca-b1fe-339016963ed7/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4013,10 +4067,12 @@
         "artifact_id": 3237201,
         "artifact_name": "nginx-mod-mail-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "03b123c3d3218903175dc8638d36dc3f1f80e223465bdfee22018a1021605320",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-694e-7064-a59a-be88f2d0af82/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4043,10 +4099,12 @@
         "artifact_id": 3237202,
         "artifact_name": "nginx-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "c2b1673153907da1798c8b8050feaaab679efdb5b44d8d5b4b8aed03a4d2d969",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6a0b-739c-891c-9ff323c448be/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4073,10 +4131,12 @@
         "artifact_id": 3237203,
         "artifact_name": "nginx-core-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "dc661dd5c0830a1eadfeaae057091a363f533ea5e6197945e679764ad63b8fd8",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6a78-7cd9-bd7c-f5c8db619102/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4103,10 +4163,12 @@
         "artifact_id": 3237204,
         "artifact_name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "528a210a0d5a00420a4ad22533828bfc766fd1d565716856b30929100ba1a359",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-69b0-742d-9029-a31ae11b8b57/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4133,10 +4195,12 @@
         "artifact_id": 3237205,
         "artifact_name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "405310297925db12c1f00d34bd7bc53b38b1465b8fd1b31569b4dd767395802a",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6bb3-78db-95d6-db86f9ee4aaa/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4163,10 +4227,12 @@
         "artifact_id": 3237206,
         "artifact_name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "3506e229cc9099523324ce2019801ee36c5c4ede6f7fb495f50cae8528a58930",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6b14-7c6d-8d1a-cecfb63db593/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4193,10 +4259,12 @@
         "artifact_id": 3237207,
         "artifact_name": "nginx-debugsource-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "0317a0b28d9475b7d165e1cb4ca832162d048f6ff95b0d27e099ff30f591aeeb",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6b5e-772e-aafe-9c891c0780d5/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4223,10 +4291,12 @@
         "artifact_id": 3237208,
         "artifact_name": "nginx-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "32f45bf48b4703279a64501d80d226125c676529924d4eb765b7e68b424f37cf",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6bba-7c5c-8442-6b3cccf701f2/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4253,10 +4323,12 @@
         "artifact_id": 3237209,
         "artifact_name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "51f68de663baf80858cbacf00d9c87c0f2e45e06b3ba369fdc138813b0ddd3e9",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6cb8-7459-83fe-50b2ac9afefb/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4283,10 +4355,12 @@
         "artifact_id": 3237210,
         "artifact_name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "d8fea01f936216afa6ae80894d3b4692153765103709b6923c1aa07f684c2a33",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6c77-758e-b727-ec39e7fe02ae/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4313,10 +4387,12 @@
         "artifact_id": 3237211,
         "artifact_name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
         "cas_hash": "60e65cd793f1b84394ef7169765f743ccaf2513cf5e851361f67949652352d97",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6c9e-7d0f-b3cc-995154e9a8cb/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4572,10 +4648,12 @@
         "artifact_id": 3237138,
         "artifact_name": "nginx-mod-devel-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "cdcf09a29370641180c91293d6e7792abfb5b948b84122773fbb323aee48dd44",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-605c-72bc-898e-d28340a3dc7c/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4602,10 +4680,12 @@
         "artifact_id": 3237139,
         "artifact_name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "5b87d86de9e9e1d72893d6eb7f4419db124b33b5d6dc71a39323c96514d8ed39",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-60c4-75e0-8ad1-dc808a893aaf/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4632,10 +4712,12 @@
         "artifact_id": 3237140,
         "artifact_name": "nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "e81b769bd3647a3310fff0d364f19980d1fe39f01a444feffdfed9430a68f4c3",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6053-791a-8ffd-132c5a548183/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4662,10 +4744,12 @@
         "artifact_id": 3237141,
         "artifact_name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "7d211ce70d11b3581a44ca1deae63fa73f264660f95c7fca4d42b96f3e1a1d5b",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-61a6-7fe2-9093-16be2309ea75/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4692,10 +4776,12 @@
         "artifact_id": 3237142,
         "artifact_name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "866034c4c112cbb221c0b19edc19e6226e522673cc136e6837706c76d39e115f",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-60c8-79e5-a077-c4d49026ad7b/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4722,10 +4808,12 @@
         "artifact_id": 3237143,
         "artifact_name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "1ec3f66d70386b181754dabc14cc454ebacfb257d6496735f26a67f8321cc5a2",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-617f-791b-ac21-65b6361c6b18/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4752,10 +4840,12 @@
         "artifact_id": 3237144,
         "artifact_name": "nginx-debugsource-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "11b97ff474af55625a77e8cb0fbb40de3408071caa610ef1eacfa4a35619ffee",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-61d6-773e-b542-ce7c6d118692/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4782,10 +4872,12 @@
         "artifact_id": 3237145,
         "artifact_name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "2a88bc41dccfaa482d557531e14c94a83f68b7e33d1144f3ca0cbe0930b92657",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-61b1-7f39-bcf0-03ffc28a0700/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4812,10 +4904,12 @@
         "artifact_id": 3237146,
         "artifact_name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "748d385a8352368768418352f1a49049b5401df657f62b2a3c11f49ff6c6cd31",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6251-78c3-95e9-042fafa45e31/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4842,10 +4936,12 @@
         "artifact_id": 3237147,
         "artifact_name": "nginx-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "2527491726eba5b1fd003f9aa1851fd90e2cc519f5488d768f01d3e3e0ae4a56",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-626c-7bca-9b3f-3dd09a461687/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4872,10 +4968,12 @@
         "artifact_id": 3237148,
         "artifact_name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "7d4f7e65d5f9009d6d0949c9c9601669fd37575fc2eee1127774adbd8c85c06b",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-632a-761e-b2c4-bae701d0bf2c/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4918,10 +5016,12 @@
         "artifact_id": 3237132,
         "artifact_name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "74a83ff84ed5f655bc2d251540892e975f1820c767414329b0526b8f5f400595",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5e56-7da6-a022-ede3804cfbd0/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4948,10 +5048,12 @@
         "artifact_id": 3237133,
         "artifact_name": "nginx-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "c9eb94574cde7178cb275a8273fdf401a87792905d75660adf854c88c637762a",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5f01-7495-9903-1fdc0dc2e91e/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -4978,10 +5080,12 @@
         "artifact_id": 3237134,
         "artifact_name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "ed526204fea30241976e91b2a40f2cbd7d4b67d090ae9e46df841c9c31c68862",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5edd-7bae-ba85-292e6e1fcd33/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5008,10 +5112,12 @@
         "artifact_id": 3237135,
         "artifact_name": "nginx-mod-mail-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "0290064a87b4115ccdc83d4fa47f0c0d90004043cba547d7c77d7caf248926ce",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5ef2-74aa-854e-ba10f50e629b/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5038,10 +5144,12 @@
         "artifact_id": 3237136,
         "artifact_name": "nginx-mod-stream-1.20.1-16.el9_4.1.x86_64.rpm",
         "cas_hash": "cf6b51fff661b2dc80c36b10c0089d3a57b255798f3063ca860c0714e92b8bd5",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-605d-76bf-9a21-a27eaf52c4aa/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5281,10 +5389,12 @@
         "artifact_id": 3237053,
         "artifact_name": "nginx-core-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "1c85a6f12e5656b52d6f259e63dbcda2a33ab28d13db4a4bc00aa91e8e548f32",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5575-751f-9edc-ebb2f3803254/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5311,10 +5421,12 @@
         "artifact_id": 3237054,
         "artifact_name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "481e7192557121e4fdea8aaa98e8156a817cab6294efd0ebcde917b8cf8c9e81",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5576-7199-b3cc-4d3e4328e668/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5341,10 +5453,12 @@
         "artifact_id": 3237055,
         "artifact_name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "0517f8ebebab2dc6aa42947c70376cd0a88d9f4e9e703e8e386ef24ceb87efa0",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-54a3-7f91-851b-a71fe7aed0d3/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5371,10 +5485,12 @@
         "artifact_id": 3237056,
         "artifact_name": "nginx-mod-stream-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "3504df88de665b2e368e1c90e79e2560a6985214f4a3fba3c1f0ffe0e0f62d4a",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5488-73a0-8195-b2fbb9ccd243/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5401,10 +5517,12 @@
         "artifact_id": 3237057,
         "artifact_name": "nginx-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "b5a432b9a0d798e7c3a969ec56c75c6678be3e64825ddd34cfdea073fa377c14",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-55d7-7a1d-8153-6bd29360187f/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5463,10 +5581,12 @@
         "artifact_id": 3237060,
         "artifact_name": "nginx-mod-mail-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "32c4e465e85a5692d183452c0f3f7613692a3dbea8ccc2cd97c9149df67e739e",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-55e2-7aaf-b2f7-27e94ef686d1/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5493,10 +5613,12 @@
         "artifact_id": 3237061,
         "artifact_name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "9458fb39fe63b8b82185a30679c273a903e796d72fc69ca9401715cb602d2c55",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5718-7ffe-9e2f-d8beb2622752/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5523,10 +5645,12 @@
         "artifact_id": 3237062,
         "artifact_name": "nginx-mod-devel-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "91314fe43ff676bc956d569c9557f170dbea5c87557c1793757ace9936e92f0d",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-570f-767d-b1c6-77a58e271377/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5553,10 +5677,12 @@
         "artifact_id": 3237063,
         "artifact_name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "988261fe607aa172cad5b4cd440c43580ca12ba63081ff5fa24b81efd6db01d6",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-58d1-7762-bf6d-65aa5596ea10/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5583,10 +5709,12 @@
         "artifact_id": 3237064,
         "artifact_name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "d94dd58d63f2b7da312d30682e0738e3117bc5e28d4b1ac4ff0d71bc760d714e",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-574c-7663-9137-65ae853860e1/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5613,10 +5741,12 @@
         "artifact_id": 3237065,
         "artifact_name": "nginx-debugsource-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "cf46c04a4d85300015d81bb1a0ae0bbc170a98ee7695d2bbb38bbe21e147f0ee",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-57da-7481-a2ae-8c922bec359d/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5643,10 +5773,12 @@
         "artifact_id": 3237066,
         "artifact_name": "nginx-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "5b137268047c93ee002c217cff44224ac70b1823af8f0df279e5ccd1b86f26b1",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5755-7c93-8edd-3aa8631738e0/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5673,10 +5805,12 @@
         "artifact_id": 3237067,
         "artifact_name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "469b598146893fc0386276ad7cd9c7c8ae0246f885fdc77145cba6ab6896d2ed",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-58c3-7932-9ee0-d3aff3e6bae1/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5703,10 +5837,12 @@
         "artifact_id": 3237068,
         "artifact_name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "9cc5971737c36cdbc0bd7b08943949e7ead51c4cbe6db2834cb1d05b58682d6e",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5971-7ca0-a76f-c5ec3a9af7f1/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5733,10 +5869,12 @@
         "artifact_id": 3237069,
         "artifact_name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "b374c3733cb03140d974063085142eaabfaedf954c6db8a7d2580a75b38ee58f",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-588a-727e-947d-b601c5f2fe5b/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5763,10 +5901,12 @@
         "artifact_id": 3237070,
         "artifact_name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
         "cas_hash": "d37257e932daae7c9855393feeb8c96f6fd17223e682b5793660edc698cb042e",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-5a96-7511-a117-3fd7e65d2f0b/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -5990,10 +6130,12 @@
         "artifact_id": 3237033,
         "artifact_name": "nginx-1.20.1-16.el9_4.1.src.rpm",
         "cas_hash": "11e9fd63660caf3843c7f8635e94c1554126a15a58ab789d50fd414ff86b152e",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-54bf-71ef-9d4b-a85aa26af417/",
+        "reported_by": "ALBS",
         "subject_type": "srpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6071,10 +6213,12 @@
         "artifact_id": 3237149,
         "artifact_name": "nginx-core-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "90e474e42f82349277a43079b8a6604dce1fa9f99c7a0a6d8ce3be2e6d030637",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-63e0-72f6-94b4-7f15a3912157/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6101,10 +6245,12 @@
         "artifact_id": 3237150,
         "artifact_name": "nginx-mod-devel-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "199922f3af965b42e6de78c3d78e7251c6a67295c753516cd4d764b7e7917809",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-642a-7cfe-b751-db6c6cd8f1d9/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6131,10 +6277,12 @@
         "artifact_id": 3237151,
         "artifact_name": "nginx-mod-stream-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "82d0c3c980f830b1563e8a0bdbf15a63a330a4fe8bf3a75f28861d3ce81a3973",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-63f6-7035-8866-69a09a8f16b3/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6161,10 +6309,12 @@
         "artifact_id": 3237152,
         "artifact_name": "nginx-mod-mail-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "dcb12ff870643a51198230e29fa445764bd933736a2eb567137ea87988718937",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-630f-7fec-9d14-9b0913c723ed/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6191,10 +6341,12 @@
         "artifact_id": 3237153,
         "artifact_name": "nginx-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "0a24313fbb09bc8edccfdb0ff8721a9a7066dca5de281638c58692dc602054af",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-642e-724d-a31e-e06672b7b698/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6221,10 +6373,12 @@
         "artifact_id": 3237154,
         "artifact_name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "62fb9e98ca2b172d5c235a6b91404d0f409999ced78b95d7913728a70ca7d761",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-651b-7f0e-887b-a0db59e29585/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6251,10 +6405,12 @@
         "artifact_id": 3237155,
         "artifact_name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "02873ae86211e8b8384c80d6f7eaf3ee15fecec308ce4507dd3660b71713dff7",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-64bb-7f46-a704-94bc6fd46ddd/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6281,10 +6437,12 @@
         "artifact_id": 3237156,
         "artifact_name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "15706dc9df3cf1bd5f6f8c33d5c4fa446647bd4b52364db7121e6aafcedd9fa0",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-64b1-71a7-9dba-926e376414f4/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6343,10 +6501,12 @@
         "artifact_id": 3237159,
         "artifact_name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "8703254068be1cf242be38e3a4a38248333078cc2f1953bba06f5e22e2ecad52",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6602-7e0a-8bfb-b8d6ca5462a9/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6373,10 +6533,12 @@
         "artifact_id": 3237160,
         "artifact_name": "nginx-debugsource-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "34d5e19264b0887cf0295e160fd9d4fcde29b2895a06ba8ab1d689fb768e505e",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-660c-75ee-b377-d309c9a27978/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6403,10 +6565,12 @@
         "artifact_id": 3237161,
         "artifact_name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "10b00cd758d8897dd1a48afaa133971ed5ceab3f4bcf6c7b70b8278f7b722cf6",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-65dc-743c-97b1-d5184d302ad5/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6433,10 +6597,12 @@
         "artifact_id": 3237162,
         "artifact_name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "1fe09ea34b8bc672da84a052f2cf06992fbec2c44852ef681e4ce96d61120325",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-66f3-72dc-985c-cbbaa940d83b/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6463,10 +6629,12 @@
         "artifact_id": 3237163,
         "artifact_name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "88485b2d4fe5c9b4c6b66b19f740a9cc4e101a3d1ff408088a75fc6ffc66eea2",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-66d5-7a66-ab76-f800a327bcf7/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6493,10 +6661,12 @@
         "artifact_id": 3237164,
         "artifact_name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "39622393e1c30774cdb99cf8ce86d35414962c30c81c99c0fcfa6342621d5d2a",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-677c-7126-9338-82fbc4d32cb5/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6523,10 +6693,12 @@
         "artifact_id": 3237165,
         "artifact_name": "nginx-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "fc018ba6d2a2d6954300f3445ca30e94866f3be2ccc509bca64872ea0ef2ff23",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6724-7f3f-af7a-e7ab2ec7728a/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },
@@ -6553,10 +6725,12 @@
         "artifact_id": 3237166,
         "artifact_name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
         "cas_hash": "62b496fbd5145e3cda45c6903135e911a350ef2932c6017a2812c57d43c8e311",
+        "evidence_present": true,
+        "externally_verified": false,
         "href": "/pulp/api/v3/content/rpm/packages/0191b819-6869-755a-bcb2-5cf7f47d26f8/",
+        "reported_by": "ALBS",
         "subject_type": "rpm_artifact",
-        "system": "Codenotary CAS",
-        "trusted": true
+        "system": "Codenotary CAS"
       },
       "type": "cas_attestation"
     },

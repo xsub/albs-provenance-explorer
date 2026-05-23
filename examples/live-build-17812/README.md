@@ -6,7 +6,7 @@ These files were generated from the public ALBS API endpoint:
 https://build.almalinux.org/api/v1/builds/17812/
 ```
 
-Build `17812` is an `nginx` build for AlmaLinux 9. The exported graph preserves the source package, git repository, exact commit, CAS/notarization reference, ALBS build task, per-architecture build tasks, build environments, SRPMs, binary RPMs, test tasks, signing task and release linkage.
+Build `17812` is an `nginx` build for AlmaLinux 9. The exported graph preserves the source package, git repository, exact commit, CAS source and artifact evidence, ALBS build task, per-architecture build tasks, build environments, SRPMs, binary RPMs, test tasks, signing task and release linkage.
 
 Regenerate:
 

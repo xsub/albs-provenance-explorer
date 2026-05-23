@@ -1,0 +1,15 @@
+{
+  "id": 123456,
+  "package": "synthetic",
+  "source_repository": "git.almalinux.org/rpms/synthetic",
+  "commit": "abc123",
+  "source_cas_hash": "xyz789",
+  "source_rpm": "synthetic-1.0.0-1.el9.src.rpm",
+  "binary_rpms": [
+    "synthetic-core-1.0.0-1.el9.x86_64.rpm",
+    "synthetic-1.0.0-1.el9.x86_64.rpm"
+  ],
+  "release_repository": "AlmaLinux 9 BaseOS x86_64",
+  "arch": "x86_64",
+  "status": "completed"
+}

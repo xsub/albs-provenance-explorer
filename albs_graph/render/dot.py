@@ -17,6 +17,8 @@ NODE_COLORS = {
     "errata": "#FFEBEE",
     "cve": "#FFCDD2",
     "sbom": "#F1F8E9",
+    "external_package": "#F5F5F5",
+    "dependency_spec": "#ECEFF1",
 }
 
 

@@ -24,7 +24,7 @@ class AlbsBuildMetadata:
     raw: dict[str, Any]
 
 
-def load_mock_build(path: str | Path) -> ProvenanceGraph:
+def load_synthetic_build_fixture(path: str | Path) -> ProvenanceGraph:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     return graph_from_build_metadata(parse_build_metadata(data))
 
@@ -89,7 +89,7 @@ def parse_build_metadata(data: dict[str, Any]) -> AlbsBuildMetadata:
     )
     if not package or package == "None":
         raise ValueError("ALBS build metadata is missing package/source_package")
-    build_id = str(data.get("build_id") or data.get("id") or f"mock:{package}")
+    build_id = str(data.get("build_id") or data.get("id") or f"fixture:{package}")
     artifacts = _rpm_artifacts(data)
     return AlbsBuildMetadata(
         build_id=build_id,
@@ -173,12 +173,7 @@ def graph_from_build_metadata(build: AlbsBuildMetadata) -> ProvenanceGraph:
             cas_id,
             NodeType.CAS_ATTESTATION,
             cas_value or f"unverified source commit {build.commit}",
-            {
-                "system": "Codenotary CAS",
-                "subject_type": "source_commit",
-                "cas_hash": cas_value,
-                "trusted": build.source_cas_hash is not None,
-            },
+            _cas_evidence_metadata("source_commit", cas_value),
         )
     )
     graph.add_node(Node(build_id, NodeType.BUILD_TASK, f"ALBS build {build.build_id}", build.raw))
@@ -239,12 +234,7 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
             source_cas_id,
             NodeType.CAS_ATTESTATION,
             source_cas_value or f"unverified source commit {build.commit}",
-            {
-                "system": "Codenotary CAS",
-                "subject_type": "source_commit",
-                "cas_hash": source_cas_value,
-                "trusted": build.source_cas_hash is not None,
-            },
+            _cas_evidence_metadata("source_commit", source_cas_value),
         )
     )
     graph.add_node(
@@ -284,24 +274,26 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
         ref = task.get("ref") or {}
         task_cas = task.get("alma_commit_cas_hash") or build.source_cas_hash
         task_cas_id = f"cas:source:{build.package}:{task_cas or build.commit}"
+        task_cas_metadata = _cas_evidence_metadata(
+            "source_commit",
+            task_cas,
+            albs_authenticated=task.get("is_cas_authenticated"),
+            git_commit=ref.get("git_commit_hash"),
+            git_ref=ref.get("git_ref"),
+            git_url=ref.get("url"),
+        )
         if task_cas_id not in graph.nodes:
             graph.add_node(
                 Node(
                     task_cas_id,
                     NodeType.CAS_ATTESTATION,
                     str(task_cas or f"unverified source commit {build.commit}"),
-                    {
-                        "system": "Codenotary CAS",
-                        "subject_type": "source_commit",
-                        "cas_hash": task_cas,
-                        "trusted": bool(task.get("is_cas_authenticated")),
-                        "git_commit": ref.get("git_commit_hash"),
-                        "git_ref": ref.get("git_ref"),
-                        "git_url": ref.get("url"),
-                    },
+                    task_cas_metadata,
                 )
             )
             graph.add_edge(commit_id, task_cas_id, Relation.AUTHENTICATED_BY)
+        else:
+            _merge_node_metadata(graph, task_cas_id, task_cas_metadata)
 
         graph.add_node(
             Node(
@@ -368,15 +360,13 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
                             artifact_cas_id,
                             NodeType.CAS_ATTESTATION,
                             str(artifact_cas_hash),
-                            {
-                                "system": "Codenotary CAS",
-                                "subject_type": cas_subject,
-                                "cas_hash": artifact_cas_hash,
-                                "trusted": True,
-                                "artifact_id": artifact.get("id"),
-                                "artifact_name": name,
-                                "href": artifact.get("href"),
-                            },
+                            _cas_evidence_metadata(
+                                cas_subject,
+                                artifact_cas_hash,
+                                artifact_id=artifact.get("id"),
+                                artifact_name=name,
+                                href=artifact.get("href"),
+                            ),
                         )
                     )
                 graph.add_edge(node_id, artifact_cas_id, Relation.AUTHENTICATED_BY)
@@ -484,6 +474,31 @@ def _add_signature_nodes(graph: ProvenanceGraph, data: dict[str, Any]) -> list[s
         )
         signature_ids.append(signature_id)
     return signature_ids
+
+
+def _cas_evidence_metadata(
+    subject_type: str,
+    cas_hash: Any,
+    **extra: Any,
+) -> dict[str, Any]:
+    return {
+        "system": "Codenotary CAS",
+        "subject_type": subject_type,
+        "cas_hash": cas_hash,
+        "evidence_present": cas_hash is not None,
+        "reported_by": "ALBS",
+        "externally_verified": False,
+    } | {key: value for key, value in extra.items() if value is not None}
+
+
+def _merge_node_metadata(
+    graph: ProvenanceGraph,
+    node_id: str,
+    metadata: dict[str, Any],
+) -> None:
+    graph.nodes[node_id].metadata.update(
+        {key: value for key, value in metadata.items() if value is not None}
+    )
 
 
 def _rpm_metadata_from_filename(filename: str) -> dict[str, Any]:

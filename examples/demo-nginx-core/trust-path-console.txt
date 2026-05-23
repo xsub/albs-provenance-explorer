@@ -30,13 +30,15 @@ step Analyzing source-to-artifact trust path
 │ has_build_task               │ ok      │
 │ has_signature                │ ok      │
 │ has_release                  │ ok      │
-│ has_sbom                     │ missing │
-│ has_errata_link              │ missing │
 │ has_source_cas_attestation   │ ok      │
 │ has_artifact_cas_attestation │ ok      │
+│ has_sbom                     │ missing │
+│ has_errata_link              │ missing │
 └──────────────────────────────┴─────────┘
+Provenance complete: True
+Security context complete: False
 Complete: False
-Missing: has_sbom, has_errata_link
+Missing security context: has_sbom, has_errata_link
 Path:
   src:nginx
   git:https://git.almalinux.org/rpms/nginx.git
@@ -53,4 +55,4 @@ step Writing focused graph svg output to examples/demo-nginx-core/nginx-core-x86
 ==> Done
 Metadata cache: examples/live-build-17812/build-17812.albs.json
 Full graph:     examples/demo-nginx-core/build-17812-full.svg
-Focused graph:  examples/demo-nginx-core/nginx-core_x86_64-trust.svg
+Focused graph:  examples/demo-nginx-core/nginx-core-x86_64-trust.svg

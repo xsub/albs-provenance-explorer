@@ -4,6 +4,16 @@ import json
 from pathlib import Path
 from typing import Any
 
+from albs_graph.dependency import (
+    DependencyScope,
+    DependencySpec,
+    Ecosystem,
+    PackageIdentity,
+    ResolutionState,
+    dependency_edge_metadata,
+    dependency_node_metadata,
+    package_identity_from_purl,
+)
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
 
 
@@ -51,16 +61,25 @@ def attach_cyclonedx_sbom(
         if not name:
             continue
         version = component.get("version", "unknown")
-        component_id = _component_id("cyclonedx", name, version, component.get("purl"))
+        purl = component.get("purl")
+        spec = DependencySpec(
+            identity=_identity_from_component(name, version, purl),
+            scope=_cyclonedx_scope(component.get("scope")),
+            resolution_state=ResolutionState.OBSERVED,
+            source="CycloneDX",
+            raw={"component": component},
+        )
+        component_id = _component_id("cyclonedx", name, version, purl)
         graph.add_node(
             Node(
                 component_id,
                 NodeType.EXTERNAL_PACKAGE,
                 f"{name} {version}",
-                {"source": "CycloneDX", "component": component},
+                dependency_node_metadata(spec)
+                | {"source": "CycloneDX", "component": component},
             )
         )
-        graph.add_edge(sbom_id, component_id, Relation.DESCRIBED_BY)
+        graph.add_edge(sbom_id, component_id, Relation.DESCRIBED_BY, **dependency_edge_metadata(spec))
     return sbom_id
 
 
@@ -93,16 +112,23 @@ def attach_spdx_sbom(
             continue
         version = package.get("versionInfo", "unknown")
         purl = _external_ref_purl(package)
+        spec = DependencySpec(
+            identity=_identity_from_component(name, version, purl),
+            scope=DependencyScope.UNKNOWN,
+            resolution_state=ResolutionState.OBSERVED,
+            source="SPDX",
+            raw={"package": package},
+        )
         component_id = _component_id("spdx", name, version, purl)
         graph.add_node(
             Node(
                 component_id,
                 NodeType.EXTERNAL_PACKAGE,
                 f"{name} {version}",
-                {"source": "SPDX", "package": package},
+                dependency_node_metadata(spec) | {"source": "SPDX", "package": package},
             )
         )
-        graph.add_edge(sbom_id, component_id, Relation.DESCRIBED_BY)
+        graph.add_edge(sbom_id, component_id, Relation.DESCRIBED_BY, **dependency_edge_metadata(spec))
     return sbom_id
 
 
@@ -117,10 +143,29 @@ def _external_ref_purl(package: dict[str, Any]) -> str | None:
 def _component_id(source: str, name: str, version: str, purl: str | None) -> str:
     if purl:
         try:
-            from packageurl import PackageURL
-
-            parsed = PackageURL.from_string(purl)
-            return f"pkg:{parsed.type}:{parsed.namespace or '_'}:{parsed.name}:{parsed.version or version}"
+            identity = package_identity_from_purl(purl, fallback_version=version)
+            return f"pkg:{identity.ecosystem}:{identity.namespace or '_'}:{identity.name}:{identity.version or version}"
         except ImportError:
             return purl
     return f"sbom-component:{source}:{name}:{version}"
+
+
+def _identity_from_component(
+    name: str,
+    version: str,
+    purl: str | None,
+) -> PackageIdentity:
+    if purl:
+        try:
+            return package_identity_from_purl(purl, fallback_version=version)
+        except ImportError:
+            pass
+    return PackageIdentity(Ecosystem.GENERIC, name, version=version)
+
+
+def _cyclonedx_scope(value: object) -> DependencyScope:
+    if value == "optional":
+        return DependencyScope.OPTIONAL
+    if value == "required":
+        return DependencyScope.RUNTIME
+    return DependencyScope.UNKNOWN

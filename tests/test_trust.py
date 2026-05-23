@@ -2,27 +2,29 @@ import json
 from typing import Any
 from pathlib import Path
 
-from albs_graph.mock_data import build_mock_openssl_graph
+from albs_graph.fixtures import build_synthetic_fixture_graph
 from albs_graph.model import Node, ProvenanceGraph
 from albs_graph.provenance.lineage import artifacts_from_source, cves_for_artifact
 from albs_graph.provenance.trust import find_binary_rpm, focused_trust_graph, trust_path
 
 
 def test_trust_path_resolves_package_name() -> None:
-    graph = build_mock_openssl_graph()
+    graph = build_synthetic_fixture_graph()
 
-    report = trust_path(graph, "openssl-libs")
+    report = trust_path(graph, "synthetic-core")
 
     assert report["complete"] is True
-    assert report["path"][0] == "src:openssl"
-    assert report["path"][-1] == "rpm:openssl-libs:3.0.7-28.el9_4:x86_64"
+    assert report["provenance_complete"] is True
+    assert report["security_context_complete"] is True
+    assert report["path"][0] == "src:synthetic"
+    assert report["path"][-1] == "rpm:synthetic-core:1.0.0-1.el9:x86_64"
 
 
 def test_lineage_queries_include_artifacts_and_cves() -> None:
-    graph = build_mock_openssl_graph()
+    graph = build_synthetic_fixture_graph()
 
-    assert "rpm:openssl-libs:3.0.7-28.el9_4:x86_64" in artifacts_from_source(graph, "openssl")
-    assert cves_for_artifact(graph, "rpm:openssl-libs:3.0.7-28.el9_4:x86_64") == [
+    assert "rpm:synthetic-core:1.0.0-1.el9:x86_64" in artifacts_from_source(graph, "synthetic")
+    assert cves_for_artifact(graph, "rpm:synthetic-core:1.0.0-1.el9:x86_64") == [
         "cve:CVE-2026-0001"
     ]
 

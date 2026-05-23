@@ -136,9 +136,13 @@ table.add_column("Result")
 for name, value in report["checks"].items():
     table.add_row(name, "ok" if value else "missing")
 console.print(table)
+console.print(f"Provenance complete: {report['provenance_complete']}")
+console.print(f"Security context complete: {report['security_context_complete']}")
 console.print(f"Complete: {report['complete']}")
-if report["missing"]:
-    console.print(f"Missing: {', '.join(report['missing'])}")
+if report["missing_provenance"]:
+    console.print(f"Missing provenance: {', '.join(report['missing_provenance'])}")
+if report["missing_security_context"]:
+    console.print(f"Missing security context: {', '.join(report['missing_security_context'])}")
 console.print("Path:")
 for node_id in report["path"]:
     console.print(f"  {node_id}")

@@ -45,7 +45,7 @@ Console trust-path report from an AlmaLinux host, using a five-minute ALBS metad
 VERIFY_GIT=1 ./example--verbose.sh
 ```
 
-![nginx-core trust-path console report](examples/demo-nginx-core/trust-path-console.png)
+![nginx-core trust-path console report](examples/demo-nginx-core/trust-path-console.svg)
 
 Full text output is kept in [`examples/demo-nginx-core/trust-path-console.txt`](examples/demo-nginx-core/trust-path-console.txt).
 
@@ -65,17 +65,20 @@ Focused provenance graph, 13 nodes / 13 edges:
 Implemented in this PoC:
 
 - provenance graph core with canonical ALBS/RPM node and edge types
-- mock ALBS build ingestion
+- normalized dependency fact model for ecosystem, scope, linkage, resolution state and context
+- synthetic ALBS fixture ingestion for tests
 - resilient build metadata adapter shape for `build.almalinux.org`
-- RPM metadata inspection adapter
-- SPDX JSON and CycloneDX JSON SBOM graph import
+- RPM metadata inspection adapter with normalized `requires`/`provides` dependency facts
+- SPDX JSON and CycloneDX JSON SBOM graph import with Package URL based ecosystem identity
 - errata/CVE attachment model
 - trust-path analysis for binary RPM artifacts
 - JSON, DOT and SVG rendering
-- CLI commands for mock graphs, build fetches, RPM inspection, SBOM import and trust-path reports
+- CLI commands for live ALBS build fetches, RPM inspection, SBOM import, synthetic fixtures and trust-path reports
 
 Intentionally out of scope for the first pass:
 
+- full package-manager resolution for Pip, Poetry, Maven, Gradle, npm, Cargo or Go
+- SAT/backtracking resolution and large-scale job orchestration
 - write access to ALBS
 - a web platform
 - Kubernetes or service deployment
@@ -96,30 +99,6 @@ dot -V
 ```
 
 ## CLI
-
-Build the built-in OpenSSL provenance graph:
-
-```bash
-albs-graph mock openssl
-```
-
-Export JSON:
-
-```bash
-albs-graph mock openssl --format json -o examples/openssl_graph.json
-```
-
-Export DOT:
-
-```bash
-albs-graph mock openssl --format dot -o examples/openssl_graph.dot
-```
-
-Render SVG:
-
-```bash
-albs-graph render openssl --format svg -o examples/openssl_graph.svg
-```
 
 Fetch and parse an ALBS build page:
 
@@ -158,12 +137,6 @@ Import an SBOM:
 albs-graph import-sbom sbom.json --format dot
 ```
 
-Show a trust path:
-
-```bash
-albs-graph trust-path openssl-libs
-```
-
 Show a focused trust graph for one RPM artifact from a live ALBS build:
 
 ```bash
@@ -175,30 +148,63 @@ albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64 --format s
 
 Canonical node types include:
 
-`source_package`, `git_repository`, `git_commit`, `cas_attestation`, `build_task`, `build_environment`, `srpm`, `binary_rpm`, `signature`, `repository_release`, `errata`, `cve`, `sbom`.
+`source_package`, `git_repository`, `git_commit`, `cas_attestation`, `build_task`, `build_environment`, `srpm`, `binary_rpm`, `signature`, `repository_release`, `errata`, `cve`, `sbom`, `external_package`, `dependency_spec`.
 
 Canonical edge types include:
 
-`stored_in`, `points_to`, `authenticated_by`, `built_by`, `produces`, `tested_by`, `signed_as`, `released_to`, `described_by`, `fixes`, `affected_by`, `derived_from`.
+`stored_in`, `points_to`, `authenticated_by`, `built_by`, `produces`, `tested_by`, `signed_as`, `released_to`, `described_by`, `fixes`, `affected_by`, `derived_from`, `declares_dependency`, `requires_runtime`, `requires_buildtime`, `provides`.
 
 Runtime package relationships such as `requires_runtime` exist, but they are deliberately secondary. RPM dependencies are facts inside the graph, not the graph's organizing principle.
+
+## Dependency Intelligence Model
+
+This PoC is not a full unified dependency resolver yet. It now establishes the data contract such a resolver would need:
+
+- package identity: ecosystem, namespace, name, version, PURL and qualifiers
+- dependency semantics: requested constraint, scope, linkage and resolution state
+- context: OS, architecture, distro, language version, extras, profiles and feature flags
+- evidence source: RPM metadata, SBOM component, lockfile or future package-manager adapter
+
+That distinction matters. Pip markers, Poetry extras, Maven scopes, Gradle configurations, npm optional dependencies, Cargo features and Go module constraints do not mean the same thing. The graph stores dependency facts in a normalized shape while preserving ecosystem-specific raw metadata for auditability.
+
+Current adapters populate this model from RPM `requires`/`provides` and SPDX/CycloneDX components. Future resolver adapters can add package-manager-specific resolution outputs without changing the ALBS provenance graph contract.
+
+## Unified Graph Strategy
+
+The system separates three concerns that are often conflated in dependency graph tools:
+
+- provenance backbone: ALBS source, build, artifact, signature, release and CAS evidence
+- dependency facts: normalized package identities, scopes, constraints, contexts and observed components
+- resolver implementations: ecosystem-specific logic that can later mimic Pip, Poetry, Maven, Gradle, npm, Cargo or Go
+
+The current code implements the first two layers for the Enterprise Linux/RPM case and SBOM evidence. It deliberately does not claim to solve package-manager resolution yet. That next layer would consume project manifests and lockfiles, run ecosystem-specific resolution strategies, and emit the same normalized dependency facts back into this graph.
+
+## Trust Semantics
+
+Trust-path reports separate source-to-artifact provenance from security context completeness:
+
+- provenance checks cover ALBS build linkage, signature, release context and source/artifact CAS evidence
+- security-context checks cover attached SBOM and errata/CVE linkage
+
+`complete` is only true when both categories are complete. This keeps the live `nginx-core` demo honest: the ALBS provenance path is present, while SBOM and errata context remain explicit missing evidence until those inputs are attached.
 
 ## SBOM And CAS Attestation
 
 The SBOM adapter imports SPDX JSON and CycloneDX JSON as provenance evidence using `sbom` nodes and `described_by` edges. ALBS source and RPM artifact trust evidence is modeled as `cas_attestation` nodes connected with `authenticated_by` edges, matching the Codenotary CAS/BOM shape used by AlmaLinux SBOM integration.
 
-For live ALBS builds, the adapter preserves `alma_commit_cas_hash` on the source commit path and artifact `cas_hash` values on SRPM/RPM outputs. This PoC models the evidence and trust path; it does not independently verify Codenotary CAS proofs yet.
+For live ALBS builds, the adapter preserves `alma_commit_cas_hash` on the source commit path and artifact `cas_hash` values on SRPM/RPM outputs. These fields are modeled as CAS evidence reported by ALBS. They are not marked as externally verified unless an explicit verification step records that fact.
 
 ## Layout
 
 ```text
 albs_graph/
   model/        node, edge and graph core
+  dependency/   normalized dependency facts, context and coverage summaries
   adapters/     ALBS, RPM, SBOM and errata ingestion
   provenance/   trust-path and lineage analysis
   render/       JSON, DOT and SVG output
   cli/          Typer CLI commands
-  examples/     mock build metadata
+  examples/     synthetic build metadata fixture
 tests/
 ```
 

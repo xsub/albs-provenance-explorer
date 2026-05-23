@@ -20,6 +20,8 @@ def as_interview_summary(graph: ProvenanceGraph) -> str:
     for rpm in rpm_nodes:
         report: dict[str, Any] = graph.trust_report_for_rpm(rpm.id)
         lines.append(f"Package artifact: {rpm.label}")
+        lines.append(f"Provenance complete: {report['provenance_complete']}")
+        lines.append(f"Security context complete: {report['security_context_complete']}")
         lines.append(f"Trust path complete: {report['complete']}")
         for name, value in report["checks"].items():
             lines.append(f"  - {name}: {value}")

@@ -6,13 +6,7 @@ from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
 
 
 def trust_path(graph: ProvenanceGraph, package_or_node: str) -> dict[str, Any]:
-    rpm_node_id = package_or_node
-    if rpm_node_id not in graph.nodes:
-        rpm = graph.first_binary_rpm(package_or_node)
-        if rpm is None:
-            raise ValueError(f"No binary RPM found for {package_or_node}")
-        rpm_node_id = rpm.id
-    return graph.trust_path_report(rpm_node_id).to_dict()
+    return graph.trust_path_report(find_binary_rpm(graph, package_or_node).id).to_dict()
 
 
 def trust_reports(graph: ProvenanceGraph) -> list[dict[str, Any]]:
