@@ -30,9 +30,9 @@ fi
 printf '==> ALBS graph tool: %s\n' "$ALBS_GRAPH_TOOL"
 printf '==> Build: %s\n' "$BUILD_ID"
 if [[ -n "$RPM_NAME" || -n "$ARCH" ]]; then
-  printf '==> RPM selector: %s%s%s\n' "${RPM_NAME:-<derived>}" "$([[ -n "$ARCH" ]] && printf .)" "$ARCH"
+  printf '==> Focused RPM selector: %s%s%s\n' "${RPM_NAME:-<derived>}" "$([[ -n "$ARCH" ]] && printf .)" "$ARCH"
 else
-  printf '==> RPM selector: <derived from ALBS build metadata>\n'
+  printf '==> Focused RPM selector: <none; representative artifact selected after ALBS metadata>\n'
 fi
 printf '==> Raw ALBS metadata cache: %s\n' "$CACHE_FILE"
 printf '==> Cache TTL: %ss\n' "$CACHE_TTL"
@@ -53,6 +53,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 from rich.console import Console
@@ -76,6 +77,7 @@ cache_file = Path(os.environ["CACHE_FILE"])
 cache_ttl = int(os.environ["CACHE_TTL"])
 verify_git = os.environ["VERIFY_GIT"].lower() in {"1", "true", "yes", "on"}
 console = Console()
+arch_preference = ("x86_64", "aarch64", "ppc64le", "s390x", "i686")
 
 
 def step(message: str) -> None:
@@ -85,6 +87,43 @@ def step(message: str) -> None:
 def write(path: Path, content: str, label: str) -> None:
     step(f"Writing {label} output to {path}")
     path.write_text(content, encoding="utf-8")
+
+
+def arch_sort_key(value: str) -> tuple[int, str]:
+    try:
+        return (arch_preference.index(value), value)
+    except ValueError:
+        return (len(arch_preference), value)
+
+
+def ordered_arches(values: set[str]) -> list[str]:
+    return sorted(values, key=arch_sort_key)
+
+
+def task_arches(raw: dict[str, object]) -> list[str]:
+    tasks = raw.get("tasks")
+    if not isinstance(tasks, list):
+        return []
+    arches = {
+        str(task.get("arch"))
+        for task in tasks
+        if isinstance(task, dict) and task.get("arch") and task.get("arch") != "src"
+    }
+    return ordered_arches(arches)
+
+
+def has_source_task(raw: dict[str, object]) -> bool:
+    tasks = raw.get("tasks")
+    if not isinstance(tasks, list):
+        return False
+    return any(isinstance(task, dict) and task.get("arch") == "src" for task in tasks)
+
+
+def preferred_representative_arch(arches: list[str]) -> str | None:
+    for candidate in arch_preference:
+        if candidate in arches:
+            return candidate
+    return arches[0] if arches else None
 
 
 out_dir.mkdir(parents=True, exist_ok=True)
@@ -102,6 +141,20 @@ step("Building full provenance graph from ALBS metadata")
 graph = graph_from_build_metadata(metadata)
 cas_count = len(graph.find_by_type("cas_attestation"))
 step(f"Full graph: {len(graph.nodes)} nodes, {len(graph.edges)} edges, {cas_count} CAS attestations")
+build_arches = task_arches(metadata.raw)
+if build_arches:
+    step(f"ALBS build task platforms: {', '.join(build_arches)}")
+if has_source_task(metadata.raw):
+    step("ALBS source build task: src")
+rpm_arch_counts = Counter(
+    str(node.metadata.get("arch") or "unknown")
+    for node in graph.find_by_type("binary_rpm")
+)
+if rpm_arch_counts:
+    counts = ", ".join(
+        f"{arch}={rpm_arch_counts[arch]}" for arch in ordered_arches(set(rpm_arch_counts))
+    )
+    step(f"Binary RPM artifact arches: {counts}")
 
 if verify_git:
     repo_url = metadata.source_repository
@@ -142,7 +195,18 @@ else:
     if arch:
         step(f"No RPM name provided; selecting binary RPM from ALBS graph for arch {arch}")
     else:
-        step("No RPM selector provided; selecting binary RPM from ALBS graph")
+        representative_arch = preferred_representative_arch(build_arches)
+        if representative_arch:
+            arch = representative_arch
+            step(
+                "No RPM selector provided; full build is multi-platform; "
+                f"selecting representative focused artifact for arch {arch}"
+            )
+        else:
+            step(
+                "No RPM selector provided; selecting representative focused artifact "
+                "from ALBS graph"
+            )
     rpm_node = select_default_binary_rpm(graph, arch=arch)
 step(f"Selected RPM node: {rpm_node.id}")
 step("Analyzing source-to-artifact trust path")

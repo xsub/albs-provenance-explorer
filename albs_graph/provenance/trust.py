@@ -5,6 +5,9 @@ from typing import Any
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
 
 
+_ARCH_PREFERENCE = ("x86_64", "aarch64", "ppc64le", "s390x", "i686")
+
+
 def trust_path(graph: ProvenanceGraph, package_or_node: str) -> dict[str, Any]:
     return graph.trust_path_report(find_binary_rpm(graph, package_or_node).id).to_dict()
 
@@ -30,12 +33,13 @@ def select_default_binary_rpm(graph: ProvenanceGraph, arch: str | None = None) -
         if node.label
     }
 
-    def score(node: Node) -> tuple[int, int, int, str]:
+    def score(node: Node) -> tuple[int, int, int, int, str]:
         name = str(node.metadata.get("name") or node.label)
         artifact_id = _artifact_sort_key(node.metadata.get("artifact_id"))
         is_source_named = 0 if name in source_names else 1
         is_debug = 1 if _is_debug_artifact(name) else 0
-        return (is_source_named, is_debug, artifact_id, node.label)
+        arch_rank = _arch_sort_key(node.metadata.get("arch"))
+        return (is_source_named, is_debug, arch_rank, artifact_id, node.label)
 
     return sorted(candidates, key=score)[0]
 
@@ -79,6 +83,14 @@ def _artifact_sort_key(value: Any) -> int:
         return int(str(value))
     except (TypeError, ValueError):
         return 2**63 - 1
+
+
+def _arch_sort_key(value: Any) -> int:
+    arch = str(value or "")
+    try:
+        return _ARCH_PREFERENCE.index(arch)
+    except ValueError:
+        return len(_ARCH_PREFERENCE)
 
 
 def _is_debug_artifact(name: str) -> bool:

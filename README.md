@@ -128,10 +128,16 @@ albs-graph fetch --build-id 17812 --cache examples/live-build-17812/build-17812.
 albs-graph trust-path --build-id 17812 --cache examples/live-build-17812/build-17812.albs.json --format svg --verbose -o build-17812-derived-trust.svg
 ```
 
-Regenerate the nginx-core demo artifacts in one verbose run. The script fetches ALBS metadata once into a local cache and reuses it for JSON, DOT and SVG renders while the cache is fresh. Cache freshness defaults to 5 minutes and can be changed with `--cache-ttl`:
+Regenerate demo artifacts in one verbose run. The script fetches ALBS metadata once into a local cache, reports all ALBS build task platforms present in the build, and reuses that metadata for JSON, DOT and SVG renders while the cache is fresh. Cache freshness defaults to 5 minutes and can be changed with `CACHE_TTL`:
 
 ```bash
 ./example--verbose.sh
+```
+
+If no focused RPM selector is provided, the full graph still contains every ALBS task and artifact architecture; only the small trust-path graph chooses one representative artifact, preferring `x86_64` when available. Use `RPM_NAME` and `ARCH` to make that focus explicit:
+
+```bash
+RPM_NAME=nginx-core ARCH=x86_64 ./example--verbose.sh
 ```
 
 On an AlmaLinux host, install `cas` if missing and verify the source and RPM artifact CAS hashes from the cached ALBS metadata:

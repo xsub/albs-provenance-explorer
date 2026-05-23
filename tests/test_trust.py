@@ -66,6 +66,19 @@ def test_default_binary_rpm_selection_comes_from_graph_metadata() -> None:
     rpm = select_default_binary_rpm(graph)
 
     assert rpm.metadata["name"] == "nginx"
+    assert rpm.metadata["arch"] == "x86_64"
+    assert rpm.id == "rpm:3237133:nginx-1.20.1-16.el9_4.1.x86_64.rpm"
+
+
+def test_default_binary_rpm_selection_respects_requested_arch() -> None:
+    data = json.loads(
+        Path("examples/live-build-17812/build-17812.json").read_text(encoding="utf-8")
+    )
+    graph = _graph_from_export(data)
+
+    rpm = select_default_binary_rpm(graph, arch="s390x")
+
+    assert rpm.metadata["name"] == "nginx"
     assert rpm.metadata["arch"] == "s390x"
     assert rpm.id == "rpm:3237057:nginx-1.20.1-16.el9_4.1.s390x.rpm"
 

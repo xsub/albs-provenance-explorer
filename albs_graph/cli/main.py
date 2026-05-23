@@ -334,7 +334,7 @@ def trust_path_command(
 
     rpm_selector = rpm or package
     if rpm_selector is None:
-        _log_step(verbose, "No RPM selector provided; selecting binary RPM from ALBS graph")
+        _log_step(verbose, "No RPM selector provided; selecting representative binary RPM")
         rpm_node = select_default_binary_rpm(graph, arch=arch)
     else:
         _log_step(verbose, f"Resolving binary RPM selector: {rpm_selector}")
