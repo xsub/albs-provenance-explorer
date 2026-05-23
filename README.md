@@ -134,6 +134,8 @@ Regenerate demo artifacts in one verbose run. The script fetches ALBS metadata o
 ./example--verbose.sh
 ```
 
+The shell wrapper is intentionally thin; it only passes parameters into `python3 -m albs_graph.cli.demo_verbose`. Fetching, graph construction, inventory, timing analysis and rendering all live in Python modules.
+
 ALBS builds usually produce many artifacts per build task architecture: binary RPMs, subpackages, modules, `debuginfo`, `debugsource`, repeated SRPM evidence, `noarch` outputs and build logs/configuration artifacts. The verbose demo writes this as `build-<id>-artifact-inventory.json` in the demo output directory.
 
 The same raw build metadata includes task `performance_stats`, test-task performance stats and signing stats. The demo turns those fields into `build-<id>-processing-analysis.json`, including per-task step durations, aggregate build/signing totals and per-artifact processing context inherited from the ALBS task that produced each artifact.
