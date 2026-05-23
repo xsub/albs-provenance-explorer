@@ -60,6 +60,7 @@ from rich.console import Console
 from rich.table import Table
 
 from albs_graph.adapters.albs import fetch_build_metadata, graph_from_build_metadata
+from albs_graph.provenance.build_analysis import analyze_albs_build
 from albs_graph.provenance.inventory import (
     rpm_artifact_inventory,
     summarize_artifacts_by_build_arch,
@@ -102,6 +103,20 @@ def arch_sort_key(value: str) -> tuple[int, str]:
 
 def ordered_arches(values: set[str]) -> list[str]:
     return sorted(values, key=arch_sort_key)
+
+
+def format_seconds(value: float | int | None) -> str:
+    if value is None:
+        return "-"
+    seconds = float(value)
+    if seconds >= 60:
+        return f"{seconds / 60:.1f}m"
+    return f"{seconds:.1f}s"
+
+
+def step_seconds(task: object, name: str) -> float | None:
+    steps = {step.name: step.seconds for step in getattr(task, "steps", ())}
+    return steps.get(name)
 
 
 def task_arches(raw: dict[str, object]) -> list[str]:
@@ -183,6 +198,63 @@ if artifact_summaries:
         json.dumps([item.to_dict() for item in inventory], indent=2, sort_keys=True) + "\n",
         "artifact inventory json",
     )
+
+analysis = analyze_albs_build(metadata.raw)
+if analysis.task_timings:
+    timeline = Table(title="ALBS processing timeline")
+    timeline.add_column("Build task arch")
+    timeline.add_column("Wall", justify="right")
+    timeline.add_column("Artifacts")
+    timeline.add_column("build_srpm", justify="right")
+    timeline.add_column("build_binaries", justify="right")
+    timeline.add_column("upload", justify="right")
+    timeline.add_column("packages_processing", justify="right")
+    timeline.add_column("logs_processing", justify="right")
+    for task in analysis.task_timings:
+        artifacts = ", ".join(
+            f"{kind}={count}" for kind, count in sorted(task.artifact_counts.items())
+        )
+        timeline.add_row(
+            task.arch,
+            format_seconds(task.wall_seconds),
+            artifacts,
+            format_seconds(step_seconds(task, "build_node_stats.build_srpm")),
+            format_seconds(step_seconds(task, "build_node_stats.build_binaries")),
+            format_seconds(step_seconds(task, "build_node_stats.upload")),
+            format_seconds(step_seconds(task, "build_done_stats.packages_processing")),
+            format_seconds(step_seconds(task, "build_done_stats.logs_processing")),
+        )
+    console.print(timeline)
+    totals = analysis.totals
+    step(
+        "Build timing totals: "
+        f"wall={format_seconds(analysis.wall_seconds)}, "
+        f"aggregate task wall={format_seconds(totals.get('aggregate_build_task_wall_seconds'))}, "
+        f"critical task wall={format_seconds(totals.get('critical_build_task_wall_seconds'))}"
+    )
+if analysis.sign_timings:
+    signing = Table(title="ALBS signing/notarization timing")
+    signing.add_column("Sign task")
+    signing.add_column("Wall", justify="right")
+    signing.add_column("sign", justify="right")
+    signing.add_column("notarize", justify="right")
+    signing.add_column("upload", justify="right")
+    signing.add_column("web", justify="right")
+    for sign in analysis.sign_timings:
+        signing.add_row(
+            sign.sign_task_id,
+            format_seconds(sign.wall_seconds),
+            format_seconds(sign.stats_seconds.get("sign_packages_time")),
+            format_seconds(sign.stats_seconds.get("notarization_packages_time")),
+            format_seconds(sign.stats_seconds.get("upload_packages_time")),
+            format_seconds(sign.stats_seconds.get("web_server_processing_time")),
+        )
+    console.print(signing)
+write(
+    out_dir / f"build-{build_id}-processing-analysis.json",
+    json.dumps(analysis.to_dict(), indent=2, sort_keys=True) + "\n",
+    "processing analysis json",
+)
 
 if verify_git:
     repo_url = metadata.source_repository
