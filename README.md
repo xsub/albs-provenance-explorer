@@ -70,6 +70,7 @@ Implemented in this PoC:
 - resilient build metadata adapter shape for `build.almalinux.org`
 - RPM metadata inspection adapter with normalized `requires`/`provides` dependency facts
 - SPDX JSON and CycloneDX JSON SBOM graph import with Package URL based ecosystem identity
+- PURL/CPE security identity metadata for live ALBS SRPM/RPM artifacts
 - errata/CVE attachment model
 - trust-path analysis for binary RPM artifacts
 - JSON, DOT and SVG rendering
@@ -193,6 +194,16 @@ This PoC is not a full unified dependency resolver yet. It now establishes the d
 That distinction matters. Pip markers, Poetry extras, Maven scopes, Gradle configurations, npm optional dependencies, Cargo features and Go module constraints do not mean the same thing. The graph stores dependency facts in a normalized shape while preserving ecosystem-specific raw metadata for auditability.
 
 Current adapters populate this model from RPM `requires`/`provides`, SPDX/CycloneDX components and source `.spec` declarations. Source manifest detection records ecosystem evidence from actual files; it does not assume npm, Cargo, Go, Python, Maven or Gradle participation unless a corresponding file exists in the source tree. Future resolver adapters can add package-manager-specific resolution outputs without changing the ALBS provenance graph contract.
+
+## Identity Model: PURL vs CPE vs ALBS/CAS
+
+The graph keeps package identity, security matching identity and provenance evidence separate:
+
+- PURL identifies package coordinates for SRPM/RPM and SBOM components. Live ALBS RPM artifacts now carry `pkg:rpm/almalinux/...` Package URLs with `arch`, `distro` and available version/release qualifiers, following the [Package URL](https://github.com/package-url/purl-spec) shape (`scheme:type/namespace/name@version?qualifiers`).
+- CPE is security applicability identity, not package identity. This PoC stores `cpe: null` plus unverified `cpe_candidates` derived from RPM name/version as placeholders. It does not claim an official [CPE](https://cpe.mitre.org/specification/) dictionary match until an explicit CPE mapping/verification adapter is added.
+- ALBS/CAS identity is provenance evidence. CAS nodes preserve build and notarization attributes such as `build_id`, `source_type`, `alma_commit_sbom_hash`, `git_url`, `git_ref`, `git_commit`, `build_arch`, RPM header fields, `build_host`, `built_by` and `sbom_api_ver`, matching the [AlmaLinux SBOM/Codenotary RFE](https://github.com/AlmaLinux/build-system-rfes/blob/master/SBOM/SBOM.md) fields where ALBS exposes them.
+
+This separation is intentional. PURL answers "which package coordinate is this?", CPE answers "which security product record might apply?", and ALBS/CAS answers "what build/source/artifact evidence produced this thing?".
 
 ## Unified Graph Strategy
 

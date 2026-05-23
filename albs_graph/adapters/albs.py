@@ -4,10 +4,12 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urlencode, urlparse
 from typing import Any, Callable
 
+from albs_graph.dependency import Ecosystem, PackageIdentity
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
+from albs_graph.security import cpe_security_identity
 
 
 @dataclass(frozen=True)
@@ -198,12 +200,25 @@ def graph_from_build_metadata(build: AlbsBuildMetadata) -> ProvenanceGraph:
 
     if build.source_rpm:
         srpm_id = f"srpm:{build.source_rpm}"
-        graph.add_node(Node(srpm_id, NodeType.SRPM, build.source_rpm, {"package": package}))
+        srpm_metadata = _rpm_artifact_metadata(
+            build.source_rpm,
+            node_type=NodeType.SRPM,
+            distro=None,
+            package=package,
+        )
+        graph.add_node(Node(srpm_id, NodeType.SRPM, build.source_rpm, srpm_metadata))
         graph.add_edge(build_id, srpm_id, Relation.PRODUCES)
 
     for rpm in build.binary_rpms:
         rpm_id = f"rpm:{rpm}"
-        graph.add_node(Node(rpm_id, NodeType.BINARY_RPM, rpm, _rpm_metadata_from_filename(rpm)))
+        graph.add_node(
+            Node(
+                rpm_id,
+                NodeType.BINARY_RPM,
+                rpm,
+                _rpm_artifact_metadata(rpm, node_type=NodeType.BINARY_RPM, distro=None),
+            )
+        )
         graph.add_edge(build_id, rpm_id, Relation.PRODUCES)
         if build.release_repository:
             release_id = f"repo-release:{build.release_repository}"
@@ -285,15 +300,21 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
         arch = str(task.get("arch") or "unknown")
         platform = task.get("platform") or {}
         ref = task.get("ref") or {}
+        platform_name = str(platform.get("name") or "")
+        distro = _distro_from_platform(platform_name)
         task_cas = task.get("alma_commit_cas_hash") or build.source_cas_hash
         task_cas_id = f"cas:source:{build.package}:{task_cas or build.commit}"
         task_cas_metadata = _cas_evidence_metadata(
             "source_commit",
             task_cas,
+            build_id=build.build_id,
+            source_type="git",
             albs_authenticated=task.get("is_cas_authenticated"),
+            alma_commit_sbom_hash=task_cas,
             git_commit=ref.get("git_commit_hash"),
             git_ref=ref.get("git_ref"),
             git_url=ref.get("url"),
+            sbom_api_ver=_sbom_api_version(build.raw),
         )
         if task_cas_id not in graph.nodes:
             graph.add_node(
@@ -340,6 +361,7 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
             )
         graph.add_edge(task_id, env_id, Relation.BUILT_IN)
 
+        srpm_name = _task_srpm_name(task)
         for artifact in task.get("artifacts", []):
             if artifact.get("type") != "rpm":
                 continue
@@ -353,7 +375,15 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
                     node_id,
                     node_type,
                     name,
-                    _rpm_metadata_from_filename(name)
+                    _rpm_artifact_metadata(
+                        name,
+                        node_type=node_type,
+                        distro=distro,
+                        package=build.package,
+                        artifact=artifact,
+                        task=task,
+                        source_rpm=srpm_name,
+                    )
                     | {
                         "artifact_id": artifact.get("id"),
                         "href": artifact.get("href"),
@@ -376,9 +406,28 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
                             _cas_evidence_metadata(
                                 cas_subject,
                                 artifact_cas_hash,
+                                build_id=build.build_id,
+                                source_type="git",
+                                alma_commit_sbom_hash=task_cas,
+                                git_url=ref.get("url"),
+                                git_ref=ref.get("git_ref"),
+                                git_commit=ref.get("git_commit_hash"),
+                                build_arch=arch,
                                 artifact_id=artifact.get("id"),
                                 artifact_name=name,
                                 href=artifact.get("href"),
+                                purl=_rpm_artifact_purl(
+                                    _rpm_metadata_from_filename(name),
+                                    distro=distro,
+                                    node_type=node_type,
+                                ),
+                                **_rpm_header_cas_attrs(
+                                    name,
+                                    source_rpm=srpm_name,
+                                ),
+                                build_host=task.get("build_host"),
+                                built_by=_build_owner(build.raw),
+                                sbom_api_ver=_sbom_api_version(build.raw),
                             ),
                         )
                     )
@@ -595,6 +644,158 @@ def _merge_node_metadata(
     graph.nodes[node_id].metadata.update(
         {key: value for key, value in metadata.items() if value is not None}
     )
+
+
+def _rpm_artifact_metadata(
+    filename: str,
+    *,
+    node_type: NodeType,
+    distro: str | None,
+    package: str | None = None,
+    artifact: dict[str, Any] | None = None,
+    task: dict[str, Any] | None = None,
+    source_rpm: str | None = None,
+) -> dict[str, Any]:
+    metadata = _rpm_metadata_from_filename(filename)
+    if package and not metadata.get("name"):
+        metadata["name"] = package
+    identity = _rpm_package_identity(metadata, distro=distro, node_type=node_type)
+    purl = identity.purl
+    security_identity = cpe_security_identity(
+        _metadata_text(metadata.get("name")),
+        _metadata_text(metadata.get("version")),
+        purl=purl,
+    )
+    data = metadata | {
+        "purl": purl,
+        "identity": identity.to_dict(),
+        "security_identity": security_identity,
+    }
+    if artifact:
+        data["artifact_id"] = artifact.get("id")
+        data["href"] = artifact.get("href")
+        data["cas_hash"] = artifact.get("cas_hash")
+    if task:
+        data["task_id"] = task.get("id")
+        data["build_arch"] = task.get("arch")
+    if source_rpm:
+        data["sourcerpm"] = source_rpm
+    return data
+
+
+def _rpm_artifact_purl(
+    metadata: dict[str, Any],
+    *,
+    distro: str | None,
+    node_type: NodeType,
+) -> str:
+    name = _metadata_text(metadata.get("name")) or "unknown"
+    version = _rpm_purl_version(metadata)
+    qualifiers = _rpm_purl_qualifiers(metadata, distro=distro)
+    if node_type == NodeType.SRPM:
+        qualifiers["arch"] = "src"
+    encoded_name = quote(name, safe="")
+    encoded_version = quote(version, safe="") if version else ""
+    purl = f"pkg:rpm/almalinux/{encoded_name}"
+    if encoded_version:
+        purl += f"@{encoded_version}"
+    if qualifiers:
+        purl += f"?{urlencode(sorted(qualifiers.items()))}"
+    return purl
+
+
+def _rpm_package_identity(
+    metadata: dict[str, Any],
+    *,
+    distro: str | None,
+    node_type: NodeType,
+) -> PackageIdentity:
+    name = _metadata_text(metadata.get("name")) or "unknown"
+    qualifiers = _rpm_purl_qualifiers(metadata, distro=distro)
+    if node_type == NodeType.SRPM:
+        qualifiers["arch"] = "src"
+    return PackageIdentity(
+        Ecosystem.RPM,
+        name,
+        namespace="almalinux",
+        version=_rpm_purl_version(metadata),
+        purl=_rpm_artifact_purl(metadata, distro=distro, node_type=node_type),
+        qualifiers=qualifiers,
+    )
+
+
+def _rpm_purl_version(metadata: dict[str, Any]) -> str | None:
+    version = _metadata_text(metadata.get("version"))
+    release = _metadata_text(metadata.get("release"))
+    if version and release:
+        return f"{version}-{release}"
+    return version or release
+
+
+def _rpm_purl_qualifiers(metadata: dict[str, Any], *, distro: str | None) -> dict[str, str]:
+    qualifiers: dict[str, str] = {}
+    arch = _metadata_text(metadata.get("arch"))
+    if arch:
+        qualifiers["arch"] = arch
+    epoch = _metadata_text(metadata.get("epoch"))
+    if epoch:
+        qualifiers["epoch"] = epoch
+    if distro:
+        qualifiers["distro"] = distro
+    return qualifiers
+
+
+def _rpm_header_cas_attrs(filename: str, *, source_rpm: str | None) -> dict[str, Any]:
+    metadata = _rpm_metadata_from_filename(filename)
+    return {
+        "name": metadata.get("name"),
+        "epoch": metadata.get("epoch"),
+        "version": metadata.get("version"),
+        "release": metadata.get("release"),
+        "arch": metadata.get("arch"),
+        "sourcerpm": source_rpm,
+    }
+
+
+def _task_srpm_name(task: dict[str, Any]) -> str | None:
+    for artifact in task.get("artifacts", []):
+        name = str(artifact.get("name", ""))
+        if artifact.get("type") == "rpm" and name.endswith(".src.rpm"):
+            return name
+    return None
+
+
+def _distro_from_platform(platform_name: str) -> str | None:
+    if not platform_name:
+        return None
+    normalized = platform_name.strip().lower().replace("_", "-").replace(" ", "-")
+    if normalized.startswith("almalinux-"):
+        return normalized
+    if normalized.startswith("alma-"):
+        return f"almalinux-{normalized.removeprefix('alma-')}"
+    return normalized
+
+
+def _sbom_api_version(data: dict[str, Any]) -> str:
+    return str(data.get("sbom_api_ver") or data.get("sbom_api_version") or "0.1")
+
+
+def _build_owner(data: dict[str, Any]) -> str | None:
+    owner = data.get("owner")
+    if not isinstance(owner, dict):
+        return None
+    username = _metadata_text(owner.get("username"))
+    email = _metadata_text(owner.get("email"))
+    if username and email:
+        return f"{username} <{email}>"
+    return username or email
+
+
+def _metadata_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
 
 
 def _rpm_metadata_from_filename(filename: str) -> dict[str, Any]:
