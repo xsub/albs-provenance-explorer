@@ -1,7 +1,7 @@
-[almalinux@vps-ac97e687 albs-provenance-explorer]$ VERIFY_GIT=1 ./example--verbose.sh
+(_venv_Mac) pawel@codebook:~/albs-provenance-explorer $ VERIFY_GIT=1 ./example--verbose.sh
 ==> ALBS graph tool: albs-graph installed; using Python orchestration for single-pass demo
 ==> Build: 17812
-==> RPM: nginx-core.x86_64
+==> Focused RPM selector: nginx-core.x86_64
 ==> Raw ALBS metadata cache: examples/live-build-17812/build-17812.albs.json
 ==> Cache TTL: 300s
 ==> Verify git source commit: 1

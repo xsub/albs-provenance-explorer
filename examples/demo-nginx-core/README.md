@@ -51,7 +51,7 @@ albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64 --format s
 ## Console Report
 
 ```bash
-VERIFY_GIT=1 ./example--verbose.sh
+RPM_NAME=nginx-core ARCH=x86_64 OUT_DIR=examples/demo-nginx-core VERIFY_GIT=1 ./example--verbose.sh
 ```
 
 ![nginx-core trust-path console report](trust-path-console.svg)

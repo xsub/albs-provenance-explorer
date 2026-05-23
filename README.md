@@ -52,7 +52,7 @@ albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64 --format s
 Console trust-path report from an AlmaLinux host, using a five-minute ALBS metadata cache and optional git source commit verification:
 
 ```bash
-VERIFY_GIT=1 ./example--verbose.sh
+RPM_NAME=nginx-core ARCH=x86_64 OUT_DIR=examples/demo-nginx-core VERIFY_GIT=1 ./example--verbose.sh
 ```
 
 ![nginx-core trust-path console report](examples/demo-nginx-core/trust-path-console.svg)
@@ -144,6 +144,115 @@ Regenerate demo artifacts in one verbose run. The script fetches ALBS metadata o
 ```bash
 ./example--verbose.sh
 ```
+
+<details>
+<summary>Sample verbose run with host name sanitized</summary>
+
+```text
+(_venv_Mac) pawel@codebook:~/albs-provenance-explorer $ bash example--verbose.sh
+==> ALBS graph tool: albs-graph installed; using Python orchestration for single-pass demo
+==> Build: 17812
+==> Focused RPM selector: <none; representative artifact selected after ALBS metadata>
+==> Raw ALBS metadata cache: examples/live-build-17812/build-17812.albs.json
+==> Cache TTL: 300s
+==> Verify git source commit: 0
+step Ignoring stale ALBS metadata cache examples/live-build-17812/build-17812.albs.json (27389s old, ttl 300s)
+step Fetching ALBS build metadata from https://build.almalinux.org/api/v1/builds/17812/
+step Writing ALBS build metadata cache to examples/live-build-17812/build-17812.albs.json
+step Parsing ALBS API JSON response
+step Source package: nginx (from ALBS srpm_artifact)
+step Building full provenance graph from ALBS metadata
+step Full graph: 289 nodes, 484 edges, 85 CAS attestations
+step ALBS build task platforms: x86_64, aarch64, ppc64le, s390x, i686
+step ALBS source build task: src
+                                                       ALBS RPM artifact matrix
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Build task arch ┃ Artifacts ┃ Artifact arches             ┃ Packages                                                                ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ x86_64          │        19 │ x86_64=16, noarch=2, src=1  │ nginx, nginx-all-modules, nginx-core, nginx-core-debuginfo,             │
+│                 │           │                             │ nginx-debuginfo, nginx-debugsource, nginx-filesystem, nginx-mod-devel,  │
+│                 │           │                             │ +10 more                                                                │
+│ aarch64         │        19 │ aarch64=16, noarch=2, src=1 │ nginx, nginx-all-modules, nginx-core, nginx-core-debuginfo,             │
+│                 │           │                             │ nginx-debuginfo, nginx-debugsource, nginx-filesystem, nginx-mod-devel,  │
+│                 │           │                             │ +10 more                                                                │
+│ ppc64le         │        19 │ ppc64le=16, noarch=2, src=1 │ nginx, nginx-all-modules, nginx-core, nginx-core-debuginfo,             │
+│                 │           │                             │ nginx-debuginfo, nginx-debugsource, nginx-filesystem, nginx-mod-devel,  │
+│                 │           │                             │ +10 more                                                                │
+│ s390x           │        19 │ s390x=16, noarch=2, src=1   │ nginx, nginx-all-modules, nginx-core, nginx-core-debuginfo,             │
+│                 │           │                             │ nginx-debuginfo, nginx-debugsource, nginx-filesystem, nginx-mod-devel,  │
+│                 │           │                             │ +10 more                                                                │
+│ i686            │        19 │ i686=16, noarch=2, src=1    │ nginx, nginx-all-modules, nginx-core, nginx-core-debuginfo,             │
+│                 │           │                             │ nginx-debuginfo, nginx-debugsource, nginx-filesystem, nginx-mod-devel,  │
+│                 │           │                             │ +10 more                                                                │
+│ src             │         1 │ src=1                       │ nginx                                                                   │
+└─────────────────┴───────────┴─────────────────────────────┴─────────────────────────────────────────────────────────────────────────┘
+step Artifact inventory rows include each ALBS task artifact, including repeated SRPM/noarch outputs per build task
+step Writing artifact inventory json output to examples/demo-build-17812/build-17812-artifact-inventory.json
+                                                    ALBS processing timeline
+┏━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
+┃ Build task arch ┃ Wall ┃ Artifacts            ┃ build_srpm ┃ build_binaries ┃ upload ┃ packages_processing ┃ logs_processing ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
+│ x86_64          │ 6.6m │ build_log=14, rpm=19 │      33.7s │           3.3m │   1.8m │               29.0s │           14.3s │
+│ aarch64         │ 8.1m │ build_log=14, rpm=19 │       1.5m │           3.8m │   1.8m │               28.1s │           13.6s │
+│ ppc64le         │ 6.2m │ build_log=14, rpm=19 │       1.1m │           1.7m │   2.2m │               28.6s │           17.1s │
+│ s390x           │ 5.0m │ build_log=14, rpm=19 │      46.0s │           1.2m │   1.9m │               32.0s │           15.3s │
+│ i686            │ 7.1m │ build_log=14, rpm=19 │       2.5m │           1.9m │   1.8m │               29.3s │           13.8s │
+│ src             │ 4.8m │ build_log=7, rpm=1   │       3.7m │              - │  28.6s │               12.3s │           12.6s │
+└─────────────────┴──────┴──────────────────────┴────────────┴────────────────┴────────┴─────────────────────┴─────────────────┘
+step Build timing totals: wall=13.6m, aggregate task wall=37.7m, critical task wall=8.1m
+            ALBS signing/notarization timing
+┏━━━━━━━━━━━┳━━━━━━┳━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Sign task ┃ Wall ┃  sign ┃ notarize ┃ upload ┃   web ┃
+┡━━━━━━━━━━━╇━━━━━━╇━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
+│ 11754     │ 4.3m │ 22.0s │     7.0s │   3.1m │ 29.0s │
+└───────────┴──────┴───────┴──────────┴────────┴───────┘
+step Writing processing analysis json output to examples/demo-build-17812/build-17812-processing-analysis.json
+step Rendering full graph as JSON/DOT/SVG
+step Writing full graph json output to examples/live-build-17812/build-17812.json
+step Writing full graph dot output to examples/live-build-17812/build-17812.dot
+step Writing full graph svg output to examples/live-build-17812/build-17812.svg
+step Writing demo full graph json output to examples/demo-build-17812/build-17812-full.json
+step Writing demo full graph svg output to examples/demo-build-17812/build-17812-full.svg
+step No RPM selector provided; full build is multi-platform; selecting representative focused artifact for arch x86_64
+step Selected RPM node: rpm:3237133:nginx-1.20.1-16.el9_4.1.x86_64.rpm
+step Analyzing source-to-artifact trust path
+               Trust path:
+    nginx-1.20.1-16.el9_4.1.x86_64.rpm
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
+┃ Check                        ┃ Result  ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
+│ has_build_task               │ ok      │
+│ has_signature                │ ok      │
+│ has_release                  │ ok      │
+│ has_source_cas_attestation   │ ok      │
+│ has_artifact_cas_attestation │ ok      │
+│ has_sbom                     │ missing │
+│ has_errata_link              │ missing │
+└──────────────────────────────┴─────────┘
+Provenance complete: True
+Security context complete: False
+Complete: False
+Missing security context: has_sbom, has_errata_link
+Path:
+  src:nginx
+  git:https://git.almalinux.org/rpms/nginx.git
+  commit:nginx:911945c71710c83cf6f760447c32d8d6cae737dc
+  cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc
+  build:albs-task:188077
+  rpm:3237133:nginx-1.20.1-16.el9_4.1.x86_64.rpm
+step Building focused trust graph
+step Focused graph: 13 nodes, 13 edges, 3 CAS attestations
+step Rendering focused trust graph as JSON/DOT/SVG
+step Writing focused graph json output to examples/demo-build-17812/nginx-x86_64-trust.json
+step Writing focused graph dot output to examples/demo-build-17812/nginx-x86_64-trust.dot
+step Writing focused graph svg output to examples/demo-build-17812/nginx-x86_64-trust.svg
+==> Done
+Metadata cache: examples/live-build-17812/build-17812.albs.json
+Full graph:     examples/demo-build-17812/build-17812-full.svg
+Focused graph:  examples/demo-build-17812/nginx-x86_64-trust.svg
+```
+
+</details>
 
 The shell wrapper is intentionally thin; it only passes parameters into `python3 -m albs_graph.cli.demo_verbose`. Fetching, graph construction, inventory, timing analysis and rendering all live in Python modules.
 
