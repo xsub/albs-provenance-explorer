@@ -49,17 +49,21 @@ VERIFY_GIT="$VERIFY_GIT" \
 "$PYTHON_BIN" <<'PY'
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
 import tempfile
-from collections import Counter
 from pathlib import Path
 
 from rich.console import Console
 from rich.table import Table
 
 from albs_graph.adapters.albs import fetch_build_metadata, graph_from_build_metadata
+from albs_graph.provenance.inventory import (
+    rpm_artifact_inventory,
+    summarize_artifacts_by_build_arch,
+)
 from albs_graph.provenance.trust import (
     find_binary_rpm,
     focused_trust_graph,
@@ -146,15 +150,39 @@ if build_arches:
     step(f"ALBS build task platforms: {', '.join(build_arches)}")
 if has_source_task(metadata.raw):
     step("ALBS source build task: src")
-rpm_arch_counts = Counter(
-    str(node.metadata.get("arch") or "unknown")
-    for node in graph.find_by_type("binary_rpm")
-)
-if rpm_arch_counts:
-    counts = ", ".join(
-        f"{arch}={rpm_arch_counts[arch]}" for arch in ordered_arches(set(rpm_arch_counts))
+inventory = rpm_artifact_inventory(graph)
+artifact_summaries = summarize_artifacts_by_build_arch(inventory)
+if artifact_summaries:
+    matrix = Table(title="ALBS RPM artifact matrix")
+    matrix.add_column("Build task arch")
+    matrix.add_column("Artifacts", justify="right")
+    matrix.add_column("Artifact arches")
+    matrix.add_column("Packages")
+    for summary in artifact_summaries:
+        arches = ", ".join(
+            f"{artifact_arch}={count}"
+            for artifact_arch, count in summary.artifact_arches.items()
+        )
+        package_names = list(summary.packages)
+        visible = ", ".join(package_names[:8])
+        if len(package_names) > 8:
+            visible = f"{visible}, +{len(package_names) - 8} more"
+        matrix.add_row(
+            summary.build_arch,
+            str(summary.total_artifacts),
+            arches,
+            visible,
+        )
+    console.print(matrix)
+    step(
+        "Artifact inventory rows include each ALBS task artifact, including repeated "
+        "SRPM/noarch outputs per build task"
     )
-    step(f"Binary RPM artifact arches: {counts}")
+    write(
+        out_dir / f"build-{build_id}-artifact-inventory.json",
+        json.dumps([item.to_dict() for item in inventory], indent=2, sort_keys=True) + "\n",
+        "artifact inventory json",
+    )
 
 if verify_git:
     repo_url = metadata.source_repository
