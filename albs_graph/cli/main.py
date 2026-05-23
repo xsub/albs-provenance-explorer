@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 from typing import Callable, Optional
 
+import click
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -19,13 +20,19 @@ from albs_graph.render import SvgRenderError, graph_to_dot, graph_to_json, graph
 app = typer.Typer(
     name="albs-graph",
     help="CLI-first provenance graph explorer for ALBS, RPM lineage, SBOMs and trust paths.",
+    context_settings={"help_option_names": ["-h", "--help"]},
     no_args_is_help=True,
 )
 console = Console()
 verbose_console = Console(stderr=True)
 
 
-@app.command("fixture")
+@app.command(
+    "fixture",
+    help="Build a synthetic package fixture graph for local development and tests.",
+    short_help="Build a synthetic fixture graph.",
+    no_args_is_help=True,
+)
 def fixture(
     package: str = typer.Argument(..., help="Synthetic package fixture to build."),
     output_format: str = typer.Option(
@@ -40,7 +47,12 @@ def fixture(
     _emit_graph(graph, output_format, output)
 
 
-@app.command("fetch-build")
+@app.command(
+    "fetch-build",
+    help="Fetch an ALBS build by positional build id and export a provenance graph.",
+    short_help="Fetch an ALBS build graph.",
+    no_args_is_help=True,
+)
 def fetch_build(
     build_id: int = typer.Argument(..., help="ALBS build id."),
     output_format: str = typer.Option("json", "--format", "-f", help="json, dot or svg."),
@@ -71,7 +83,12 @@ def fetch_build(
     _emit_graph(graph, output_format, output, verbose=verbose)
 
 
-@app.command("fetch")
+@app.command(
+    "fetch",
+    help="Fetch an ALBS build by --build-id and export JSON, DOT or SVG.",
+    short_help="Fetch an ALBS build by --build-id.",
+    no_args_is_help=True,
+)
 def fetch(
     build_id: int = typer.Option(..., "--build-id", "-b", help="ALBS build id."),
     output_format: str = typer.Option("json", "--format", "-f", help="json, dot or svg."),
@@ -102,7 +119,12 @@ def fetch(
     _emit_graph(graph, output_format, output, verbose=verbose)
 
 
-@app.command("inspect-rpm")
+@app.command(
+    "inspect-rpm",
+    help="Inspect a local RPM and emit package, provide and require graph facts.",
+    short_help="Inspect a local RPM.",
+    no_args_is_help=True,
+)
 def inspect_rpm(
     path: Path = typer.Argument(..., exists=True, dir_okay=False, help="Local RPM path."),
     output_format: str = typer.Option("json", "--format", "-f", help="json or dot."),
@@ -112,7 +134,12 @@ def inspect_rpm(
     _emit_graph(graph, output_format, output)
 
 
-@app.command("import-sbom")
+@app.command(
+    "import-sbom",
+    help="Import SPDX JSON or CycloneDX JSON as SBOM evidence nodes and edges.",
+    short_help="Import SPDX or CycloneDX SBOM.",
+    no_args_is_help=True,
+)
 def import_sbom_command(
     path: Path = typer.Argument(
         ..., exists=True, dir_okay=False, help="SPDX JSON or CycloneDX JSON SBOM."
@@ -124,7 +151,12 @@ def import_sbom_command(
     _emit_graph(graph, output_format, output)
 
 
-@app.command("trust-path")
+@app.command(
+    "trust-path",
+    help="Show or render the focused source-to-artifact trust path for one binary RPM.",
+    short_help="Show a focused RPM trust path.",
+    no_args_is_help=True,
+)
 def trust_path_command(
     package: Optional[str] = typer.Argument(None, help="Binary RPM node id or package name."),
     rpm: Optional[str] = typer.Option(None, "--rpm", help="Binary RPM name or node id."),
@@ -213,7 +245,12 @@ def trust_path_command(
         console.print(f"  {node_id}")
 
 
-@app.command("render-fixture")
+@app.command(
+    "render-fixture",
+    help="Render a synthetic package fixture graph as SVG, DOT or JSON.",
+    short_help="Render a synthetic fixture graph.",
+    no_args_is_help=True,
+)
 def render_fixture(
     package: str = typer.Argument(..., help="Synthetic package fixture to render."),
     output_format: str = typer.Option("svg", "--format", "-f", help="svg, dot or json."),
@@ -223,7 +260,12 @@ def render_fixture(
     _emit_graph(graph, output_format, output)
 
 
-@app.command("inspect-fixture")
+@app.command(
+    "inspect-fixture",
+    help="Inspect synthetic fixture graph counts and trust-path coverage.",
+    short_help="Inspect a synthetic fixture graph.",
+    no_args_is_help=True,
+)
 def inspect_fixture(
     package: str = typer.Argument(..., help="Synthetic package fixture to inspect."),
 ) -> None:
@@ -247,6 +289,9 @@ def inspect_fixture(
 def main(argv: list[str] | None = None) -> int:
     try:
         app(args=argv, standalone_mode=False)
+    except click.ClickException as exc:
+        exc.show()
+        return int(exc.exit_code)
     except (RpmQueryError, FileNotFoundError, ValueError, SvgRenderError) as exc:
         console.print(f"[red]error:[/red] {exc}")
         return 2

@@ -100,6 +100,20 @@ dot -V
 
 ## CLI
 
+List available commands and options:
+
+```bash
+albs-graph --help
+albs-graph fetch --help
+albs-graph trust-path --help
+```
+
+If the console script is not installed in the active virtual environment, use the module entrypoint:
+
+```bash
+python -m albs_graph.cli.main --help
+```
+
 Fetch and parse an ALBS build page:
 
 ```bash
