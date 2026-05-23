@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1089" height="1254" viewBox="0 0 1089 1254">
+<svg xmlns="http://www.w3.org/2000/svg" width="1089" height="1275" viewBox="0 0 1089 1275">
 <rect width="100%" height="100%" fill="#080010"/>
 <text x="18" y="33" font-family="Menlo, Consolas, monospace" font-size="15" fill="#63ff39">
   <tspan x="18" dy="0">[almalinux@vps-ac97e687&#160;albs-provenance-explorer]$&#160;VERIFY_GIT=1&#160;./example--verbose.sh</tspan>
@@ -13,6 +13,7 @@
   <tspan x="18" dy="21">step&#160;Fetching&#160;ALBS&#160;build&#160;metadata&#160;from&#160;https://build.almalinux.org/api/v1/builds/17812/</tspan>
   <tspan x="18" dy="21">step&#160;Writing&#160;ALBS&#160;build&#160;metadata&#160;cache&#160;to&#160;examples/live-build-17812/build-17812.albs.json</tspan>
   <tspan x="18" dy="21">step&#160;Parsing&#160;ALBS&#160;API&#160;JSON&#160;response</tspan>
+  <tspan x="18" dy="21">step&#160;Source&#160;package:&#160;nginx&#160;(from&#160;ALBS&#160;srpm_artifact)</tspan>
   <tspan x="18" dy="21">step&#160;Building&#160;full&#160;provenance&#160;graph&#160;from&#160;ALBS&#160;metadata</tspan>
   <tspan x="18" dy="21">step&#160;Full&#160;graph:&#160;289&#160;nodes,&#160;484&#160;edges,&#160;85&#160;CAS&#160;attestations</tspan>
   <tspan x="18" dy="21">step&#160;Verifying&#160;git&#160;source&#160;commit&#160;911945c71710c83cf6f760447c32d8d6cae737dc&#160;in&#160;https://git.almalinux.org/rpms/nginx.git</tspan>

@@ -9,6 +9,7 @@ step Ignoring stale ALBS metadata cache examples/live-build-17812/build-17812.al
 step Fetching ALBS build metadata from https://build.almalinux.org/api/v1/builds/17812/
 step Writing ALBS build metadata cache to examples/live-build-17812/build-17812.albs.json
 step Parsing ALBS API JSON response
+step Source package: nginx (from ALBS srpm_artifact)
 step Building full provenance graph from ALBS metadata
 step Full graph: 289 nodes, 484 edges, 85 CAS attestations
 step Verifying git source commit 911945c71710c83cf6f760447c32d8d6cae737dc in https://git.almalinux.org/rpms/nginx.git

@@ -14,6 +14,7 @@ from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
 class AlbsBuildMetadata:
     build_id: str
     package: str
+    package_source: str
     source_repository: str
     commit: str
     source_cas_hash: str | None
@@ -81,19 +82,16 @@ def fetch_build_metadata(
 def parse_build_metadata(data: dict[str, Any]) -> AlbsBuildMetadata:
     first_task = _first_task(data)
     first_ref = first_task.get("ref", {}) if first_task else {}
-    package = str(
-        data.get("package")
-        or data.get("name")
-        or data.get("source_package")
-        or _package_from_repository(str(first_ref.get("url", "")))
-    )
-    if not package or package == "None":
+    artifacts = _rpm_artifacts(data)
+    package_name = _package_from_build_metadata(data, artifacts, first_task)
+    package = package_name.value
+    if not package:
         raise ValueError("ALBS build metadata is missing package/source_package")
     build_id = str(data.get("build_id") or data.get("id") or f"fixture:{package}")
-    artifacts = _rpm_artifacts(data)
     return AlbsBuildMetadata(
         build_id=build_id,
         package=package,
+        package_source=package_name.source,
         source_repository=str(
             data.get("source_repository")
             or data.get("git_repository")
@@ -139,6 +137,7 @@ def parse_build_page(build_id: str, html: str, url: str) -> AlbsBuildMetadata:
     return AlbsBuildMetadata(
         build_id=build_id,
         package=package,
+        package_source="html",
         source_repository=repository or f"unknown-albs-source:{package}",
         commit=commit,
         source_cas_hash=_extract_after(text, ("Codenotary CAS", "CAS hash", "Source CAS hash")),
@@ -163,7 +162,14 @@ def graph_from_build_metadata(build: AlbsBuildMetadata) -> ProvenanceGraph:
     cas_id = f"cas:source:{package}:{cas_value or build.commit}"
     build_id = f"build:albs:{build.build_id}"
 
-    graph.add_node(Node(source_id, NodeType.SOURCE_PACKAGE, package, {"ecosystem": "rpm"}))
+    graph.add_node(
+        Node(
+            source_id,
+            NodeType.SOURCE_PACKAGE,
+            package,
+            {"ecosystem": "rpm", "albs_package_source": build.package_source},
+        )
+    )
     graph.add_node(
         Node(repo_id, NodeType.GIT_REPOSITORY, build.source_repository, {"system": "ALBS"})
     )
@@ -224,7 +230,14 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
     source_cas_id = f"cas:source:{build.package}:{source_cas_value or build.commit}"
     build_id = f"build:albs:{build.build_id}"
 
-    graph.add_node(Node(source_id, NodeType.SOURCE_PACKAGE, build.package, {"ecosystem": "rpm"}))
+    graph.add_node(
+        Node(
+            source_id,
+            NodeType.SOURCE_PACKAGE,
+            build.package,
+            {"ecosystem": "rpm", "albs_package_source": build.package_source},
+        )
+    )
     graph.add_node(
         Node(repo_id, NodeType.GIT_REPOSITORY, build.source_repository, {"system": "ALBS"})
     )
@@ -434,6 +447,89 @@ def _binary_rpm_names(artifacts: list[dict[str, Any]]) -> list[str]:
         for artifact in artifacts
         if not str(artifact.get("name", "")).endswith(".src.rpm")
     ]
+
+
+@dataclass(frozen=True)
+class _PackageName:
+    value: str
+    source: str
+
+
+def _package_from_build_metadata(
+    data: dict[str, Any],
+    artifacts: list[dict[str, Any]],
+    first_task: dict[str, Any],
+) -> _PackageName:
+    first_ref = first_task.get("ref", {}) if first_task else {}
+    explicit_sources: tuple[tuple[str, dict[str, Any], tuple[str, ...]], ...] = (
+        (
+            "build_metadata",
+            data,
+            ("package", "package_name", "source_package", "source_package_name"),
+        ),
+        (
+            "task_metadata",
+            first_task,
+            ("package", "package_name", "source_package", "source_package_name"),
+        ),
+        (
+            "ref_metadata",
+            first_ref,
+            ("package", "package_name", "source_package", "source_package_name"),
+        ),
+    )
+    for source, scope, keys in explicit_sources:
+        for key in keys:
+            value = _non_empty_string(scope.get(key))
+            if value:
+                return _PackageName(value, f"{source}.{key}")
+
+    source_rpm = _first_source_rpm(artifacts)
+    if source_rpm:
+        source_name = _source_name_from_rpm_filename(source_rpm)
+        if source_name:
+            return _PackageName(source_name, "srpm_artifact")
+
+    git_ref = _non_empty_string(first_ref.get("git_ref")) or _non_empty_string(data.get("git_ref"))
+    if git_ref:
+        source_name = _source_name_from_git_ref(git_ref)
+        if source_name:
+            return _PackageName(source_name, "git_ref")
+
+    repository_name = _package_from_repository(
+        str(
+            data.get("source_repository")
+            or data.get("git_repository")
+            or first_ref.get("url")
+            or ""
+        )
+    )
+    if repository_name:
+        return _PackageName(repository_name, "git_repository_url_fallback")
+
+    return _PackageName("", "missing")
+
+
+def _non_empty_string(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or text == "None":
+        return None
+    return text
+
+
+def _source_name_from_rpm_filename(filename: str) -> str | None:
+    metadata = _rpm_metadata_from_filename(filename)
+    return _non_empty_string(metadata.get("name"))
+
+
+def _source_name_from_git_ref(git_ref: str) -> str | None:
+    ref_name = Path(git_ref).name
+    parts = ref_name.rsplit("-", 2)
+    if len(parts) != 3:
+        return None
+    return _non_empty_string(parts[0])
 
 
 def _package_from_repository(repository_url: str) -> str | None:

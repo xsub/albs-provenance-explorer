@@ -51,10 +51,13 @@ import json
 import sys
 from pathlib import Path
 
+from albs_graph.adapters.albs import parse_build_metadata
+
 cache = Path(sys.argv[1])
 rpm_name = sys.argv[2]
 arch = sys.argv[3]
 data = json.loads(cache.read_text(encoding="utf-8"))
+metadata = parse_build_metadata(data)
 
 def first_task_hash() -> str:
     for task in data.get("tasks", []):
@@ -75,6 +78,8 @@ def artifact_hash() -> tuple[str, str]:
     raise SystemExit(f"missing cas_hash for {rpm_name}.{arch} in ALBS metadata")
 
 artifact_name, artifact_cas_hash = artifact_hash()
+print(f"SOURCE_PACKAGE={metadata.package}")
+print(f"SOURCE_PACKAGE_SOURCE={metadata.package_source}")
 print(f"SOURCE_CAS_HASH={first_task_hash()}")
 print(f"ARTIFACT_NAME={artifact_name}")
 print(f"ARTIFACT_CAS_HASH={artifact_cas_hash}")
@@ -123,6 +128,7 @@ run_albs_graph fetch --build-id "$BUILD_ID" --cache "$CACHE_FILE" --cache-ttl 30
 
 printf '\n==> Extracting source and artifact CAS hashes from ALBS metadata\n'
 eval "$(extract_hashes)"
+printf 'source pkg:   %s (%s)\n' "$SOURCE_PACKAGE" "$SOURCE_PACKAGE_SOURCE"
 printf 'source CAS:   %s\n' "$SOURCE_CAS_HASH"
 printf 'artifact:     %s\n' "$ARTIFACT_NAME"
 printf 'artifact CAS: %s\n' "$ARTIFACT_CAS_HASH"

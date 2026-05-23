@@ -77,6 +77,7 @@ def fetch_build(
         refresh_cache=refresh_cache,
         cache_ttl_seconds=cache_ttl,
     )
+    _log_package_metadata(verbose, metadata.package, metadata.package_source)
     _log_step(verbose, "Building provenance graph from ALBS metadata")
     graph = graph_from_build_metadata(metadata)
     _log_graph_stats(verbose, graph)
@@ -113,6 +114,7 @@ def fetch(
         refresh_cache=refresh_cache,
         cache_ttl_seconds=cache_ttl,
     )
+    _log_package_metadata(verbose, metadata.package, metadata.package_source)
     _log_step(verbose, "Building provenance graph from ALBS metadata")
     graph = graph_from_build_metadata(metadata)
     _log_graph_stats(verbose, graph)
@@ -200,6 +202,7 @@ def trust_path_command(
             refresh_cache=refresh_cache,
             cache_ttl_seconds=cache_ttl,
         )
+        _log_package_metadata(verbose, metadata.package, metadata.package_source)
         _log_step(verbose, "Building provenance graph from ALBS metadata")
         graph = graph_from_build_metadata(metadata)
     elif source:
@@ -337,6 +340,10 @@ def _progress(verbose: bool) -> Callable[[str], None] | None:
 def _log_step(verbose: bool, message: str) -> None:
     if verbose:
         verbose_console.print(f"[cyan]step[/cyan] {message}")
+
+
+def _log_package_metadata(verbose: bool, package: str, source: str) -> None:
+    _log_step(verbose, f"Source package: {package} (from ALBS {source})")
 
 
 def _log_graph_stats(verbose: bool, graph: ProvenanceGraph, label: str = "Graph") -> None:

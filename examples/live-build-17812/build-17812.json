@@ -2922,6 +2922,7 @@
       "id": "src:nginx",
       "label": "nginx",
       "metadata": {
+        "albs_package_source": "srpm_artifact",
         "ecosystem": "rpm"
       },
       "type": "source_package"

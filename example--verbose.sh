@@ -87,6 +87,7 @@ metadata = fetch_build_metadata(
     cache_ttl_seconds=cache_ttl,
     progress=step,
 )
+step(f"Source package: {metadata.package} (from ALBS {metadata.package_source})")
 
 step("Building full provenance graph from ALBS metadata")
 graph = graph_from_build_metadata(metadata)
