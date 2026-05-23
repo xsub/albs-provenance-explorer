@@ -8,10 +8,18 @@ https://build.almalinux.org/api/v1/builds/17812/
 
 Build `17812` is an `nginx` build for AlmaLinux 9. The exported graph preserves the source package, git repository, exact commit, CAS source and artifact evidence, ALBS build task, per-architecture build tasks, build environments, SRPMs, binary RPMs, test tasks, signing task and release linkage.
 
+The cached raw API payload is kept as `build-17812.albs.json`. Demo-specific artifact inventory and processing timing exports are derived from that same payload in [`../demo-nginx-core`](../demo-nginx-core).
+
 Regenerate:
 
 ```bash
 albs-graph fetch --build-id 17812 --format json -o examples/live-build-17812/build-17812.json
 albs-graph fetch --build-id 17812 --format dot -o examples/live-build-17812/build-17812.dot
 albs-graph fetch --build-id 17812 --format svg -o examples/live-build-17812/build-17812.svg
+```
+
+Or regenerate the full showcase, including the multi-architecture artifact matrix and processing analysis:
+
+```bash
+RPM_NAME=nginx-core ARCH=x86_64 OUT_DIR=examples/demo-nginx-core ./example--verbose.sh
 ```

@@ -34,6 +34,16 @@ This demo uses public ALBS build `17812`, an AlmaLinux 9 `nginx` build, and focu
 
 The full build graph is useful for analysis, but it is too dense for review. The focused trust graph keeps the source-to-artifact lineage and release evidence visible without rendering every package from every architecture.
 
+The same demo also exports build-level intelligence from the ALBS metadata:
+
+- `96` RPM artifact rows across `x86_64`, `aarch64`, `ppc64le`, `s390x`, `i686` and `src` build tasks
+- each binary build task emits `19` RPM rows: `16` arch-specific RPMs, `2` `noarch` RPMs and `1` SRPM
+- processing analysis covers `173` raw artifacts total: `96` RPM artifacts and `77` build-log/config artifacts
+- build timing summary: `13.6m` wall time, `37.7m` aggregate task wall time, `8.1m` critical task wall time
+- signing/notarization timing summary: `4.3m` wall time, including package signing, CAS notarization, upload and web-server processing
+
+Machine-readable exports are kept in [`examples/demo-nginx-core/build-17812-artifact-inventory.json`](examples/demo-nginx-core/build-17812-artifact-inventory.json) and [`examples/demo-nginx-core/build-17812-processing-analysis.json`](examples/demo-nginx-core/build-17812-processing-analysis.json).
+
 ```bash
 albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64
 albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64 --format svg -o examples/demo-nginx-core/nginx-core-x86_64-trust.svg
@@ -71,6 +81,7 @@ Implemented in this PoC:
 - RPM metadata inspection adapter with normalized `requires`/`provides` dependency facts
 - SPDX JSON and CycloneDX JSON SBOM graph import with Package URL based ecosystem identity
 - PURL/CPE security identity metadata for live ALBS SRPM/RPM artifacts
+- ALBS artifact inventory and processing timeline analysis from raw build metadata
 - errata/CVE attachment model
 - trust-path analysis for binary RPM artifacts
 - JSON, DOT and SVG rendering
