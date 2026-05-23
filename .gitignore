@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+dist/
+build/
+*.egg-info/
+
+# Local demo outputs generated outside the canonical examples/ paths.
+/build-17812*.svg
+/nginx-core-x86_64-trust.*
+examples/demo-nginx-core/nginx-core_x86_64-trust.*
+examples/live-build-17812/*.albs.json
