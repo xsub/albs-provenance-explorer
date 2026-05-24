@@ -179,17 +179,31 @@ def reconcile_dependency_claims(graph: ProvenanceGraph) -> ReconciliationReport:
         group_key = str(node.metadata.get("group_key", node.id))
         groups[group_key].append(node)
 
+    # PRESENCE_UNDECLARED is only meaningful for a subject that has declaration
+    # evidence somewhere: an artifact-observed dependency is "undeclared" only
+    # relative to a manifest/lockfile/resolver that could have declared it. With
+    # header-only ingest (no declaration source at all) a lone observation is
+    # not a conflict, just unreconciled evidence.
+    subjects_with_declarations = {
+        str(node.metadata.get("subject", ""))
+        for nodes in groups.values()
+        for node in nodes
+        if str(node.metadata.get("evidence_class", "")) in _DECLARED_CLASSES
+    }
+
     agreements: Counter[str] = Counter()
     conflicts: list[DependencyConflict] = []
     resolution_count = 0
 
     for group_key in sorted(groups):
         members = sorted(groups[group_key], key=lambda node: node.id)
-        verdict, kinds, chosen = _evaluate_group(members)
+        subject_id = str(members[0].metadata.get("subject", ""))
+        verdict, kinds, chosen = _evaluate_group(
+            members, subject_has_declarations=subject_id in subjects_with_declarations
+        )
         agreements[str(verdict)] += 1
         resolution_count += 1
 
-        subject_id = str(members[0].metadata.get("subject", ""))
         coordinate = _coordinate_of(members[0])
         resolution_id = f"dep-res:{group_key}"
         evidence_sources = sorted({str(node.metadata.get("evidence", "")) for node in members})
@@ -236,7 +250,9 @@ def reconcile_dependency_claims(graph: ProvenanceGraph) -> ReconciliationReport:
     )
 
 
-def _evaluate_group(members: list[Node]) -> tuple[Agreement, list[ConflictKind], str | None]:
+def _evaluate_group(
+    members: list[Node], *, subject_has_declarations: bool
+) -> tuple[Agreement, list[ConflictKind], str | None]:
     versions = {v for node in members if (v := _version_of(node)) is not None}
     linkages = {
         linkage
@@ -253,7 +269,11 @@ def _evaluate_group(members: list[Node]) -> tuple[Agreement, list[ConflictKind],
         kinds.append(ConflictKind.RANGE_VIOLATION)
     if len(linkages) > 1:
         kinds.append(ConflictKind.LINKAGE_MISMATCH)
-    if _ARTIFACT_CLASS in classes and not (classes & _DECLARED_CLASSES):
+    if (
+        subject_has_declarations
+        and _ARTIFACT_CLASS in classes
+        and not (classes & _DECLARED_CLASSES)
+    ):
         kinds.append(ConflictKind.PRESENCE_UNDECLARED)
 
     if kinds:

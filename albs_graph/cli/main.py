@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 from typing import Callable, Optional
@@ -19,9 +20,12 @@ from albs_graph.adapters import (
     graph_from_local_rpm,
 )
 from albs_graph.adapters.albs import graph_from_build_metadata, load_synthetic_build_fixture
+from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
 from albs_graph.adapters.sbom import import_sbom
 from albs_graph.fixtures import build_synthetic_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
+from albs_graph.provenance.coverage import coverage_report
+from albs_graph.provenance.reconcile import reconcile_dependency_claims
 from albs_graph.provenance.trust import (
     find_binary_rpm,
     focused_trust_graph,
@@ -264,6 +268,93 @@ def import_sbom_command(
 ) -> None:
     graph = import_sbom(path)
     _emit_graph(graph, output_format, output)
+
+
+@app.command(
+    "coverage",
+    help="Reconcile dependency evidence and report five-axis provenance coverage.",
+    short_help="Report multi-axis coverage.",
+    no_args_is_help=True,
+)
+def coverage_command(
+    build_id: Optional[int] = typer.Option(
+        None, "--build-id", "-b", help="Fetch a live ALBS build id."
+    ),
+    source: Optional[Path] = typer.Option(
+        None, "--source", "-s", help="Cached ALBS build metadata JSON."
+    ),
+    with_rpm_headers: bool = typer.Option(
+        False,
+        "--with-rpm-headers",
+        help="Range-read public RPM headers to add dynamic-linkage claims (network).",
+    ),
+    limit: Optional[int] = typer.Option(
+        None, "--limit", help="Max binary RPMs to header-fetch when --with-rpm-headers is set."
+    ),
+    output_format: str = typer.Option("summary", "--format", "-f", help="summary or json."),
+    base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
+    cache: Optional[Path] = typer.Option(None, "--cache", help="ALBS metadata cache JSON."),
+    cache_ttl: int = typer.Option(300, "--cache-ttl", help="Cache freshness window in seconds."),
+    refresh_cache: bool = typer.Option(False, "--refresh-cache", help="Ignore an existing cache."),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Print progress to stderr."),
+) -> None:
+    if build_id is not None:
+        metadata = fetch_build_metadata(
+            build_id,
+            base_url=base_url,
+            progress=_progress(verbose),
+            cache_path=cache,
+            refresh_cache=refresh_cache,
+            cache_ttl_seconds=cache_ttl,
+        )
+        graph = graph_from_build_metadata(metadata)
+    elif source:
+        _log_step(verbose, f"Loading ALBS build metadata from {source}")
+        graph = load_synthetic_build_fixture(source)
+    else:
+        raise ValueError("coverage requires --build-id or --source")
+    _log_graph_stats(verbose, graph)
+
+    enrichment = None
+    if with_rpm_headers:
+        _log_step(verbose, "Range-reading RPM headers for dynamic-linkage claims")
+        enrichment = enrich_graph_with_rpm_headers(
+            graph, limit=limit, on_progress=_progress(verbose)
+        )
+    _log_step(verbose, "Reconciling dependency claims")
+    reconciliation = reconcile_dependency_claims(graph)
+    report = coverage_report(graph)
+
+    if output_format.lower() == "json":
+        payload: dict[str, object] = {
+            "coverage": report.to_dict(),
+            "reconciliation": reconciliation.to_dict(),
+        }
+        if enrichment is not None:
+            payload["rpm_header_enrichment"] = enrichment.to_dict()
+        sys.stdout.write(json.dumps(payload, indent=2) + "\n")
+        return
+
+    table = Table(title="Provenance coverage (five axes)")
+    table.add_column("Axis")
+    table.add_column("Covered", justify="right")
+    table.add_column("Total", justify="right")
+    table.add_column("Fraction", justify="right")
+    for axis in report.axes():
+        table.add_row(axis.name, str(axis.covered), str(axis.total), f"{axis.fraction:.2f}")
+    console.print(table)
+    if enrichment is not None:
+        console.print(
+            f"RPM header enrichment: {enrichment.headers_fetched}/{enrichment.artifacts_seen} "
+            f"headers fetched, {enrichment.claims_added} dynamic-linkage claims added"
+        )
+    console.print(
+        f"Reconciled dependencies: {reconciliation.resolutions}; "
+        f"conflicts: {reconciliation.conflict_count}"
+    )
+    for conflict in reconciliation.conflicts[:20]:
+        versions = ", ".join(conflict.versions) or "n/a"
+        console.print(f"  [{conflict.kind}] {conflict.coordinate}: versions={versions}")
 
 
 @app.command(

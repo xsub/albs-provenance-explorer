@@ -90,7 +90,9 @@ def test_version_drift_is_a_first_class_conflict() -> None:
 
 def test_artifact_only_dependency_is_flagged_undeclared() -> None:
     graph = _graph_with_subject()
-    # Present in the built artifact (vendored/static) but nothing declared it.
+    # The subject has declaration evidence (a manifest dep), so a thing present
+    # only in the built artifact (vendored/static) is a genuine presence gap.
+    add_dependency_claim(graph, _claim("declared-dep", "1.0", "manifest"))
     add_dependency_claim(
         graph, _claim("vendored-lib", "9.9", "static_bom", state=ResolutionState.OBSERVED)
     )
@@ -100,7 +102,22 @@ def test_artifact_only_dependency_is_flagged_undeclared() -> None:
 
     assert resolution.metadata["agreement"] == str(Agreement.CONFLICT)
     assert str(ConflictKind.PRESENCE_UNDECLARED) in resolution.metadata["conflict_kinds"]
-    assert report.conflicts[0].kind == ConflictKind.PRESENCE_UNDECLARED
+    assert any(c.kind == ConflictKind.PRESENCE_UNDECLARED for c in report.conflicts)
+
+
+def test_artifact_only_without_declarations_is_not_a_conflict() -> None:
+    graph = _graph_with_subject()
+    # Header-only ingest: a soname observed from the RPM header with no manifest
+    # or resolver evidence anywhere is unreconciled, not a presence conflict.
+    add_dependency_claim(
+        graph, _claim("libssl.so.3", None, "rpm_header_soname", state=ResolutionState.OBSERVED)
+    )
+
+    report = reconcile_dependency_claims(graph)
+    resolution = _resolution_for(graph, "libssl.so.3")
+
+    assert resolution.metadata["agreement"] == str(Agreement.INSUFFICIENT_EVIDENCE)
+    assert report.conflict_count == 0
 
 
 def test_linkage_mismatch_detected_even_when_versions_agree() -> None:
