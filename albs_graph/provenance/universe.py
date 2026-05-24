@@ -1,0 +1,244 @@
+"""The dependency "universe" — a traversable graph across many packages.
+
+Two ways to build it:
+
+- ``universe_from_dot`` takes a ``dnf repograph`` / ``rpmgraph`` dot (the whole
+  repo) and builds one node per package with ``requires`` edges between them.
+  This is the "graph universe for all packages": ``libc`` ends up with an
+  incoming edge from every package that links it, and you can traverse from any
+  element back to ``libc`` and onward to anything else.
+- ``build_universe`` collapses an enriched provenance graph's per-subject
+  dependency *claims* into shared capability nodes, so a single ``libc.so.6``
+  node is shared by every artifact that needs it (carrying linkage + evidence).
+
+Either way the result is a ``ProvenanceGraph`` you can render (dot/svg/json) and
+traverse with the helpers here: ``dependencies_of``, ``dependents_of``,
+``reachable_dependencies`` and ``dependency_paths``.
+"""
+
+from __future__ import annotations
+
+from collections import deque
+from typing import Callable
+
+from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
+
+NodeSelector = Callable[[Node], bool]
+# "X requires Y" edges — used for dependents/dependencies (direction matters).
+_REQUIRES_RELATIONS = (Relation.REQUIRES_RUNTIME, Relation.DECLARES_DEPENDENCY)
+# Traversal also follows PROVIDES so a soname capability bridges to its provider
+# package (cap:zlib -PROVIDES-> cap:libz.so.1) when walking chains.
+_TRAVERSE_RELATIONS = (Relation.REQUIRES_RUNTIME, Relation.DECLARES_DEPENDENCY, Relation.PROVIDES)
+
+
+def universe_from_dot(dot_text: str, *, arch: str | None = None) -> ProvenanceGraph:
+    """Build a repo-wide dependency universe from a repograph/rpmgraph dot graph."""
+
+    # Lazy import keeps the provenance package free of a top-level adapters
+    # dependency (adapters import provenance.reconcile).
+    from albs_graph.adapters.dnf import parse_nevra
+    from albs_graph.adapters.rpmgraph import parse_dot_edges
+
+    universe = ProvenanceGraph()
+
+    def ensure(token: str) -> str:
+        name, version = parse_nevra(token)
+        node_id = f"pkg:{name}"
+        if node_id not in universe.nodes:
+            universe.add_node(
+                Node(node_id, NodeType.BINARY_RPM, name, {"name": name, "version": version})
+            )
+        return node_id
+
+    seen: set[tuple[str, str]] = set()
+    for src, dst in parse_dot_edges(dot_text):
+        if arch and not _arch_ok(src, arch):
+            continue
+        src_id = ensure(src)
+        dst_id = ensure(dst)
+        key = (src_id, dst_id)
+        if key in seen or src_id == dst_id:
+            continue
+        seen.add(key)
+        universe.add_edge(src_id, dst_id, Relation.REQUIRES_RUNTIME)
+    return universe
+
+
+def build_universe(graph: ProvenanceGraph, *, node_selector: NodeSelector | None = None) -> ProvenanceGraph:
+    """Collapse per-subject dependency claims into shared capability nodes."""
+
+    universe = ProvenanceGraph()
+    subjects: set[str] = set()
+    for node in graph.find_by_type(NodeType.BINARY_RPM):
+        if node_selector and not node_selector(node):
+            continue
+        universe.add_node(node)
+        subjects.add(node.id)
+
+    seen_edges: set[tuple[str, str, str]] = set()
+    for claim in graph.find_by_type(NodeType.DEPENDENCY_CLAIM):
+        subject = str(claim.metadata.get("subject", ""))
+        if subject not in subjects:
+            continue
+        coordinate, name, kind = _capability(claim.metadata)
+        cap_id = f"cap:{coordinate}"
+        if cap_id not in universe.nodes:
+            universe.add_node(
+                Node(
+                    cap_id,
+                    NodeType.EXTERNAL_PACKAGE,
+                    name,
+                    {"name": name, "coordinate": coordinate, "kind": kind, "capability": True},
+                )
+            )
+        _add_edge_once(
+            universe,
+            seen_edges,
+            subject,
+            cap_id,
+            Relation.REQUIRES_RUNTIME,
+            linkage=claim.metadata.get("linkage"),
+            evidence=claim.metadata.get("evidence"),
+            scope=claim.metadata.get("scope"),
+        )
+        _maybe_link_provider(universe, seen_edges, claim, cap_id)
+    return universe
+
+
+def dependencies_of(graph: ProvenanceGraph, node_id: str) -> list[str]:
+    """Direct dependencies (capabilities/packages) the node requires."""
+
+    if node_id not in graph.nodes:
+        return []
+    return sorted(
+        {
+            graph.nodes[edge.target].label
+            for relation in _REQUIRES_RELATIONS
+            for edge in graph.outgoing(node_id, relation)
+        }
+    )
+
+
+def dependents_of(graph: ProvenanceGraph, capability: str) -> list[str]:
+    """Everything that requires the given capability/package (who links libc)."""
+
+    targets = _match_nodes(graph, capability)
+    dependents: set[str] = set()
+    for target in targets:
+        for relation in _REQUIRES_RELATIONS:
+            for edge in graph.incoming(target, relation):
+                dependents.add(graph.nodes[edge.source].label)
+    return sorted(dependents)
+
+
+def reachable_dependencies(graph: ProvenanceGraph, start_id: str) -> set[str]:
+    """Transitive closure of dependencies reachable from a node."""
+
+    if start_id not in graph.nodes:
+        return set()
+    seen: set[str] = set()
+    queue: deque[str] = deque([start_id])
+    while queue:
+        current = queue.popleft()
+        for relation in _TRAVERSE_RELATIONS:
+            for edge in graph.outgoing(current, relation):
+                if edge.target not in seen:
+                    seen.add(edge.target)
+                    queue.append(edge.target)
+    return seen
+
+
+def dependency_paths(
+    graph: ProvenanceGraph,
+    start_id: str,
+    target: str,
+    *,
+    max_depth: int = 8,
+    max_paths: int = 25,
+) -> list[list[str]]:
+    """Paths from a start node to any node matching ``target`` over dep edges."""
+
+    if start_id not in graph.nodes:
+        return []
+    target_ids = set(_match_nodes(graph, target))
+    paths: list[list[str]] = []
+    queue: deque[list[str]] = deque([[start_id]])
+    while queue and len(paths) < max_paths:
+        path = queue.popleft()
+        if len(path) > max_depth:
+            continue
+        tail = path[-1]
+        if tail in target_ids and len(path) > 1:
+            paths.append(path)
+            continue
+        for relation in _TRAVERSE_RELATIONS:
+            for edge in graph.outgoing(tail, relation):
+                if edge.target not in path:
+                    queue.append(path + [edge.target])
+    return paths
+
+
+def _capability(metadata: dict[str, object]) -> tuple[str, str, str]:
+    ecosystem = str(metadata.get("ecosystem", "generic"))
+    namespace = metadata.get("namespace")
+    name = str(metadata.get("name", "?"))
+    prefix = f"{namespace}/" if namespace else ""
+    coordinate = f"{ecosystem}:{prefix}{name}"
+    kind = "soname" if ".so" in name else "package"
+    return coordinate, name, kind
+
+
+def _maybe_link_provider(
+    universe: ProvenanceGraph,
+    seen_edges: set[tuple[str, str, str]],
+    claim: Node,
+    cap_id: str,
+) -> None:
+    if claim.metadata.get("evidence") != "soname_provider":
+        return
+    dependency = claim.metadata.get("dependency")
+    raw = dependency.get("raw", {}) if isinstance(dependency, dict) else {}
+    soname = raw.get("soname") if isinstance(raw, dict) else None
+    if not soname:
+        return
+    soname_coord = f"rpm:{soname}"
+    soname_cap = f"cap:{soname_coord}"
+    if soname_cap not in universe.nodes:
+        universe.add_node(
+            Node(
+                soname_cap,
+                NodeType.EXTERNAL_PACKAGE,
+                str(soname),
+                {"name": str(soname), "coordinate": soname_coord, "kind": "soname", "capability": True},
+            )
+        )
+    _add_edge_once(universe, seen_edges, cap_id, soname_cap, Relation.PROVIDES, via="soname_provider")
+
+
+def _add_edge_once(
+    universe: ProvenanceGraph,
+    seen_edges: set[tuple[str, str, str]],
+    source: str,
+    target: str,
+    relation: Relation,
+    **metadata: object,
+) -> None:
+    key = (source, target, str(relation))
+    if key in seen_edges:
+        return
+    seen_edges.add(key)
+    universe.add_edge(source, target, relation, **{k: v for k, v in metadata.items() if v is not None})
+
+
+def _match_nodes(graph: ProvenanceGraph, needle: str) -> list[str]:
+    matches: list[str] = []
+    for node in graph.nodes.values():
+        name = str(node.metadata.get("name") or "")
+        coordinate = str(node.metadata.get("coordinate") or "")
+        if needle == name or needle in node.id or needle == coordinate or needle in coordinate:
+            matches.append(node.id)
+    return matches
+
+
+def _arch_ok(token: str, arch: str) -> bool:
+    return token.endswith(f".{arch}") or token.endswith(".noarch") or "." not in token

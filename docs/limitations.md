@@ -178,6 +178,18 @@ file to its owning package depends on:
   from graph data alone. Recording complete cpio file lists during payload
   analysis would make any file resolvable offline — a planned enhancement.
 
+## Dependency universe
+`universe_from_dot` / `build_universe` + traversal exist, but:
+- **One source at a time.** A universe is built from a single repograph/rpmgraph
+  dot or one enriched build graph; there is no merge of many builds/repos into a
+  single arch-wide universe yet (the data model supports it; the orchestration
+  does not).
+- **`build_universe` needs claims.** From `--source` alone (raw ALBS metadata)
+  it has no dependency edges until the graph is enriched (headers/dnf/repograph/
+  sonames); the repo-wide `--repograph-dot` path is the populated one.
+- **Substring node matching.** `--dependents-of` / `--path-to` match nodes by
+  name/coordinate substring, which is convenient but can over-match.
+
 ## Scale and performance
 
 The current implementation targets correctness and demonstrability, not the

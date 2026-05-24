@@ -40,6 +40,13 @@ from albs_graph.model import NodeType, ProvenanceGraph
 from albs_graph.provenance.coverage import coverage_report
 from albs_graph.provenance.identify import identify_file
 from albs_graph.provenance.reconcile import reconcile_dependency_claims
+from albs_graph.provenance.universe import (
+    build_universe,
+    dependencies_of,
+    dependency_paths,
+    dependents_of,
+    universe_from_dot,
+)
 from albs_graph.provenance.trust import (
     find_binary_rpm,
     focused_trust_graph,
@@ -707,6 +714,79 @@ def trust_path_command(
     console.print("Path:")
     for node_id in report["path"]:
         console.print(f"  {node_id}")
+
+
+@app.command(
+    "universe",
+    help="Build and traverse a cross-package dependency universe (e.g. who links libc).",
+    short_help="Build/traverse the dependency universe.",
+    no_args_is_help=True,
+)
+def universe_command(
+    repograph_dot: Optional[Path] = typer.Option(
+        None, "--repograph-dot", help="dnf repograph / rpmgraph dot -> repo-wide universe."
+    ),
+    source: Optional[Path] = typer.Option(
+        None, "--source", "-s", help="ALBS metadata JSON -> build-scoped universe (from claims)."
+    ),
+    arch: Optional[str] = typer.Option(None, "--arch", help="Restrict the universe to an arch."),
+    dependents_of_cap: Optional[str] = typer.Option(
+        None, "--dependents-of", help="List everything that requires this capability/package."
+    ),
+    dependencies_of_node: Optional[str] = typer.Option(
+        None, "--dependencies-of", help="List a node's direct dependencies."
+    ),
+    path_from: Optional[str] = typer.Option(None, "--path-from", help="Traverse from this node..."),
+    path_to: Optional[str] = typer.Option(None, "--path-to", help="...to this capability/package."),
+    output_format: str = typer.Option("summary", "--format", "-f", help="summary, json, dot, svg."),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+) -> None:
+    if repograph_dot is not None:
+        graph = universe_from_dot(repograph_dot.read_text(encoding="utf-8"), arch=arch)
+    elif source is not None:
+        selector = make_binary_rpm_selector(arch=arch, all_archs=arch is None)
+        graph = build_universe(load_synthetic_build_fixture(source), node_selector=selector)
+    else:
+        raise ValueError("universe requires --repograph-dot or --source")
+
+    if dependents_of_cap:
+        names = dependents_of(graph, dependents_of_cap)
+        console.print(f"{len(names)} dependents of {dependents_of_cap}:")
+        for name in names:
+            console.print(f"  {name}")
+        return
+    if dependencies_of_node:
+        names = dependencies_of(graph, _resolve_universe_node(graph, dependencies_of_node))
+        console.print(f"{len(names)} dependencies of {dependencies_of_node}:")
+        for name in names:
+            console.print(f"  {name}")
+        return
+    if path_from and path_to:
+        paths = dependency_paths(graph, _resolve_universe_node(graph, path_from), path_to)
+        console.print(f"{len(paths)} path(s) from {path_from} to {path_to}:")
+        for chain in paths:
+            console.print("  " + " -> ".join(graph.nodes[node_id].label for node_id in chain))
+        return
+
+    if output_format.lower() == "summary":
+        console.print(
+            f"Universe: {len(graph.nodes)} nodes, {len(graph.edges)} edges "
+            f"({len(graph.find_by_type(NodeType.BINARY_RPM))} packages)"
+        )
+        return
+    _emit_graph(graph, output_format, output)
+
+
+def _resolve_universe_node(graph: ProvenanceGraph, selector: str) -> str:
+    if selector in graph.nodes:
+        return selector
+    for prefix in ("pkg:", "cap:rpm:", "cap:"):
+        if f"{prefix}{selector}" in graph.nodes:
+            return f"{prefix}{selector}"
+    for node in graph.nodes.values():
+        if str(node.metadata.get("name") or "") == selector:
+            return node.id
+    return selector
 
 
 @app.command(

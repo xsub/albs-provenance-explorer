@@ -28,6 +28,14 @@ from .reconcile import (
     reconcile_dependency_claims,
 )
 from .trust import make_binary_rpm_selector, trust_path, trust_reports
+from .universe import (
+    build_universe,
+    dependencies_of,
+    dependency_paths,
+    dependents_of,
+    reachable_dependencies,
+    universe_from_dot,
+)
 
 __all__ = [
     "Agreement",
@@ -51,6 +59,12 @@ __all__ = [
     "add_resolver_result",
     "analyze_albs_build",
     "artifacts_from_source",
+    "build_universe",
+    "dependencies_of",
+    "dependency_paths",
+    "dependents_of",
+    "reachable_dependencies",
+    "universe_from_dot",
     "claims_from_resolver_result",
     "coverage_report",
     "cves_for_artifact",

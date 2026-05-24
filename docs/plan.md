@@ -101,7 +101,10 @@ RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse need
   bridging the soname↔package coordinate gap.
 - ✅ `identify <filepath>` — traces a file to every element behind its creation
   and installation (source → commit → build → RPM → signature → release → deps).
-- ✅ Offline tests for all of the above (104 tests; ruff + mypy --strict clean),
+- ✅ Dependency **universe** + traversal (`universe` command): `universe_from_dot`
+  builds a repo-wide graph (libc connected to everything that links it);
+  `dependents_of` / `dependencies_of` / `dependency_paths` traverse it.
+- ✅ Offline tests for all of the above (107 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not 17812-specific.
 
 Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,
@@ -153,10 +156,14 @@ Ordered by value-per-effort and tractability under public access.
    "vulnerable").
 
 ### Scale
-7. **Thousands-of-apps scale.** Batch + parallelize header/SBOM fetches; persist
-   the graph (Postgres recursive CTEs or a graph store) instead of in-memory;
+7. **Thousands-of-apps scale.** The dependency **universe** (`universe_from_dot`
+   + traversal) is the first step — a repo-wide graph you can query ("who links
+   libc", chains from any element back to libc). Still to do: build the universe
+   for *all* packages of an arch/noarch at once (currently one repograph dot or
+   one build at a time); persist it (Postgres recursive CTEs or a graph store)
+   instead of in-memory; batch + parallelize header/payload/SBOM fetches;
    incremental re-reconciliation; registry-state-driven cache invalidation
-   (yanks/deletions), not age.
+   (yanks/deletions), not age; and richer visualization of traversed chains.
 
 ---
 

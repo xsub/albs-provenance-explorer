@@ -402,6 +402,33 @@ complete nginx → commit → build task 188077 → RPM → sign task → releas
 
 ---
 
+## D16 — The dependency "universe" + traversal (scaling)
+
+**Files:** `albs_graph/provenance/universe.py`, `cli/main.py` (`universe`)
+
+A cross-package, traversable graph — the first concrete step on the scaling
+vision. Two builders:
+
+- `universe_from_dot(dot)` — from a `dnf repograph` / `rpmgraph` dot of a whole
+  repo: one node per package, `requires` edges between them. `libc`/`glibc` ends
+  up with an incoming edge from every package that links it.
+- `build_universe(graph)` — collapses an enriched provenance graph's per-subject
+  dependency *claims* into shared capability nodes, so a single `libc.so.6` node
+  is shared by every artifact (carrying linkage/evidence), and `soname_provider`
+  claims add `package -PROVIDES-> soname` bridges.
+
+Traversal helpers: `dependents_of` (who links libc), `dependencies_of`,
+`reachable_dependencies`, `dependency_paths` (chains from any node to a target).
+Direction matters: `dependents_of`/`dependencies_of` follow only *requires*
+edges; PROVIDES is followed only during reachability/path walks so a soname
+bridges to its provider — getting this wrong made `glibc` look like a *dependent*
+of `libc.so.6` (caught by a test).
+
+CLI: `universe --repograph-dot FILE --dependents-of glibc` / `--dependencies-of
+nginx-core` / `--path-from X --path-to Y`, or render the universe as dot/svg/json.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
