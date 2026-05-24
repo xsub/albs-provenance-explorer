@@ -107,7 +107,10 @@ RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse need
 - ✅ Python language deps (`adapters/pylang.py`, `coverage --requirements`):
   requirements.txt + import scanning -> PyPI claims (pinned == counts toward
   resolution). Template for other language ecosystems.
-- ✅ Offline tests for all of the above (110 tests; ruff + mypy --strict clean),
+- ✅ Arch-wide universe merge (`merge_graphs` / `build_arch_universe`; repeatable
+  `universe --repograph-dot` + `--source`): canonical `pkg:<name>` ids let many
+  repograph dots / builds merge into one cross-repo universe.
+- ✅ Offline tests for all of the above (114 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not 17812-specific.
 
 Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,
@@ -159,14 +162,14 @@ Ordered by value-per-effort and tractability under public access.
    "vulnerable").
 
 ### Scale
-7. **Thousands-of-apps scale.** The dependency **universe** (`universe_from_dot`
-   + traversal) is the first step — a repo-wide graph you can query ("who links
-   libc", chains from any element back to libc). Still to do: build the universe
-   for *all* packages of an arch/noarch at once (currently one repograph dot or
-   one build at a time); persist it (Postgres recursive CTEs or a graph store)
-   instead of in-memory; batch + parallelize header/payload/SBOM fetches;
-   incremental re-reconciliation; registry-state-driven cache invalidation
-   (yanks/deletions), not age; and richer visualization of traversed chains.
+7. **Thousands-of-apps scale.** The dependency **universe** is built and
+   traversable, and `build_arch_universe` now merges many repograph dots /
+   builds into one cross-repo arch universe (canonical `pkg:<name>` ids). Still
+   to do: drive it from *live* repos (fetch + repograph every repo of an arch in
+   one command) rather than supplied dots; persist it (Postgres recursive CTEs
+   or a graph store) instead of in-memory; batch + parallelize header/payload/
+   SBOM fetches; incremental re-reconciliation; registry-state-driven cache
+   invalidation (yanks/deletions), not age.
 
 ---
 

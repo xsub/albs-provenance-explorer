@@ -190,11 +190,14 @@ file to its owning package depends on:
   analysis would make any file resolvable offline — a planned enhancement.
 
 ## Dependency universe
-`universe_from_dot` / `build_universe` + traversal exist, but:
-- **One source at a time.** A universe is built from a single repograph/rpmgraph
-  dot or one enriched build graph; there is no merge of many builds/repos into a
-  single arch-wide universe yet (the data model supports it; the orchestration
-  does not).
+`universe_from_dot` / `build_universe` / `build_arch_universe` + traversal exist,
+but:
+- **Sources are supplied, not fetched.** `build_arch_universe` merges many
+  repograph dots / builds you provide, but there is no one-command "fetch +
+  repograph every repo of an arch" yet — you generate the dots on a host.
+- **First definition wins on merge.** When the same `pkg:<name>` appears in
+  several sources, `merge_graphs` keeps the first node's metadata (e.g. arch);
+  edges from all sources are unioned.
 - **`build_universe` needs claims.** From `--source` alone (raw ALBS metadata)
   it has no dependency edges until the graph is enriched (headers/dnf/repograph/
   sonames); the repo-wide `--repograph-dot` path is the populated one.

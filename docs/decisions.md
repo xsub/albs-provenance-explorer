@@ -448,6 +448,29 @@ rung 5 behind the existing `ResolverResult` contract.
 
 ---
 
+## D18 — Arch-wide universe merge
+
+**Files:** `albs_graph/provenance/universe.py`, `adapters/rpmgraph.py`,
+`cli/main.py` (`universe --repograph-dot` repeatable + `--source` repeatable)
+
+Combines many sources into one arch-wide universe. The enabling decision is
+**canonical node ids**: `build_universe` now re-keys packages to `pkg:<name>`
+(keeping the original RPM id in `rpm_node_id`), matching `universe_from_dot`. So
+when `merge_graphs` unions several universes, a package appearing in several
+repos is one node and cross-repo edges connect — appstream's `nginx-core`
+reaches baseos's `glibc` and on to `filesystem`.
+
+`build_arch_universe(dots=..., graphs=..., arch=...)` builds a component universe
+per repograph dot and per enriched build graph, then merges them. CLI:
+`universe --repograph-dot baseos.dot --repograph-dot appstream.dot
+--dependents-of glibc` lists every package across the arch that links glibc.
+
+Fixed along the way: `parse_dot_edges` used `re.search` per line and captured
+only the first edge on a line; switched to `finditer` over the whole text so
+multiple edges per line are all captured (regression test added).
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

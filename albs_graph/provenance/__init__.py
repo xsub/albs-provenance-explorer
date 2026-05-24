@@ -29,10 +29,12 @@ from .reconcile import (
 )
 from .trust import make_binary_rpm_selector, trust_path, trust_reports
 from .universe import (
+    build_arch_universe,
     build_universe,
     dependencies_of,
     dependency_paths,
     dependents_of,
+    merge_graphs,
     reachable_dependencies,
     universe_from_dot,
 )
@@ -59,10 +61,12 @@ __all__ = [
     "add_resolver_result",
     "analyze_albs_build",
     "artifacts_from_source",
+    "build_arch_universe",
     "build_universe",
     "dependencies_of",
     "dependency_paths",
     "dependents_of",
+    "merge_graphs",
     "reachable_dependencies",
     "universe_from_dot",
     "claims_from_resolver_result",

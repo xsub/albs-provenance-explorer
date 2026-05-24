@@ -76,13 +76,14 @@ def run_rpmgraph(paths: list[str], *, runner: Runner | None = None) -> str:
 
 
 def parse_dot_edges(dot_text: str) -> list[tuple[str, str]]:
-    """Extract directed ``A -> B`` edges from Graphviz dot text."""
+    """Extract directed ``A -> B`` edges from Graphviz dot text.
+
+    Uses ``finditer`` over the whole text so multiple edges on one line are all
+    captured (``dnf repograph`` emits one per line, but be robust to both).
+    """
 
     edges: list[tuple[str, str]] = []
-    for line in dot_text.splitlines():
-        match = _EDGE.search(line)
-        if not match:
-            continue
+    for match in _EDGE.finditer(dot_text):
         src = (match.group(1) or match.group(2) or "").strip().rstrip(";")
         dst = (match.group(3) or match.group(4) or "").strip().rstrip(";")
         if src and dst and src != "->" and dst != "->":

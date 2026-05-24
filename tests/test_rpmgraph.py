@@ -45,6 +45,12 @@ def test_parse_dot_edges_handles_quoted_and_unquoted() -> None:
     assert len(edges) == 5
 
 
+def test_parse_dot_edges_captures_multiple_edges_per_line() -> None:
+    # Regression: a single line with several edges must yield them all.
+    edges = parse_dot_edges('digraph g { "a" -> "b"  "c" -> "b"  "a" -> "c" }')
+    assert edges == [("a", "b"), ("c", "b"), ("a", "c")]
+
+
 def test_enrich_adds_resolved_claims_for_matching_subjects() -> None:
     graph = _graph_with(["nginx-core"])
     result = enrich_graph_with_rpmgraph(graph, _REPOGRAPH_DOT)

@@ -19,9 +19,12 @@ traverse with the helpers here: ``dependencies_of``, ``dependents_of``,
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Iterable
 from typing import Callable
 
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
+
+from .trust import make_binary_rpm_selector
 
 NodeSelector = Callable[[Node], bool]
 # "X requires Y" edges — used for dependents/dependencies (direction matters).
@@ -65,20 +68,40 @@ def universe_from_dot(dot_text: str, *, arch: str | None = None) -> ProvenanceGr
 
 
 def build_universe(graph: ProvenanceGraph, *, node_selector: NodeSelector | None = None) -> ProvenanceGraph:
-    """Collapse per-subject dependency claims into shared capability nodes."""
+    """Collapse per-subject dependency claims into shared capability nodes.
+
+    Packages are re-keyed to canonical ``pkg:<name>`` ids (keeping the original
+    RPM node id in ``rpm_node_id``) so that universes built from different
+    sources align when merged (see :func:`build_arch_universe`).
+    """
 
     universe = ProvenanceGraph()
-    subjects: set[str] = set()
+    subjects: dict[str, str] = {}  # original RPM node id -> canonical pkg:<name>
     for node in graph.find_by_type(NodeType.BINARY_RPM):
         if node_selector and not node_selector(node):
             continue
-        universe.add_node(node)
-        subjects.add(node.id)
+        name = str(node.metadata.get("name") or node.label)
+        pkg_id = f"pkg:{name}"
+        if pkg_id not in universe.nodes:
+            universe.add_node(
+                Node(
+                    pkg_id,
+                    NodeType.BINARY_RPM,
+                    name,
+                    {
+                        "name": name,
+                        "arch": node.metadata.get("arch"),
+                        "rpm_node_id": node.id,
+                        "package": True,
+                    },
+                )
+            )
+        subjects[node.id] = pkg_id
 
     seen_edges: set[tuple[str, str, str]] = set()
     for claim in graph.find_by_type(NodeType.DEPENDENCY_CLAIM):
-        subject = str(claim.metadata.get("subject", ""))
-        if subject not in subjects:
+        subject = subjects.get(str(claim.metadata.get("subject", "")))
+        if subject is None:
             continue
         coordinate, name, kind = _capability(claim.metadata)
         cap_id = f"cap:{coordinate}"
@@ -103,6 +126,51 @@ def build_universe(graph: ProvenanceGraph, *, node_selector: NodeSelector | None
         )
         _maybe_link_provider(universe, seen_edges, claim, cap_id)
     return universe
+
+
+def merge_graphs(graphs: Iterable[ProvenanceGraph]) -> ProvenanceGraph:
+    """Union several graphs into one, de-duplicating nodes by id and edges by
+    (source, target, relation). The first definition of a node id wins."""
+
+    merged = ProvenanceGraph()
+    graph_list = list(graphs)
+    for graph in graph_list:
+        for node in graph.nodes.values():
+            if node.id not in merged.nodes:
+                merged.add_node(node)
+    seen: set[tuple[str, str, str]] = set()
+    for graph in graph_list:
+        for edge in graph.edges:
+            key = (edge.source, edge.target, str(edge.relation))
+            if key in seen:
+                continue
+            if edge.source in merged.nodes and edge.target in merged.nodes:
+                seen.add(key)
+                merged.add_edge(edge.source, edge.target, edge.relation, **edge.metadata)
+    return merged
+
+
+def build_arch_universe(
+    *,
+    dots: Iterable[str] = (),
+    graphs: Iterable[ProvenanceGraph] = (),
+    arch: str | None = None,
+) -> ProvenanceGraph:
+    """Merge many sources into one arch-wide universe.
+
+    ``dots`` are ``dnf repograph`` / ``rpmgraph`` outputs (e.g. one per repo:
+    baseos + appstream + crb); ``graphs`` are enriched provenance graphs whose
+    dependency claims add linkage/soname/resolution detail. With canonical
+    ``pkg:<name>`` ids, a package appearing in several sources is one node, so
+    cross-repo edges (appstream's nginx-core -> baseos's glibc) connect.
+    """
+
+    components: list[ProvenanceGraph] = [universe_from_dot(dot, arch=arch) for dot in dots]
+    graph_list = list(graphs)
+    if graph_list:
+        selector = make_binary_rpm_selector(arch=arch, all_archs=arch is None)
+        components.extend(build_universe(graph, node_selector=selector) for graph in graph_list)
+    return merge_graphs(components)
 
 
 def dependencies_of(graph: ProvenanceGraph, node_id: str) -> list[str]:

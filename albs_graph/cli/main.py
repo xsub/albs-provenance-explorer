@@ -42,11 +42,10 @@ from albs_graph.provenance.coverage import coverage_report
 from albs_graph.provenance.identify import identify_file
 from albs_graph.provenance.reconcile import reconcile_dependency_claims
 from albs_graph.provenance.universe import (
-    build_universe,
+    build_arch_universe,
     dependencies_of,
     dependency_paths,
     dependents_of,
-    universe_from_dot,
 )
 from albs_graph.provenance.trust import (
     find_binary_rpm,
@@ -747,11 +746,11 @@ def trust_path_command(
     no_args_is_help=True,
 )
 def universe_command(
-    repograph_dot: Optional[Path] = typer.Option(
-        None, "--repograph-dot", help="dnf repograph / rpmgraph dot -> repo-wide universe."
+    repograph_dot: list[Path] = typer.Option(
+        [], "--repograph-dot", help="repo dot(s); repeatable to merge baseos+appstream+crb."
     ),
-    source: Optional[Path] = typer.Option(
-        None, "--source", "-s", help="ALBS metadata JSON -> build-scoped universe (from claims)."
+    source: list[Path] = typer.Option(
+        [], "--source", "-s", help="ALBS metadata JSON(s); repeatable, merged into the universe."
     ),
     arch: Optional[str] = typer.Option(None, "--arch", help="Restrict the universe to an arch."),
     dependents_of_cap: Optional[str] = typer.Option(
@@ -765,13 +764,13 @@ def universe_command(
     output_format: str = typer.Option("summary", "--format", "-f", help="summary, json, dot, svg."),
     output: Optional[Path] = typer.Option(None, "--output", "-o"),
 ) -> None:
-    if repograph_dot is not None:
-        graph = universe_from_dot(repograph_dot.read_text(encoding="utf-8"), arch=arch)
-    elif source is not None:
-        selector = make_binary_rpm_selector(arch=arch, all_archs=arch is None)
-        graph = build_universe(load_synthetic_build_fixture(source), node_selector=selector)
-    else:
+    if not repograph_dot and not source:
         raise ValueError("universe requires --repograph-dot or --source")
+    graph = build_arch_universe(
+        dots=[path.read_text(encoding="utf-8") for path in repograph_dot],
+        graphs=[load_synthetic_build_fixture(path) for path in source],
+        arch=arch,
+    )
 
     if dependents_of_cap:
         names = dependents_of(graph, dependents_of_cap)
