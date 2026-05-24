@@ -97,7 +97,9 @@ RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse need
   `example--almalinux-native.sh` (native dnf/rpm/rpmgraph/cas stack).
 - ✅ `albs-graph coverage [--with-rpm-headers] [--with-rpm-payloads] [--use-cas]
   [--sbom FILE] [--repograph-dot FILE] [--package P] [--arch A] [--all-archs]`.
-- ✅ Offline tests for all of the above (95 tests; ruff + mypy --strict clean),
+- ✅ Soname → package resolution (`coverage --resolve-sonames` / `--provides-map`)
+  bridging the soname↔package coordinate gap.
+- ✅ Offline tests for all of the above (100 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not 17812-specific.
 
 Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,
@@ -114,12 +116,11 @@ the 20 reconciled deps) — SBOM packages and header sonames coexisting with
 Ordered by value-per-effort and tractability under public access.
 
 ### Near term (no credentials required)
-1. ✅ **CycloneDX-from-file SBOM claims.** Done — `sbom.py` emits versioned
-   dependency claims (`evidence="sbom"`) wired into `coverage --sbom`. Remaining
-   follow-ups: extract the root component's CPE into the subject's identity
-   candidates, and wire `dnf --whatprovides` (already implemented) into a
-   **soname → providing-package** reconciliation so header/ELF sonames
-   (`libz.so.1`) corroborate package claims (`zlib`).
+1. ✅ **CycloneDX-from-file SBOM claims** and ✅ **soname → providing-package
+   resolution** (`coverage --resolve-sonames` / `--provides-map`): header/ELF
+   sonames (`libz.so.1`) now resolve to package claims (`zlib`) that corroborate
+   SBOM/dnf/repograph claims. Remaining follow-up: extract the root component's
+   CPE into the subject's identity candidates (to move the `identity` axis).
 2. ✅ **CAS verification recorder.** Done as opt-in `--use-cas`
    (`adapters/cas.py`): wraps `cas authenticate --signerID
    cloud-infra@almalinux.org --hash <cas_hash>` when present and flips

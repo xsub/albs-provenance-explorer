@@ -139,19 +139,17 @@ By deliberate design (see `decisions.md` D7), the reconciler:
   contexts that differ only in field ordering are normalized, but exotic context
   values are compared as strings.
 
-### Soname and package coordinate spaces do not cross-validate
-A header soname (`libz.so.1`) and an SBOM/package component (`zlib`) describe the
-same real dependency at different layers, but they group under different
-coordinates, so the reconciler treats them as separate logical dependencies.
-Consequences:
-- They are **not** cross-checked: an SBOM claiming `zlib 1.2.11` does not confirm
-  or contradict a header soname `libz.so.1`.
-- To avoid false positives, soname capabilities are deliberately excluded from
-  `PRESENCE_UNDECLARED` (see `decisions.md` D9), so a dynamically linked soname
-  is never reported as "vendored/undeclared".
-- **Lift:** a soname → providing-package index (each RPM's `PROVIDENAME` already
-  lists the sonames it exports), letting `libz.so.1` resolve to `zlib` and
-  reconcile across the two layers.
+### Soname → package resolution (implemented, with caveats)
+`coverage --resolve-sonames` (via `dnf --whatprovides`) or `--provides-map FILE`
+(offline JSON) now bridges the soname↔package gap: a `libz.so.1` claim gains a
+`soname_provider` package claim (`zlib@...`) that corroborates SBOM/dnf claims
+(see `decisions.md` D14). Remaining limits:
+- **Needs dnf or a provides map.** Without either, sonames stay in their own
+  coordinate space (still deliberately excluded from `PRESENCE_UNDECLARED`).
+- **Unresolved sonames remain unmapped.** A soname with no provider in the repo
+  (or absent from the supplied map) is left as-is.
+- **First provider wins.** When several packages provide a soname,
+  `build_soname_index` records the first; alternatives are not modelled.
 
 ---
 

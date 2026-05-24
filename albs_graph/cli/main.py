@@ -21,7 +21,12 @@ from albs_graph.adapters import (
 )
 from albs_graph.adapters.albs import graph_from_build_metadata, load_synthetic_build_fixture
 from albs_graph.adapters.cas import verify_graph_cas
-from albs_graph.adapters.dnf import enrich_graph_with_dnf
+from albs_graph.adapters.dnf import (
+    build_soname_index,
+    collect_soname_names,
+    enrich_graph_with_dnf,
+    resolve_soname_claims,
+)
 from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
 from albs_graph.adapters.rpmgraph import (
@@ -332,6 +337,17 @@ def coverage_command(
         help="Resolve dependencies per package with `dnf repoquery` (AlmaLinux host; "
         "adds versioned RUNTIME + weak OPTIONAL claims). Degrades to no-op if dnf is absent.",
     ),
+    resolve_sonames: bool = typer.Option(
+        False,
+        "--resolve-sonames",
+        help="Map soname claims to providing packages via `dnf --whatprovides` so they "
+        "reconcile with package claims (AlmaLinux host).",
+    ),
+    provides_map: Optional[Path] = typer.Option(
+        None,
+        "--provides-map",
+        help="JSON {soname: provider-NEVRA} to resolve sonames offline (no dnf needed).",
+    ),
     package: Optional[str] = typer.Option(
         None, "--package", help="Only enrich binary RPMs with this package name."
     ),
@@ -420,6 +436,16 @@ def coverage_command(
             graph, limit=limit, on_progress=_progress(verbose), node_selector=selector
         )
 
+    soname_result = None
+    if provides_map is not None or resolve_sonames:
+        if provides_map is not None:
+            _log_step(verbose, f"Resolving sonames from provides map {provides_map}")
+            index = json.loads(provides_map.read_text(encoding="utf-8"))
+        else:
+            _log_step(verbose, "Resolving sonames to packages via dnf --whatprovides")
+            index = build_soname_index(collect_soname_names(graph))
+        soname_result = resolve_soname_claims(graph, index)
+
     cas_report = None
     if use_cas:
         _log_step(verbose, "Verifying CAS attestation hashes (opt-in)")
@@ -446,6 +472,8 @@ def coverage_command(
             payload["repograph"] = rpmgraph_result.to_dict()
         if dnf_result is not None:
             payload["dnf"] = dnf_result.to_dict()
+        if soname_result is not None:
+            payload["soname_resolution"] = soname_result.to_dict()
         sys.stdout.write(json.dumps(payload, indent=2) + "\n")
         return
 
@@ -475,6 +503,11 @@ def coverage_command(
                 f"{dnf_result.weak_claims} weak resolved claims across "
                 f"{dnf_result.packages_queried} packages"
             )
+    if soname_result is not None:
+        console.print(
+            f"soname resolution: {soname_result.resolved}/{soname_result.sonames} sonames "
+            f"mapped to packages, {soname_result.claims_added} provider claims added"
+        )
     if sbom_result is not None:
         console.print(
             f"SBOM: {sbom_result.claims_added} component claims "

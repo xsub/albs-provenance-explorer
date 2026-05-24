@@ -264,14 +264,13 @@ def _evaluate_group(
 
     # A soname capability (libz.so.1) lives in a different coordinate space than
     # a package/component (zlib); package-level declarations neither declare nor
-    # are contradicted by sonames. So only non-soname artifact evidence can be
-    # "undeclared" -- otherwise attaching an SBOM would falsely flag every
-    # dynamically linked soname as a presence conflict.
-    artifact_non_soname = any(
-        str(node.metadata.get("evidence_class", "")) == _ARTIFACT_CLASS
-        and "soname" not in str(node.metadata.get("evidence", ""))
-        for node in members
-    )
+    # are contradicted by sonames. Detect sonames by the coordinate *name* (more
+    # robust than the evidence string -- rung-4 "elf_dt_needed" sonames carry no
+    # "soname" token), so attaching an SBOM never falsely flags a dynamically
+    # linked soname as a presence conflict.
+    coordinate_name = str(members[0].metadata.get("name", ""))
+    is_soname_group = ".so" in coordinate_name
+    has_artifact_evidence = _ARTIFACT_CLASS in classes
 
     kinds: list[ConflictKind] = []
     if len(versions) > 1:
@@ -280,7 +279,12 @@ def _evaluate_group(
         kinds.append(ConflictKind.RANGE_VIOLATION)
     if len(linkages) > 1:
         kinds.append(ConflictKind.LINKAGE_MISMATCH)
-    if subject_has_declarations and artifact_non_soname and not (classes & _DECLARED_CLASSES):
+    if (
+        subject_has_declarations
+        and has_artifact_evidence
+        and not is_soname_group
+        and not (classes & _DECLARED_CLASSES)
+    ):
         kinds.append(ConflictKind.PRESENCE_UNDECLARED)
 
     if kinds:
@@ -351,8 +355,10 @@ def _evidence_class(evidence: str, state: ResolutionState) -> str:
     lowered = evidence.lower()
     # An SBOM is a resolved/observed component list, not raw artifact inspection.
     # Check it before the "bom" artifact token so "sbom" is not misread as ELF
-    # binary analysis (which "static_bom" et al. genuinely are).
-    if "sbom" in lowered:
+    # binary analysis (which "static_bom" et al. genuinely are). A soname_provider
+    # claim is the *resolved* package behind a soname, so it is resolved-class too
+    # (checked before the "soname" artifact token).
+    if "sbom" in lowered or "provider" in lowered:
         return "resolved"
     if any(token in lowered for token in ("rpm_header", "soname", "elf", "needed", "dlopen", "bom")):
         return _ARTIFACT_CLASS

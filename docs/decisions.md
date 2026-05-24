@@ -353,6 +353,34 @@ and reported, never fatal.
 
 ---
 
+## D14 — Soname -> providing-package resolution
+
+**Files:** `albs_graph/adapters/dnf.py`, `provenance/reconcile.py`,
+`cli/main.py` (`coverage --resolve-sonames` / `--provides-map`)
+
+Closes the soname↔package coordinate gap from D9. `build_soname_index` maps each
+soname to a providing package NEVRA (via `dnf --whatprovides`, or a supplied
+JSON map for offline use); `resolve_soname_claims` then adds a package-level
+`soname_provider` claim (e.g. `zlib@1.2.11-40.el9`) on the same subject for every
+resolved soname. That claim shares the package coordinate with SBOM / dnf /
+repograph claims, so a dynamically linked `libz.so.1` now **corroborates** the
+`zlib` package claim instead of sitting in its own space.
+
+Two reconciler fixes were required:
+
+- **Soname detection is now name-based** (`.so` in the coordinate name), not
+  evidence-string based. The old `"soname" in evidence` check missed rung-4
+  `elf_dt_needed` claims, which would have been falsely flagged
+  `PRESENCE_UNDECLARED` once an SBOM made the subject "have declarations". This
+  was a latent bug fixed here with a regression test.
+- **`soname_provider` evidence classifies as `resolved`** (checked before the
+  `soname` artifact token), since it is the resolved package behind a soname.
+
+Offline-testable: `resolve_soname_claims` takes a plain dict, and
+`build_soname_index` takes an injectable runner.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -26,6 +26,7 @@ from albs_graph.dependency import (
     DependencyScope,
     DependencySpec,
     Ecosystem,
+    Linkage,
     PackageIdentity,
     ResolutionState,
 )
@@ -171,6 +172,100 @@ def enrich_graph_with_dnf(
         except DnfUnavailable as exc:
             failures.append(f"{name}: {exc}")
     return DnfEnrichmentResult(True, seen, queried, resolved, weak, recorded, tuple(failures))
+
+
+@dataclass(frozen=True)
+class SonameResolutionResult:
+    sonames: int
+    resolved: int
+    claims_added: int
+
+    def to_dict(self) -> dict[str, int]:
+        return {
+            "sonames": self.sonames,
+            "resolved": self.resolved,
+            "claims_added": self.claims_added,
+        }
+
+
+def collect_soname_names(graph: ProvenanceGraph) -> list[str]:
+    """Distinct soname capabilities present as dependency claims (libz.so.1 ...)."""
+
+    names: set[str] = set()
+    for node in graph.find_by_type(NodeType.DEPENDENCY_CLAIM):
+        name = str(node.metadata.get("name", ""))
+        if ".so" in name:
+            names.add(name)
+    return sorted(names)
+
+
+def build_soname_index(
+    sonames: list[str], *, runner: Runner | None = None
+) -> dict[str, str]:
+    """Map each soname to a providing package NEVRA via ``dnf --whatprovides``.
+
+    Queries the explicit RPM capability form first (``libz.so.1()(64bit)``) then
+    the bare soname. Degrades to an empty map when dnf is absent.
+    """
+
+    if runner is None and not dnf_available():
+        return {}
+    index: dict[str, str] = {}
+    for soname in sonames:
+        for capability in (f"{soname}()(64bit)", soname):
+            try:
+                providers = whatprovides(capability, runner=runner)
+            except DnfUnavailable:
+                return index
+            if providers:
+                index[soname] = providers[0]
+                break
+    return index
+
+
+def resolve_soname_claims(
+    graph: ProvenanceGraph, index: dict[str, str]
+) -> SonameResolutionResult:
+    """Bridge sonames to packages: add a package claim for each resolved soname.
+
+    A header/ELF soname claim (``libz.so.1``) is rewritten into a package-level
+    ``soname_provider`` claim (``zlib@...``) on the same subject, so it reconciles
+    against SBOM / dnf / repograph package claims instead of sitting in its own
+    coordinate space.
+    """
+
+    sonames: set[str] = set()
+    resolved = 0
+    added = 0
+    seen: set[tuple[str, str, str]] = set()
+    for node in graph.find_by_type(NodeType.DEPENDENCY_CLAIM):
+        name = str(node.metadata.get("name", ""))
+        if ".so" not in name:
+            continue
+        sonames.add(name)
+        provider = index.get(name)
+        if not provider:
+            continue
+        resolved += 1
+        subject = str(node.metadata.get("subject", ""))
+        pkg_name, pkg_version = parse_nevra(provider)
+        key = (subject, pkg_name, pkg_version or "")
+        if key in seen:
+            continue
+        seen.add(key)
+        spec = DependencySpec(
+            identity=PackageIdentity(
+                Ecosystem.RPM, pkg_name, namespace="almalinux", version=pkg_version
+            ),
+            scope=DependencyScope.RUNTIME,
+            linkage=Linkage.DYNAMIC,
+            resolution_state=ResolutionState.RESOLVED,
+            source="dnf whatprovides",
+            raw={"soname": name, "provider": provider},
+        )
+        add_dependency_claim(graph, DependencyClaim(subject, spec, evidence="soname_provider"))
+        added += 1
+    return SonameResolutionResult(len(sonames), resolved, added)
 
 
 def _add_claim(
