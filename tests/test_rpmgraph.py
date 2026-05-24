@@ -1,6 +1,7 @@
 from albs_graph.adapters.rpmgraph import (
     enrich_graph_with_rpmgraph,
     parse_dot_edges,
+    run_repograph,
 )
 from albs_graph.dependency import Ecosystem, ResolutionState
 from albs_graph.model import Node, NodeType, ProvenanceGraph
@@ -49,6 +50,18 @@ def test_parse_dot_edges_captures_multiple_edges_per_line() -> None:
     # Regression: a single line with several edges must yield them all.
     edges = parse_dot_edges('digraph g { "a" -> "b"  "c" -> "b"  "a" -> "c" }')
     assert edges == [("a", "b"), ("c", "b"), ("a", "c")]
+
+
+def test_run_repograph_selects_repo_with_repo_flag() -> None:
+    # Regression: `dnf repograph appstream` is rejected; the repo goes via --repo.
+    captured: dict[str, list[str]] = {}
+
+    def runner(args: list[str]) -> tuple[int, str]:
+        captured["args"] = args
+        return 0, "digraph g {}"
+
+    run_repograph("appstream", runner=runner)
+    assert captured["args"] == ["dnf", "repograph", "--repo", "appstream"]
 
 
 def test_enrich_adds_resolved_claims_for_matching_subjects() -> None:

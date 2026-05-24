@@ -65,9 +65,11 @@ def rpmgraph_available() -> bool:
 
 
 def run_repograph(repo: str | None = None, *, runner: Runner | None = None) -> str:
+    # dnf repograph selects a repo with the global --repo flag, not a positional
+    # argument ("dnf repograph appstream" is rejected as unrecognized).
     args = ["dnf", "repograph"]
     if repo:
-        args.append(repo)
+        args += ["--repo", repo]
     return _run(args, runner)
 
 

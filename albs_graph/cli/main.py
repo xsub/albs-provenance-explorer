@@ -431,9 +431,9 @@ def coverage_command(
     sbom_result = None
     if sbom is not None:
         subject_node = (
-            find_binary_rpm(graph, sbom_subject)
+            find_binary_rpm(graph, sbom_subject, arch=arch)
             if sbom_subject
-            else select_default_binary_rpm(graph)
+            else select_default_binary_rpm(graph, arch=arch)
         )
         _log_step(verbose, f"Attaching CycloneDX SBOM {sbom} to {subject_node.id}")
         sbom_result = attach_cyclonedx_sbom_claims(graph, subject_node.id, sbom)
@@ -441,9 +441,9 @@ def coverage_command(
     python_result = None
     if requirements is not None:
         req_subject = (
-            find_binary_rpm(graph, requirements_subject)
+            find_binary_rpm(graph, requirements_subject, arch=arch)
             if requirements_subject
-            else select_default_binary_rpm(graph)
+            else select_default_binary_rpm(graph, arch=arch)
         )
         _log_step(verbose, f"Attaching Python requirements {requirements} to {req_subject.id}")
         python_result = attach_python_requirements(graph, req_subject.id, requirements)

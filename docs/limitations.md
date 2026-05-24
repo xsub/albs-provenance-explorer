@@ -182,12 +182,19 @@ into PyPI claims, but:
 ## `identify` ownership resolution
 `identify <filepath>` walks the provenance graph fully offline, but mapping a
 file to its owning package depends on:
-- `--owner` (explicit), or an `owner_lookup` / host `rpm -qf` (AlmaLinux host
-  only), or ELF paths recorded by rung-4 payload analysis.
-- Full RPM **file lists are not stored** in the graph, so non-ELF files (configs,
-  docs) need `--owner` or a host `rpm -qf`; only rung-4 ELF paths are matchable
-  from graph data alone. Recording complete cpio file lists during payload
-  analysis would make any file resolvable offline — a planned enhancement.
+- `--owner` (explicit), or an `owner_lookup`, or ELF paths from rung-4 payload
+  analysis, then host `rpm -qf` (installed files), then `dnf repoquery --file`
+  (repo files — works even when the package is not installed locally).
+- Full RPM **file lists are not stored** in the graph, so a file that is neither
+  installed nor in the enabled repos (and not a rung-4 ELF path) needs
+  `--owner`. Recording complete cpio file lists during payload analysis would
+  make any file resolvable offline — a planned enhancement.
+
+## `dnf repograph` repo selection
+`dnf repograph` selects a repo with the global `--repo` flag, **not** a
+positional argument (`dnf repograph appstream` is rejected). `run_repograph` and
+`universe --repograph <repo>` use `--repo`; for a manual dot, run
+`dnf repograph --repo appstream > appstream.dot`.
 
 ## Dependency universe
 `universe_from_dot` / `build_universe` / `build_arch_universe` + traversal exist,

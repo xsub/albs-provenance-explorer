@@ -114,7 +114,7 @@ def _resolve_owner(
     owner = _owner_from_elf_paths(graph, filepath)
     if owner:
         return owner
-    return _host_rpm_qf(filepath)
+    return _host_rpm_qf(filepath) or _host_dnf_file_owner(filepath)
 
 
 def _owner_from_elf_paths(graph: ProvenanceGraph, filepath: str) -> str | None:
@@ -149,6 +149,29 @@ def _host_rpm_qf(filepath: str) -> str | None:
         return None
     name = process.stdout.strip()
     return name if process.returncode == 0 and name and "not owned" not in name else None
+
+
+def _host_dnf_file_owner(filepath: str) -> str | None:
+    """Resolve a file's owning package from repos (works when not installed)."""
+
+    if shutil.which("dnf") is None:
+        return None
+    try:
+        process = subprocess.run(
+            ["dnf", "repoquery", "--quiet", "--qf", "%{name}", "--file", filepath],
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+    except FileNotFoundError:  # pragma: no cover - race with which()
+        return None
+    if process.returncode != 0:
+        return None
+    for line in process.stdout.splitlines():
+        candidate = line.strip()
+        if candidate and not candidate.startswith(("Last metadata", "Repository")):
+            return candidate
+    return None
 
 
 def _find_binary_rpm(graph: ProvenanceGraph, package: str, arch: str | None) -> str | None:

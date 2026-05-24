@@ -308,7 +308,8 @@ Sub-decisions:
 
 - **dot-ingest is the tested path; live run is host-only.** `--repograph-dot
   FILE` ingests output the user generated on an AlmaLinux host
-  (`dnf repograph almalinux-appstream > repo.dot`), so the parser is fully
+  (`dnf repograph --repo appstream > repo.dot` — repo via `--repo`, not a
+  positional argument), so the parser is fully
   offline-testable. `run_repograph` / `run_rpmgraph` shell out when present and
   raise `RpmgraphUnavailable` (treated as "skipped") otherwise — never crash.
 - **Enrichment is scoped by a selector.** `make_binary_rpm_selector` filters by
