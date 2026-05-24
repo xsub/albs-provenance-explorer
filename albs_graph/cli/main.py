@@ -31,6 +31,7 @@ from albs_graph.adapters.errata import attach_errata_file
 from albs_graph.adapters.pylang import attach_python_requirements
 from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
+from albs_graph.adapters.rpmsig import verify_graph_signatures
 from albs_graph.adapters.rpmgraph import (
     RpmgraphUnavailable,
     enrich_graph_with_rpmgraph,
@@ -328,6 +329,12 @@ def coverage_command(
         help="Verify CAS attestation hashes with the 'cas' CLI if present (opt-in; "
         "never required, degrades to 'unavailable' when cas is missing).",
     ),
+    verify_signatures: bool = typer.Option(
+        False,
+        "--verify-signatures",
+        help="Download RPMs and verify GPG signatures with rpmkeys --checksig "
+        "(opt-in, network + host rpm; degrades to 'unavailable' if rpmkeys is missing).",
+    ),
     sbom: Optional[Path] = typer.Option(
         None, "--sbom", help="CycloneDX JSON SBOM file to attach as dependency claims."
     ),
@@ -511,6 +518,13 @@ def coverage_command(
         _log_step(verbose, "Verifying CAS attestation hashes (opt-in)")
         cas_report = verify_graph_cas(graph, use_cas=True)
 
+    signature_report = None
+    if verify_signatures:
+        _log_step(verbose, "Verifying RPM GPG signatures (download + rpmkeys --checksig)")
+        signature_report = verify_graph_signatures(
+            graph, node_selector=selector, limit=limit
+        )
+
     _log_step(verbose, "Reconciling dependency claims")
     reconciliation = reconcile_dependency_claims(graph)
     report = coverage_report(graph)
@@ -528,6 +542,8 @@ def coverage_command(
             payload["sbom"] = sbom_result.to_dict()
         if cas_report is not None:
             payload["cas"] = cas_report.to_dict()
+        if signature_report is not None:
+            payload["signatures"] = signature_report.to_dict()
         if rpmgraph_result is not None:
             payload["repograph"] = rpmgraph_result.to_dict()
         if dnf_result is not None:
@@ -614,6 +630,17 @@ def coverage_command(
             console.print(
                 f"CAS: {cas_report.verified} verified, {cas_report.failed} failed, "
                 f"{cas_report.unavailable} unavailable of {cas_report.attestations} attestations"
+            )
+    if signature_report is not None:
+        if not signature_report.available:
+            console.print(
+                f"Signatures: unavailable (rpmkeys not found); {signature_report.binaries} "
+                "RPMs reported, not verified"
+            )
+        else:
+            console.print(
+                f"Signatures: {signature_report.verified} verified, {signature_report.nokey} nokey, "
+                f"{signature_report.failed} failed of {signature_report.binaries} RPMs"
             )
     console.print(
         f"Reconciled dependencies: {reconciliation.resolutions}; "

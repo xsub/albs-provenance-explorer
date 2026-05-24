@@ -155,6 +155,16 @@ The reconciler (see `decisions.md` D7, D26):
 
 ---
 
+## GPG signature verification (`--verify-signatures`)
+`coverage --verify-signatures` downloads each selected RPM and runs
+`rpmkeys --checksig`, but:
+- **Host + network.** It needs `rpmkeys`/`rpm` with the AlmaLinux GPG keys
+  imported, and downloads full RPMs (scope with `--package`/`--arch`/`--limit`).
+  Absent `rpmkeys` it records `unavailable` and skips downloads — never an error.
+- **Report-only.** Like CAS, a successful check flips `signature_verified` /
+  `externally_verified` but does **not** change the presence-based `provenance`
+  axis; verification is surfaced separately.
+
 ## Verification vs. reporting
 
 CAS hashes are **reported, not verified** by default: `externally_verified`

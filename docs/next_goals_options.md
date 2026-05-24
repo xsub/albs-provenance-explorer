@@ -46,10 +46,10 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
 
 ## D. Real verification (CAS is gone; this is the verification story now)
 
-- **D1 — GPG signature verification of RPMs.** ALBS gives us signature *nodes*,
-  but the actual RPM signature is never verified. `rpm --checksig` / python moves
-  `provenance` from "well-formed" to "cryptographically verified", replacing the
-  now-defunct CAS path. *Effort: medium.*
+- **D1 — GPG signature verification of RPMs.** ✅ Done —
+  `coverage --verify-signatures` downloads RPMs and runs `rpmkeys --checksig`
+  against the host keyring, flipping `signature_verified` / `externally_verified`
+  on success. Opt-in, crash-proof (degrades to `unavailable`). *(decisions.md D27)*
 
 ## E. Real resolvers behind the existing contract (rung 5, non-RPM)
 
@@ -93,9 +93,11 @@ Suggested sequence:
 B1 (full file lists)  ->  A2 (errata)  ->  A1 (CPE + backport)  ->  F1 (vuln report)
 ```
 
-✅ **Done** — the full sequence landed (decisions.md D21–D24). The flat-zero
-axes now move (`identity`, `security_context`), any file is identifiable, and
-the `vuln` command is the consumer deliverable. Remaining open items above:
-**B2** (version compare), **B3** (py module→package), **C1** (Go/Rust static
-BOM), **D1** (GPG signature verification), **E1** (language resolvers),
-**F2/F3** (license / SLSA export), **G** (scale/perf), and the live arch builder.
+✅ **Done** — the full sequence (decisions.md D21–D24) plus CVE-feed matching
+(D25), semantic version comparison (B2/D26), and GPG signature verification
+(D1/D27). The flat-zero axes move (`identity`, `security_context`), any file is
+identifiable, drift/range conflicts are version-semantic, RPM signatures are
+verifiable, and the `vuln` command (with `--cve-feed`) is the consumer
+deliverable. Remaining open items above: **B3** (py module→package), **C1**
+(Go/Rust static BOM), **E1** (language resolvers), **F2/F3** (license / SLSA
+export), **G** (scale/perf), live CVE/NVD feed fetch, and the live arch builder.

@@ -59,6 +59,13 @@ from .rpmgraph import (
     run_repograph,
     run_rpmgraph,
 )
+from .rpmsig import (
+    SignatureReport,
+    SignatureVerification,
+    checksig_bytes,
+    rpmkeys_available,
+    verify_graph_signatures,
+)
 from .sbom import (
     SbomClaimResult,
     attach_cyclonedx_sbom_claims,
@@ -92,6 +99,8 @@ __all__ = [
     "RpmgraphUnavailable",
     "SonameResolutionResult",
     "SbomClaimResult",
+    "SignatureReport",
+    "SignatureVerification",
     "SourceCheckoutError",
     "SourceEvidenceSummary",
     "analyze_rpm_payload",
@@ -101,6 +110,7 @@ __all__ = [
     "attach_sbom",
     "build_soname_index",
     "cas_available",
+    "checksig_bytes",
     "collect_soname_names",
     "cyclonedx_dependency_claims",
     "dnf_available",
@@ -115,9 +125,11 @@ __all__ = [
     "python_requirement_claims",
     "repoquery",
     "resolve_soname_claims",
+    "rpmkeys_available",
     "run_repograph",
     "run_rpmgraph",
     "verify_graph_cas",
+    "verify_graph_signatures",
     "verify_hash",
     "whatprovides",
     "attach_source_evidence",

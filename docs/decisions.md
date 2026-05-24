@@ -630,6 +630,27 @@ security and provenance layers import (no odd cross-layer dependency).
 
 ---
 
+## D27 — RPM GPG signature verification (real provenance verification)
+
+**Files:** `albs_graph/adapters/rpmsig.py`, `cli/main.py`
+(`coverage --verify-signatures`)
+
+With CAS gone (D11), this is the verification story. `verify_graph_signatures`
+downloads each selected binary RPM and runs `rpmkeys --checksig` against the
+host's AlmaLinux GPG keyring, moving a signature from "present" to
+"cryptographically verified". Only a successful check flips `signature_verified`
+on the RPM node and `externally_verified` on its signature node(s); `NOKEY` /
+failed leave it unverified.
+
+Opt-in and crash-proof, exactly like the CAS adapter: absent `rpmkeys` returns
+`available=false` (and skips the downloads entirely) rather than raising. The
+command runner and RPM fetcher are injectable, so parsing and graph-mutation are
+tested offline without the binary or network. Like CAS, this is reported
+separately and does **not** change the presence-based `provenance` axis —
+verification is a distinct quality the report surfaces.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
