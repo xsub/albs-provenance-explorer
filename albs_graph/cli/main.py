@@ -42,6 +42,7 @@ from albs_graph.model import NodeType, ProvenanceGraph
 from albs_graph.provenance.coverage import coverage_report
 from albs_graph.provenance.identify import identify_file
 from albs_graph.provenance.reconcile import reconcile_dependency_claims
+from albs_graph.provenance.vuln import vulnerability_report
 from albs_graph.provenance.universe import (
     build_arch_universe,
     dependencies_of,
@@ -898,6 +899,103 @@ def _resolve_universe_node(graph: ProvenanceGraph, selector: str) -> str:
         if str(node.metadata.get("name") or "") == selector:
             return node.id
     return selector
+
+
+@app.command(
+    "vuln",
+    help="Vulnerability-applicability report: addressed CVEs + verified CPE + linkage.",
+    short_help="Vulnerability-applicability report.",
+    no_args_is_help=True,
+)
+def vuln_command(
+    build_id: Optional[int] = typer.Option(None, "--build-id", "-b", help="Fetch a live ALBS build."),
+    source: Optional[Path] = typer.Option(None, "--source", "-s", help="Cached ALBS metadata JSON."),
+    errata: Optional[Path] = typer.Option(None, "--errata", help="Errata JSON to attach."),
+    errata_subject: Optional[str] = typer.Option(
+        None, "--errata-subject", help="Binary RPM the errata applies to (defaults to --package)."
+    ),
+    verify_cpe: Optional[Path] = typer.Option(
+        None, "--verify-cpe", help="CPE dictionary JSON to verify candidates against."
+    ),
+    with_rpm_payloads: bool = typer.Option(
+        False, "--with-rpm-payloads", help="Analyze payload ELFs for linkage (dlopen/static)."
+    ),
+    package: Optional[str] = typer.Option(None, "--package", help="Restrict to a package name."),
+    arch: Optional[str] = typer.Option(None, "--arch", help="Restrict to an arch."),
+    only_with_cves: bool = typer.Option(
+        False, "--only-with-cves", help="Only report packages with addressed CVEs."
+    ),
+    output_format: str = typer.Option("summary", "--format", "-f", help="summary or json."),
+    base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
+    cache: Optional[Path] = typer.Option(None, "--cache"),
+    cache_ttl: int = typer.Option(300, "--cache-ttl"),
+    refresh_cache: bool = typer.Option(False, "--refresh-cache"),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    if build_id is not None:
+        metadata = fetch_build_metadata(
+            build_id,
+            base_url=base_url,
+            progress=_progress(verbose),
+            cache_path=cache,
+            refresh_cache=refresh_cache,
+            cache_ttl_seconds=cache_ttl,
+        )
+        graph = graph_from_build_metadata(metadata)
+    elif source:
+        graph = load_synthetic_build_fixture(source)
+    else:
+        raise ValueError("vuln requires --build-id or --source")
+
+    selector = make_binary_rpm_selector(package=package, arch=arch)
+    if with_rpm_payloads:
+        _log_step(verbose, "Analyzing payload ELFs for linkage")
+        enrich_graph_with_rpm_payloads(graph, node_selector=selector, on_progress=_progress(verbose))
+    if verify_cpe is not None:
+        _log_step(verbose, f"Verifying CPEs against {verify_cpe}")
+        verify_graph_cpe(graph, CpeDictionary.from_file(verify_cpe), node_selector=selector)
+    if errata is not None:
+        subject_selector = errata_subject or package
+        subject = (
+            find_binary_rpm(graph, subject_selector, arch=arch)
+            if subject_selector
+            else select_default_binary_rpm(graph, arch=arch)
+        )
+        _log_step(verbose, f"Attaching errata {errata} to {subject.id}")
+        attach_errata_file(graph, subject.id, errata)
+
+    report = vulnerability_report(graph, only_with_cves=only_with_cves, node_selector=selector)
+
+    if output_format.lower() == "json":
+        sys.stdout.write(json.dumps(report.to_dict(), indent=2) + "\n")
+        return
+
+    table = Table(title="Vulnerability applicability")
+    table.add_column("Package")
+    table.add_column("Arch")
+    table.add_column("Identity")
+    table.add_column("Addressed CVEs")
+    table.add_column("Reachability")
+    for pkg in report.packages:
+        identity = "verified" if pkg.identity_verified else pkg.cpe_status
+        if pkg.distro_backport:
+            identity += " (backported)"
+        reach = []
+        if pkg.dlopen:
+            reach.append("dlopen")
+        if pkg.static_objects:
+            reach.append(f"static:{pkg.static_objects}")
+        table.add_row(
+            pkg.package,
+            pkg.arch or "",
+            identity,
+            ", ".join(pkg.addressed_cves) or "-",
+            ", ".join(reach) or "dynamic",
+        )
+    console.print(table)
+    console.print(
+        f"{len(report.packages)} packages; {report.addressed_cve_count} distinct CVEs addressed"
+    )
 
 
 @app.command(

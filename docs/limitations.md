@@ -191,6 +191,16 @@ file to its owning package depends on:
   installed nor in the enabled repos still needs `--owner`. File lists can be
   large, so they are only populated by payload analysis.
 
+## Vulnerability-applicability report (`vuln`)
+The `vuln` command reports the CVEs a build **addresses via errata**, framed by
+identity confidence, the distro-backport caveat, and linkage — but:
+- **No CVE feed.** It does not enumerate *all* CVEs that might affect a package;
+  without a CVE/NVD feed it reports only errata-linked CVEs. Pulling a CVE feed
+  and matching verified CPE + version (respecting the backport caveat) is the
+  natural next step.
+- **Reachability is a hint, not a proof.** `dlopen` / static counts indicate
+  exposure breadth; they do not prove a specific CVE's code path is reachable.
+
 ## `dnf repograph` repo selection
 `dnf repograph` selects a repo with the global `--repo` flag, **not** a
 positional argument (`dnf repograph appstream` is rejected). `run_repograph` and

@@ -116,7 +116,11 @@ RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse need
 - ✅ Low-footprint SQLite persistence (`albs_graph/store.py`,
   `universe --save` / `--db`): build once, query later; one-hop queries run in
   SQL without loading the whole graph. Stdlib only, no graph DB.
-- ✅ Offline tests for all of the above (122 tests; ruff + mypy --strict clean),
+- ✅ Full cpio file lists (`identify` works for any file); errata ingest
+  (`coverage --errata`, `security_context` axis); CPE verification +
+  distro-backport flag (`coverage --verify-cpe`, `identity` axis); and the
+  **`vuln`** vulnerability-applicability report combining all three + linkage.
+- ✅ Offline tests for all of the above (132 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not 17812-specific.
 
 Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,

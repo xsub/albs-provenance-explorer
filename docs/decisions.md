@@ -562,6 +562,27 @@ testable; pointing it at a real NVD CPE export is a drop-in.
 
 ---
 
+## D24 — Vulnerability-applicability report (the consumer payoff)
+
+**Files:** `albs_graph/provenance/vuln.py`, `cli/main.py` (`vuln`)
+
+The deliverable the graph exists to produce, tying three layers together
+per package: the CVEs a build **addresses** (rpm -FIXES-> errata -FIXES-> cve,
+from A2), the **identity confidence** (verified CPE vs candidate, from A1) with a
+**distro-backport** caveat (`version_match_reliable=false` when patched), and the
+**linkage reachability** (`dlopen` = runtime-loaded code, static-object count,
+from rung 4).
+
+It deliberately does *not* invent CVE data — without a CVE feed it reports the
+CVEs already linked via errata and frames how reliable a naive version match
+would be. CLI: `vuln --build-id … [--verify-cpe FILE] [--errata FILE]
+[--with-rpm-payloads] [--package P] [--arch A] [--only-with-cves]`.
+
+This completes the recommended `B1 -> A2 -> A1 -> F` sequence from
+`next_goals_options.md`.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

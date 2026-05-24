@@ -60,9 +60,9 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
 
 ## F. The "why does this exist" payoff — a consumer report
 
-- **F1 — Vulnerability-applicability report.** Combine verified CPE + errata +
-  linkage (`dlopen` / static) into a per-package "is this CVE actually reachable
-  here?" output. The deliverable the whole graph is *for*. **Depends on A1 + A2.**
+- **F1 — Vulnerability-applicability report.** ✅ Done — the `vuln` command
+  combines addressed CVEs (errata) + verified CPE + distro-backport caveat +
+  linkage (`dlopen` / static) per package. *(decisions.md D24)*
 - **F2 — License-compliance rollup** from SBOM license fields + resolved trees.
 - **F3 — SLSA / in-toto provenance export** of the backbone the graph already
   holds.
@@ -91,5 +91,9 @@ Suggested sequence:
 B1 (full file lists)  ->  A2 (errata)  ->  A1 (CPE + backport)  ->  F1 (vuln report)
 ```
 
-B1 is a good warm-up (low risk, immediate `identify` win); A2/A1 move the
-flat-zero axes; F1 ties them into the deliverable the project exists to produce.
+✅ **Done** — the full sequence landed (decisions.md D21–D24). The flat-zero
+axes now move (`identity`, `security_context`), any file is identifiable, and
+the `vuln` command is the consumer deliverable. Remaining open items above:
+**B2** (version compare), **B3** (py module→package), **C1** (Go/Rust static
+BOM), **D1** (GPG signature verification), **E1** (language resolvers),
+**F2/F3** (license / SLSA export), **G** (scale/perf), and the live arch builder.

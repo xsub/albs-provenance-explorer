@@ -40,6 +40,7 @@ from .universe import (
     reachable_dependencies,
     universe_from_dot,
 )
+from .vuln import PackageVulnAssessment, VulnReport, vulnerability_report
 
 __all__ = [
     "Agreement",
@@ -55,6 +56,8 @@ __all__ = [
     "GraphSummary",
     "IdentifiedElement",
     "IdentifyReport",
+    "PackageVulnAssessment",
+    "VulnReport",
     "ReconciliationReport",
     "SignTaskTiming",
     "TaskTiming",
@@ -73,6 +76,7 @@ __all__ = [
     "path_subgraph",
     "reachable_dependencies",
     "universe_from_dot",
+    "vulnerability_report",
     "claims_from_resolver_result",
     "coverage_report",
     "cves_for_artifact",
