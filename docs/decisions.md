@@ -583,6 +583,32 @@ This completes the recommended `B1 -> A2 -> A1 -> F` sequence from
 
 ---
 
+## D25 — CVE-feed matching + rpmvercmp version comparison
+
+**Files:** `albs_graph/security/cve_feed.py`, `provenance/vuln.py`,
+`cli/main.py` (`vuln --cve-feed`)
+
+Turns "CVEs addressed" into "CVEs potentially applicable". A supplied CVE feed
+lists, per CVE, affected `(vendor, product)` configs with optional
+`introduced` (>=) / `fixed` (<) bounds (mirroring NVD versionStartIncluding /
+versionEndExcluding). `vulnerability_report(..., cve_feed=...)` parses each
+package's *verified* CPE into `(vendor, product, version)`, matches it against
+the feed, and reports matches **not already addressed by an errata** as
+`potentially_affected_cves`.
+
+Range evaluation uses an **rpmvercmp-style** `version_compare` (segment rules
+RPM/DNF use: numeric runs compared numerically, alpha lexically, numeric
+outranks alpha, `~` is a pre-release marker), so `1.2.11 > 1.2.3` and
+`1.0~rc1 < 1.0` are correct — not string comparison.
+
+The **distro-backport caveat** (A1) is carried through: a backported `.elN`
+package keeps its upstream version, so a range match may be a false positive
+(fix backported without a version bump); the report flags it ("backport:
+verify") rather than asserting applicability. The feed is supplied (offline,
+testable); a live NVD/OSV feed is a drop-in. No CVE data is invented.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

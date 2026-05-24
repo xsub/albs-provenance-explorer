@@ -192,12 +192,14 @@ file to its owning package depends on:
   large, so they are only populated by payload analysis.
 
 ## Vulnerability-applicability report (`vuln`)
-The `vuln` command reports the CVEs a build **addresses via errata**, framed by
-identity confidence, the distro-backport caveat, and linkage — but:
-- **No CVE feed.** It does not enumerate *all* CVEs that might affect a package;
-  without a CVE/NVD feed it reports only errata-linked CVEs. Pulling a CVE feed
-  and matching verified CPE + version (respecting the backport caveat) is the
-  natural next step.
+The `vuln` command reports CVEs a build **addresses via errata** and, with
+`--cve-feed`, **potentially-affected** CVEs (verified CPE + version matched
+against the feed's affected ranges). Remaining limits:
+- **Feed is supplied, not fetched.** `--cve-feed FILE` takes a JSON feed; wiring
+  a live NVD/OSV pull is the next step (the matcher is a drop-in).
+- **Backport matches are advisory.** A `distro_backport` package keeps its
+  upstream version, so a range match is flagged "verify" rather than asserted —
+  it may be a false positive (fix backported without a version bump).
 - **Reachability is a hint, not a proof.** `dlopen` / static counts indicate
   exposure breadth; they do not prove a specific CVE's code path is reachable.
 

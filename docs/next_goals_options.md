@@ -30,10 +30,11 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
 - **B1 — Store full cpio file lists during rung 4.** ✅ Done — `payload_contents`
   records every path; `identify` resolves ownership from the stored list first,
   so any file (configs, docs) is traceable offline. *(decisions.md D21)*
-- **B2 — Real version comparison in the reconciler.** `VERSION_DRIFT` is
-  exact-string today and `RANGE_VIOLATION` only fires on a resolver flag. Add RPM
-  `labelCompare`-style version math so drift/range conflicts fire on real data.
-  *Effort: medium.*
+- **B2 — Real version comparison in the reconciler.** An rpmvercmp-style
+  `version_compare` now exists (`security/cve_feed.py`) and powers CVE range
+  matching (decisions.md D25). Remaining: reuse it in the reconciler so
+  `VERSION_DRIFT` / `RANGE_VIOLATION` fire on semantic version differences, not
+  exact strings. *Effort: low now (the comparator exists).*
 - **B3 — Python module → package mapping** (`cv2` -> `opencv-python`) so import
   claims resolve to distributions. *Effort: low-medium.*
 
@@ -62,7 +63,9 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
 
 - **F1 — Vulnerability-applicability report.** ✅ Done — the `vuln` command
   combines addressed CVEs (errata) + verified CPE + distro-backport caveat +
-  linkage (`dlopen` / static) per package. *(decisions.md D24)*
+  linkage (`dlopen` / static) per package *(decisions.md D24)*, and
+  `--cve-feed` matches verified CPE + version (rpmvercmp ranges) to report
+  **potentially-affected** CVEs beyond those an errata addresses *(D25)*.
 - **F2 — License-compliance rollup** from SBOM license fields + resolved trees.
 - **F3 — SLSA / in-toto provenance export** of the backbone the graph already
   holds.

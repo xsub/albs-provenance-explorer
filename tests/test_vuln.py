@@ -1,5 +1,6 @@
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
 from albs_graph.provenance import vulnerability_report
+from albs_graph.security.cve_feed import CveFeed
 
 
 def _graph() -> ProvenanceGraph:
@@ -50,3 +51,20 @@ def test_report_combines_cve_identity_and_linkage() -> None:
 def test_only_with_cves_filters() -> None:
     report = vulnerability_report(_graph(), only_with_cves=True)
     assert {pkg.package for pkg in report.packages} == {"nginx-core"}
+
+
+def test_feed_match_reports_potentially_affected_excluding_addressed() -> None:
+    feed = CveFeed.from_entries(
+        [
+            # already addressed by errata -> must NOT appear as potentially-affected
+            {"id": "CVE-2026-1", "affected": [{"vendor": "nginx", "product": "nginx-core", "fixed": "2.0"}]},
+            # not addressed, affected range includes 1.20.1 -> potentially-affected
+            {"id": "CVE-2026-9", "affected": [{"vendor": "nginx", "product": "nginx-core", "fixed": "2.0"}]},
+        ]
+    )
+    report = vulnerability_report(_graph(), cve_feed=feed)
+    nginx = {pkg.package: pkg for pkg in report.packages}["nginx-core"]
+
+    assert nginx.potentially_affected_cves == ["CVE-2026-9"]
+    assert "CVE-2026-1" not in nginx.potentially_affected_cves  # addressed -> excluded
+    assert report.potentially_affected_count == 1

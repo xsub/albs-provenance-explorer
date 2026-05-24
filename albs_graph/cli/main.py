@@ -60,6 +60,7 @@ from albs_graph.provenance.trust import (
 )
 from albs_graph.render import SvgRenderError, graph_to_dot, graph_to_json, graph_to_svg
 from albs_graph.security.cpe import CpeDictionary, verify_graph_cpe
+from albs_graph.security.cve_feed import CveFeed
 from albs_graph.store import load_graph, save_graph, sql_dependencies, sql_dependents
 
 app = typer.Typer(
@@ -917,6 +918,11 @@ def vuln_command(
     verify_cpe: Optional[Path] = typer.Option(
         None, "--verify-cpe", help="CPE dictionary JSON to verify candidates against."
     ),
+    cve_feed: Optional[Path] = typer.Option(
+        None,
+        "--cve-feed",
+        help="CVE feed JSON (affected vendor/product + version ranges) to match verified CPEs.",
+    ),
     with_rpm_payloads: bool = typer.Option(
         False, "--with-rpm-payloads", help="Analyze payload ELFs for linkage (dlopen/static)."
     ),
@@ -964,7 +970,10 @@ def vuln_command(
         _log_step(verbose, f"Attaching errata {errata} to {subject.id}")
         attach_errata_file(graph, subject.id, errata)
 
-    report = vulnerability_report(graph, only_with_cves=only_with_cves, node_selector=selector)
+    feed = CveFeed.from_file(cve_feed) if cve_feed is not None else None
+    report = vulnerability_report(
+        graph, cve_feed=feed, only_with_cves=only_with_cves, node_selector=selector
+    )
 
     if output_format.lower() == "json":
         sys.stdout.write(json.dumps(report.to_dict(), indent=2) + "\n")
@@ -975,6 +984,7 @@ def vuln_command(
     table.add_column("Arch")
     table.add_column("Identity")
     table.add_column("Addressed CVEs")
+    table.add_column("Potential CVEs")
     table.add_column("Reachability")
     for pkg in report.packages:
         identity = "verified" if pkg.identity_verified else pkg.cpe_status
@@ -985,16 +995,21 @@ def vuln_command(
             reach.append("dlopen")
         if pkg.static_objects:
             reach.append(f"static:{pkg.static_objects}")
+        potential = ", ".join(pkg.potentially_affected_cves) or "-"
+        if pkg.potentially_affected_cves and pkg.distro_backport:
+            potential += " (backport: verify)"
         table.add_row(
             pkg.package,
             pkg.arch or "",
             identity,
             ", ".join(pkg.addressed_cves) or "-",
+            potential,
             ", ".join(reach) or "dynamic",
         )
     console.print(table)
     console.print(
-        f"{len(report.packages)} packages; {report.addressed_cve_count} distinct CVEs addressed"
+        f"{len(report.packages)} packages; {report.addressed_cve_count} addressed, "
+        f"{report.potentially_affected_count} potentially-affected distinct CVEs"
     )
 
 
