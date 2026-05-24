@@ -79,13 +79,18 @@ RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse need
 - ✅ Five-axis coverage report (`provenance/coverage.py`).
 - ✅ Rung 3: RPM header parser (`adapters/rpm_header.py`) + Range reader,
   vault-URL reconstruction, soname→linkage claims (`adapters/rpm_remote.py`).
-- ✅ `albs-graph coverage [--with-rpm-headers]` CLI command.
-- ✅ Offline tests for all of the above (58 tests; ruff + mypy --strict clean).
+- ✅ CycloneDX-from-file SBOM claims (`adapters/sbom.py`): components become
+  versioned dependency claims that raise the resolution axis and drift-check
+  against other sources.
+- ✅ `albs-graph coverage [--with-rpm-headers] [--sbom FILE]` CLI command.
+- ✅ Offline tests for all of the above (63 tests; ruff + mypy --strict clean).
 
 Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,
 provenance 1.00; live vault header reads added real sonames (`libssl.so.3`,
-`libcrypto.so.3`, `libperl.so.5.32`, …) and lifted linkage 0.00 → 0.06 with
-zero false conflicts.
+`libcrypto.so.3`, `libperl.so.5.32`, …) lifting linkage 0.00 → 0.06; a CycloneDX
+SBOM attached to `nginx-core` resolved 5 package versions (resolution 0.25 over
+the 20 reconciled deps) — SBOM packages and header sonames coexisting with
+**zero** false conflicts.
 
 ---
 
@@ -94,11 +99,11 @@ zero false conflicts.
 Ordered by value-per-effort and tractability under public access.
 
 ### Near term (no credentials required)
-1. **CycloneDX-from-file SBOM claims.** Upgrade the existing `sbom.py` import to
-   emit dependency *claims* (evidence `sbom`) and extract PURL/CPE into security
-   identity. Raises `security_context`; lets the reconciler compare SBOM vs
-   header sonames (real `presence` and `version` reconciliation). Tractable
-   because it consumes a *provided* CycloneDX file — no immudb read.
+1. ✅ **CycloneDX-from-file SBOM claims.** Done — `sbom.py` emits versioned
+   dependency claims (`evidence="sbom"`) wired into `coverage --sbom`. Remaining
+   follow-ups: extract the root component's CPE into the subject's identity
+   candidates, and a **soname → providing-package index** so header sonames
+   (`libz.so.1`) can cross-validate against SBOM components (`zlib`).
 2. **CAS verification recorder.** Wrap `cas authenticate --signerID
    cloud-infra@almalinux.org --hash <cas_hash>` when `cas` is present; flip
    `externally_verified=true` on the CAS node. Mirrors `example--almalinux.sh`.

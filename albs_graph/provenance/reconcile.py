@@ -262,6 +262,17 @@ def _evaluate_group(
     classes = {str(node.metadata.get("evidence_class", "")) for node in members}
     range_violated = any(node.metadata.get("range_satisfied") is False for node in members)
 
+    # A soname capability (libz.so.1) lives in a different coordinate space than
+    # a package/component (zlib); package-level declarations neither declare nor
+    # are contradicted by sonames. So only non-soname artifact evidence can be
+    # "undeclared" -- otherwise attaching an SBOM would falsely flag every
+    # dynamically linked soname as a presence conflict.
+    artifact_non_soname = any(
+        str(node.metadata.get("evidence_class", "")) == _ARTIFACT_CLASS
+        and "soname" not in str(node.metadata.get("evidence", ""))
+        for node in members
+    )
+
     kinds: list[ConflictKind] = []
     if len(versions) > 1:
         kinds.append(ConflictKind.VERSION_DRIFT)
@@ -269,11 +280,7 @@ def _evaluate_group(
         kinds.append(ConflictKind.RANGE_VIOLATION)
     if len(linkages) > 1:
         kinds.append(ConflictKind.LINKAGE_MISMATCH)
-    if (
-        subject_has_declarations
-        and _ARTIFACT_CLASS in classes
-        and not (classes & _DECLARED_CLASSES)
-    ):
+    if subject_has_declarations and artifact_non_soname and not (classes & _DECLARED_CLASSES):
         kinds.append(ConflictKind.PRESENCE_UNDECLARED)
 
     if kinds:
@@ -342,6 +349,11 @@ def _coordinate_of(node: Node) -> str:
 
 def _evidence_class(evidence: str, state: ResolutionState) -> str:
     lowered = evidence.lower()
+    # An SBOM is a resolved/observed component list, not raw artifact inspection.
+    # Check it before the "bom" artifact token so "sbom" is not misread as ELF
+    # binary analysis (which "static_bom" et al. genuinely are).
+    if "sbom" in lowered:
+        return "resolved"
     if any(token in lowered for token in ("rpm_header", "soname", "elf", "needed", "dlopen", "bom")):
         return _ARTIFACT_CLASS
     if "lockfile" in lowered or state == ResolutionState.LOCKED:

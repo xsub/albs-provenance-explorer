@@ -15,7 +15,13 @@ from .rpm_remote import (
     header_dependency_claims,
     vault_candidate_urls,
 )
-from .sbom import attach_sbom, import_sbom
+from .sbom import (
+    SbomClaimResult,
+    attach_cyclonedx_sbom_claims,
+    attach_sbom,
+    cyclonedx_dependency_claims,
+    import_sbom,
+)
 from .source import (
     SourceCheckoutError,
     SourceEvidenceSummary,
@@ -30,10 +36,13 @@ __all__ = [
     "RpmHeaderError",
     "RpmHeaderFetchError",
     "RpmQueryError",
+    "SbomClaimResult",
     "SourceCheckoutError",
     "SourceEvidenceSummary",
+    "attach_cyclonedx_sbom_claims",
     "attach_errata_file",
     "attach_sbom",
+    "cyclonedx_dependency_claims",
     "attach_source_evidence",
     "checkout_git_source",
     "enrich_graph_with_rpm_headers",

@@ -21,7 +21,7 @@ from albs_graph.adapters import (
 )
 from albs_graph.adapters.albs import graph_from_build_metadata, load_synthetic_build_fixture
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
-from albs_graph.adapters.sbom import import_sbom
+from albs_graph.adapters.sbom import attach_cyclonedx_sbom_claims, import_sbom
 from albs_graph.fixtures import build_synthetic_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
 from albs_graph.provenance.coverage import coverage_report
@@ -288,6 +288,14 @@ def coverage_command(
         "--with-rpm-headers",
         help="Range-read public RPM headers to add dynamic-linkage claims (network).",
     ),
+    sbom: Optional[Path] = typer.Option(
+        None, "--sbom", help="CycloneDX JSON SBOM file to attach as dependency claims."
+    ),
+    sbom_subject: Optional[str] = typer.Option(
+        None,
+        "--sbom-subject",
+        help="Binary RPM name/node id the SBOM describes (defaults to a representative RPM).",
+    ),
     limit: Optional[int] = typer.Option(
         None, "--limit", help="Max binary RPMs to header-fetch when --with-rpm-headers is set."
     ),
@@ -315,6 +323,16 @@ def coverage_command(
         raise ValueError("coverage requires --build-id or --source")
     _log_graph_stats(verbose, graph)
 
+    sbom_result = None
+    if sbom is not None:
+        subject_node = (
+            find_binary_rpm(graph, sbom_subject)
+            if sbom_subject
+            else select_default_binary_rpm(graph)
+        )
+        _log_step(verbose, f"Attaching CycloneDX SBOM {sbom} to {subject_node.id}")
+        sbom_result = attach_cyclonedx_sbom_claims(graph, subject_node.id, sbom)
+
     enrichment = None
     if with_rpm_headers:
         _log_step(verbose, "Range-reading RPM headers for dynamic-linkage claims")
@@ -332,6 +350,8 @@ def coverage_command(
         }
         if enrichment is not None:
             payload["rpm_header_enrichment"] = enrichment.to_dict()
+        if sbom_result is not None:
+            payload["sbom"] = sbom_result.to_dict()
         sys.stdout.write(json.dumps(payload, indent=2) + "\n")
         return
 
@@ -343,6 +363,11 @@ def coverage_command(
     for axis in report.axes():
         table.add_row(axis.name, str(axis.covered), str(axis.total), f"{axis.fraction:.2f}")
     console.print(table)
+    if sbom_result is not None:
+        console.print(
+            f"SBOM: {sbom_result.claims_added} component claims "
+            f"from {sbom_result.components} components"
+        )
     if enrichment is not None:
         console.print(
             f"RPM header enrichment: {enrichment.headers_fetched}/{enrichment.artifacts_seen} "

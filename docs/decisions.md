@@ -199,6 +199,43 @@ didn't check."
 
 ---
 
+## D9 — CycloneDX-from-file SBOM claims
+
+**Files:** `albs_graph/adapters/sbom.py`, `cli/main.py` (`coverage --sbom`),
+`provenance/reconcile.py`
+
+`cyclonedx_dependency_claims()` / `attach_cyclonedx_sbom_claims()` turn the
+components of a CycloneDX SBOM into versioned dependency claims
+(`evidence="sbom"`, `resolution_state=OBSERVED`) on a subject RPM, and attach the
+SBOM evidence node. `coverage --sbom FILE --sbom-subject RPM` wires it into the
+pipeline. Because each component carries a concrete version (from its PURL), the
+reconciler resolves it to `COMPATIBLE`, so **SBOM ingest raises the resolution
+axis** and lets package versions drift-check against other sources.
+
+**Why a *file* path, not a ledger fetch.** AlmaLinux SBOMs live in Codenotary
+immudb and require the `alma-sbom`/`cas` tooling plus credentials; there is no
+documented anonymous read. So we consume a *provided* CycloneDX file (the
+artifact `alma-sbom` produces) rather than fabricating a fetch — the tractable
+step under current public access.
+
+Two reconciler refinements were required to make SBOM + header evidence coexist
+honestly:
+
+- **`"sbom"` evidence is classified `resolved`, checked before the `"bom"`
+  artifact token** — otherwise "sbom" would be mis-read as ELF binary analysis
+  (which `static_bom` genuinely is).
+- **Soname capabilities are excluded from `PRESENCE_UNDECLARED`.** A soname
+  (`libz.so.1`) and a package (`zlib`) live in different coordinate spaces;
+  package-level SBOM declarations neither declare nor contradict sonames. Without
+  this, attaching an SBOM would falsely flag every dynamically linked soname as a
+  presence conflict. (Confirmed on build 17812: SBOM + live header reads produce
+  20 reconciled deps and **zero** false conflicts.)
+
+The soname-to-providing-package mapping (so `libz.so.1` could cross-validate
+against the `zlib` component) is intentionally future work; see `limitations.md`.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

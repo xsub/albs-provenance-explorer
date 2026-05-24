@@ -13,14 +13,22 @@ Coverage axes referenced below are defined in `plan.md`.
 These are not bugs; they are unfed axes. The code refuses to fabricate the
 evidence that would raise them.
 
-### `security_context` = 0.00 — no SBOM ingest from the ledger
-AlmaLinux SBOMs live in Codenotary's immudb and are retrieved with the
-`alma-sbom` utility / `cas` CLI, which require an API key and login. There is no
-documented anonymous read path. We therefore did **not** wire a ledger fetch.
-- **Today:** `adapters/sbom.py` can ingest a *provided* CycloneDX/SPDX file, but
-  nothing produces one automatically.
-- **Lift:** the "CycloneDX-from-file SBOM claims" item in `plan.md` (consumes a
-  file you already fetched), and/or a credentialed `alma-sbom`/`cas` adapter.
+### `security_context` axis = 0.00 even with an SBOM attached
+Two distinct facts here:
+
+- **No ledger auto-fetch.** AlmaLinux SBOMs live in Codenotary's immudb and are
+  retrieved with the `alma-sbom`/`cas` tooling, which require an API key and
+  login. There is no documented anonymous read path, so nothing fetches an SBOM
+  automatically. `coverage --sbom FILE` ingests a *provided* CycloneDX file (the
+  artifact `alma-sbom` produces) — that path is implemented; the credentialed
+  fetch is not.
+- **The axis is binary-complete and needs errata too.** `security_context_complete`
+  requires *both* an attached SBOM **and** an errata/CVE link. Attaching an SBOM
+  sets `has_sbom` but not `has_errata_link`, so the axis stays 0.00 until errata
+  ingest also runs for the same subject. (SBOM ingest *does* raise the separate
+  `resolution` axis.)
+- **Lift:** attach errata/CVE alongside the SBOM, and/or a credentialed
+  `alma-sbom`/`cas` adapter.
 
 ### `identity` = 0.00 — CPE is never asserted as verified
 The graph stores `cpe: null` plus unverified `cpe_candidates`. The identity axis
@@ -95,6 +103,20 @@ By deliberate design (see `decisions.md` D7), the reconciler:
 - treats `context` as part of the grouping key via a string serialization; two
   contexts that differ only in field ordering are normalized, but exotic context
   values are compared as strings.
+
+### Soname and package coordinate spaces do not cross-validate
+A header soname (`libz.so.1`) and an SBOM/package component (`zlib`) describe the
+same real dependency at different layers, but they group under different
+coordinates, so the reconciler treats them as separate logical dependencies.
+Consequences:
+- They are **not** cross-checked: an SBOM claiming `zlib 1.2.11` does not confirm
+  or contradict a header soname `libz.so.1`.
+- To avoid false positives, soname capabilities are deliberately excluded from
+  `PRESENCE_UNDECLARED` (see `decisions.md` D9), so a dynamically linked soname
+  is never reported as "vendored/undeclared".
+- **Lift:** a soname → providing-package index (each RPM's `PROVIDENAME` already
+  lists the sonames it exports), letting `libz.so.1` resolve to `zlib` and
+  reconcile across the two layers.
 
 ---
 

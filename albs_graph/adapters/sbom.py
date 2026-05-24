@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,7 @@ from albs_graph.dependency import (
     package_identity_from_purl,
 )
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
+from albs_graph.provenance.reconcile import DependencyClaim, add_dependency_claim
 
 
 def import_sbom(path: str | Path, attach_to: str | None = None) -> ProvenanceGraph:
@@ -169,3 +171,94 @@ def _cyclonedx_scope(value: object) -> DependencyScope:
     if value == "required":
         return DependencyScope.RUNTIME
     return DependencyScope.UNKNOWN
+
+
+@dataclass(frozen=True)
+class SbomClaimResult:
+    sbom_id: str
+    components: int
+    claims_added: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "sbom_id": self.sbom_id,
+            "components": self.components,
+            "claims_added": self.claims_added,
+        }
+
+
+def cyclonedx_dependency_claims(subject_id: str, data: dict[str, Any]) -> list[DependencyClaim]:
+    """Turn CycloneDX components into dependency claims for one subject.
+
+    Each component is a concrete observed version of something present in the
+    build, so it carries a version (from the PURL or ``version`` field) and feeds
+    the reconciler as ``evidence="sbom"``. Unlike the legacy
+    :func:`attach_cyclonedx_sbom` (which produced standalone EXTERNAL_PACKAGE
+    nodes), these claims reconcile against other evidence on the same subject.
+    """
+
+    claims: list[DependencyClaim] = []
+    for component in data.get("components", []):
+        name = component.get("name")
+        if not name:
+            continue
+        version = component.get("version")
+        purl = component.get("purl")
+        spec = DependencySpec(
+            identity=_identity_from_component(str(name), str(version or ""), purl),
+            scope=_cyclonedx_scope(component.get("scope")),
+            resolution_state=ResolutionState.OBSERVED,
+            source="CycloneDX",
+            raw={
+                "component": {
+                    key: component.get(key)
+                    for key in ("bom-ref", "type", "purl", "cpe", "version")
+                    if component.get(key) is not None
+                }
+            },
+        )
+        claims.append(DependencyClaim(subject_id=subject_id, spec=spec, evidence="sbom"))
+    return claims
+
+
+def attach_cyclonedx_sbom_claims(
+    graph: ProvenanceGraph,
+    subject_id: str,
+    sbom_path: str | Path,
+) -> SbomClaimResult:
+    """Attach a CycloneDX SBOM file to a subject as an SBOM node + claims.
+
+    Adds the SBOM evidence node (and a ``described_by`` edge from the subject)
+    and emits one dependency claim per component. The subject node must already
+    exist in the graph.
+    """
+
+    path = Path(sbom_path)
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    if data.get("bomFormat") != "CycloneDX":
+        raise ValueError(f"not a CycloneDX SBOM: {path}")
+
+    sbom_id = f"sbom:{data.get('serialNumber') or path.name}"
+    graph.add_node(
+        Node(
+            sbom_id,
+            NodeType.SBOM,
+            path.name,
+            {
+                "format": "CycloneDX",
+                "bomFormat": data.get("bomFormat"),
+                "specVersion": data.get("specVersion"),
+                "source_path": str(path),
+            },
+        )
+    )
+    graph.add_edge(subject_id, sbom_id, Relation.DESCRIBED_BY)
+
+    claims = cyclonedx_dependency_claims(subject_id, data)
+    for claim in claims:
+        add_dependency_claim(graph, claim)
+    return SbomClaimResult(
+        sbom_id=sbom_id,
+        components=len(data.get("components", [])),
+        claims_added=len(claims),
+    )
