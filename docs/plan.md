@@ -110,7 +110,10 @@ RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse need
 - ✅ Arch-wide universe merge (`merge_graphs` / `build_arch_universe`; repeatable
   `universe --repograph-dot` + `--source`): canonical `pkg:<name>` ids let many
   repograph dots / builds merge into one cross-repo universe.
-- ✅ Offline tests for all of the above (114 tests; ruff + mypy --strict clean),
+- ✅ Traversal visualization: `universe --path-from/--path-to` (or
+  `--dependents-of` / `--dependencies-of`) with `--format dot|svg|json` renders
+  the focused subgraph (`path_subgraph` / `neighborhood_subgraph`).
+- ✅ Offline tests for all of the above (116 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not 17812-specific.
 
 Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,

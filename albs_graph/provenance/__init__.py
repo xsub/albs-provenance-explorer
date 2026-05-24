@@ -35,6 +35,8 @@ from .universe import (
     dependency_paths,
     dependents_of,
     merge_graphs,
+    neighborhood_subgraph,
+    path_subgraph,
     reachable_dependencies,
     universe_from_dot,
 )
@@ -67,6 +69,8 @@ __all__ = [
     "dependency_paths",
     "dependents_of",
     "merge_graphs",
+    "neighborhood_subgraph",
+    "path_subgraph",
     "reachable_dependencies",
     "universe_from_dot",
     "claims_from_resolver_result",

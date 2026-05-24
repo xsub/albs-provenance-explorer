@@ -203,6 +203,10 @@ but:
   sonames); the repo-wide `--repograph-dot` path is the populated one.
 - **Substring node matching.** `--dependents-of` / `--path-to` match nodes by
   name/coordinate substring, which is convenient but can over-match.
+- **Visualization is focused-subgraph only.** Queries render `path_subgraph` /
+  `neighborhood_subgraph` (the chain or one hop), not a laid-out view of the
+  whole universe (which would be unreadable at repo scale). `svg` needs Graphviz
+  on PATH; `dot`/`json` are dependency-free.
 
 ## Scale and performance
 

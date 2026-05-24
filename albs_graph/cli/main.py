@@ -46,6 +46,8 @@ from albs_graph.provenance.universe import (
     dependencies_of,
     dependency_paths,
     dependents_of,
+    neighborhood_subgraph,
+    path_subgraph,
 )
 from albs_graph.provenance.trust import (
     find_binary_rpm,
@@ -772,20 +774,34 @@ def universe_command(
         arch=arch,
     )
 
+    # A graphical format (or -o) renders the focused subgraph for a query;
+    # otherwise the query result is printed as text.
+    render = output_format.lower() in {"json", "dot", "svg"}
+
     if dependents_of_cap:
+        if render:
+            _emit_graph(neighborhood_subgraph(graph, dependents_of_cap, incoming=True), output_format, output)
+            return
         names = dependents_of(graph, dependents_of_cap)
         console.print(f"{len(names)} dependents of {dependents_of_cap}:")
         for name in names:
             console.print(f"  {name}")
         return
     if dependencies_of_node:
-        names = dependencies_of(graph, _resolve_universe_node(graph, dependencies_of_node))
+        node_id = _resolve_universe_node(graph, dependencies_of_node)
+        if render:
+            _emit_graph(neighborhood_subgraph(graph, node_id, incoming=False), output_format, output)
+            return
+        names = dependencies_of(graph, node_id)
         console.print(f"{len(names)} dependencies of {dependencies_of_node}:")
         for name in names:
             console.print(f"  {name}")
         return
     if path_from and path_to:
         paths = dependency_paths(graph, _resolve_universe_node(graph, path_from), path_to)
+        if render:
+            _emit_graph(path_subgraph(graph, paths), output_format, output)
+            return
         console.print(f"{len(paths)} path(s) from {path_from} to {path_to}:")
         for chain in paths:
             console.print("  " + " -> ".join(graph.nodes[node_id].label for node_id in chain))

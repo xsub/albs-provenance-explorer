@@ -13,6 +13,8 @@ from albs_graph.provenance import (
     dependencies_of,
     dependency_paths,
     dependents_of,
+    neighborhood_subgraph,
+    path_subgraph,
     reachable_dependencies,
     universe_from_dot,
 )
@@ -46,6 +48,28 @@ def test_universe_traversal_finds_chains_to_libc() -> None:
     assert "nginx-core -> glibc" in rendered
     assert "nginx-core -> openssl-libs -> glibc" in rendered
     assert "pkg:glibc" in reachable_dependencies(universe, "pkg:nginx-core")
+
+
+def test_path_subgraph_keeps_only_chain_nodes() -> None:
+    universe = universe_from_dot(_REPO_DOT)
+    paths = dependency_paths(universe, "pkg:nginx-core", "glibc")
+    sub = path_subgraph(universe, paths)
+
+    labels = {node.label for node in sub.nodes.values()}
+    assert labels == {"nginx-core", "openssl-libs", "glibc"}
+    assert sub.edges  # the chain edges are preserved
+
+
+def test_neighborhood_subgraph_dependents_and_dependencies() -> None:
+    universe = universe_from_dot(_REPO_DOT)
+
+    dependents = neighborhood_subgraph(universe, "glibc", incoming=True)
+    assert {n.label for n in dependents.nodes.values()} == {
+        "glibc", "nginx-core", "openssl-libs", "curl", "zlib"
+    }
+
+    deps = neighborhood_subgraph(universe, "pkg:nginx-core", incoming=False)
+    assert {n.label for n in deps.nodes.values()} == {"nginx-core", "openssl-libs", "glibc"}
 
 
 def test_build_universe_shares_capability_nodes_and_provider_links() -> None:

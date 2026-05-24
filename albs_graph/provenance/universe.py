@@ -246,6 +246,34 @@ def dependency_paths(
     return paths
 
 
+def path_subgraph(graph: ProvenanceGraph, paths: list[list[str]]) -> ProvenanceGraph:
+    """Induced subgraph over all nodes appearing in the given traversal paths."""
+
+    node_ids: set[str] = set()
+    for path in paths:
+        node_ids.update(path)
+    return graph.subgraph(node_ids)
+
+
+def neighborhood_subgraph(
+    graph: ProvenanceGraph, target: str, *, incoming: bool
+) -> ProvenanceGraph:
+    """Subgraph of a capability/package plus its direct dependents or dependencies.
+
+    ``incoming=True`` keeps the things that require ``target`` (its dependents);
+    ``incoming=False`` keeps what ``target`` requires (its dependencies).
+    """
+
+    centers = _match_nodes(graph, target)
+    node_ids: set[str] = set(centers)
+    for center in centers:
+        for relation in _REQUIRES_RELATIONS:
+            edges = graph.incoming(center, relation) if incoming else graph.outgoing(center, relation)
+            for edge in edges:
+                node_ids.add(edge.source if incoming else edge.target)
+    return graph.subgraph(node_ids)
+
+
 def _capability(metadata: dict[str, object]) -> tuple[str, str, str]:
     ecosystem = str(metadata.get("ecosystem", "generic"))
     namespace = metadata.get("namespace")

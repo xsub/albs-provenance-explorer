@@ -471,6 +471,26 @@ multiple edges per line are all captured (regression test added).
 
 ---
 
+## D19 — Visualizing traversal (focused subgraphs)
+
+**Files:** `albs_graph/provenance/universe.py` (`path_subgraph`,
+`neighborhood_subgraph`), `cli/main.py` (`universe` rendering)
+
+A universe query plus a graphical format renders the *focused* subgraph rather
+than the whole (potentially huge) universe:
+
+- `universe --path-from X --path-to Y --format svg` -> `path_subgraph` of just
+  the chain nodes/edges (e.g. nginx-core -> openssl-libs -> glibc).
+- `--dependents-of glibc --format dot` -> `neighborhood_subgraph` of glibc plus
+  everything that requires it.
+- `--dependencies-of nginx-core --format svg` -> glibc/openssl-libs neighborhood.
+
+Without a graphical format the queries stay textual (lists / `a -> b -> c`).
+Rendering reuses the existing `render/` layer (dot is pure text; svg needs
+Graphviz on PATH), so focused chains export cleanly for review.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
