@@ -429,6 +429,25 @@ nginx-core` / `--path-from X --path-to Y`, or render the universe as dot/svg/jso
 
 ---
 
+## D17 — Python language dependencies (requirements.txt + imports)
+
+**Files:** `albs_graph/adapters/pylang.py`, `cli/main.py`
+(`coverage --requirements`)
+
+The graph is not RPM-only. `pylang` turns Python `requirements.txt` lines and
+top-level `import` statements into PyPI dependency claims that reconcile
+alongside RPM/SBOM/dnf claims: a pinned `==` requirement is a LOCKED claim with a
+version (counts toward resolution), a range/bare name is DECLARED, and an
+`import foo` is a DECLARED, version-less claim. It records evidence, not
+resolution — running a real pip/uv resolve is rung 5 for PyPI. CLI:
+`coverage --requirements FILE [--requirements-subject RPM]`.
+
+This is the template for other language ecosystems (npm/Cargo/Go/Maven): a
+manifest parser emitting normalized claims, with the real resolver deferred to
+rung 5 behind the existing `ResolverResult` contract.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

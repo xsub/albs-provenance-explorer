@@ -168,6 +168,17 @@ has `cas`, `--use-cas` will use it.
 
 ---
 
+## Python language dependencies
+`coverage --requirements FILE` parses requirements.txt and (best-effort) imports
+into PyPI claims, but:
+- **Module name ≠ package name.** `import foo` records the *module*; mapping it
+  to its distribution (e.g. `cv2` -> `opencv-python`) is not done.
+- **Markers are recorded, not evaluated.** A `; python_version < "3.8"` marker is
+  kept in the claim's raw but does not gate the claim by context.
+- **requirements.txt + imports only.** `pyproject.toml`/Poetry/Pipfile and other
+  languages (npm/Cargo/Go/Maven manifests) are not parsed yet; and no real
+  pip/uv resolve runs (that is rung 5 for PyPI, behind the resolver contract).
+
 ## `identify` ownership resolution
 `identify <filepath>` walks the provenance graph fully offline, but mapping a
 file to its owning package depends on:

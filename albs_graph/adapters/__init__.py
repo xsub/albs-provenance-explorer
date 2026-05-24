@@ -25,6 +25,14 @@ from .dnf import (
 )
 from .elf import ElfInfo, parse_elf
 from .errata import attach_errata_file
+from .pylang import (
+    PythonDepsResult,
+    attach_python_requirements,
+    parse_imports,
+    parse_requirements,
+    python_import_claims,
+    python_requirement_claims,
+)
 from .rpm import RpmQueryError, graph_from_local_rpm
 from .rpm_header import RpmHeader, RpmHeaderError, parse_rpm_header
 from .rpm_payload import (
@@ -74,6 +82,7 @@ __all__ = [
     "HeaderEnrichmentResult",
     "PayloadEnrichmentResult",
     "PayloadError",
+    "PythonDepsResult",
     "RpmHeader",
     "RpmHeaderError",
     "RpmHeaderFetchError",
@@ -87,6 +96,7 @@ __all__ = [
     "analyze_rpm_payload",
     "attach_cyclonedx_sbom_claims",
     "attach_errata_file",
+    "attach_python_requirements",
     "attach_sbom",
     "build_soname_index",
     "cas_available",
@@ -97,6 +107,10 @@ __all__ = [
     "enrich_graph_with_rpm_payloads",
     "enrich_graph_with_rpmgraph",
     "parse_dot_edges",
+    "parse_imports",
+    "parse_requirements",
+    "python_import_claims",
+    "python_requirement_claims",
     "repoquery",
     "resolve_soname_claims",
     "run_repograph",

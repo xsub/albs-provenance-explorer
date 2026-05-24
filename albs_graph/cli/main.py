@@ -27,6 +27,7 @@ from albs_graph.adapters.dnf import (
     enrich_graph_with_dnf,
     resolve_soname_claims,
 )
+from albs_graph.adapters.pylang import attach_python_requirements
 from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
 from albs_graph.adapters.rpmgraph import (
@@ -329,6 +330,12 @@ def coverage_command(
         "--sbom-subject",
         help="Binary RPM name/node id the SBOM describes (defaults to a representative RPM).",
     ),
+    requirements: Optional[Path] = typer.Option(
+        None, "--requirements", help="Python requirements.txt to attach as PyPI dependency claims."
+    ),
+    requirements_subject: Optional[str] = typer.Option(
+        None, "--requirements-subject", help="Binary RPM the requirements belong to."
+    ),
     repograph_dot: Optional[Path] = typer.Option(
         None,
         "--repograph-dot",
@@ -430,6 +437,16 @@ def coverage_command(
         _log_step(verbose, f"Attaching CycloneDX SBOM {sbom} to {subject_node.id}")
         sbom_result = attach_cyclonedx_sbom_claims(graph, subject_node.id, sbom)
 
+    python_result = None
+    if requirements is not None:
+        req_subject = (
+            find_binary_rpm(graph, requirements_subject)
+            if requirements_subject
+            else select_default_binary_rpm(graph)
+        )
+        _log_step(verbose, f"Attaching Python requirements {requirements} to {req_subject.id}")
+        python_result = attach_python_requirements(graph, req_subject.id, requirements)
+
     enrichment = None
     if with_rpm_headers:
         _log_step(verbose, "Range-reading RPM headers for dynamic-linkage claims")
@@ -482,6 +499,8 @@ def coverage_command(
             payload["dnf"] = dnf_result.to_dict()
         if soname_result is not None:
             payload["soname_resolution"] = soname_result.to_dict()
+        if python_result is not None:
+            payload["python"] = python_result.to_dict()
         sys.stdout.write(json.dumps(payload, indent=2) + "\n")
         return
 
@@ -520,6 +539,11 @@ def coverage_command(
         console.print(
             f"SBOM: {sbom_result.claims_added} component claims "
             f"from {sbom_result.components} components"
+        )
+    if python_result is not None:
+        console.print(
+            f"Python: {python_result.claims_added} PyPI claims from "
+            f"{python_result.requirements} requirements"
         )
     if enrichment is not None:
         console.print(

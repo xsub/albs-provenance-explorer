@@ -104,7 +104,10 @@ RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse need
 - ✅ Dependency **universe** + traversal (`universe` command): `universe_from_dot`
   builds a repo-wide graph (libc connected to everything that links it);
   `dependents_of` / `dependencies_of` / `dependency_paths` traverse it.
-- ✅ Offline tests for all of the above (107 tests; ruff + mypy --strict clean),
+- ✅ Python language deps (`adapters/pylang.py`, `coverage --requirements`):
+  requirements.txt + import scanning -> PyPI claims (pinned == counts toward
+  resolution). Template for other language ecosystems.
+- ✅ Offline tests for all of the above (110 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not 17812-specific.
 
 Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,
