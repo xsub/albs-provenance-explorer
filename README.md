@@ -171,19 +171,39 @@ step ALBS source build task: src
 ┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
 │ x86_64          │        19 │ x86_64=16, noarch=2, src=1  │ nginx, nginx-all-modules, nginx-core, nginx-core-debuginfo,             │
 │                 │           │                             │ nginx-debuginfo, nginx-debugsource, nginx-filesystem, nginx-mod-devel,  │
-│                 │           │                             │ +10 more                                                                │
+│                 │           │                             │ nginx-mod-http-image-filter, nginx-mod-http-image-filter-debuginfo,     │
+│                 │           │                             │ nginx-mod-http-perl, nginx-mod-http-perl-debuginfo,                     │
+│                 │           │                             │ nginx-mod-http-xslt-filter, nginx-mod-http-xslt-filter-debuginfo,       │
+│                 │           │                             │ nginx-mod-mail, nginx-mod-mail-debuginfo, nginx-mod-stream,             │
+│                 │           │                             │ nginx-mod-stream-debuginfo                                              │
 │ aarch64         │        19 │ aarch64=16, noarch=2, src=1 │ nginx, nginx-all-modules, nginx-core, nginx-core-debuginfo,             │
 │                 │           │                             │ nginx-debuginfo, nginx-debugsource, nginx-filesystem, nginx-mod-devel,  │
-│                 │           │                             │ +10 more                                                                │
+│                 │           │                             │ nginx-mod-http-image-filter, nginx-mod-http-image-filter-debuginfo,     │
+│                 │           │                             │ nginx-mod-http-perl, nginx-mod-http-perl-debuginfo,                     │
+│                 │           │                             │ nginx-mod-http-xslt-filter, nginx-mod-http-xslt-filter-debuginfo,       │
+│                 │           │                             │ nginx-mod-mail, nginx-mod-mail-debuginfo, nginx-mod-stream,             │
+│                 │           │                             │ nginx-mod-stream-debuginfo                                              │
 │ ppc64le         │        19 │ ppc64le=16, noarch=2, src=1 │ nginx, nginx-all-modules, nginx-core, nginx-core-debuginfo,             │
 │                 │           │                             │ nginx-debuginfo, nginx-debugsource, nginx-filesystem, nginx-mod-devel,  │
-│                 │           │                             │ +10 more                                                                │
+│                 │           │                             │ nginx-mod-http-image-filter, nginx-mod-http-image-filter-debuginfo,     │
+│                 │           │                             │ nginx-mod-http-perl, nginx-mod-http-perl-debuginfo,                     │
+│                 │           │                             │ nginx-mod-http-xslt-filter, nginx-mod-http-xslt-filter-debuginfo,       │
+│                 │           │                             │ nginx-mod-mail, nginx-mod-mail-debuginfo, nginx-mod-stream,             │
+│                 │           │                             │ nginx-mod-stream-debuginfo                                              │
 │ s390x           │        19 │ s390x=16, noarch=2, src=1   │ nginx, nginx-all-modules, nginx-core, nginx-core-debuginfo,             │
 │                 │           │                             │ nginx-debuginfo, nginx-debugsource, nginx-filesystem, nginx-mod-devel,  │
-│                 │           │                             │ +10 more                                                                │
+│                 │           │                             │ nginx-mod-http-image-filter, nginx-mod-http-image-filter-debuginfo,     │
+│                 │           │                             │ nginx-mod-http-perl, nginx-mod-http-perl-debuginfo,                     │
+│                 │           │                             │ nginx-mod-http-xslt-filter, nginx-mod-http-xslt-filter-debuginfo,       │
+│                 │           │                             │ nginx-mod-mail, nginx-mod-mail-debuginfo, nginx-mod-stream,             │
+│                 │           │                             │ nginx-mod-stream-debuginfo                                              │
 │ i686            │        19 │ i686=16, noarch=2, src=1    │ nginx, nginx-all-modules, nginx-core, nginx-core-debuginfo,             │
 │                 │           │                             │ nginx-debuginfo, nginx-debugsource, nginx-filesystem, nginx-mod-devel,  │
-│                 │           │                             │ +10 more                                                                │
+│                 │           │                             │ nginx-mod-http-image-filter, nginx-mod-http-image-filter-debuginfo,     │
+│                 │           │                             │ nginx-mod-http-perl, nginx-mod-http-perl-debuginfo,                     │
+│                 │           │                             │ nginx-mod-http-xslt-filter, nginx-mod-http-xslt-filter-debuginfo,       │
+│                 │           │                             │ nginx-mod-mail, nginx-mod-mail-debuginfo, nginx-mod-stream,             │
+│                 │           │                             │ nginx-mod-stream-debuginfo                                              │
 │ src             │         1 │ src=1                       │ nginx                                                                   │
 └─────────────────┴───────────┴─────────────────────────────┴─────────────────────────────────────────────────────────────────────────┘
 step Artifact inventory rows include each ALBS task artifact, including repeated SRPM/noarch outputs per build task

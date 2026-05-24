@@ -31,6 +31,22 @@ def test_live_build_artifact_inventory_preserves_multi_package_arch_matrix() -> 
     assert summaries["src"].artifact_arches == {"src": 1}
 
 
+def test_artifact_inventory_summary_exposes_complete_package_list() -> None:
+    graph = _graph_from_export(
+        json.loads(Path("examples/live-build-17812/build-17812.json").read_text())
+    )
+
+    inventory = rpm_artifact_inventory(graph)
+    x86_64_summary = next(
+        summary
+        for summary in summarize_artifacts_by_build_arch(inventory)
+        if summary.build_arch == "x86_64"
+    )
+
+    assert len(x86_64_summary.packages) == 18
+    assert x86_64_summary.packages[-1] == "nginx-mod-stream-debuginfo"
+
+
 def test_artifact_inventory_rows_keep_artifact_identity_evidence() -> None:
     graph = _graph_from_export(
         json.loads(Path("examples/live-build-17812/build-17812.json").read_text())

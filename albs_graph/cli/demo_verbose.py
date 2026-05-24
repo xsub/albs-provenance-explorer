@@ -176,17 +176,14 @@ def _render_artifact_inventory(build_id: int, graph: ProvenanceGraph, out_dir: P
     matrix.add_column("Build task arch")
     matrix.add_column("Artifacts", justify="right")
     matrix.add_column("Artifact arches")
-    matrix.add_column("Packages")
+    matrix.add_column("Packages", overflow="fold", ratio=3)
     for summary in artifact_summaries:
         arches = ", ".join(
             f"{artifact_arch}={count}"
             for artifact_arch, count in summary.artifact_arches.items()
         )
-        package_names = list(summary.packages)
-        visible = ", ".join(package_names[:8])
-        if len(package_names) > 8:
-            visible = f"{visible}, +{len(package_names) - 8} more"
-        matrix.add_row(summary.build_arch, str(summary.total_artifacts), arches, visible)
+        packages = "\n".join(summary.packages)
+        matrix.add_row(summary.build_arch, str(summary.total_artifacts), arches, packages)
     console.print(matrix)
     step(
         "Artifact inventory rows include each ALBS task artifact, including repeated "
