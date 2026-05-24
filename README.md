@@ -37,6 +37,7 @@ The full build graph is useful for analysis, but it is too dense for review. The
 The same demo also exports build-level intelligence from the ALBS metadata:
 
 - `96` RPM artifact rows across `x86_64`, `aarch64`, `ppc64le`, `s390x`, `i686` and `src` build tasks
+- `18` common binary package names are shared by all binary build task platforms
 - each binary build task emits `19` RPM rows: `16` arch-specific RPMs, `2` `noarch` RPMs and `1` SRPM
 - processing analysis covers `173` raw artifacts total: `96` RPM artifacts and `77` build-log/config artifacts
 - build timing summary: `13.6m` wall time, `37.7m` aggregate task wall time, `8.1m` critical task wall time
@@ -156,7 +157,7 @@ Regenerate demo artifacts in one verbose run. The script fetches ALBS metadata o
 ==> Raw ALBS metadata cache: examples/live-build-17812/build-17812.albs.json
 ==> Cache TTL: 300s
 ==> Verify git source commit: 0
-step Ignoring stale ALBS metadata cache examples/live-build-17812/build-17812.albs.json (27389s old, ttl 300s)
+step Ignoring stale ALBS metadata cache examples/live-build-17812/build-17812.albs.json (1166s old, ttl 300s)
 step Fetching ALBS build metadata from https://build.almalinux.org/api/v1/builds/17812/
 step Writing ALBS build metadata cache to examples/live-build-17812/build-17812.albs.json
 step Parsing ALBS API JSON response
@@ -268,6 +269,8 @@ Focused graph:  examples/demo-build-17812/nginx-x86_64-trust.svg
 ```
 
 </details>
+
+The numbered `Common RPM package set` counts package names, while the per-architecture `Artifacts` column counts ALBS artifact rows. For build `17812`, each binary platform has `18` common package names but `19` RPM artifact rows because ALBS also records the repeated SRPM evidence row: `16` arch-specific RPMs, `2` `noarch` RPMs and `1` SRPM. If a future build has architecture-specific differences, the `Package set` column reports `delta` with `+package` and `-package` entries instead of `common`.
 
 The shell wrapper is intentionally thin; it only passes parameters into `python3 -m albs_graph.cli.demo_verbose`. Fetching, graph construction, inventory, timing analysis and rendering all live in Python modules.
 
