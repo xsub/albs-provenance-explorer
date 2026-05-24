@@ -492,6 +492,27 @@ Graphviz on PATH), so focused chains export cleanly for review.
 
 ---
 
+## D20 — Low-footprint SQLite persistence (stay small)
+
+**Files:** `albs_graph/store.py`, `cli/main.py` (`universe --save` / `--db`)
+
+Persistence, deliberately minimal: stdlib `sqlite3` + JSON metadata, two tables
+(`nodes`, `edges`) with indexes, **no external dependency, no graph DB, no
+vector extension**. It delivers "build once, query later":
+
+- `universe --repograph-dot … --save universe.db` persists the built universe.
+- `universe --db universe.db --dependents-of glibc` queries it again without
+  rebuilding. One-hop text queries (`--dependents-of` / `--dependencies-of`) run
+  in SQL via `sql_dependents` / `sql_dependencies` **without loading the whole
+  graph**; paths/rendering load it whole (`load_graph`).
+
+A heavier backend (Postgres recursive CTEs, a real graph store) or a similarity
+overlay (`sqlite-vec`/vector) is left to the bigger-system plan in `plan.md` —
+this stays a single small module so the low-footprint path keeps working with
+zero dependencies.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

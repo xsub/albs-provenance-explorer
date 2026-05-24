@@ -215,11 +215,24 @@ but:
   whole universe (which would be unreadable at repo scale). `svg` needs Graphviz
   on PATH; `dot`/`json` are dependency-free.
 
+## SQLite store
+The `albs_graph/store.py` persistence is intentionally minimal:
+- **One-hop SQL only.** `sql_dependents` / `sql_dependencies` run without loading
+  the graph, but multi-hop paths and rendering still `load_graph` the whole
+  store into memory.
+- **Substring/exact name matching** (label / `pkg:<name>` / `cap:%<name>`), same
+  trade-off as the in-memory traversal.
+- **Single-writer, replace-on-save.** `save_graph` rewrites the file; there is no
+  incremental update, concurrency control, or migration story.
+- **No vector/similarity.** A `sqlite-vec` overlay is noted in the plan but not
+  implemented.
+
 ## Scale and performance
 
 The current implementation targets correctness and demonstrability, not the
 stated "thousands of applications":
-- The graph is **in-memory only**; there is no persistence or query backend.
+- Beyond the SQLite store, there is **no heavier query backend**; multi-hop
+  traversal still happens in memory after a full load.
 - Header fetches are **sequential and uncached** — each `coverage --with-rpm-
   headers` run refetches; there is no on-disk header cache and no parallelism.
 - Reconciliation is a single full pass; there is no incremental re-reconciliation

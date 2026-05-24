@@ -57,6 +57,7 @@ from albs_graph.provenance.trust import (
     trust_path,
 )
 from albs_graph.render import SvgRenderError, graph_to_dot, graph_to_json, graph_to_svg
+from albs_graph.store import load_graph, save_graph, sql_dependencies, sql_dependents
 
 app = typer.Typer(
     name="albs-graph",
@@ -763,20 +764,48 @@ def universe_command(
     ),
     path_from: Optional[str] = typer.Option(None, "--path-from", help="Traverse from this node..."),
     path_to: Optional[str] = typer.Option(None, "--path-to", help="...to this capability/package."),
+    db: Optional[Path] = typer.Option(
+        None, "--db", help="Query/load a persisted universe SQLite store instead of building."
+    ),
+    save: Optional[Path] = typer.Option(
+        None, "--save", help="Persist the built universe to a SQLite store (low-footprint)."
+    ),
     output_format: str = typer.Option("summary", "--format", "-f", help="summary, json, dot, svg."),
     output: Optional[Path] = typer.Option(None, "--output", "-o"),
 ) -> None:
-    if not repograph_dot and not source:
-        raise ValueError("universe requires --repograph-dot or --source")
-    graph = build_arch_universe(
-        dots=[path.read_text(encoding="utf-8") for path in repograph_dot],
-        graphs=[load_synthetic_build_fixture(path) for path in source],
-        arch=arch,
-    )
-
-    # A graphical format (or -o) renders the focused subgraph for a query;
-    # otherwise the query result is printed as text.
+    # A graphical format renders the focused subgraph for a query; otherwise the
+    # query result is printed as text.
     render = output_format.lower() in {"json", "dot", "svg"}
+
+    # SQL fast path: one-hop text queries run directly against the store without
+    # loading the whole universe into memory.
+    if db is not None and not render:
+        if dependents_of_cap:
+            names = sql_dependents(db, dependents_of_cap)
+            console.print(f"{len(names)} dependents of {dependents_of_cap}:")
+            for name in names:
+                console.print(f"  {name}")
+            return
+        if dependencies_of_node:
+            names = sql_dependencies(db, dependencies_of_node)
+            console.print(f"{len(names)} dependencies of {dependencies_of_node}:")
+            for name in names:
+                console.print(f"  {name}")
+            return
+
+    if db is not None:
+        graph = load_graph(db)
+    elif repograph_dot or source:
+        graph = build_arch_universe(
+            dots=[path.read_text(encoding="utf-8") for path in repograph_dot],
+            graphs=[load_synthetic_build_fixture(path) for path in source],
+            arch=arch,
+        )
+        if save is not None:
+            stats = save_graph(graph, save)
+            console.print(f"Saved universe to {save}: {stats.nodes} nodes, {stats.edges} edges")
+    else:
+        raise ValueError("universe requires --repograph-dot, --source, or --db")
 
     if dependents_of_cap:
         if render:

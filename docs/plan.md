@@ -113,7 +113,10 @@ RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse need
 - ✅ Traversal visualization: `universe --path-from/--path-to` (or
   `--dependents-of` / `--dependencies-of`) with `--format dot|svg|json` renders
   the focused subgraph (`path_subgraph` / `neighborhood_subgraph`).
-- ✅ Offline tests for all of the above (116 tests; ruff + mypy --strict clean),
+- ✅ Low-footprint SQLite persistence (`albs_graph/store.py`,
+  `universe --save` / `--db`): build once, query later; one-hop queries run in
+  SQL without loading the whole graph. Stdlib only, no graph DB.
+- ✅ Offline tests for all of the above (122 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not 17812-specific.
 
 Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,
@@ -165,14 +168,15 @@ Ordered by value-per-effort and tractability under public access.
    "vulnerable").
 
 ### Scale
-7. **Thousands-of-apps scale.** The dependency **universe** is built and
-   traversable, and `build_arch_universe` now merges many repograph dots /
-   builds into one cross-repo arch universe (canonical `pkg:<name>` ids). Still
-   to do: drive it from *live* repos (fetch + repograph every repo of an arch in
-   one command) rather than supplied dots; persist it (Postgres recursive CTEs
-   or a graph store) instead of in-memory; batch + parallelize header/payload/
-   SBOM fetches; incremental re-reconciliation; registry-state-driven cache
-   invalidation (yanks/deletions), not age.
+7. **Thousands-of-apps scale.** The dependency **universe** is built,
+   traversable, mergeable across repos, and now **persistable** via a
+   low-footprint SQLite store (`--save` / `--db`, one-hop SQL queries without a
+   full load). Still to do: drive it from *live* repos (fetch + repograph every
+   repo of an arch in one command) rather than supplied dots; a heavier backend
+   only if the SQLite store is outgrown (Postgres recursive CTEs / a graph
+   store, or a `sqlite-vec` similarity overlay); batch + parallelize
+   header/payload/SBOM fetches; incremental re-reconciliation; registry-state
+   cache invalidation (yanks/deletions), not age.
 
 ---
 
