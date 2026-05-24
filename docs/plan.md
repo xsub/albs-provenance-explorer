@@ -108,13 +108,14 @@ Ordered by value-per-effort and tractability under public access.
    follow-ups: extract the root component's CPE into the subject's identity
    candidates, and a **soname → providing-package index** so header sonames
    (`libz.so.1`) can cross-validate against SBOM components (`zlib`).
-2. **CAS verification recorder.** Wrap `cas authenticate --signerID
-   cloud-infra@almalinux.org --hash <cas_hash>` when `cas` is present; flip
-   `externally_verified=true` on the CAS node. Mirrors `example--almalinux.sh`
-   and AlmaLinux's own `cas_wrapper` (a thin Python shell over the `cas` binary,
-   `git.almalinux.org/almalinux/cas_wrapper`). Note: `cas` needs the binary plus
-   credentials — there is no anonymous verification — so this stays a
-   shell-out-if-present adapter, like the existing `rpm` path.
+2. ✅ **CAS verification recorder.** Done as opt-in `--use-cas`
+   (`adapters/cas.py`): wraps `cas authenticate --signerID
+   cloud-infra@almalinux.org --hash <cas_hash>` when present and flips
+   `externally_verified=true` only on success. Crash-proof when `cas` is absent
+   (records `unavailable`). Mirrors AlmaLinux's `cas_wrapper`
+   (`git.almalinux.org/almalinux/cas_wrapper`). Note: `cas` is now effectively
+   uninstallable (Codenotary changed product lines), so this mostly records
+   `unavailable` until a host has the binary.
 3. **Vault URL resolver hardening.** Cover i686/module/CRB layouts, debug repos,
    and live-repo (non-vault) paths for current builds; add a small on-disk header
    cache so repeated `coverage` runs don't refetch.

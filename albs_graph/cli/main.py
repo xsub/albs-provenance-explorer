@@ -20,6 +20,7 @@ from albs_graph.adapters import (
     graph_from_local_rpm,
 )
 from albs_graph.adapters.albs import graph_from_build_metadata, load_synthetic_build_fixture
+from albs_graph.adapters.cas import verify_graph_cas
 from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
 from albs_graph.adapters.sbom import attach_cyclonedx_sbom_claims, import_sbom
@@ -294,6 +295,12 @@ def coverage_command(
         "--with-rpm-payloads",
         help="Download full RPM payloads and parse ELF objects (rung 4; network).",
     ),
+    use_cas: bool = typer.Option(
+        False,
+        "--use-cas",
+        help="Verify CAS attestation hashes with the 'cas' CLI if present (opt-in; "
+        "never required, degrades to 'unavailable' when cas is missing).",
+    ),
     sbom: Optional[Path] = typer.Option(
         None, "--sbom", help="CycloneDX JSON SBOM file to attach as dependency claims."
     ),
@@ -353,6 +360,11 @@ def coverage_command(
             graph, limit=limit, on_progress=_progress(verbose)
         )
 
+    cas_report = None
+    if use_cas:
+        _log_step(verbose, "Verifying CAS attestation hashes (opt-in)")
+        cas_report = verify_graph_cas(graph, use_cas=True)
+
     _log_step(verbose, "Reconciling dependency claims")
     reconciliation = reconcile_dependency_claims(graph)
     report = coverage_report(graph)
@@ -368,6 +380,8 @@ def coverage_command(
             payload["rpm_payload_enrichment"] = payload_result.to_dict()
         if sbom_result is not None:
             payload["sbom"] = sbom_result.to_dict()
+        if cas_report is not None:
+            payload["cas"] = cas_report.to_dict()
         sys.stdout.write(json.dumps(payload, indent=2) + "\n")
         return
 
@@ -396,6 +410,17 @@ def coverage_command(
             f"{payload_result.soname_claims} NEEDED claims, "
             f"{payload_result.static_objects} static objects"
         )
+    if cas_report is not None:
+        if not cas_report.available:
+            console.print(
+                f"CAS: unavailable (cas CLI not found); {cas_report.attestations} attestations "
+                "reported, not verified"
+            )
+        else:
+            console.print(
+                f"CAS: {cas_report.verified} verified, {cas_report.failed} failed, "
+                f"{cas_report.unavailable} unavailable of {cas_report.attestations} attestations"
+            )
     console.print(
         f"Reconciled dependencies: {reconciliation.resolutions}; "
         f"conflicts: {reconciliation.conflict_count}"

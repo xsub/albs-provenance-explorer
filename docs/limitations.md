@@ -132,10 +132,16 @@ Consequences:
 
 ## Verification vs. reporting
 
-CAS hashes are **reported, not verified**: `externally_verified` stays `false`
-because no `cas authenticate` step runs in this environment. The build-17812
-provenance score of 1.00 reflects *evidence present and well-formed*, not
-*cryptographically re-verified*.
+CAS hashes are **reported, not verified** by default: `externally_verified`
+stays `false` unless `--use-cas` runs a successful `cas authenticate`. The
+build-17812 provenance score of 1.00 reflects *evidence present and well-formed*,
+not *cryptographically re-verified*.
+
+`--use-cas` is opt-in and crash-proof, but in practice the `cas` binary is now
+**uninstallable** (Codenotary changed product lines; `getcas.codenotary.io` and
+the GitHub releases 404). So on most hosts CAS verification records `unavailable`
+and changes nothing — by design, never an error. If you have a host that still
+has `cas`, `--use-cas` will use it.
 
 ---
 

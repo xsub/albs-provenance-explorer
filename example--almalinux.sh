@@ -28,19 +28,21 @@ run_albs_graph() {
   fi
 }
 
-ensure_cas() {
+# CAS is optional. Codenotary changed product lines and the public installer /
+# releases are gone, so `cas` is often uninstallable. This script must still be
+# useful without it: it extracts and reports the ALBS-reported hashes and only
+# attempts verification when `cas` is actually present.
+CAS_PRESENT=0
+detect_cas() {
   if command -v cas >/dev/null 2>&1; then
+    CAS_PRESENT=1
     printf '==> Found CAS CLI: %s\n' "$(command -v cas)"
     cas --version || true
-    return
+  else
+    printf '==> CAS CLI not found in PATH; continuing without verification.\n'
+    printf '    (Codenotary changed product lines; %s may 404.)\n' "$CAS_INSTALL_URL"
+    printf '    Hashes below are ALBS-reported, NOT externally verified.\n'
   fi
-
-  printf 'ERROR: CAS CLI not found in PATH.\n' >&2
-  printf 'Install CAS manually, then rerun this script. Suggested first attempt:\n' >&2
-  printf '  curl -fsSL %s | sh\n' "$CAS_INSTALL_URL" >&2
-  printf '\nIf the upstream installer returns 404, check the current Codenotary CAS install docs/releases and install cas explicitly.\n' >&2
-  printf 'This script will not download or run a container image as a fallback.\n' >&2
-  exit 1
 }
 
 extract_hashes() {
@@ -126,7 +128,7 @@ else
   printf 'signer: <not constrained>\n'
 fi
 
-ensure_cas
+detect_cas
 
 printf '\n==> Fetching ALBS metadata with 5 minute cache freshness\n'
 run_albs_graph fetch --build-id "$BUILD_ID" --cache "$CACHE_FILE" --cache-ttl 300 --format json --verbose -o "$LIVE_DIR/build-$BUILD_ID.json"
@@ -137,6 +139,11 @@ printf 'source pkg:   %s (%s)\n' "$SOURCE_PACKAGE" "$SOURCE_PACKAGE_SOURCE"
 printf 'source CAS:   %s\n' "$SOURCE_CAS_HASH"
 printf 'artifact:     %s\n' "$ARTIFACT_NAME"
 printf 'artifact CAS: %s\n' "$ARTIFACT_CAS_HASH"
+
+if [[ $CAS_PRESENT -ne 1 ]]; then
+  printf '\n==> CAS not available; skipping verification (hashes reported, not verified).\n'
+  exit 0
+fi
 
 source_status=0
 artifact_status=0

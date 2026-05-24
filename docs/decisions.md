@@ -270,6 +270,25 @@ Sub-decisions:
 
 ---
 
+## D11 — Optional, crash-proof CAS verification (`--use-cas`)
+
+**Files:** `albs_graph/adapters/cas.py`, `cli/main.py` (`coverage --use-cas`),
+`example--almalinux.sh`
+
+CAS verification is strictly opt-in and never required. The `cas` binary is
+frequently uninstallable now (Codenotary changed product lines; the public
+installer/releases 404), so `verify_hash` / `verify_graph_cas` return a recorded
+`unavailable` status instead of raising, and `example--almalinux.sh` no longer
+`exit 1`s when `cas` is missing — it reports the ALBS hashes and skips
+verification with a clear "reported, not verified" note.
+
+Only a successful `cas authenticate` flips a CAS node's `externally_verified`
+from false to true — the single sanctioned place to assert CAS evidence was
+independently verified, per the "reported, not verified" rule. The runner is
+injectable so the whole path is tested offline without the binary.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

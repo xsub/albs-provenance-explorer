@@ -4,6 +4,13 @@ from .albs import (
     graph_from_build_metadata,
     load_synthetic_build_fixture,
 )
+from .cas import (
+    CasVerification,
+    CasVerificationReport,
+    cas_available,
+    verify_graph_cas,
+    verify_hash,
+)
 from .elf import ElfInfo, parse_elf
 from .errata import attach_errata_file
 from .rpm import RpmQueryError, graph_from_local_rpm
@@ -39,6 +46,8 @@ from .source import (
 
 __all__ = [
     "AlbsBuildMetadata",
+    "CasVerification",
+    "CasVerificationReport",
     "ElfInfo",
     "HeaderEnrichmentResult",
     "PayloadEnrichmentResult",
@@ -54,8 +63,11 @@ __all__ = [
     "attach_cyclonedx_sbom_claims",
     "attach_errata_file",
     "attach_sbom",
+    "cas_available",
     "cyclonedx_dependency_claims",
     "enrich_graph_with_rpm_payloads",
+    "verify_graph_cas",
+    "verify_hash",
     "attach_source_evidence",
     "checkout_git_source",
     "enrich_graph_with_rpm_headers",
