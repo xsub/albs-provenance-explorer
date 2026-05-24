@@ -15,6 +15,7 @@ from albs_graph.adapters.albs import fetch_build_metadata, graph_from_build_meta
 from albs_graph.model import Node, ProvenanceGraph
 from albs_graph.provenance.build_analysis import analyze_albs_build
 from albs_graph.provenance.inventory import (
+    ArtifactArchSummary,
     rpm_artifact_inventory,
     summarize_artifacts_by_build_arch,
 )
@@ -172,18 +173,31 @@ def _render_artifact_inventory(build_id: int, graph: ProvenanceGraph, out_dir: P
     if not artifact_summaries:
         return
 
+    binary_summaries = [summary for summary in artifact_summaries if summary.build_arch != "src"]
+    common_packages = _common_package_set(binary_summaries)
+    if binary_summaries and common_packages:
+        step(
+            "Common RPM package set applies to build task platforms: "
+            + ", ".join(summary.build_arch for summary in binary_summaries)
+        )
+        common = Table(title="Common RPM package set")
+        common.add_column("Packages", overflow="fold")
+        for package in common_packages:
+            common.add_row(package)
+        console.print(common)
+
     matrix = Table(title="ALBS RPM artifact matrix")
     matrix.add_column("Build task arch")
     matrix.add_column("Artifacts", justify="right")
     matrix.add_column("Artifact arches")
-    matrix.add_column("Packages", overflow="fold", ratio=3)
+    matrix.add_column("Package set", overflow="fold", ratio=2)
     for summary in artifact_summaries:
         arches = ", ".join(
             f"{artifact_arch}={count}"
             for artifact_arch, count in summary.artifact_arches.items()
         )
-        packages = "\n".join(summary.packages)
-        matrix.add_row(summary.build_arch, str(summary.total_artifacts), arches, packages)
+        package_set = _package_set_description(summary, common_packages)
+        matrix.add_row(summary.build_arch, str(summary.total_artifacts), arches, package_set)
     console.print(matrix)
     step(
         "Artifact inventory rows include each ALBS task artifact, including repeated "
@@ -194,6 +208,35 @@ def _render_artifact_inventory(build_id: int, graph: ProvenanceGraph, out_dir: P
         json.dumps([item.to_dict() for item in inventory], indent=2, sort_keys=True) + "\n",
         "artifact inventory json",
     )
+
+
+def _common_package_set(summaries: list[ArtifactArchSummary]) -> tuple[str, ...]:
+    package_sets = [set(summary.packages) for summary in summaries]
+    if not package_sets:
+        return ()
+    common = set(package_sets[0])
+    for package_set in package_sets[1:]:
+        common &= package_set
+    return tuple(sorted(common))
+
+
+def _package_set_description(summary: ArtifactArchSummary, common_packages: tuple[str, ...]) -> str:
+    if summary.build_arch == "src":
+        return "source package\n" + "\n".join(summary.packages)
+    if not common_packages:
+        return "\n".join(summary.packages)
+
+    common = set(common_packages)
+    packages = set(summary.packages)
+    added = tuple(sorted(packages - common))
+    missing = tuple(sorted(common - packages))
+    if not added and not missing:
+        return "common"
+
+    lines = ["delta"]
+    lines.extend(f"+ {package}" for package in added)
+    lines.extend(f"- {package}" for package in missing)
+    return "\n".join(lines)
 
 
 def _render_processing_analysis(build_id: int, raw: dict[str, object], out_dir: Path) -> None:

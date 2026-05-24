@@ -5,6 +5,10 @@ from pathlib import Path
 from typing import Any
 
 from albs_graph.model import Node, ProvenanceGraph
+from albs_graph.cli.demo_verbose import (
+    _common_package_set,
+    _package_set_description,
+)
 from albs_graph.provenance.inventory import (
     rpm_artifact_inventory,
     summarize_artifacts_by_build_arch,
@@ -45,6 +49,24 @@ def test_artifact_inventory_summary_exposes_complete_package_list() -> None:
 
     assert len(x86_64_summary.packages) == 18
     assert x86_64_summary.packages[-1] == "nginx-mod-stream-debuginfo"
+
+
+def test_artifact_inventory_summary_collapses_repeated_package_sets_to_common() -> None:
+    graph = _graph_from_export(
+        json.loads(Path("examples/live-build-17812/build-17812.json").read_text())
+    )
+
+    inventory = rpm_artifact_inventory(graph)
+    summaries = summarize_artifacts_by_build_arch(inventory)
+    binary_summaries = [summary for summary in summaries if summary.build_arch != "src"]
+    common_packages = _common_package_set(binary_summaries)
+
+    assert len(common_packages) == 18
+    assert "nginx-core" in common_packages
+    assert {
+        _package_set_description(summary, common_packages)
+        for summary in binary_summaries
+    } == {"common"}
 
 
 def test_artifact_inventory_rows_keep_artifact_identity_evidence() -> None:
