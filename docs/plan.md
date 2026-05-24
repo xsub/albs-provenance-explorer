@@ -99,7 +99,9 @@ RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse need
   [--sbom FILE] [--repograph-dot FILE] [--package P] [--arch A] [--all-archs]`.
 - ✅ Soname → package resolution (`coverage --resolve-sonames` / `--provides-map`)
   bridging the soname↔package coordinate gap.
-- ✅ Offline tests for all of the above (100 tests; ruff + mypy --strict clean),
+- ✅ `identify <filepath>` — traces a file to every element behind its creation
+  and installation (source → commit → build → RPM → signature → release → deps).
+- ✅ Offline tests for all of the above (104 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not 17812-specific.
 
 Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,

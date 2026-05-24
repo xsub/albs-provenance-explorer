@@ -168,6 +168,16 @@ has `cas`, `--use-cas` will use it.
 
 ---
 
+## `identify` ownership resolution
+`identify <filepath>` walks the provenance graph fully offline, but mapping a
+file to its owning package depends on:
+- `--owner` (explicit), or an `owner_lookup` / host `rpm -qf` (AlmaLinux host
+  only), or ELF paths recorded by rung-4 payload analysis.
+- Full RPM **file lists are not stored** in the graph, so non-ELF files (configs,
+  docs) need `--owner` or a host `rpm -qf`; only rung-4 ELF paths are matchable
+  from graph data alone. Recording complete cpio file lists during payload
+  analysis would make any file resolvable offline — a planned enhancement.
+
 ## Scale and performance
 
 The current implementation targets correctness and demonstrability, not the

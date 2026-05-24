@@ -381,6 +381,27 @@ Offline-testable: `resolve_soname_claims` takes a plain dict, and
 
 ---
 
+## D15 — `identify`: file -> full provenance lineage
+
+**Files:** `albs_graph/provenance/identify.py`, `cli/main.py` (`identify`)
+
+`identify <filepath>` answers "what produced and installed this entity?" It
+resolves the owning package, then walks the provenance graph to report every
+element behind the file: source package, git repo + commit, CAS source
+attestation, build task + environment, SRPM, the binary RPM, signature, release
+repository, artifact CAS attestation, SBOM, and resolved dependencies.
+
+Ownership resolution order: explicit `--owner`, an injectable `owner_lookup`
+(host `rpm -qf` / `dnf provides`), ELF paths recorded by rung-4 payload
+analysis, then host `rpm -qf`. The graph traversal is offline and fully tested;
+only ownership may touch the host, and it degrades to "could not determine
+owning package" rather than failing.
+
+Verified on build 17812: `identify /usr/sbin/nginx --owner nginx-core` lists the
+complete nginx → commit → build task 188077 → RPM → sign task → release chain.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

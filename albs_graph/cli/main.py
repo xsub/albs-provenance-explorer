@@ -38,6 +38,7 @@ from albs_graph.adapters.sbom import attach_cyclonedx_sbom_claims, import_sbom
 from albs_graph.fixtures import build_synthetic_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
 from albs_graph.provenance.coverage import coverage_report
+from albs_graph.provenance.identify import identify_file
 from albs_graph.provenance.reconcile import reconcile_dependency_claims
 from albs_graph.provenance.trust import (
     find_binary_rpm,
@@ -543,6 +544,65 @@ def coverage_command(
     for conflict in reconciliation.conflicts[:20]:
         versions = ", ".join(conflict.versions) or "n/a"
         console.print(f"  [{conflict.kind}] {conflict.coordinate}: versions={versions}")
+
+
+@app.command(
+    "identify",
+    help="Trace every element behind a file (creation + installation lineage).",
+    short_help="Trace a file's provenance.",
+    no_args_is_help=True,
+)
+def identify_command(
+    filepath: str = typer.Argument(..., help="File path, e.g. /usr/sbin/nginx."),
+    build_id: Optional[int] = typer.Option(None, "--build-id", "-b", help="Fetch a live ALBS build."),
+    source: Optional[Path] = typer.Option(None, "--source", "-s", help="Cached ALBS metadata JSON."),
+    owner: Optional[str] = typer.Option(
+        None, "--owner", help="Owning package name (skips host rpm -qf lookup)."
+    ),
+    arch: Optional[str] = typer.Option(None, "--arch", help="Disambiguate by architecture."),
+    output_format: str = typer.Option("summary", "--format", "-f", help="summary or json."),
+    base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
+    cache: Optional[Path] = typer.Option(None, "--cache", help="ALBS metadata cache JSON."),
+    cache_ttl: int = typer.Option(300, "--cache-ttl", help="Cache freshness window in seconds."),
+    refresh_cache: bool = typer.Option(False, "--refresh-cache", help="Ignore an existing cache."),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Print progress to stderr."),
+) -> None:
+    if build_id is not None:
+        metadata = fetch_build_metadata(
+            build_id,
+            base_url=base_url,
+            progress=_progress(verbose),
+            cache_path=cache,
+            refresh_cache=refresh_cache,
+            cache_ttl_seconds=cache_ttl,
+        )
+        graph = graph_from_build_metadata(metadata)
+    elif source:
+        graph = load_synthetic_build_fixture(source)
+    else:
+        raise ValueError("identify requires --build-id or --source")
+
+    report = identify_file(graph, filepath, owner_package=owner, arch=arch)
+
+    if output_format.lower() == "json":
+        sys.stdout.write(json.dumps(report.to_dict(), indent=2) + "\n")
+        return
+
+    if not report.found:
+        console.print(f"[yellow]{filepath}[/yellow]: {report.detail}")
+        return
+    table = Table(title=f"Provenance of {filepath}  (package: {report.package})")
+    table.add_column("Role")
+    table.add_column("Element")
+    for element in report.elements:
+        table.add_row(element.role, element.label)
+    console.print(table)
+    console.print(f"Provenance complete: {report.provenance_complete}")
+    console.print(f"Security context complete: {report.security_context_complete}")
+    if report.dependencies:
+        shown = ", ".join(report.dependencies[:15])
+        more = f" (+{len(report.dependencies) - 15} more)" if len(report.dependencies) > 15 else ""
+        console.print(f"Dependencies ({len(report.dependencies)}): {shown}{more}")
 
 
 @app.command(

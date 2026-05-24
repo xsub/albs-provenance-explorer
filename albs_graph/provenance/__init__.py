@@ -8,6 +8,7 @@ from .build_analysis import (
     analyze_albs_build,
 )
 from .coverage import AxisCoverage, CoverageReport, coverage_report
+from .identify import IdentifiedElement, IdentifyReport, identify_file
 from .inventory import (
     ArtifactArchSummary,
     ArtifactInventoryItem,
@@ -40,6 +41,8 @@ __all__ = [
     "DependencyClaim",
     "DependencyConflict",
     "GraphSummary",
+    "IdentifiedElement",
+    "IdentifyReport",
     "ReconciliationReport",
     "SignTaskTiming",
     "TaskTiming",
@@ -51,6 +54,7 @@ __all__ = [
     "claims_from_resolver_result",
     "coverage_report",
     "cves_for_artifact",
+    "identify_file",
     "make_binary_rpm_selector",
     "reconcile_dependency_claims",
     "rpm_artifact_inventory",
