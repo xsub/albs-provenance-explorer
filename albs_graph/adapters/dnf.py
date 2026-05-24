@@ -1,0 +1,238 @@
+"""Deep RPM/DNF extraction via ``dnf repoquery``.
+
+``dnf repoquery`` is the richest native source on an AlmaLinux host. Unlike the
+RPM header (rung 3) or ``repograph`` (package-name edges), it can *resolve*
+requirements to concrete provider NEVRAs and expose the full relation set:
+
+- ``--requires --resolve`` -> versioned RUNTIME dependencies (real resolution),
+- ``--recommends`` / ``--suggests`` -> weak dependencies (scope OPTIONAL),
+- ``--conflicts`` / ``--obsoletes`` -> recorded as node facts,
+- ``--whatprovides <capability>`` -> the soname -> providing-package mapping.
+
+Everything shells out through an injectable runner, so the parsing is tested
+offline with canned ``dnf`` output. When ``dnf`` is absent the orchestrator
+returns ``available=False`` and changes nothing — it never crashes.
+"""
+
+from __future__ import annotations
+
+import re
+import shutil
+import subprocess
+from dataclasses import dataclass, field
+from typing import Callable
+
+from albs_graph.dependency import (
+    DependencyScope,
+    DependencySpec,
+    Ecosystem,
+    PackageIdentity,
+    ResolutionState,
+)
+from albs_graph.model import Node, NodeType, ProvenanceGraph
+from albs_graph.provenance.reconcile import DependencyClaim, add_dependency_claim
+
+Runner = Callable[[list[str]], tuple[int, str]]
+NodeSelector = Callable[[Node], bool]
+
+_ARCH_SUFFIXES = ("x86_64", "aarch64", "ppc64le", "s390x", "i686", "noarch", "src")
+# repoquery relations that we resolve to versioned provider packages.
+_RESOLVE_RELATIONS: tuple[tuple[str, DependencyScope], ...] = (
+    ("requires", DependencyScope.RUNTIME),
+    ("recommends", DependencyScope.OPTIONAL),
+    ("suggests", DependencyScope.OPTIONAL),
+)
+# relations recorded as facts on the node (not "depends on" edges).
+_RECORD_RELATIONS = ("conflicts", "obsoletes")
+_NOISE = re.compile(r"^(Last metadata|Repository|Importing|Updating|Failed)")
+
+
+class DnfUnavailable(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class DnfEnrichmentResult:
+    available: bool
+    packages_seen: int
+    packages_queried: int
+    resolved_claims: int
+    weak_claims: int
+    relations_recorded: int
+    failures: tuple[str, ...] = field(default_factory=tuple)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "available": self.available,
+            "packages_seen": self.packages_seen,
+            "packages_queried": self.packages_queried,
+            "resolved_claims": self.resolved_claims,
+            "weak_claims": self.weak_claims,
+            "relations_recorded": self.relations_recorded,
+            "failures": list(self.failures),
+        }
+
+
+def dnf_available() -> bool:
+    return shutil.which("dnf") is not None
+
+
+def repoquery(
+    package: str,
+    *,
+    relation: str,
+    resolve: bool = False,
+    repo: str | None = None,
+    runner: Runner | None = None,
+) -> list[str]:
+    """Run ``dnf repoquery --<relation> [--resolve] <package>`` -> output lines."""
+
+    args = ["dnf", "repoquery", "--quiet", f"--{relation}"]
+    if resolve:
+        args.append("--resolve")
+    if repo:
+        args += ["--repo", repo]
+    args.append(package)
+    return _lines(_run(args, runner))
+
+
+def whatprovides(capability: str, *, runner: Runner | None = None) -> list[str]:
+    """Resolve a capability (e.g. ``libssl.so.3()(64bit)``) to providing NEVRAs."""
+
+    return _lines(_run(["dnf", "repoquery", "--quiet", "--whatprovides", capability], runner))
+
+
+def parse_nevra(token: str) -> tuple[str, str | None]:
+    """Split a NEVRA / capability token into (name, version|None)."""
+
+    head = token.split()[0] if token.split() else token  # drop "op version" tails
+    base = head
+    for arch in _ARCH_SUFFIXES:
+        if base.endswith("." + arch):
+            base = base[: -(len(arch) + 1)]
+            break
+    parts = base.rsplit("-", 2)
+    if len(parts) == 3 and any(char.isdigit() for char in parts[1]):
+        return parts[0], f"{parts[1]}-{parts[2]}"
+    return head, None
+
+
+def enrich_graph_with_dnf(
+    graph: ProvenanceGraph,
+    *,
+    runner: Runner | None = None,
+    node_selector: NodeSelector | None = None,
+    include_weak: bool = True,
+    repo: str | None = None,
+    limit: int | None = None,
+    on_progress: Callable[[str], None] | None = None,
+) -> DnfEnrichmentResult:
+    """Enrich each selected binary RPM with resolved dnf repoquery dependencies."""
+
+    if runner is None and not dnf_available():
+        seen = sum(
+            1
+            for node in graph.find_by_type(NodeType.BINARY_RPM)
+            if not node_selector or node_selector(node)
+        )
+        return DnfEnrichmentResult(False, seen, 0, 0, 0, 0, ())
+
+    seen = queried = resolved = weak = recorded = 0
+    failures: list[str] = []
+    relations = _RESOLVE_RELATIONS if include_weak else _RESOLVE_RELATIONS[:1]
+
+    for node in graph.find_by_type(NodeType.BINARY_RPM):
+        if node_selector and not node_selector(node):
+            continue
+        name = str(node.metadata.get("name") or parse_nevra(node.label)[0])
+        if limit is not None and seen >= limit:
+            break
+        seen += 1
+        seen_keys: set[tuple[str, str, str]] = set()
+        try:
+            for relation, scope in relations:
+                for nevra in repoquery(
+                    name, relation=relation, resolve=True, repo=repo, runner=runner
+                ):
+                    dep_name, dep_version = parse_nevra(nevra)
+                    key = (dep_name, dep_version or "", relation)
+                    if key in seen_keys:
+                        continue
+                    seen_keys.add(key)
+                    _add_claim(graph, node.id, dep_name, dep_version, scope, relation)
+                    if scope == DependencyScope.RUNTIME:
+                        resolved += 1
+                    else:
+                        weak += 1
+            recorded += _record_relations(graph, node, name, repo, runner)
+            queried += 1
+            if on_progress:
+                on_progress(f"dnf repoquery resolved dependencies for {name}")
+        except DnfUnavailable as exc:
+            failures.append(f"{name}: {exc}")
+    return DnfEnrichmentResult(True, seen, queried, resolved, weak, recorded, tuple(failures))
+
+
+def _add_claim(
+    graph: ProvenanceGraph,
+    subject_id: str,
+    name: str,
+    version: str | None,
+    scope: DependencyScope,
+    relation: str,
+) -> None:
+    spec = DependencySpec(
+        identity=PackageIdentity(Ecosystem.RPM, name, namespace="almalinux", version=version),
+        scope=scope,
+        resolution_state=ResolutionState.RESOLVED,
+        source="dnf repoquery",
+        raw={"relation": relation},
+    )
+    add_dependency_claim(graph, DependencyClaim(subject_id, spec, evidence=f"dnf:{relation}"))
+
+
+def _record_relations(
+    graph: ProvenanceGraph,
+    node: Node,
+    name: str,
+    repo: str | None,
+    runner: Runner | None,
+) -> int:
+    recorded = 0
+    relations: dict[str, list[str]] = {}
+    for relation in _RECORD_RELATIONS:
+        values = repoquery(name, relation=relation, repo=repo, runner=runner)
+        if values:
+            relations[relation] = values
+            recorded += len(values)
+    if relations:
+        existing = node.metadata.get("dnf_relations")
+        if isinstance(existing, dict):
+            existing.update(relations)
+        else:
+            node.metadata["dnf_relations"] = relations
+    return recorded
+
+
+def _run(args: list[str], runner: Runner | None) -> str:
+    if runner is not None:
+        returncode, output = runner(args)
+    else:
+        if shutil.which(args[0]) is None:
+            raise DnfUnavailable(f"{args[0]} not found in PATH")
+        try:
+            process = subprocess.run(args, check=False, text=True, capture_output=True)
+        except FileNotFoundError as exc:  # pragma: no cover - race with which()
+            raise DnfUnavailable(f"{args[0]} not found") from exc
+        returncode, output = process.returncode, process.stdout
+    if returncode != 0:
+        raise DnfUnavailable(f"{' '.join(args)} failed (exit {returncode})")
+    return output
+
+
+def _lines(output: str) -> list[str]:
+    return [
+        line.strip()
+        for line in output.splitlines()
+        if line.strip() and not _NOISE.match(line.strip())
+    ]

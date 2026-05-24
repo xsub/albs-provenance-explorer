@@ -21,9 +21,14 @@ from albs_graph.adapters import (
 )
 from albs_graph.adapters.albs import graph_from_build_metadata, load_synthetic_build_fixture
 from albs_graph.adapters.cas import verify_graph_cas
+from albs_graph.adapters.dnf import enrich_graph_with_dnf
 from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
-from albs_graph.adapters.rpmgraph import enrich_graph_with_rpmgraph
+from albs_graph.adapters.rpmgraph import (
+    RpmgraphUnavailable,
+    enrich_graph_with_rpmgraph,
+    run_repograph,
+)
 from albs_graph.adapters.sbom import attach_cyclonedx_sbom_claims, import_sbom
 from albs_graph.fixtures import build_synthetic_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
@@ -316,6 +321,17 @@ def coverage_command(
         "--repograph-dot",
         help="Ingest a `dnf repograph` / `rpmgraph` dot file as resolved RPM dependency claims.",
     ),
+    repograph: Optional[str] = typer.Option(
+        None,
+        "--repograph",
+        help="Run `dnf repograph <repo>` live (AlmaLinux host only) and ingest it.",
+    ),
+    use_dnf: bool = typer.Option(
+        False,
+        "--use-dnf",
+        help="Resolve dependencies per package with `dnf repoquery` (AlmaLinux host; "
+        "adds versioned RUNTIME + weak OPTIONAL claims). Degrades to no-op if dnf is absent.",
+    ),
     package: Optional[str] = typer.Option(
         None, "--package", help="Only enrich binary RPMs with this package name."
     ),
@@ -358,13 +374,26 @@ def coverage_command(
     _ = all_packages  # default behavior; flag documents intent and pairs with --all-archs
 
     rpmgraph_result = None
+    dot_text: str | None = None
     if repograph_dot is not None:
         _log_step(verbose, f"Ingesting dnf repograph/rpmgraph dot from {repograph_dot}")
+        dot_text = repograph_dot.read_text(encoding="utf-8")
+    elif repograph is not None:
+        _log_step(verbose, f"Running dnf repograph {repograph}")
+        try:
+            dot_text = run_repograph(repograph)
+        except RpmgraphUnavailable as exc:
+            console.print(f"[yellow]repograph unavailable:[/yellow] {exc}")
+    if dot_text is not None:
         rpmgraph_result = enrich_graph_with_rpmgraph(
-            graph,
-            repograph_dot.read_text(encoding="utf-8"),
-            evidence="repograph",
-            node_selector=selector,
+            graph, dot_text, evidence="repograph", node_selector=selector
+        )
+
+    dnf_result = None
+    if use_dnf:
+        _log_step(verbose, "Resolving dependencies per package with dnf repoquery")
+        dnf_result = enrich_graph_with_dnf(
+            graph, node_selector=selector, limit=limit, on_progress=_progress(verbose)
         )
 
     sbom_result = None
@@ -415,6 +444,8 @@ def coverage_command(
             payload["cas"] = cas_report.to_dict()
         if rpmgraph_result is not None:
             payload["repograph"] = rpmgraph_result.to_dict()
+        if dnf_result is not None:
+            payload["dnf"] = dnf_result.to_dict()
         sys.stdout.write(json.dumps(payload, indent=2) + "\n")
         return
 
@@ -432,6 +463,18 @@ def coverage_command(
             f"from {rpmgraph_result.matched_edges} matched edges "
             f"({rpmgraph_result.edges} total)"
         )
+    if dnf_result is not None:
+        if not dnf_result.available:
+            console.print(
+                f"dnf: unavailable; {dnf_result.packages_seen} packages skipped "
+                "(install dnf or run on an AlmaLinux host)"
+            )
+        else:
+            console.print(
+                f"dnf repoquery: {dnf_result.resolved_claims} runtime + "
+                f"{dnf_result.weak_claims} weak resolved claims across "
+                f"{dnf_result.packages_queried} packages"
+            )
     if sbom_result is not None:
         console.print(
             f"SBOM: {sbom_result.claims_added} component claims "

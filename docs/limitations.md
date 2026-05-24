@@ -76,6 +76,20 @@ language ecosystems, only `NullResolver` exists (marks everything
 `RESOLUTION_SKIPPED`); the typed contract is in place but nothing yet shells out
 to uv/pip-tools, Maven/Gradle, `cargo metadata` or `go list`.
 
+### `dnf repoquery` caveats
+- **Host tool, many subprocess calls.** `coverage --use-dnf` runs several
+  `dnf repoquery` invocations *per selected package* (requires + weak relations
+  + conflicts/obsoletes). Scope it with `--package`/`--arch`/`--limit`; the full
+  matrix is slow. Absent `dnf`, it records `available=false` and changes nothing.
+- **Weak deps collapse to one scope.** `recommends`/`suggests` both map to
+  `DependencyScope.OPTIONAL` (the precise relation is kept in the claim's raw).
+  RPM also has `supplements`/`enhances` (reverse weak deps) which are not yet
+  emitted as claims.
+- **`--whatprovides` is not auto-wired into reconciliation.** The function
+  exists (and resolves a soname to its providing package), but header/ELF soname
+  claims are not yet rewritten to the providing package, so the soname↔package
+  cross-validation remains manual. That is the next step (see `plan.md`).
+
 ### `dnf repograph` / `rpmgraph` caveats
 - **Host tools, ingested via dot.** The tested path is `--repograph-dot FILE`
   (output you generate on an AlmaLinux host). Live `run_repograph`/`run_rpmgraph`

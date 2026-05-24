@@ -28,8 +28,14 @@ mypy albs_graph                     # strict typing (configured in pyproject.tom
 albs-graph --help                   # CLI entrypoint (also: python -m albs_graph.cli.main)
 ./example--verbose.sh               # regenerate demo artifacts for build 17812
 VERIFY_GIT=1 ./example--verbose.sh  # also verify git source commit
-./example--almalinux.sh             # CAS hash verification (AlmaLinux host with `cas`)
+./example.sh                        # portable demo (any OS; no native tools)
+./example--almalinux-native.sh      # native dnf/rpm/rpmgraph/cas stack (AlmaLinux host)
+./example--almalinux.sh             # CAS hash verification (opt-in; crash-proof if cas absent)
 ```
+
+CAS (`--use-cas`) and the native RPM/DNF integrations (`--use-dnf`,
+`--repograph`, `--repograph-dot`, `--with-rpm-payloads`) are all optional and
+degrade gracefully when the tool is missing — never required, never fatal.
 
 The verbose demo caches raw ALBS metadata in `examples/live-build-17812/build-17812.albs.json` (gitignored). Cache TTL defaults to 5 minutes; override with `CACHE_TTL=<seconds>`. Force a refetch with `--refresh-cache` on CLI commands.
 

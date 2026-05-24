@@ -11,6 +11,14 @@ from .cas import (
     verify_graph_cas,
     verify_hash,
 )
+from .dnf import (
+    DnfEnrichmentResult,
+    DnfUnavailable,
+    dnf_available,
+    enrich_graph_with_dnf,
+    repoquery,
+    whatprovides,
+)
 from .elf import ElfInfo, parse_elf
 from .errata import attach_errata_file
 from .rpm import RpmQueryError, graph_from_local_rpm
@@ -56,6 +64,8 @@ __all__ = [
     "AlbsBuildMetadata",
     "CasVerification",
     "CasVerificationReport",
+    "DnfEnrichmentResult",
+    "DnfUnavailable",
     "ElfInfo",
     "HeaderEnrichmentResult",
     "PayloadEnrichmentResult",
@@ -75,13 +85,17 @@ __all__ = [
     "attach_sbom",
     "cas_available",
     "cyclonedx_dependency_claims",
+    "dnf_available",
+    "enrich_graph_with_dnf",
     "enrich_graph_with_rpm_payloads",
     "enrich_graph_with_rpmgraph",
     "parse_dot_edges",
+    "repoquery",
     "run_repograph",
     "run_rpmgraph",
     "verify_graph_cas",
     "verify_hash",
+    "whatprovides",
     "attach_source_evidence",
     "checkout_git_source",
     "enrich_graph_with_rpm_headers",

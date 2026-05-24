@@ -89,10 +89,15 @@ RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse need
 - ✅ Optional, crash-proof CAS verification (`adapters/cas.py`, `--use-cas`).
 - ✅ AlmaLinux-native RPM resolution: `dnf repograph` / `rpmgraph` dot ingest
   (`adapters/rpmgraph.py`) emits resolved RPM dependency claims (rung 5 for RPM).
+- ✅ Deep `dnf repoquery` extraction (`adapters/dnf.py`): versioned RUNTIME
+  deps, weak (recommends/suggests) deps as OPTIONAL, conflicts/obsoletes facts,
+  and `--whatprovides` for the soname->package mapping. `coverage --use-dnf`.
 - ✅ Enrichment selectors: `--package`, `--arch`, `--all-archs`, `--all-packages`.
+- ✅ Two example scripts: `example.sh` (portable) and
+  `example--almalinux-native.sh` (native dnf/rpm/rpmgraph/cas stack).
 - ✅ `albs-graph coverage [--with-rpm-headers] [--with-rpm-payloads] [--use-cas]
   [--sbom FILE] [--repograph-dot FILE] [--package P] [--arch A] [--all-archs]`.
-- ✅ Offline tests for all of the above (90 tests; ruff + mypy --strict clean),
+- ✅ Offline tests for all of the above (95 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not 17812-specific.
 
 Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,
@@ -112,8 +117,9 @@ Ordered by value-per-effort and tractability under public access.
 1. ✅ **CycloneDX-from-file SBOM claims.** Done — `sbom.py` emits versioned
    dependency claims (`evidence="sbom"`) wired into `coverage --sbom`. Remaining
    follow-ups: extract the root component's CPE into the subject's identity
-   candidates, and a **soname → providing-package index** so header sonames
-   (`libz.so.1`) can cross-validate against SBOM components (`zlib`).
+   candidates, and wire `dnf --whatprovides` (already implemented) into a
+   **soname → providing-package** reconciliation so header/ELF sonames
+   (`libz.so.1`) corroborate package claims (`zlib`).
 2. ✅ **CAS verification recorder.** Done as opt-in `--use-cas`
    (`adapters/cas.py`): wraps `cas authenticate --signerID
    cloud-infra@almalinux.org --hash <cas_hash>` when present and flips

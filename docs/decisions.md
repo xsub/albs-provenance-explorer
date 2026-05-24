@@ -319,6 +319,40 @@ Sub-decisions:
 
 ---
 
+## D13 — Deep `dnf repoquery` extraction + portable/native example split
+
+**Files:** `albs_graph/adapters/dnf.py`, `cli/main.py` (`coverage --use-dnf`,
+`--repograph`), `example.sh`, `example--almalinux-native.sh`
+
+`dnf repoquery` is the richest native source, so the dnf adapter extracts as
+much as is well-defined:
+
+- `--requires --resolve` -> versioned RUNTIME dependencies (real resolution that
+  counts toward the resolution axis),
+- `--recommends` / `--suggests` (resolved) -> weak dependencies, scope OPTIONAL,
+- `--conflicts` / `--obsoletes` -> recorded as `dnf_relations` node facts,
+- `--whatprovides <capability>` -> the soname -> providing-package mapping.
+
+Claims use namespace `almalinux`, so they reconcile against SBOM and repograph
+claims. Like every native adapter the runner is injectable (tested offline) and
+absence of `dnf` returns `available=false` rather than raising. `--repograph
+REPO` runs `dnf repograph` live and ingests it; `RpmgraphUnavailable` is caught
+and reported, never fatal.
+
+**Two example scripts, by environment:**
+
+- `example.sh` — **portable** (any OS): synthetic fixture, offline coverage,
+  trust path, rung-3 header reads, rung-4 payload (if the `payload` extra is
+  installed). No AlmaLinux-native tools required; optional steps degrade.
+- `example--almalinux-native.sh` — **AlmaLinux-native**: detects
+  dnf/rpm/rpmgraph/cas/zstandard and exercises `--use-dnf`, `--repograph`,
+  rung 3/4, and `--use-cas`, each skipped gracefully when its tool is absent.
+  `FULL=1` runs the full `--all-packages --all-archs` matrix.
+
+(`example--almalinux.sh`, the CAS-focused demo, remains and is now crash-proof.)
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
