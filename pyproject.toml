@@ -33,6 +33,11 @@ dev = [
   "ruff>=0.5.0",
   "mypy>=1.10.0"
 ]
+# Rung-4 payload analysis of real el9 RPMs (zstd-compressed cpio). gzip/xz/bzip2
+# payloads work with the standard library; only zstd needs this extra.
+payload = [
+  "zstandard>=0.22"
+]
 
 [project.scripts]
 albs-graph = "albs_graph.cli:main"
@@ -47,3 +52,9 @@ target-version = "py311"
 [tool.mypy]
 python_version = "3.11"
 strict = true
+
+# zstandard is an optional extra (rung-4 zstd payloads) and ships no type stubs;
+# tolerate it being absent (CI) or untyped (installed) without inline ignores.
+[[tool.mypy.overrides]]
+module = "zstandard"
+ignore_missing_imports = true

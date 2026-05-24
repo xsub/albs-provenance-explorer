@@ -126,7 +126,7 @@ value rung reachable with current public access:
 | 1 | ALBS metadata | open API | pre-existing |
 | 2 | git spec/manifests | open git | pre-existing |
 | 3 | RPM header (range read) | open mirror/vault | **implemented** |
-| 4 | payload ELF (RPATH/dlopen/static BOM) | open, but large | seam |
+| 4 | payload ELF (RPATH/RUNPATH/dlopen/toolchain) | open, but large | **implemented** |
 | 5 | resolver execution | needs tooling | contract only |
 
 Key insight: the RPM **header** already encodes dynamic `DT_NEEDED` sonames
@@ -233,6 +233,40 @@ honestly:
 
 The soname-to-providing-package mapping (so `libz.so.1` could cross-validate
 against the `zlib` component) is intentionally future work; see `limitations.md`.
+
+---
+
+## D10 — Rung 4: full payload ELF analysis
+
+**Files:** `albs_graph/adapters/elf.py`, `adapters/rpm_payload.py`,
+`adapters/rpm_header.py` (payload offset/compressor), `cli/main.py`
+(`coverage --with-rpm-payloads`)
+
+Downloads the whole RPM, decompresses the cpio payload, and parses each ELF to
+recover what the header cannot: confirmed `DT_NEEDED`, `DT_RPATH`/`DT_RUNPATH`,
+dynamic-vs-static linkage, a best-effort `dlopen` flag, and the build toolchain
+(Go/Rust). Confirmed sonames become `evidence="elf_dt_needed"` claims that
+**corroborate** the rung-3 `rpm_header_soname` claims (reported vs. independently
+verified); RPATH/RUNPATH/dlopen/static facts land on the binary RPM node under
+`elf_analysis`.
+
+Sub-decisions:
+
+- **Own ELF parser, no `pyelftools` dependency.** Mirrors the dependency-free
+  `rpm_header` parser: parse the ELF header + section headers, then `.dynamic` /
+  `.dynstr` / `.dynsym`. Binaries stripped of section headers return
+  `is_elf=True` with empty analysis rather than raising.
+- **This crosses the "metadata-only" boundary on purpose.** Rung 4 fetches and
+  decompresses real artifact bytes — the deliberate step beyond the PoC's
+  read-only framing, taken because dynamic-loading facts (dlopen) and static
+  linkage are otherwise invisible. Verified on build 17812: `/usr/sbin/nginx`
+  reports `dlopen=true`, which the header cannot reveal.
+- **zstd is an optional extra (`pip install '.[payload]'`).** gzip/xz/bzip2 use
+  the standard library (and the offline tests), so the core install stays light;
+  only real el9 zstd payloads need `zstandard`.
+- **Static-BOM module extraction is detected, not parsed.** Go/Rust toolchains
+  are flagged from ELF sections, but enumerating a static Go binary's module
+  graph (parsing `.go.buildinfo`) is left as follow-up; see `limitations.md`.
 
 ---
 

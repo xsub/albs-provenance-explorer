@@ -20,6 +20,7 @@ from albs_graph.adapters import (
     graph_from_local_rpm,
 )
 from albs_graph.adapters.albs import graph_from_build_metadata, load_synthetic_build_fixture
+from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
 from albs_graph.adapters.sbom import attach_cyclonedx_sbom_claims, import_sbom
 from albs_graph.fixtures import build_synthetic_package_graph
@@ -288,6 +289,11 @@ def coverage_command(
         "--with-rpm-headers",
         help="Range-read public RPM headers to add dynamic-linkage claims (network).",
     ),
+    with_rpm_payloads: bool = typer.Option(
+        False,
+        "--with-rpm-payloads",
+        help="Download full RPM payloads and parse ELF objects (rung 4; network).",
+    ),
     sbom: Optional[Path] = typer.Option(
         None, "--sbom", help="CycloneDX JSON SBOM file to attach as dependency claims."
     ),
@@ -339,6 +345,14 @@ def coverage_command(
         enrichment = enrich_graph_with_rpm_headers(
             graph, limit=limit, on_progress=_progress(verbose)
         )
+
+    payload_result = None
+    if with_rpm_payloads:
+        _log_step(verbose, "Downloading RPM payloads and parsing ELF objects (rung 4)")
+        payload_result = enrich_graph_with_rpm_payloads(
+            graph, limit=limit, on_progress=_progress(verbose)
+        )
+
     _log_step(verbose, "Reconciling dependency claims")
     reconciliation = reconcile_dependency_claims(graph)
     report = coverage_report(graph)
@@ -350,6 +364,8 @@ def coverage_command(
         }
         if enrichment is not None:
             payload["rpm_header_enrichment"] = enrichment.to_dict()
+        if payload_result is not None:
+            payload["rpm_payload_enrichment"] = payload_result.to_dict()
         if sbom_result is not None:
             payload["sbom"] = sbom_result.to_dict()
         sys.stdout.write(json.dumps(payload, indent=2) + "\n")
@@ -372,6 +388,13 @@ def coverage_command(
         console.print(
             f"RPM header enrichment: {enrichment.headers_fetched}/{enrichment.artifacts_seen} "
             f"headers fetched, {enrichment.claims_added} dynamic-linkage claims added"
+        )
+    if payload_result is not None:
+        console.print(
+            f"RPM payload analysis: {payload_result.payloads_read}/{payload_result.artifacts_seen} "
+            f"payloads, {payload_result.elf_objects} ELF objects, "
+            f"{payload_result.soname_claims} NEEDED claims, "
+            f"{payload_result.static_objects} static objects"
         )
     console.print(
         f"Reconciled dependencies: {reconciliation.resolutions}; "

@@ -33,6 +33,8 @@ _TAG_REQUIRENAME = 1049
 _TAG_REQUIREVERSION = 1050
 _TAG_PROVIDEFLAGS = 1112
 _TAG_PROVIDEVERSION = 1113
+_TAG_PAYLOADFORMAT = 1124
+_TAG_PAYLOADCOMPRESSOR = 1125
 
 # RPM header data types.
 _TYPE_INT16 = 3
@@ -71,10 +73,18 @@ class RpmHeader:
     requires: tuple[RpmDependency, ...]
     provides: tuple[RpmDependency, ...]
     header_bytes: int  # total lead+signature+main header size consumed
+    payload_format: str | None = None  # e.g. "cpio"
+    payload_compressor: str | None = None  # e.g. "zstd", "gzip", "xz"
 
     @property
     def soname_requires(self) -> tuple[RpmDependency, ...]:
         return tuple(dep for dep in self.requires if dep.kind == "soname")
+
+    @property
+    def payload_offset(self) -> int:
+        """Byte offset where the compressed payload begins (end of main header)."""
+
+        return self.header_bytes
 
 
 def required_header_length(data: bytes) -> int:
@@ -144,6 +154,8 @@ def parse_rpm_header(data: bytes) -> RpmHeader:
         requires=requires,
         provides=provides,
         header_bytes=end,
+        payload_format=_as_string(tags.get(_TAG_PAYLOADFORMAT)),
+        payload_compressor=_as_string(tags.get(_TAG_PAYLOADCOMPRESSOR)),
     )
 
 

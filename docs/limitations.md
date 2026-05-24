@@ -50,15 +50,25 @@ resolver) is added.
 
 ## Rungs not yet implemented
 
-### Rung 4 — payload ELF analysis (RPATH/RUNPATH, dlopen, static BOM)
-Only the RPM **header** is read today, which yields dynamic `DT_NEEDED` sonames
-but **not** `DT_RPATH`/`DT_RUNPATH`, `dlopen` call sites, or static-link BOMs
-(Go buildinfo, Rust metadata). Those require the actual ELF bytes from the
-compressed cpio payload.
-- **Note:** a compressed payload defeats random-access range reads; the best
-  achievable is stream-decompress-and-early-abort, not "fetch one file."
-- **Consequence:** statically linked dependencies are invisible; `linkage` is
-  capped well below 1.0 and reflects only dynamic linkage.
+### Rung 4 — payload ELF analysis (implemented, with caveats)
+Implemented: full RPM download → cpio payload → ELF parse of confirmed
+`DT_NEEDED`, `DT_RPATH`/`DT_RUNPATH`, dynamic-vs-static linkage, a best-effort
+`dlopen` flag, and Go/Rust toolchain detection. Remaining limits:
+- **Whole-RPM download, no early-abort.** A compressed payload defeats
+  random-access range reads, and the current reader downloads the entire RPM
+  rather than stream-decompressing with early-abort. Bounded at 256 MB.
+- **zstd needs an optional dependency.** Real el9 payloads are zstd; install
+  `pip install '.[payload]'`. gzip/xz/bzip2 work out of the box.
+- **Static BOM is detected, not enumerated.** A static Go/Rust binary is flagged
+  by toolchain, but its embedded module graph is not parsed (`.go.buildinfo` /
+  Rust metadata). So static binaries contribute a linkage *fact* but no static
+  dependency *claims* yet.
+- **`dlopen` is a heuristic.** It scans the dynamic symbol table for
+  `dlopen`/`dlmopen` imports; a binary that reaches `dlopen` only transitively,
+  or is fully stripped of section headers, may be missed.
+- **Section-header dependence.** Analysis uses ELF section headers (present in
+  distro RPM binaries); objects stripped of sections return `is_elf=True` with
+  empty analysis. 32-bit and big-endian are handled but exercised less.
 
 ### Rung 5 — real per-ecosystem resolvers
 Only `NullResolver` exists (it marks everything `RESOLUTION_SKIPPED`). The typed

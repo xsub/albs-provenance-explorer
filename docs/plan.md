@@ -63,7 +63,7 @@ Acquire only as much as a question needs; climb when the objective rewards it.
 | 1 | ALBS metadata | ~free | provenance backbone | done (pre-existing) |
 | 2 | git checkout: spec + manifests | cheap | declared deps, BuildRequires | done (pre-existing) |
 | 3 | RPM header via HTTP Range | tens of KB | **dynamic-linkage claims** | **done** |
-| 4 | payload ELF | MBs | RPATH/RUNPATH, dlopen, static BOM | planned |
+| 4 | full payload ELF | MBs | **RPATH/RUNPATH, dlopen, static detection, toolchain** | **done** (Go/Rust module BOM pending) |
 | 5 | resolver execution (uv/mvn/cargo/go/libsolv) | compute + sandbox | resolved trees | contract only |
 
 Rung 3 is the maximal rung reachable with **current public access** because the
@@ -82,8 +82,12 @@ RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse need
 - ✅ CycloneDX-from-file SBOM claims (`adapters/sbom.py`): components become
   versioned dependency claims that raise the resolution axis and drift-check
   against other sources.
-- ✅ `albs-graph coverage [--with-rpm-headers] [--sbom FILE]` CLI command.
-- ✅ Offline tests for all of the above (63 tests; ruff + mypy --strict clean).
+- ✅ Rung 4: full payload ELF analysis (`adapters/elf.py`, `rpm_payload.py`) —
+  own dependency-free ELF parser; recovers confirmed `DT_NEEDED`, RPATH/RUNPATH,
+  dynamic-vs-static, `dlopen`, and Go/Rust toolchain. NEEDED claims corroborate
+  rung-3 header sonames.
+- ✅ `albs-graph coverage [--with-rpm-headers] [--with-rpm-payloads] [--sbom FILE]`.
+- ✅ Offline tests for all of the above (72 tests; ruff + mypy --strict clean).
 
 Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,
 provenance 1.00; live vault header reads added real sonames (`libssl.so.3`,
@@ -106,17 +110,20 @@ Ordered by value-per-effort and tractability under public access.
    (`libz.so.1`) can cross-validate against SBOM components (`zlib`).
 2. **CAS verification recorder.** Wrap `cas authenticate --signerID
    cloud-infra@almalinux.org --hash <cas_hash>` when `cas` is present; flip
-   `externally_verified=true` on the CAS node. Mirrors `example--almalinux.sh`.
+   `externally_verified=true` on the CAS node. Mirrors `example--almalinux.sh`
+   and AlmaLinux's own `cas_wrapper` (a thin Python shell over the `cas` binary,
+   `git.almalinux.org/almalinux/cas_wrapper`). Note: `cas` needs the binary plus
+   credentials — there is no anonymous verification — so this stays a
+   shell-out-if-present adapter, like the existing `rpm` path.
 3. **Vault URL resolver hardening.** Cover i686/module/CRB layouts, debug repos,
    and live-repo (non-vault) paths for current builds; add a small on-disk header
    cache so repeated `coverage` runs don't refetch.
 
 ### Medium term
-4. **Rung 4 — payload ELF analysis.** Stream-decompress the cpio payload
-   (early-abort once the target file is seen) to extract RPATH/RUNPATH, dlopen
-   sites, and static BOMs (Go buildinfo, Rust metadata). Emits `linkage=STATIC`
-   and richer linkage facts. This crosses the "metadata-only" boundary and is the
-   step that makes `linkage` approach 1.0.
+4. ✅ **Rung 4 — payload ELF analysis.** Done — downloads the payload, parses
+   ELF `DT_NEEDED`/RPATH/RUNPATH/dlopen/linkage/toolchain. Remaining follow-up:
+   parse `.go.buildinfo` to enumerate a static Go binary's module graph (Rust
+   metadata likewise), turning "toolchain detected" into a static dependency BOM.
 5. **Rung 5 — real resolvers behind the contract.** libsolv for RPM first (it is
    what DNF uses), then language ecosystems via their own tools, sandboxed,
    against mirrored registries, cached on `(ecosystem, manifest, lockfile,
