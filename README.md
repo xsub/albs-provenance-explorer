@@ -157,10 +157,7 @@ Regenerate demo artifacts in one verbose run. The script fetches ALBS metadata o
 ==> Raw ALBS metadata cache: examples/live-build-17812/build-17812.albs.json
 ==> Cache TTL: 300s
 ==> Verify git source commit: 0
-step Ignoring stale ALBS metadata cache examples/live-build-17812/build-17812.albs.json (1166s old, ttl 300s)
-step Fetching ALBS build metadata from https://build.almalinux.org/api/v1/builds/17812/
-step Writing ALBS build metadata cache to examples/live-build-17812/build-17812.albs.json
-step Parsing ALBS API JSON response
+step Loading ALBS build metadata from fresh cache examples/live-build-17812/build-17812.albs.json
 step Source package: nginx (from ALBS srpm_artifact)
 step Building full provenance graph from ALBS metadata
 step Full graph: 289 nodes, 484 edges, 85 CAS attestations
