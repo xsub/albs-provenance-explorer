@@ -27,7 +27,7 @@ from albs_graph.dependency import (
     PackageIdentity,
     ResolutionState,
 )
-from albs_graph.model import NodeType, ProvenanceGraph
+from albs_graph.model import Node, NodeType, ProvenanceGraph
 from albs_graph.provenance.reconcile import DependencyClaim, add_dependency_claim
 
 from .rpm_header import RpmHeader, RpmHeaderError, parse_rpm_header, required_header_length
@@ -35,6 +35,7 @@ from .rpm_header import RpmHeader, RpmHeaderError, parse_rpm_header, required_he
 # A range fetcher returns the bytes for an inclusive [start, end] byte range.
 RangeFetcher = Callable[[str, int, int], bytes]
 UrlResolver = Callable[[str], list[str]]
+NodeSelector = Callable[[Node], bool]
 
 _DEFAULT_VAULT_BASE = "https://repo.almalinux.org/vault"
 _DEFAULT_REPOS = ("BaseOS", "AppStream", "CRB", "extras", "HighAvailability")
@@ -128,6 +129,7 @@ def enrich_graph_with_rpm_headers(
     url_resolver: UrlResolver | None = None,
     limit: int | None = None,
     on_progress: Callable[[str], None] | None = None,
+    node_selector: NodeSelector | None = None,
 ) -> HeaderEnrichmentResult:
     """For each binary RPM node, range-fetch its header and add soname claims."""
 
@@ -140,6 +142,8 @@ def enrich_graph_with_rpm_headers(
     for node in graph.find_by_type(NodeType.BINARY_RPM):
         filename = _artifact_filename(graph, node.id)
         if not filename or _is_debug_artifact(filename):
+            continue
+        if node_selector and not node_selector(node):
             continue
         if limit is not None and artifacts >= limit:
             break

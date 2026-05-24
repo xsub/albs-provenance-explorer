@@ -289,6 +289,36 @@ injectable so the whole path is tested offline without the binary.
 
 ---
 
+## D12 — AlmaLinux-native resolution via `dnf repograph` / `rpmgraph`
+
+**Files:** `albs_graph/adapters/rpmgraph.py`, `provenance/trust.py`
+(`make_binary_rpm_selector`), `cli/main.py` (`coverage --repograph-dot` + arch/
+package selectors)
+
+`dnf repograph` (dnf-plugins-core) and `rpmgraph` (rpm) ship on AlmaLinux and
+emit a package dependency graph in Graphviz dot — a *real* RPM resolution via
+libsolv/rpm, i.e. rung 5 for the RPM ecosystem using the authoritative tooling
+rather than a reimplemented solver. The adapter parses dot edges and emits
+resolved dependency claims (`evidence="repograph"`/`"rpmgraph"`,
+`resolution_state=RESOLVED`, namespace `almalinux` so they align with ALBS PURLs
+and reconcile against SBOM claims). NEVRA node labels yield a version (counts
+toward the resolution axis); bare names do not.
+
+Sub-decisions:
+
+- **dot-ingest is the tested path; live run is host-only.** `--repograph-dot
+  FILE` ingests output the user generated on an AlmaLinux host
+  (`dnf repograph almalinux-appstream > repo.dot`), so the parser is fully
+  offline-testable. `run_repograph` / `run_rpmgraph` shell out when present and
+  raise `RpmgraphUnavailable` (treated as "skipped") otherwise — never crash.
+- **Enrichment is scoped by a selector.** `make_binary_rpm_selector` filters by
+  `--package` and `--arch`, defaulting to x86_64 + noarch so a plain run does not
+  fan out across every architecture; `--all-archs` widens it. The same selector
+  scopes header (rung 3) and payload (rung 4) enrichment, exposed as
+  `--package` / `--arch` / `--all-archs` / `--all-packages`.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

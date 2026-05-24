@@ -23,6 +23,7 @@ from albs_graph.adapters.albs import graph_from_build_metadata, load_synthetic_b
 from albs_graph.adapters.cas import verify_graph_cas
 from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
+from albs_graph.adapters.rpmgraph import enrich_graph_with_rpmgraph
 from albs_graph.adapters.sbom import attach_cyclonedx_sbom_claims, import_sbom
 from albs_graph.fixtures import build_synthetic_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
@@ -31,6 +32,7 @@ from albs_graph.provenance.reconcile import reconcile_dependency_claims
 from albs_graph.provenance.trust import (
     find_binary_rpm,
     focused_trust_graph,
+    make_binary_rpm_selector,
     select_default_binary_rpm,
     trust_path,
 )
@@ -309,8 +311,25 @@ def coverage_command(
         "--sbom-subject",
         help="Binary RPM name/node id the SBOM describes (defaults to a representative RPM).",
     ),
+    repograph_dot: Optional[Path] = typer.Option(
+        None,
+        "--repograph-dot",
+        help="Ingest a `dnf repograph` / `rpmgraph` dot file as resolved RPM dependency claims.",
+    ),
+    package: Optional[str] = typer.Option(
+        None, "--package", help="Only enrich binary RPMs with this package name."
+    ),
+    arch: Optional[str] = typer.Option(
+        None, "--arch", help="Only enrich this arch (default: x86_64 + noarch)."
+    ),
+    all_archs: bool = typer.Option(
+        False, "--all-archs", help="Enrich every architecture, not just x86_64 + noarch."
+    ),
+    all_packages: bool = typer.Option(
+        False, "--all-packages", help="Enrich every package (default; pairs with --all-archs)."
+    ),
     limit: Optional[int] = typer.Option(
-        None, "--limit", help="Max binary RPMs to header-fetch when --with-rpm-headers is set."
+        None, "--limit", help="Max binary RPMs to fetch/analyze during enrichment."
     ),
     output_format: str = typer.Option("summary", "--format", "-f", help="summary or json."),
     base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
@@ -335,6 +354,18 @@ def coverage_command(
     else:
         raise ValueError("coverage requires --build-id or --source")
     _log_graph_stats(verbose, graph)
+    selector = make_binary_rpm_selector(package=package, arch=arch, all_archs=all_archs)
+    _ = all_packages  # default behavior; flag documents intent and pairs with --all-archs
+
+    rpmgraph_result = None
+    if repograph_dot is not None:
+        _log_step(verbose, f"Ingesting dnf repograph/rpmgraph dot from {repograph_dot}")
+        rpmgraph_result = enrich_graph_with_rpmgraph(
+            graph,
+            repograph_dot.read_text(encoding="utf-8"),
+            evidence="repograph",
+            node_selector=selector,
+        )
 
     sbom_result = None
     if sbom is not None:
@@ -350,14 +381,14 @@ def coverage_command(
     if with_rpm_headers:
         _log_step(verbose, "Range-reading RPM headers for dynamic-linkage claims")
         enrichment = enrich_graph_with_rpm_headers(
-            graph, limit=limit, on_progress=_progress(verbose)
+            graph, limit=limit, on_progress=_progress(verbose), node_selector=selector
         )
 
     payload_result = None
     if with_rpm_payloads:
         _log_step(verbose, "Downloading RPM payloads and parsing ELF objects (rung 4)")
         payload_result = enrich_graph_with_rpm_payloads(
-            graph, limit=limit, on_progress=_progress(verbose)
+            graph, limit=limit, on_progress=_progress(verbose), node_selector=selector
         )
 
     cas_report = None
@@ -382,6 +413,8 @@ def coverage_command(
             payload["sbom"] = sbom_result.to_dict()
         if cas_report is not None:
             payload["cas"] = cas_report.to_dict()
+        if rpmgraph_result is not None:
+            payload["repograph"] = rpmgraph_result.to_dict()
         sys.stdout.write(json.dumps(payload, indent=2) + "\n")
         return
 
@@ -393,6 +426,12 @@ def coverage_command(
     for axis in report.axes():
         table.add_row(axis.name, str(axis.covered), str(axis.total), f"{axis.fraction:.2f}")
     console.print(table)
+    if rpmgraph_result is not None:
+        console.print(
+            f"repograph: {rpmgraph_result.claims_added} resolved RPM dep claims "
+            f"from {rpmgraph_result.matched_edges} matched edges "
+            f"({rpmgraph_result.edges} total)"
+        )
     if sbom_result is not None:
         console.print(
             f"SBOM: {sbom_result.claims_added} component claims "

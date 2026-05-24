@@ -64,7 +64,7 @@ Acquire only as much as a question needs; climb when the objective rewards it.
 | 2 | git checkout: spec + manifests | cheap | declared deps, BuildRequires | done (pre-existing) |
 | 3 | RPM header via HTTP Range | tens of KB | **dynamic-linkage claims** | **done** |
 | 4 | full payload ELF | MBs | **RPATH/RUNPATH, dlopen, static detection, toolchain** | **done** (Go/Rust module BOM pending) |
-| 5 | resolver execution (uv/mvn/cargo/go/libsolv) | compute + sandbox | resolved trees | contract only |
+| 5 | resolver execution (uv/mvn/cargo/go/libsolv) | compute + sandbox | resolved trees | **RPM done via `dnf repograph`/`rpmgraph`**; other ecosystems contract-only |
 
 Rung 3 is the maximal rung reachable with **current public access** because the
 RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse needed.
@@ -86,8 +86,14 @@ RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse need
   own dependency-free ELF parser; recovers confirmed `DT_NEEDED`, RPATH/RUNPATH,
   dynamic-vs-static, `dlopen`, and Go/Rust toolchain. NEEDED claims corroborate
   rung-3 header sonames.
-- ✅ `albs-graph coverage [--with-rpm-headers] [--with-rpm-payloads] [--sbom FILE]`.
-- ✅ Offline tests for all of the above (72 tests; ruff + mypy --strict clean).
+- ✅ Optional, crash-proof CAS verification (`adapters/cas.py`, `--use-cas`).
+- ✅ AlmaLinux-native RPM resolution: `dnf repograph` / `rpmgraph` dot ingest
+  (`adapters/rpmgraph.py`) emits resolved RPM dependency claims (rung 5 for RPM).
+- ✅ Enrichment selectors: `--package`, `--arch`, `--all-archs`, `--all-packages`.
+- ✅ `albs-graph coverage [--with-rpm-headers] [--with-rpm-payloads] [--use-cas]
+  [--sbom FILE] [--repograph-dot FILE] [--package P] [--arch A] [--all-archs]`.
+- ✅ Offline tests for all of the above (90 tests; ruff + mypy --strict clean),
+  including multi-build coverage confirming the pipeline is not 17812-specific.
 
 Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,
 provenance 1.00; live vault header reads added real sonames (`libssl.so.3`,
@@ -125,10 +131,12 @@ Ordered by value-per-effort and tractability under public access.
    ELF `DT_NEEDED`/RPATH/RUNPATH/dlopen/linkage/toolchain. Remaining follow-up:
    parse `.go.buildinfo` to enumerate a static Go binary's module graph (Rust
    metadata likewise), turning "toolchain detected" into a static dependency BOM.
-5. **Rung 5 — real resolvers behind the contract.** libsolv for RPM first (it is
-   what DNF uses), then language ecosystems via their own tools, sandboxed,
-   against mirrored registries, cached on `(ecosystem, manifest, lockfile,
-   context)`. Moves `resolution` off 0.00.
+5. **Rung 5 — real resolvers behind the contract.** RPM is done via
+   `dnf repograph` / `rpmgraph` (native libsolv/rpm). Next: feed those resolver
+   results through the typed `ResolverResult` contract rather than direct dot
+   ingest, then language ecosystems via their own tools (uv, mvn, cargo, go),
+   sandboxed, against mirrored registries, cached on `(ecosystem, manifest,
+   lockfile, context)`.
 6. **CPE verification adapter.** Match `cpe_candidates` against the NVD CPE
    dictionary; populate `cpe` / flip `verified` only on confirmed match. Moves
    `identity` off 0.00. Handle the AlmaLinux backport case explicitly (shipped

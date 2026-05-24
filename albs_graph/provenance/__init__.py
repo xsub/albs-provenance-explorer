@@ -26,7 +26,7 @@ from .reconcile import (
     claims_from_resolver_result,
     reconcile_dependency_claims,
 )
-from .trust import trust_path, trust_reports
+from .trust import make_binary_rpm_selector, trust_path, trust_reports
 
 __all__ = [
     "Agreement",
@@ -51,6 +51,7 @@ __all__ = [
     "claims_from_resolver_result",
     "coverage_report",
     "cves_for_artifact",
+    "make_binary_rpm_selector",
     "reconcile_dependency_claims",
     "rpm_artifact_inventory",
     "summarize",

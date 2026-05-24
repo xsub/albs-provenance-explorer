@@ -71,10 +71,21 @@ Implemented: full RPM download → cpio payload → ELF parse of confirmed
   empty analysis. 32-bit and big-endian are handled but exercised less.
 
 ### Rung 5 — real per-ecosystem resolvers
-Only `NullResolver` exists (it marks everything `RESOLUTION_SKIPPED`). The typed
-contract (`ResolverRequest`/`ResolverResult`/`DependencyResolver`) is in place,
-but no resolver actually shells out to uv/pip-tools, Maven/Gradle, `cargo
-metadata`, `go list`, or libsolv. Resolution is therefore evidence-only.
+RPM resolution is available via `dnf repograph` / `rpmgraph` (see below). For the
+language ecosystems, only `NullResolver` exists (marks everything
+`RESOLUTION_SKIPPED`); the typed contract is in place but nothing yet shells out
+to uv/pip-tools, Maven/Gradle, `cargo metadata` or `go list`.
+
+### `dnf repograph` / `rpmgraph` caveats
+- **Host tools, ingested via dot.** The tested path is `--repograph-dot FILE`
+  (output you generate on an AlmaLinux host). Live `run_repograph`/`run_rpmgraph`
+  require `dnf`/`rpmgraph` on `PATH`; they are not exercised in CI.
+- **Version depends on node labels.** `rpmgraph` NEVRA labels yield a version
+  (counts toward the resolution axis); `dnf repograph`'s bare package names do
+  not, so those claims reconcile to `INSUFFICIENT_EVIDENCE`.
+- **Capability edges become name claims.** An edge target like
+  `libc.so.6()(64bit)` is recorded as a dependency named by that capability
+  string, not mapped to a providing package (the same soname↔package gap above).
 
 ---
 

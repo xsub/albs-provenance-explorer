@@ -33,7 +33,7 @@ from albs_graph.dependency import (
     PackageIdentity,
     ResolutionState,
 )
-from albs_graph.model import NodeType, ProvenanceGraph
+from albs_graph.model import Node, NodeType, ProvenanceGraph
 from albs_graph.provenance.reconcile import DependencyClaim, add_dependency_claim
 
 from .elf import ElfInfo, is_elf, parse_elf
@@ -42,6 +42,7 @@ from .rpm_remote import vault_candidate_urls
 
 FullFetcher = Callable[[str], bytes]
 UrlResolver = Callable[[str], list[str]]
+NodeSelector = Callable[[Node], bool]
 
 _MAX_RPM_BYTES = 256 * 1024 * 1024
 
@@ -131,6 +132,7 @@ def enrich_graph_with_rpm_payloads(
     url_resolver: UrlResolver | None = None,
     limit: int | None = None,
     on_progress: Callable[[str], None] | None = None,
+    node_selector: NodeSelector | None = None,
 ) -> PayloadEnrichmentResult:
     """For each binary RPM, download + analyze the payload and record ELF facts."""
 
@@ -145,6 +147,8 @@ def enrich_graph_with_rpm_payloads(
     for node in graph.find_by_type(NodeType.BINARY_RPM):
         filename = _artifact_filename(graph, node.id)
         if not filename or _is_debug_artifact(filename):
+            continue
+        if node_selector and not node_selector(node):
             continue
         if limit is not None and seen >= limit:
             break

@@ -1,11 +1,40 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
 
 
 _ARCH_PREFERENCE = ("x86_64", "aarch64", "ppc64le", "s390x", "i686")
+_DEFAULT_ARCHES = (None, "x86_64", "noarch")
+
+
+def make_binary_rpm_selector(
+    *,
+    package: str | None = None,
+    arch: str | None = None,
+    all_archs: bool = False,
+) -> Callable[[Node], bool]:
+    """Build a predicate that scopes binary-RPM enrichment by package and arch.
+
+    Default (no arch given, not ``all_archs``) keeps x86_64 + noarch so a plain
+    enrichment run does not fan out across every architecture. ``--all-archs``
+    widens to everything; ``--arch`` pins one; ``--package`` filters by name.
+    """
+
+    def selector(node: Node) -> bool:
+        if package:
+            name = str(node.metadata.get("name") or node.label)
+            if name != package and not node.label.startswith(package):
+                return False
+        node_arch = node.metadata.get("arch")
+        if arch is not None:
+            return node_arch == arch
+        if all_archs:
+            return True
+        return node_arch in _DEFAULT_ARCHES
+
+    return selector
 
 
 def trust_path(graph: ProvenanceGraph, package_or_node: str) -> dict[str, Any]:

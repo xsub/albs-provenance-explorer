@@ -30,6 +30,14 @@ from .rpm_remote import (
     header_dependency_claims,
     vault_candidate_urls,
 )
+from .rpmgraph import (
+    RpmgraphEnrichmentResult,
+    RpmgraphUnavailable,
+    enrich_graph_with_rpmgraph,
+    parse_dot_edges,
+    run_repograph,
+    run_rpmgraph,
+)
 from .sbom import (
     SbomClaimResult,
     attach_cyclonedx_sbom_claims,
@@ -56,6 +64,8 @@ __all__ = [
     "RpmHeaderError",
     "RpmHeaderFetchError",
     "RpmQueryError",
+    "RpmgraphEnrichmentResult",
+    "RpmgraphUnavailable",
     "SbomClaimResult",
     "SourceCheckoutError",
     "SourceEvidenceSummary",
@@ -66,6 +76,10 @@ __all__ = [
     "cas_available",
     "cyclonedx_dependency_claims",
     "enrich_graph_with_rpm_payloads",
+    "enrich_graph_with_rpmgraph",
+    "parse_dot_edges",
+    "run_repograph",
+    "run_rpmgraph",
     "verify_graph_cas",
     "verify_hash",
     "attach_source_evidence",
