@@ -7,6 +7,7 @@ from .build_analysis import (
     TimingStep,
     analyze_albs_build,
 )
+from .coverage import AxisCoverage, CoverageReport, coverage_report
 from .inventory import (
     ArtifactArchSummary,
     ArtifactInventoryItem,
@@ -14,20 +15,43 @@ from .inventory import (
     summarize_artifacts_by_build_arch,
 )
 from .lineage import artifacts_from_source, cves_for_artifact
+from .reconcile import (
+    Agreement,
+    ConflictKind,
+    DependencyClaim,
+    DependencyConflict,
+    ReconciliationReport,
+    add_dependency_claim,
+    add_resolver_result,
+    claims_from_resolver_result,
+    reconcile_dependency_claims,
+)
 from .trust import trust_path, trust_reports
 
 __all__ = [
+    "Agreement",
     "ArtifactArchSummary",
     "ArtifactInventoryItem",
     "ArtifactProcessingTiming",
+    "AxisCoverage",
     "BuildAnalysis",
+    "ConflictKind",
+    "CoverageReport",
+    "DependencyClaim",
+    "DependencyConflict",
     "GraphSummary",
+    "ReconciliationReport",
     "SignTaskTiming",
     "TaskTiming",
     "TimingStep",
+    "add_dependency_claim",
+    "add_resolver_result",
     "analyze_albs_build",
     "artifacts_from_source",
+    "claims_from_resolver_result",
+    "coverage_report",
     "cves_for_artifact",
+    "reconcile_dependency_claims",
     "rpm_artifact_inventory",
     "summarize",
     "summarize_artifacts_by_build_arch",

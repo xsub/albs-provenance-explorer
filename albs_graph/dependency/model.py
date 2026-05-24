@@ -40,6 +40,12 @@ class ResolutionState(StrEnum):
     RESOLVED = "resolved"
     OBSERVED = "observed"
     PROVIDED = "provided"
+    # First-class "we could not resolve this" outcomes. A tool that only ever
+    # reports success is lying about its coverage; these states let the graph
+    # record *why* a concrete version was not produced.
+    UNRESOLVABLE = "unresolvable"  # resolver ran, no version satisfies the constraints
+    AMBIGUOUS = "ambiguous"  # multiple candidates, no mediation decision was made
+    RESOLUTION_SKIPPED = "resolution_skipped"  # evidence-only; resolver never invoked
 
 
 @dataclass(frozen=True)
@@ -113,6 +119,7 @@ class DependencySpec:
     resolution_state: ResolutionState = ResolutionState.DECLARED
     context: DependencyContext = field(default_factory=DependencyContext)
     source: str | None = None
+    resolution_note: str | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -129,6 +136,8 @@ class DependencySpec:
             data["context"] = context
         if self.source:
             data["source"] = self.source
+        if self.resolution_note:
+            data["resolution_note"] = self.resolution_note
         if self.raw:
             data["raw"] = self.raw
         return data

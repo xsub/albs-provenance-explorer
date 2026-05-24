@@ -78,3 +78,22 @@ def test_dependency_context_serializes_environment_selectors() -> None:
     )
 
     assert spec.to_dict()["context"] == {"os": "linux", "extras": ["gpu"]}
+
+
+def test_unresolvable_outcome_is_first_class_with_a_note() -> None:
+    spec = DependencySpec(
+        identity=PackageIdentity(Ecosystem.PYPI, "left-pad", version=None),
+        requested="left-pad>=9999",
+        resolution_state=ResolutionState.UNRESOLVABLE,
+        resolution_note="uv: no version of left-pad satisfies >=9999",
+    )
+
+    data = spec.to_dict()
+
+    assert data["resolution_state"] == "unresolvable"
+    assert data["resolution_note"].startswith("uv:")
+
+
+def test_resolution_skipped_is_distinct_from_declared() -> None:
+    assert ResolutionState.RESOLUTION_SKIPPED != ResolutionState.DECLARED
+    assert str(ResolutionState.AMBIGUOUS) == "ambiguous"

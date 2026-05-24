@@ -26,6 +26,9 @@ class Relation(StrEnum):
     SUPERSEDES = "supersedes"
     CONTAINS = "contains"
     REFERENCES = "references"
+    OBSERVED_AS = "observed_as"
+    CORROBORATES = "corroborates"
+    CONFLICTS_WITH = "conflicts_with"
 
     @classmethod
     def canonical(cls, relation: "Relation | str") -> "Relation | str":
