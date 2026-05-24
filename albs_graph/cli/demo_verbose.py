@@ -181,9 +181,10 @@ def _render_artifact_inventory(build_id: int, graph: ProvenanceGraph, out_dir: P
             + ", ".join(summary.build_arch for summary in binary_summaries)
         )
         common = Table(title="Common RPM package set")
+        common.add_column("#", justify="right")
         common.add_column("Packages", overflow="fold")
-        for package in common_packages:
-            common.add_row(package)
+        for index, package in enumerate(common_packages, start=1):
+            common.add_row(str(index), package)
         console.print(common)
 
     matrix = Table(title="ALBS RPM artifact matrix")

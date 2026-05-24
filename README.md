@@ -166,29 +166,29 @@ step Full graph: 289 nodes, 484 edges, 85 CAS attestations
 step ALBS build task platforms: x86_64, aarch64, ppc64le, s390x, i686
 step ALBS source build task: src
 step Common RPM package set applies to build task platforms: x86_64, aarch64, ppc64le, s390x, i686
-         Common RPM package set
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Packages                              ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ nginx                                 │
-│ nginx-all-modules                     │
-│ nginx-core                            │
-│ nginx-core-debuginfo                  │
-│ nginx-debuginfo                       │
-│ nginx-debugsource                     │
-│ nginx-filesystem                      │
-│ nginx-mod-devel                       │
-│ nginx-mod-http-image-filter           │
-│ nginx-mod-http-image-filter-debuginfo │
-│ nginx-mod-http-perl                   │
-│ nginx-mod-http-perl-debuginfo         │
-│ nginx-mod-http-xslt-filter            │
-│ nginx-mod-http-xslt-filter-debuginfo  │
-│ nginx-mod-mail                        │
-│ nginx-mod-mail-debuginfo              │
-│ nginx-mod-stream                      │
-│ nginx-mod-stream-debuginfo            │
-└───────────────────────────────────────┘
+            Common RPM package set
+┏━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  # ┃ Packages                              ┃
+┡━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│  1 │ nginx                                 │
+│  2 │ nginx-all-modules                     │
+│  3 │ nginx-core                            │
+│  4 │ nginx-core-debuginfo                  │
+│  5 │ nginx-debuginfo                       │
+│  6 │ nginx-debugsource                     │
+│  7 │ nginx-filesystem                      │
+│  8 │ nginx-mod-devel                       │
+│  9 │ nginx-mod-http-image-filter           │
+│ 10 │ nginx-mod-http-image-filter-debuginfo │
+│ 11 │ nginx-mod-http-perl                   │
+│ 12 │ nginx-mod-http-perl-debuginfo         │
+│ 13 │ nginx-mod-http-xslt-filter            │
+│ 14 │ nginx-mod-http-xslt-filter-debuginfo  │
+│ 15 │ nginx-mod-mail                        │
+│ 16 │ nginx-mod-mail-debuginfo              │
+│ 17 │ nginx-mod-stream                      │
+│ 18 │ nginx-mod-stream-debuginfo            │
+└────┴───────────────────────────────────────┘
                            ALBS RPM artifact matrix
 ┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
 ┃ Build task arch ┃ Artifacts ┃ Artifact arches             ┃ Package set    ┃
