@@ -38,6 +38,24 @@ def test_identify_uses_owner_lookup() -> None:
     assert report.package == "synthetic-core"
 
 
+def test_identify_resolves_owner_from_stored_file_list() -> None:
+    # rung-4 records the full file list, so a non-ELF file (a config) resolves
+    # offline from graph data with no host rpm -qf.
+    graph = ProvenanceGraph()
+    graph.add_node(
+        Node(
+            "rpm:nginx-core",
+            NodeType.BINARY_RPM,
+            "nginx-core-1-1.el9.x86_64.rpm",
+            {"name": "nginx-core", "files": ["./usr/sbin/nginx", "./etc/nginx/nginx.conf"]},
+        )
+    )
+    report = identify_file(graph, "/etc/nginx/nginx.conf")
+
+    assert report.found is True
+    assert report.package == "nginx-core"
+
+
 def test_identify_resolves_owner_from_elf_paths() -> None:
     graph = ProvenanceGraph()
     graph.add_node(

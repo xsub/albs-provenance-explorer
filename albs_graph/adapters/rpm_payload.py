@@ -71,22 +71,37 @@ class PayloadEnrichmentResult:
         }
 
 
-def analyze_rpm_payload(rpm_bytes: bytes) -> list[tuple[str, ElfInfo]]:
-    """Parse an RPM's payload and return (path, ElfInfo) for every ELF object."""
+def payload_contents(rpm_bytes: bytes) -> tuple[list[tuple[str, ElfInfo]], list[str]]:
+    """Decompress the payload once and return (ELF (path, info) pairs, all file paths)."""
 
     header = parse_rpm_header(rpm_bytes)
     payload = rpm_bytes[header.payload_offset :]
     raw = decompress_payload(payload, header.payload_compressor)
-    results: list[tuple[str, ElfInfo]] = []
+    elfs: list[tuple[str, ElfInfo]] = []
+    files: list[str] = []
     for path, data in iter_cpio(raw):
+        files.append(path)
         if is_elf(data):
-            results.append((path, parse_elf(data)))
-    return results
+            elfs.append((path, parse_elf(data)))
+    return elfs, files
+
+
+def analyze_rpm_payload(rpm_bytes: bytes) -> list[tuple[str, ElfInfo]]:
+    """Parse an RPM's payload and return (path, ElfInfo) for every ELF object."""
+
+    return payload_contents(rpm_bytes)[0]
 
 
 def fetch_and_analyze(url: str, fetch_full: FullFetcher | None = None) -> list[tuple[str, ElfInfo]]:
     fetcher = fetch_full or _requests_full_get
     return analyze_rpm_payload(fetcher(url))
+
+
+def fetch_and_contents(
+    url: str, fetch_full: FullFetcher | None = None
+) -> tuple[list[tuple[str, ElfInfo]], list[str]]:
+    fetcher = fetch_full or _requests_full_get
+    return payload_contents(fetcher(url))
 
 
 def payload_dependency_claims(
@@ -153,15 +168,19 @@ def enrich_graph_with_rpm_payloads(
         if limit is not None and seen >= limit:
             break
         seen += 1
-        elfs = _try_candidates(filename, resolver(filename), fetch_full, on_progress)
-        if elfs is None:
+        contents = _try_candidates(filename, resolver(filename), fetch_full, on_progress)
+        if contents is None:
             failures.append(filename)
             continue
+        elfs, files = contents
         read += 1
         elf_total += len(elfs)
         summary = elf_analysis_summary(elfs)
         static_total += len(summary["static"]) if isinstance(summary["static"], list) else 0
         graph.nodes[node.id].metadata["elf_analysis"] = summary
+        # Full file list (not just ELF), so `identify` can resolve any owned path
+        # (configs, docs) offline from graph data.
+        graph.nodes[node.id].metadata["files"] = sorted(files)
         for claim in payload_dependency_claims(node.id, elfs):
             add_dependency_claim(graph, claim)
             claims_added += 1
@@ -230,12 +249,12 @@ def _try_candidates(
     candidates: list[str],
     fetch_full: FullFetcher | None,
     on_progress: Callable[[str], None] | None,
-) -> list[tuple[str, ElfInfo]] | None:
+) -> tuple[list[tuple[str, ElfInfo]], list[str]] | None:
     for url in candidates:
         try:
             if on_progress:
                 on_progress(f"downloading payload for {filename} from {url}")
-            return fetch_and_analyze(url, fetch_full)
+            return fetch_and_contents(url, fetch_full)
         except (PayloadError, OSError, ValueError):
             continue
     return None

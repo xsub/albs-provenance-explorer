@@ -513,6 +513,20 @@ zero dependencies.
 
 ---
 
+## D21 — Full cpio file lists (any file is identifiable)
+
+**Files:** `albs_graph/adapters/rpm_payload.py`, `provenance/identify.py`
+
+Rung-4 payload analysis now records the **full file list** of each RPM (not just
+ELF objects) on the binary RPM node under `files`, captured in the same single
+decompress pass (`payload_contents` returns both ELF info and all paths).
+`identify` then resolves ownership from these stored lists first, so any file —
+configs, docs, anything — is traceable offline from graph data, no host
+`rpm -qf` needed. File lists can be large, so they are populated only when
+payload analysis runs.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

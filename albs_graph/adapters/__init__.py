@@ -40,6 +40,7 @@ from .rpm_payload import (
     PayloadError,
     analyze_rpm_payload,
     enrich_graph_with_rpm_payloads,
+    payload_contents,
     payload_dependency_claims,
 )
 from .rpm_remote import (
@@ -109,6 +110,7 @@ __all__ = [
     "parse_dot_edges",
     "parse_imports",
     "parse_requirements",
+    "payload_contents",
     "python_import_claims",
     "python_requirement_claims",
     "repoquery",

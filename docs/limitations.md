@@ -185,10 +185,11 @@ file to its owning package depends on:
 - `--owner` (explicit), or an `owner_lookup`, or ELF paths from rung-4 payload
   analysis, then host `rpm -qf` (installed files), then `dnf repoquery --file`
   (repo files — works even when the package is not installed locally).
-- Full RPM **file lists are not stored** in the graph, so a file that is neither
-  installed nor in the enabled repos (and not a rung-4 ELF path) needs
-  `--owner`. Recording complete cpio file lists during payload analysis would
-  make any file resolvable offline — a planned enhancement.
+- Full RPM **file lists are stored when rung-4 payload analysis has run**
+  (`--with-rpm-payloads`), making any owned file (configs, docs) resolvable
+  offline from graph data. Without payload analysis, a file that is neither
+  installed nor in the enabled repos still needs `--owner`. File lists can be
+  large, so they are only populated by payload analysis.
 
 ## `dnf repograph` repo selection
 `dnf repograph` selects a repo with the global `--repo` flag, **not** a

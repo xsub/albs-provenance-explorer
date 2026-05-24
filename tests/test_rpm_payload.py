@@ -8,6 +8,7 @@ from albs_graph.adapters.rpm_payload import (
     decompress_payload,
     enrich_graph_with_rpm_payloads,
     iter_cpio,
+    payload_contents,
     payload_dependency_claims,
 )
 from albs_graph.dependency import Linkage
@@ -55,6 +56,13 @@ def test_analyze_rpm_payload_finds_only_elf_objects() -> None:
     assert info.dlopen is True
 
 
+def test_payload_contents_returns_all_files_and_elfs() -> None:
+    elfs, files = payload_contents(_demo_rpm())
+
+    assert len(elfs) == 1  # only the ELF object
+    assert set(files) == {"./usr/lib64/mylib.so.1", "./usr/share/doc/demo/README"}
+
+
 def test_payload_dependency_claims_are_dynamic_needed() -> None:
     claims = payload_dependency_claims("rpm:demo", analyze_rpm_payload(_demo_rpm()))
 
@@ -80,3 +88,5 @@ def test_enrich_graph_records_elf_analysis_and_claims() -> None:
     assert analysis["runpath"] == ["/opt/lib", "/usr/lib"]
     assert analysis["dlopen"] == ["./usr/lib64/mylib.so.1"]
     assert len(graph.find_by_type(NodeType.DEPENDENCY_CLAIM)) == 2
+    # Full file list is recorded, including the non-ELF doc file.
+    assert "./usr/share/doc/demo/README" in graph.nodes["rpm:demo"].metadata["files"]

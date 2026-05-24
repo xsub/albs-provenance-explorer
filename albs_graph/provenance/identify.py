@@ -111,10 +111,25 @@ def _resolve_owner(
         owner = owner_lookup(filepath)
         if owner:
             return owner
-    owner = _owner_from_elf_paths(graph, filepath)
+    owner = _owner_from_files(graph, filepath) or _owner_from_elf_paths(graph, filepath)
     if owner:
         return owner
     return _host_rpm_qf(filepath) or _host_dnf_file_owner(filepath)
+
+
+def _owner_from_files(graph: ProvenanceGraph, filepath: str) -> str | None:
+    """Resolve ownership from full cpio file lists recorded by rung-4 analysis."""
+
+    needle = filepath.lstrip(".")
+    for node in graph.find_by_type(NodeType.BINARY_RPM):
+        files = node.metadata.get("files")
+        if not isinstance(files, list):
+            continue
+        if any(str(path).lstrip(".") == needle for path in files):
+            owner = node.metadata.get("name")
+            if owner:
+                return str(owner)
+    return None
 
 
 def _owner_from_elf_paths(graph: ProvenanceGraph, filepath: str) -> str | None:

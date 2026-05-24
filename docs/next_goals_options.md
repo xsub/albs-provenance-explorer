@@ -28,10 +28,9 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
 
 ## B. Finish half-done things (cheap, high utility)
 
-- **B1 — Store full cpio file lists during rung 4.** The payload is already
-  iterated; recording every path (not just ELF) makes `identify` work for **any**
-  file (configs, docs) offline from graph data, with no host `rpm -qf`. Directly
-  closes the `identify` ownership limitation. *Effort: low.*
+- **B1 — Store full cpio file lists during rung 4.** ✅ Done — `payload_contents`
+  records every path; `identify` resolves ownership from the stored list first,
+  so any file (configs, docs) is traceable offline. *(decisions.md D21)*
 - **B2 — Real version comparison in the reconciler.** `VERSION_DRIFT` is
   exact-string today and `RANGE_VIOLATION` only fires on a resolver flag. Add RPM
   `labelCompare`-style version math so drift/range conflicts fire on real data.
