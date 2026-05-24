@@ -29,14 +29,15 @@ Two distinct facts here:
   **single subject** (a live errata.almalinux.org fetch, and per-package
   attachment across all of a build's binaries, are future work).
 
-### `identity` = 0.00 — CPE is never asserted as verified
-The graph stores `cpe: null` plus unverified `cpe_candidates`. The identity axis
-counts only **verified** CPEs, and no verification adapter exists yet.
-- **Why:** asserting an official CPE without matching the NVD dictionary is the
-  exact failure mode the security-identity layer forbids.
-- **Lift:** a CPE-verification adapter (NVD dictionary match), including explicit
-  handling of AlmaLinux backports (shipped version below the upstream range but
-  patched).
+### `identity` needs a supplied CPE dictionary
+`coverage --verify-cpe FILE` moves the `identity` axis by matching
+`cpe_candidates` against a CPE dictionary, but:
+- **Dictionary is supplied, not fetched** — point it at an NVD cpe:2.3 export.
+  Without it the axis stays 0.00 (candidates remain unverified, by design).
+- **Ambiguous vendors are not asserted.** A product mapping to several vendors is
+  recorded as `ambiguous_vendor`, not verified — honest, but uncounted.
+- **Backport flag, not CVE math.** `.elN` releases are flagged `distro_backport`;
+  full affected-range evaluation is the vuln-report's job, not CPE verification.
 
 ### `resolution` ≈ 0.00 — sonames carry no version
 Header-derived soname claims have no package version (the symbol version lives in

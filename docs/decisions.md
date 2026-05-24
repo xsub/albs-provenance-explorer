@@ -541,6 +541,27 @@ axis moves off 0.00. Errata is ingested from a provided JSON file (parallel to
 
 ---
 
+## D23 — CPE verification + distro-backport flag (`identity` axis)
+
+**Files:** `albs_graph/security/cpe.py`, `cli/main.py` (`coverage --verify-cpe`)
+
+Closes the standing rule that the graph must not assert an official CPE without
+verification. `verify_graph_cpe` matches each binary's `cpe_candidates` (product)
+against a supplied CPE dictionary (`(vendor, product)` pairs from NVD cpe:2.3
+strings): a single matching vendor flips the candidate to `verified=True` and
+sets `cpe`; multiple vendors are recorded as `ambiguous_vendor` and deliberately
+**not** asserted. Only verified CPEs count toward the `identity` axis.
+
+It also flags `distro_backport=true` for AlmaLinux releases (`.elN`), because the
+upstream version in the CPE (e.g. `1.20.1`) is shipped with backported patches —
+so naive version-vs-CVE matching is misleading. That flag feeds the
+vulnerability-applicability report.
+
+The dictionary is supplied (`--verify-cpe FILE`), so verification is offline and
+testable; pointing it at a real NVD CPE export is a drop-in.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

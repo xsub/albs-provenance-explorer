@@ -14,13 +14,11 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
 
 ## A. Move the flat-zero coverage axes (highest signal)
 
-- **A1 — CPE verification → `identity` axis.** Match stored `cpe_candidates`
-  against the NVD CPE dictionary (downloadable, offline-cacheable) and flip
-  `verified` / populate `cpe`. The hard, interesting part is the **AlmaLinux
-  backport case**: a shipped `openssl 3.0.7-28.el9` sits *below* the upstream
-  range but is patched — so this also produces real `RANGE_VIOLATION` conflicts.
-  Serves vuln triage directly. *Effort: medium. Closes the most-cited
-  limitation.*
+- **A1 — CPE verification → `identity` axis.** ✅ Done —
+  `coverage --verify-cpe FILE` matches `cpe_candidates` against a CPE dictionary,
+  flips `verified` / sets `cpe` (single-vendor match), records `ambiguous_vendor`
+  without asserting, and flags `distro_backport` on `.elN` releases for the vuln
+  report. *(decisions.md D23)*
 - **A2 — Errata/CVE ingest → `security_context` axis.** ✅ Done —
   `coverage --errata FILE [--errata-subject RPM]` attaches an errata + its CVEs,
   so SBOM + errata together reach `security_context_complete` (axis moves off

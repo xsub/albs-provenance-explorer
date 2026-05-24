@@ -58,6 +58,7 @@ from albs_graph.provenance.trust import (
     trust_path,
 )
 from albs_graph.render import SvgRenderError, graph_to_dot, graph_to_json, graph_to_svg
+from albs_graph.security.cpe import CpeDictionary, verify_graph_cpe
 from albs_graph.store import load_graph, save_graph, sql_dependencies, sql_dependents
 
 app = typer.Typer(
@@ -345,6 +346,12 @@ def coverage_command(
     errata_subject: Optional[str] = typer.Option(
         None, "--errata-subject", help="Binary RPM the errata applies to."
     ),
+    verify_cpe: Optional[Path] = typer.Option(
+        None,
+        "--verify-cpe",
+        help="CPE dictionary JSON (list of official cpe:2.3 strings) to verify "
+        "candidates against, moving the identity axis.",
+    ),
     repograph_dot: Optional[Path] = typer.Option(
         None,
         "--repograph-dot",
@@ -466,6 +473,13 @@ def coverage_command(
         _log_step(verbose, f"Attaching errata {errata} to {errata_node_subject.id}")
         errata_id = attach_errata_file(graph, errata_node_subject.id, errata)
 
+    cpe_result = None
+    if verify_cpe is not None:
+        _log_step(verbose, f"Verifying CPE candidates against {verify_cpe}")
+        cpe_result = verify_graph_cpe(
+            graph, CpeDictionary.from_file(verify_cpe), node_selector=selector
+        )
+
     enrichment = None
     if with_rpm_headers:
         _log_step(verbose, "Range-reading RPM headers for dynamic-linkage claims")
@@ -522,6 +536,8 @@ def coverage_command(
             payload["python"] = python_result.to_dict()
         if errata_id is not None:
             payload["errata"] = errata_id
+        if cpe_result is not None:
+            payload["cpe_verification"] = cpe_result.to_dict()
         sys.stdout.write(json.dumps(payload, indent=2) + "\n")
         return
 
@@ -568,6 +584,12 @@ def coverage_command(
         )
     if errata_id is not None:
         console.print(f"Errata: attached {errata_id} (security context)")
+    if cpe_result is not None:
+        console.print(
+            f"CPE: {cpe_result.verified} verified, {cpe_result.ambiguous} ambiguous, "
+            f"{cpe_result.unmatched} unmatched of {cpe_result.binaries} binaries "
+            f"({cpe_result.backported} distro-backported)"
+        )
     if enrichment is not None:
         console.print(
             f"RPM header enrichment: {enrichment.headers_fetched}/{enrichment.artifacts_seen} "
