@@ -1,0 +1,97 @@
+# Next-goal options
+
+Candidate next directions, not commitments. Each item notes what it buys (which
+coverage axis it moves, which `limitations.md` gap it closes, or which consumer
+it serves), a rough effort, and dependencies. The most honest place to aim is
+the coverage report itself: two axes (`identity`, `security_context`) currently
+sit at a flat **0.00**.
+
+(The **live arch builder** — one command that runs `dnf repograph --repo X` for
+every repo of an arch, merges, and persists — remains an option too; it is
+tracked in `plan.md` §7. This file collects the *alternatives* to it.)
+
+---
+
+## A. Move the flat-zero coverage axes (highest signal)
+
+- **A1 — CPE verification → `identity` axis.** Match stored `cpe_candidates`
+  against the NVD CPE dictionary (downloadable, offline-cacheable) and flip
+  `verified` / populate `cpe`. The hard, interesting part is the **AlmaLinux
+  backport case**: a shipped `openssl 3.0.7-28.el9` sits *below* the upstream
+  range but is patched — so this also produces real `RANGE_VIOLATION` conflicts.
+  Serves vuln triage directly. *Effort: medium. Closes the most-cited
+  limitation.*
+- **A2 — Errata/CVE ingest → `security_context` axis.** `adapters/errata.py`
+  exists but is not wired into `coverage`; `security_context_complete` needs an
+  SBOM **and** an errata/CVE link. AlmaLinux errata (ALSA) is public (errata API
+  / OVAL). *Effort: medium. Pairs with A1.*
+
+## B. Finish half-done things (cheap, high utility)
+
+- **B1 — Store full cpio file lists during rung 4.** The payload is already
+  iterated; recording every path (not just ELF) makes `identify` work for **any**
+  file (configs, docs) offline from graph data, with no host `rpm -qf`. Directly
+  closes the `identify` ownership limitation. *Effort: low.*
+- **B2 — Real version comparison in the reconciler.** `VERSION_DRIFT` is
+  exact-string today and `RANGE_VIOLATION` only fires on a resolver flag. Add RPM
+  `labelCompare`-style version math so drift/range conflicts fire on real data.
+  *Effort: medium.*
+- **B3 — Python module → package mapping** (`cv2` -> `opencv-python`) so import
+  claims resolve to distributions. *Effort: low-medium.*
+
+## C. Complete rung 4 (static linkage is invisible today)
+
+- **C1 — Go `.go.buildinfo` / Rust metadata module extraction.** Turn "toolchain
+  detected" into actual static dependency *claims*. Statically-linked deps
+  currently contribute a flag but no edges, capping the `linkage` axis.
+  *Effort: medium-high (binary buildinfo parsing).*
+
+## D. Real verification (CAS is gone; this is the verification story now)
+
+- **D1 — GPG signature verification of RPMs.** ALBS gives us signature *nodes*,
+  but the actual RPM signature is never verified. `rpm --checksig` / python moves
+  `provenance` from "well-formed" to "cryptographically verified", replacing the
+  now-defunct CAS path. *Effort: medium.*
+
+## E. Real resolvers behind the existing contract (rung 5, non-RPM)
+
+- **E1 — Wire `uv`/pip-tools, `cargo metadata`, `go list -m all`,
+  `mvn dependency:tree`** as shell-out-if-present resolvers, exactly like `dnf`.
+  The `ResolverResult` contract already exists; this moves `resolution` for the
+  language ecosystems. *Effort: medium per ecosystem.*
+
+## F. The "why does this exist" payoff — a consumer report
+
+- **F1 — Vulnerability-applicability report.** Combine verified CPE + errata +
+  linkage (`dlopen` / static) into a per-package "is this CVE actually reachable
+  here?" output. The deliverable the whole graph is *for*. **Depends on A1 + A2.**
+- **F2 — License-compliance rollup** from SBOM license fields + resolved trees.
+- **F3 — SLSA / in-toto provenance export** of the backbone the graph already
+  holds.
+
+## G. Scale / performance (without the live builder)
+
+- **G1 — Parallelize + cache header/payload fetches.** They are sequential and
+  uncached today — the real "thousands of apps" bottleneck. Thread pool / asyncio
+  + an on-disk header cache.
+- **G2 — Incremental store updates** instead of replace-on-save in
+  `albs_graph/store.py`.
+- **G3 — `sqlite-vec` similarity overlay** ("find packages like this") — optional,
+  adds a loadable-extension dependency, so deliberately deferred.
+
+---
+
+## Recommendation
+
+**A (both)** is the strongest: it turns the two embarrassing zeros into real
+numbers and unlocks **F1** (the consumer payoff). Fold in **B1** as a cheap,
+low-risk quick win that immediately improves `identify`.
+
+Suggested sequence:
+
+```
+B1 (full file lists)  ->  A2 (errata)  ->  A1 (CPE + backport)  ->  F1 (vuln report)
+```
+
+B1 is a good warm-up (low risk, immediate `identify` win); A2/A1 move the
+flat-zero axes; F1 ties them into the deliverable the project exists to produce.
