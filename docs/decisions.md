@@ -1,0 +1,216 @@
+# Decisions
+
+This document records the architecture and design decisions made while extending
+`albs-provenance-explorer` from a read-only metadata explorer toward a
+**maximal, conflict-aware provenance + dependency graph** over ALBS data.
+
+All work landed on branch `max` in two commits:
+
+- `1339b8e` — conflict-aware dependency reconciliation, resolver contract, coverage axes.
+- `f5b6bdd` — public-data rungs: RPM header range reads, linkage claims, `coverage` CLI.
+
+Together they touch 17 files (~1.8k insertions) and keep `pytest`, `ruff` and
+`mypy --strict` green. Tests never hit the network.
+
+---
+
+## Framing: what we are optimizing
+
+The pre-existing codebase already encoded three load-bearing distinctions that
+most supply-chain tools conflate. We treated them as invariants, not things to
+re-litigate:
+
+1. **Identity is three things, not one.** PURL (package coordinate) ≠ CPE
+   (security-applicability identity) ≠ CAS (build/source/artifact evidence). The
+   graph stores `pkg:rpm/almalinux/...` PURLs, `cpe: null` plus unverified
+   `cpe_candidates`, and CAS attestation as a separate node class.
+2. **Evidence ≠ resolution.** Discovering a `package.json`/`go.mod` is evidence;
+   running pip/Maven/Cargo/Go resolution is a separate, expensive, context-
+   dependent step.
+3. **Scope/linkage/context are part of dependency identity**, not free-form tags.
+
+"Maximal fulfillment" was made measurable: drive five orthogonal **coverage
+axes** toward 1.0 and report the irreducible residue rather than a single green
+checkmark. This objective function drives every decision below.
+
+---
+
+## D1 — "Could not resolve" is a first-class outcome
+
+**File:** `albs_graph/dependency/model.py`
+
+Added `ResolutionState.UNRESOLVABLE`, `AMBIGUOUS`, `RESOLUTION_SKIPPED` and a
+`resolution_note` field on `DependencySpec`.
+
+**Why.** A tool that only ever reports success lies about its coverage. A failed
+or skipped resolution must be distinguishable from a merely `DECLARED` one, and
+must carry *why* (e.g. "uv: no version of X satisfies >=9999"). Downstream
+consumers (security, compliance) need to know which trees are evidence-only.
+
+---
+
+## D2 — Model the disagreement (do not collapse evidence)
+
+**Files:** `albs_graph/model/nodes.py`, `model/edges.py`,
+`albs_graph/provenance/reconcile.py`
+
+The single biggest design decision. A logical dependency is **not** collapsed
+into one resolved edge. Instead each evidence source contributes a
+`DependencyClaim`; claims describing the same logical dependency
+`(subject, package-coordinate-without-version, context)` are reconciled into a
+`DEPENDENCY_RESOLUTION` verdict, with the underlying claims preserved.
+
+New vocabulary (extended first, per the repo rule):
+
+- Node types: `DEPENDENCY_CLAIM`, `DEPENDENCY_RESOLUTION`.
+- Relations: `OBSERVED_AS` (resolution → claim), `CORROBORATES`,
+  `CONFLICTS_WITH` (claim ↔ claim).
+- `Agreement` verdicts: `CONSENSUS` (≥2 independent sources agree on a version),
+  `COMPATIBLE` (one concrete version, nothing contradicts), `CONFLICT`,
+  `INSUFFICIENT_EVIDENCE` (no concrete version anywhere).
+- `ConflictKind`: `VERSION_DRIFT`, `RANGE_VIOLATION`, `PRESENCE_UNDECLARED`,
+  `LINKAGE_MISMATCH`, `IDENTITY_MISMATCH`.
+
+**Why.** When manifest, lockfile, resolver and shipped artifact disagree
+(AlmaLinux backports are a routine example), picking one "source of truth"
+destroys information the consumers need. The conflict-aware graph is a superset:
+vuln triage reads the artifact-observed claim, license compliance reads the
+resolved tree, reproducibility reads the lockfile-vs-artifact triple — one
+graph, three projections.
+
+---
+
+## D3 — Typed resolver contract; never reimplement a solver
+
+**File:** `albs_graph/dependency/resolver.py`
+
+`ResolverRequest` / `ResolverResult` / `DependencyResolver` (a `Protocol`), plus
+a `NullResolver` baseline and a context-sensitive `cache_key`.
+
+**Why.** Each ecosystem's package manager is the source of truth for that
+ecosystem's semantics (pip/uv, Maven nearest-wins mediation, Cargo features, Go
+MVS, libsolv). Reimplementing them produces answers that look right and are
+wrong. The "unified" part of the system is this contract plus the graph storage,
+**not** a shared solver. A real resolver shells out to the authoritative tool and
+returns a `ResolverResult`; `unresolved` is never silently dropped. The cache key
+includes `context`, so two pip deps under different markers do not collapse.
+
+---
+
+## D4 — Five-axis coverage with honest residue
+
+**File:** `albs_graph/provenance/coverage.py`
+
+`coverage_report(graph)` computes orthogonal axes: `resolution`, `linkage`,
+`identity`, `provenance`, `security_context`. `identity` counts only
+**verified** CPEs (unverified candidates deliberately do not count).
+
+**Why.** "All three consumers equally" means no axis may be sacrificed. A sparse
+graph honestly reports low coverage on axes nothing has fed yet (today: linkage,
+identity, resolution) while provenance stays high. The report is the deliverable;
+the residue is part of it.
+
+---
+
+## D5 — The cost ladder, and choosing rung 3 for public access
+
+**Files:** `albs_graph/adapters/rpm_header.py`, `adapters/rpm_remote.py`,
+`cli/main.py` (`coverage` command)
+
+Data acquisition is a cost ladder. The PoC sat on rung 1 (ALBS metadata). We
+implemented **rung 3** (RPM header via HTTP Range) because it is the highest-
+value rung reachable with current public access:
+
+| Rung | Acquires | Public access | Status |
+|------|----------|---------------|--------|
+| 1 | ALBS metadata | open API | pre-existing |
+| 2 | git spec/manifests | open git | pre-existing |
+| 3 | RPM header (range read) | open mirror/vault | **implemented** |
+| 4 | payload ELF (RPATH/dlopen/static BOM) | open, but large | seam |
+| 5 | resolver execution | needs tooling | contract only |
+
+Key insight: the RPM **header** already encodes dynamic `DT_NEEDED` sonames
+(`RPMTAG_REQUIRENAME`), because rpmbuild's automatic dependency generator runs
+ELF extraction at build time. So dynamic-linkage evidence needs **no payload and
+no ELF parse** — only the first tens of KB of the file. `repo.almalinux.org` /
+`vault.almalinux.org` serve `Accept-Ranges: bytes`, confirmed against the real
+build-17812 `nginx-core` RPM (HTTP 206, lead magic `edabeedb`).
+
+Sub-decisions:
+
+- **Self-contained header parser** (`rpm_header.py`) rather than depending on
+  `rpm`/`rpmfile` for remote bytes: parses lead + signature + main header from a
+  byte buffer; `required_header_length()` enables incremental fetching.
+- **Vault URL reconstruction** from NEVRA. The ALBS artifact `href` is a Pulp
+  content path that does not resolve to a download without distribution context,
+  so we rebuild `vault/{ver}/{repo}/{arch}/os/Packages/{file}` candidates from
+  the RPM's own release string (`.elN_M` → point release) and try each repo.
+- **Soname dedup.** A package requires the same soname under many symbol
+  versions (`libc.so.6(GLIBC_2.2.5)`, `(GLIBC_2.34)` …). Those are one logical
+  dynamic dependency on `libc.so.6`; they collapse to one claim that keeps every
+  expression in its raw payload. (This surfaced as a real "conflicting node"
+  crash on live data and was fixed.)
+
+---
+
+## D6 — `PRESENCE_UNDECLARED` requires subject-level declaration context
+
+**File:** `albs_graph/provenance/reconcile.py`
+
+Refined after live data showed every header soname being flagged as a presence
+conflict. `PRESENCE_UNDECLARED` now fires only when the **subject has
+declaration evidence somewhere** (a manifest/lockfile/resolver claim). With
+header-only ingest, a lone soname observation is `INSUFFICIENT_EVIDENCE`, not a
+false conflict.
+
+**Why.** An RPM header soname *is* the package's declared dynamic dependency, not
+"vendored code nothing declared." `PRESENCE_UNDECLARED` is meaningful only
+relative to a declaration source that could have mentioned it.
+
+---
+
+## D7 — The reconciler does not evaluate version ranges
+
+`reconcile.py` detects only cross-source disagreement it can establish soundly:
+`VERSION_DRIFT` (different concrete versions, exact inequality), `LINKAGE_MISMATCH`
+(static vs dynamic), `PRESENCE_UNDECLARED` (set logic). `RANGE_VIOLATION` is
+surfaced only when a resolver **asserts** it via a `range_satisfied=False` claim
+flag.
+
+**Why.** Deciding whether `3.0.9` satisfies `>=3.2` is per-ecosystem version
+math — the authoritative resolver's job (D3). Doing it in the reconciler would
+re-introduce exactly the solver-reimplementation mistake we are avoiding.
+
+---
+
+## D8 — Reported ≠ verified stays labelled
+
+Every fact carries the provenance of *how* it was established:
+
+- Header sonames are tagged `evidence="rpm_header_soname"` — RPM's recorded
+  dependency facts, not an independent ELF parse.
+- CAS hashes remain `externally_verified: false` until an explicit `cas` step
+  records verification.
+- CPE stays `null` with unverified `cpe_candidates`; the identity coverage axis
+  counts only verified CPEs.
+
+**Why.** "We maximized coverage" must never silently mean "we asserted things we
+didn't check."
+
+---
+
+## Cross-cutting decisions
+
+- **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
+  (`provenance` imports no adapters), so the header adapter may emit claims
+  directly. The reconciliation *algorithm* stays in `provenance`; the
+  `DependencyClaim` primitive + `add_dependency_claim` live alongside it.
+- **Offline tests.** Network adapters are tested by serving a hand-built RPM byte
+  structure through a fake range fetcher (`tests/test_rpm_header.py`). No test
+  touches the network, per the repo rule.
+- **CLI surface.** A single new `coverage` command reconciles evidence and prints
+  the five axes; `--with-rpm-headers` performs the live range reads. It works
+  offline from cached ALBS JSON (`--source`) or live (`--build-id`).
+- **Commit hygiene.** Commits carry no AI attribution; a local
+  `.git/hooks/commit-msg` hook strips any `Co-Authored-By: Claude` / "Generated
+  with Claude" lines as a safety net.
