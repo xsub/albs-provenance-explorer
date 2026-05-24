@@ -127,12 +127,14 @@ correct than NEVRA reconstruction but needs the distribution base path.
 
 ## Reconciler scope
 
-By deliberate design (see `decisions.md` D7), the reconciler:
-- **does not evaluate version ranges** — `RANGE_VIOLATION` only appears when a
-  resolver asserts it via `range_satisfied=False`. With no resolver, range
-  violations are invisible.
-- detects `VERSION_DRIFT` by **exact string inequality** of concrete versions,
-  not semantic version comparison; `1.0` vs `1.0.0` would read as drift.
+The reconciler (see `decisions.md` D7, D26):
+- detects `VERSION_DRIFT` by **rpmvercmp equivalence** now, not exact string
+  (`1.01` == `1.1`); and fires `RANGE_VIOLATION` on declared **relational**
+  constraints (`name >= 3.2`) checked against a concrete version, in addition to
+  the resolver-asserted `range_satisfied=False` path. Caveats: only relational
+  operators are evaluated (`=` provides/config skipped), **epochs are stripped**
+  before comparison, and only simple `name OP version` constraints are parsed
+  (Maven brackets / compound pip ranges are not).
 - does **not** auto-detect `IDENTITY_MISMATCH` (the enum exists for resolver/CPE
   adapters to populate, but nothing emits it yet).
 - treats `context` as part of the grouping key via a string serialization; two

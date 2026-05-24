@@ -149,6 +149,66 @@ def test_range_only_claim_is_insufficient_evidence() -> None:
     assert resolution.metadata["chosen_version"] is None
 
 
+def test_semantically_equal_versions_do_not_drift() -> None:
+    graph = _graph_with_subject()
+    # "1.01" and "1.1" are the same version under rpmvercmp -> not drift.
+    add_dependency_claim(graph, _claim("zlib", "1.01", "lockfile", state=ResolutionState.LOCKED))
+    add_dependency_claim(graph, _claim("zlib", "1.1", "resolver:dnf", state=ResolutionState.RESOLVED))
+
+    report = reconcile_dependency_claims(graph)
+    resolution = _resolution_for(graph, "zlib")
+
+    assert report.conflict_count == 0
+    assert resolution.metadata["agreement"] == str(Agreement.CONSENSUS)
+
+
+def test_semantic_drift_still_detected() -> None:
+    graph = _graph_with_subject()
+    add_dependency_claim(graph, _claim("zlib", "1.2.11", "lockfile", state=ResolutionState.LOCKED))
+    add_dependency_claim(
+        graph, _claim("zlib", "1.2.3", "elf_dt_needed", state=ResolutionState.OBSERVED)
+    )
+
+    report = reconcile_dependency_claims(graph)
+
+    assert any(conflict.kind == ConflictKind.VERSION_DRIFT for conflict in report.conflicts)
+
+
+def test_declared_range_violation_fires_on_concrete_version() -> None:
+    graph = _graph_with_subject()
+    # A manifest requires >= 3.2, but the resolved version is 3.0.7 (backport case).
+    declared = DependencySpec(
+        identity=PackageIdentity(Ecosystem.RPM, "openssl-libs"),
+        requested="openssl-libs >= 3.2",
+        resolution_state=ResolutionState.DECLARED,
+    )
+    add_dependency_claim(graph, DependencyClaim(SUBJECT, declared, evidence="manifest"))
+    add_dependency_claim(
+        graph, _claim("openssl-libs", "3.0.7-1.el9", "resolver:dnf", state=ResolutionState.RESOLVED)
+    )
+
+    reconcile_dependency_claims(graph)
+    resolution = _resolution_for(graph, "openssl-libs")
+    assert resolution.metadata["agreement"] == str(Agreement.CONFLICT)
+    assert str(ConflictKind.RANGE_VIOLATION) in resolution.metadata["conflict_kinds"]
+
+
+def test_satisfied_declared_range_is_no_conflict() -> None:
+    graph = _graph_with_subject()
+    declared = DependencySpec(
+        identity=PackageIdentity(Ecosystem.RPM, "openssl-libs"),
+        requested="openssl-libs >= 3.0",
+        resolution_state=ResolutionState.DECLARED,
+    )
+    add_dependency_claim(graph, DependencyClaim(SUBJECT, declared, evidence="manifest"))
+    add_dependency_claim(
+        graph, _claim("openssl-libs", "3.0.7-1.el9", "resolver:dnf", state=ResolutionState.RESOLVED)
+    )
+
+    report = reconcile_dependency_claims(graph)
+    assert not any(conflict.kind == ConflictKind.RANGE_VIOLATION for conflict in report.conflicts)
+
+
 def test_resolver_asserted_range_violation_surfaces_as_conflict() -> None:
     graph = _graph_with_subject()
     # AlmaLinux backport case: shipped version sits outside the upstream range,

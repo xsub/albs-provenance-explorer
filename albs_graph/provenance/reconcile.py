@@ -20,11 +20,13 @@ resolver *asserts* them via the ``range_satisfied=False`` claim flag.
 
 from __future__ import annotations
 
+import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from albs_graph.vercmp import version_compare
 from albs_graph.dependency.model import (
     DependencySpec,
     Linkage,
@@ -253,14 +255,19 @@ def reconcile_dependency_claims(graph: ProvenanceGraph) -> ReconciliationReport:
 def _evaluate_group(
     members: list[Node], *, subject_has_declarations: bool
 ) -> tuple[Agreement, list[ConflictKind], str | None]:
-    versions = {v for node in members if (v := _version_of(node)) is not None}
+    version_strings = [v for node in members if (v := _version_of(node)) is not None]
+    # Semantic equivalence classes (rpmvercmp), not raw strings: "1.01" and "1.1"
+    # are the same version, so they do not count as drift.
+    version_classes = _distinct_versions(version_strings)
     linkages = {
         linkage
         for node in members
         if (linkage := str(node.metadata.get("linkage", Linkage.UNKNOWN))) != str(Linkage.UNKNOWN)
     }
     classes = {str(node.metadata.get("evidence_class", "")) for node in members}
-    range_violated = any(node.metadata.get("range_satisfied") is False for node in members)
+    range_violated = any(node.metadata.get("range_satisfied") is False for node in members) or (
+        _constraint_violated(members, version_strings)
+    )
 
     # A soname capability (libz.so.1) lives in a different coordinate space than
     # a package/component (zlib); package-level declarations neither declare nor
@@ -273,7 +280,7 @@ def _evaluate_group(
     has_artifact_evidence = _ARTIFACT_CLASS in classes
 
     kinds: list[ConflictKind] = []
-    if len(versions) > 1:
+    if len(version_classes) > 1:
         kinds.append(ConflictKind.VERSION_DRIFT)
     if range_violated:
         kinds.append(ConflictKind.RANGE_VIOLATION)
@@ -289,12 +296,14 @@ def _evaluate_group(
 
     if kinds:
         return Agreement.CONFLICT, kinds, None
-    if not versions:
+    if not version_classes:
         return Agreement.INSUFFICIENT_EVIDENCE, [], None
 
-    chosen = next(iter(versions))
+    chosen = version_classes[0]
     sources_with_version = {
-        str(node.metadata.get("evidence", "")) for node in members if _version_of(node) == chosen
+        str(node.metadata.get("evidence", ""))
+        for node in members
+        if (current := _version_of(node)) is not None and version_compare(current, chosen) == 0
     }
     if len(sources_with_version) >= 2:
         return Agreement.CONSENSUS, [], chosen
@@ -336,6 +345,63 @@ def _link_claims(graph: ProvenanceGraph, members: list[Node]) -> None:
 def _version_of(node: Node) -> str | None:
     value = node.metadata.get("asserted_version")
     return str(value) if value else None
+
+
+def _distinct_versions(versions: list[str]) -> list[str]:
+    """Representatives of the semantic version-equivalence classes (rpmvercmp)."""
+
+    reps: list[str] = []
+    for version in versions:
+        if not any(version_compare(version, rep) == 0 for rep in reps):
+            reps.append(version)
+    return reps
+
+
+# Relational constraint, e.g. "openssl-libs >= 1:3.0.7" -> (">=", "1:3.0.7").
+_CONSTRAINT = re.compile(r"(>=|<=|>|<)\s*([0-9][^\s,)\]]*)")
+
+
+def _constraint_violated(members: list[Node], concrete_versions: list[str]) -> bool:
+    """True if a declared relational constraint is unmet by a concrete version.
+
+    Detects e.g. a manifest requiring ``>= 3.2`` while the shipped/resolved
+    version is ``3.0.7`` (the AlmaLinux-backport range case). Only relational
+    operators are evaluated (``=`` provides/config are skipped to avoid noise),
+    and epochs are stripped before comparison.
+    """
+
+    if not concrete_versions:
+        return False
+    for node in members:
+        match = _CONSTRAINT.search(_requested_of(node))
+        if not match:
+            continue
+        operator, bound = match.group(1), match.group(2)
+        if any(not _satisfies(version, operator, bound) for version in concrete_versions):
+            return True
+    return False
+
+
+def _requested_of(node: Node) -> str:
+    dependency = node.metadata.get("dependency")
+    if isinstance(dependency, dict):
+        return str(dependency.get("requested") or "")
+    return ""
+
+
+def _satisfies(version: str, operator: str, bound: str) -> bool:
+    comparison = version_compare(_strip_epoch(version), _strip_epoch(bound))
+    if operator == ">=":
+        return comparison >= 0
+    if operator == ">":
+        return comparison > 0
+    if operator == "<=":
+        return comparison <= 0
+    return comparison < 0
+
+
+def _strip_epoch(version: str) -> str:
+    return version.split(":", 1)[1] if ":" in version else version
 
 
 def _coordinate_of(node: Node) -> str:

@@ -30,11 +30,10 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
 - **B1 — Store full cpio file lists during rung 4.** ✅ Done — `payload_contents`
   records every path; `identify` resolves ownership from the stored list first,
   so any file (configs, docs) is traceable offline. *(decisions.md D21)*
-- **B2 — Real version comparison in the reconciler.** An rpmvercmp-style
-  `version_compare` now exists (`security/cve_feed.py`) and powers CVE range
-  matching (decisions.md D25). Remaining: reuse it in the reconciler so
-  `VERSION_DRIFT` / `RANGE_VIOLATION` fire on semantic version differences, not
-  exact strings. *Effort: low now (the comparator exists).*
+- **B2 — Real version comparison in the reconciler.** ✅ Done — `version_compare`
+  moved to `albs_graph/vercmp.py` and wired into the reconciler: `VERSION_DRIFT`
+  is now rpmvercmp-semantic and `RANGE_VIOLATION` fires on declared relational
+  constraints (the backport case is detected in the graph). *(decisions.md D26)*
 - **B3 — Python module → package mapping** (`cv2` -> `opencv-python`) so import
   claims resolve to distributions. *Effort: low-medium.*
 

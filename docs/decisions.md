@@ -609,6 +609,27 @@ testable); a live NVD/OSV feed is a drop-in. No CVE data is invented.
 
 ---
 
+## D26 — Semantic version comparison in the reconciler (B2)
+
+**Files:** `albs_graph/vercmp.py` (moved here, neutral), `provenance/reconcile.py`
+
+The rpmvercmp `version_compare` (D25) now powers the reconciler, not just CVE
+matching — so it lives in a dependency-free `albs_graph/vercmp.py` that both the
+security and provenance layers import (no odd cross-layer dependency).
+
+- **`VERSION_DRIFT` is now semantic.** Concrete versions are grouped into
+  rpmvercmp equivalence classes; `1.01` and `1.1` no longer count as drift, while
+  `1.2.11` vs `1.2.3` still does. CONSENSUS likewise uses semantic equality.
+- **`RANGE_VIOLATION` now fires on declared constraints.** A declared relational
+  requirement (`name >= 3.2`, parsed from a claim's `requested`) checked against a
+  concrete version in the same group fires `RANGE_VIOLATION` when unmet — so the
+  AlmaLinux backport case (`require >= 3.2`, shipped `3.0.7`) is detected in the
+  graph, not only flagged in the vuln report. Conservative by design: only
+  relational operators (`=` provides/config are skipped), epochs stripped, and
+  it never fires without a concrete version to test.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
