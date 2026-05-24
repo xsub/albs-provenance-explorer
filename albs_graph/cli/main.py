@@ -27,6 +27,7 @@ from albs_graph.adapters.dnf import (
     enrich_graph_with_dnf,
     resolve_soname_claims,
 )
+from albs_graph.adapters.errata import attach_errata_file
 from albs_graph.adapters.pylang import attach_python_requirements
 from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
@@ -338,6 +339,12 @@ def coverage_command(
     requirements_subject: Optional[str] = typer.Option(
         None, "--requirements-subject", help="Binary RPM the requirements belong to."
     ),
+    errata: Optional[Path] = typer.Option(
+        None, "--errata", help="Errata JSON (id, type, severity, cves) to attach as security context."
+    ),
+    errata_subject: Optional[str] = typer.Option(
+        None, "--errata-subject", help="Binary RPM the errata applies to."
+    ),
     repograph_dot: Optional[Path] = typer.Option(
         None,
         "--repograph-dot",
@@ -449,6 +456,16 @@ def coverage_command(
         _log_step(verbose, f"Attaching Python requirements {requirements} to {req_subject.id}")
         python_result = attach_python_requirements(graph, req_subject.id, requirements)
 
+    errata_id = None
+    if errata is not None:
+        errata_node_subject = (
+            find_binary_rpm(graph, errata_subject, arch=arch)
+            if errata_subject
+            else select_default_binary_rpm(graph, arch=arch)
+        )
+        _log_step(verbose, f"Attaching errata {errata} to {errata_node_subject.id}")
+        errata_id = attach_errata_file(graph, errata_node_subject.id, errata)
+
     enrichment = None
     if with_rpm_headers:
         _log_step(verbose, "Range-reading RPM headers for dynamic-linkage claims")
@@ -503,6 +520,8 @@ def coverage_command(
             payload["soname_resolution"] = soname_result.to_dict()
         if python_result is not None:
             payload["python"] = python_result.to_dict()
+        if errata_id is not None:
+            payload["errata"] = errata_id
         sys.stdout.write(json.dumps(payload, indent=2) + "\n")
         return
 
@@ -547,6 +566,8 @@ def coverage_command(
             f"Python: {python_result.claims_added} PyPI claims from "
             f"{python_result.requirements} requirements"
         )
+    if errata_id is not None:
+        console.print(f"Errata: attached {errata_id} (security context)")
     if enrichment is not None:
         console.print(
             f"RPM header enrichment: {enrichment.headers_fetched}/{enrichment.artifacts_seen} "

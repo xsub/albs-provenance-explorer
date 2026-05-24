@@ -23,12 +23,11 @@ Two distinct facts here:
   artifact `alma-sbom` produces) — that path is implemented; the credentialed
   fetch is not.
 - **The axis is binary-complete and needs errata too.** `security_context_complete`
-  requires *both* an attached SBOM **and** an errata/CVE link. Attaching an SBOM
-  sets `has_sbom` but not `has_errata_link`, so the axis stays 0.00 until errata
-  ingest also runs for the same subject. (SBOM ingest *does* raise the separate
-  `resolution` axis.)
-- **Lift:** attach errata/CVE alongside the SBOM, and/or a credentialed
-  `alma-sbom`/`cas` adapter.
+  requires *both* an attached SBOM **and** an errata/CVE link. `coverage --errata
+  FILE` now attaches errata, so SBOM + errata on the same subject completes the
+  axis. Remaining: errata is ingested from a **provided file** and attached to a
+  **single subject** (a live errata.almalinux.org fetch, and per-package
+  attachment across all of a build's binaries, are future work).
 
 ### `identity` = 0.00 — CPE is never asserted as verified
 The graph stores `cpe: null` plus unverified `cpe_candidates`. The identity axis

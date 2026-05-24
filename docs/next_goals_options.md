@@ -21,10 +21,11 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
   range but is patched — so this also produces real `RANGE_VIOLATION` conflicts.
   Serves vuln triage directly. *Effort: medium. Closes the most-cited
   limitation.*
-- **A2 — Errata/CVE ingest → `security_context` axis.** `adapters/errata.py`
-  exists but is not wired into `coverage`; `security_context_complete` needs an
-  SBOM **and** an errata/CVE link. AlmaLinux errata (ALSA) is public (errata API
-  / OVAL). *Effort: medium. Pairs with A1.*
+- **A2 — Errata/CVE ingest → `security_context` axis.** ✅ Done —
+  `coverage --errata FILE [--errata-subject RPM]` attaches an errata + its CVEs,
+  so SBOM + errata together reach `security_context_complete` (axis moves off
+  0.00). File-based ingest; live errata.almalinux.org fetch is future.
+  *(decisions.md D22)*
 
 ## B. Finish half-done things (cheap, high utility)
 

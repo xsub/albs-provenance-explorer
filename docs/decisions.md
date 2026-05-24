@@ -527,6 +527,20 @@ payload analysis runs.
 
 ---
 
+## D22 — Errata/CVE ingest wired into coverage (`security_context` axis)
+
+**Files:** `albs_graph/adapters/errata.py` (existing), `cli/main.py`
+(`coverage --errata`)
+
+`security_context_complete` needs an SBOM **and** an errata/CVE link. The errata
+adapter existed but was never exposed; `coverage --errata FILE [--errata-subject
+RPM]` now attaches an errata (with its CVEs via `FIXES` edges) to a subject, so a
+package with both an SBOM and errata reaches `security_context_complete` and the
+axis moves off 0.00. Errata is ingested from a provided JSON file (parallel to
+`--sbom`); a live errata.almalinux.org fetch is left as future work.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
