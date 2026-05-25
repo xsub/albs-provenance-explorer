@@ -73,29 +73,40 @@ Focused provenance graph, 13 nodes / 13 edges:
 
 ## Scope
 
-Implemented in this PoC:
+Status is tracked in three honest buckets. "Couldn't resolve" is a deliverable here: the coverage report always names the unresolved residue rather than claiming 100%.
 
-- provenance graph core with canonical ALBS/RPM node and edge types
-- normalized dependency fact model for ecosystem, scope, linkage, resolution state and context
-- synthetic ALBS fixture ingestion for tests
-- resilient build metadata adapter shape for `build.almalinux.org`
-- RPM metadata inspection adapter with normalized `requires`/`provides` dependency facts
-- SPDX JSON and CycloneDX JSON SBOM graph import with Package URL based ecosystem identity
-- PURL/CPE security identity metadata for live ALBS SRPM/RPM artifacts
-- ALBS artifact inventory and processing timeline analysis from raw build metadata
-- errata/CVE attachment model
-- trust-path analysis for binary RPM artifacts
-- JSON, DOT and SVG rendering
-- CLI commands for live ALBS build fetches, RPM inspection, SBOM import, synthetic fixtures and trust-path reports
+### Implemented
 
-Intentionally out of scope for the first pass:
+- provenance graph core with canonical ALBS/RPM node and edge types, plus the source-to-artifact trust path for binary RPMs
+- normalized, conflict-aware dependency **claim/reconcile** model: one claim per evidence source, reconciled into a verdict without discarding the losing claims, surfaced through a five-axis coverage report (`resolution`, `linkage`, `identity`, `provenance`, `security_context`)
+- live `build.almalinux.org` metadata adapter (on-disk cache + TTL), artifact inventory and processing-timeline analysis
+- RPM header reads over HTTP Range (rung 3): `DT_NEEDED` sonames become dynamic-linkage claims without downloading the payload
+- full payload ELF analysis (rung 4): a dependency-free ELF parser recovers `DT_NEEDED`, RPATH/RUNPATH, dynamic-vs-static, `dlopen`, toolchain, and a static Go module BOM from `.go.buildinfo`
+- soname → providing-package resolution, and deep `dnf repoquery` extraction (versioned runtime deps, weak deps as optional, conflicts/obsoletes, `--whatprovides`)
+- AlmaLinux-native RPM resolution (rung 5): `dnf repograph` / `rpmgraph` dot ingest emits resolved RPM dependency claims
+- real native resolvers for **Go** (`go list -m all`) and **Cargo** (`cargo metadata`) behind the typed resolver contract
+- Python language evidence: `requirements.txt` plus import scanning produce PyPI claims (pinned versions count toward resolution)
+- dependency **universe**: repo-wide graph build, traversal (`dependents_of` / `dependencies_of` / `dependency_paths`), cross-repo merge, and focused-subgraph visualization
+- low-footprint SQLite persistence: build once, query later; one-hop queries run in SQL without loading the whole graph (stdlib only, no graph DB)
+- SPDX/CycloneDX SBOM import, errata/CVE attachment, CPE verification against a supplied dictionary (with the AlmaLinux distro-backport flag), GPG signature verification (`rpmkeys --checksig`), and optional CAS verification (`--use-cas`)
+- consumer reports: `vuln` applicability (with `--cve-feed` rpmvercmp range matching), `license` rollup, and `slsa` in-toto / SLSA provenance export
+- PURL / CPE / CAS identities kept strictly separate; JSON, DOT and SVG rendering; a CLI covering all of the above
 
-- full package-manager resolution for Pip, Poetry, Maven, Gradle, npm, Cargo or Go
-- SAT/backtracking resolution and large-scale job orchestration
-- write access to ALBS
-- a web platform
-- Kubernetes or service deployment
-- replacing distro build or signing infrastructure
+### Partial
+
+- Python dependencies are recorded from `requirements.txt` and import scanning, but without a real pip/uv resolver — no transitive closure or environment-marker evaluation
+- CPE verification and CVE-feed matching consume **supplied** dictionary/feed files; there is no live NVD or errata fetch yet
+- vault URL reconstruction is a heuristic over known AlmaLinux repo layouts, not an exhaustive mirror map
+- SQLite is a deliberately lightweight persistence layer for the PoC, not the final production graph platform
+
+### Future
+
+- real resolvers for **pip/uv**, **Poetry**, **Maven/Gradle** and **npm** behind the existing contract
+- sandboxed resolver execution; registry snapshot / cache invalidation (yanks, deletions) rather than age-based TTL
+- parallel and cached header/payload/SBOM fetches; incremental re-reconciliation
+- a heavier backend (Postgres recursive CTEs or a dedicated graph store) only if the SQLite store is outgrown
+
+Permanent non-goals: implementing our own SAT/backtracking solver (we delegate to native tools), write access to ALBS, a web platform, Kubernetes or service deployment, and replacing distro build or signing infrastructure.
 
 ## Install
 
@@ -315,7 +326,7 @@ albs-graph checkout-source --build-id 17812 --dest sources/build-17812
 albs-graph source-evidence sources/build-17812 --build-id 17812 --format json -o build-17812-source-evidence.json
 ```
 
-`source-evidence` starts from ALBS build metadata, attaches a hashed source-file inventory, parses RPM `.spec` files for `BuildRequires`, `Requires`, `Source` and `Patch`, and records detected ecosystem manifests such as `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `pom.xml` and Gradle build files. Detection is evidence, not resolution; native package-manager resolvers are a later layer.
+`source-evidence` starts from ALBS build metadata, attaches a hashed source-file inventory, parses RPM `.spec` files for `BuildRequires`, `Requires`, `Source` and `Patch`, and records detected ecosystem manifests such as `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `pom.xml` and Gradle build files. Manifest *detection* is evidence, not resolution; the separate `resolve` command runs native resolvers (Go and Cargo today) that consume those manifests and emit resolved dependency facts.
 
 ## Model
 
@@ -331,7 +342,7 @@ Runtime package relationships such as `requires_runtime` exist, but they are del
 
 ## Dependency Intelligence Model
 
-This PoC is not a full unified dependency resolver yet. It now establishes the data contract such a resolver would need:
+This PoC is not yet a full unified resolver across every ecosystem, but it is no longer evidence-only: it establishes the data contract, ships real resolvers for some ecosystems (Go, Cargo, and RPM via `dnf`/`rpmgraph`), and leaves the rest behind the same contract. The contract carries:
 
 - package identity: ecosystem, namespace, name, version, PURL and qualifiers
 - dependency semantics: requested constraint, scope, linkage and resolution state
@@ -340,7 +351,7 @@ This PoC is not a full unified dependency resolver yet. It now establishes the d
 
 That distinction matters. Pip markers, Poetry extras, Maven scopes, Gradle configurations, npm optional dependencies, Cargo features and Go module constraints do not mean the same thing. The graph stores dependency facts in a normalized shape while preserving ecosystem-specific raw metadata for auditability.
 
-Current adapters populate this model from RPM `requires`/`provides`, SPDX/CycloneDX components and source `.spec` declarations. Source manifest detection records ecosystem evidence from actual files; it does not assume npm, Cargo, Go, Python, Maven or Gradle participation unless a corresponding file exists in the source tree. Future resolver adapters can add package-manager-specific resolution outputs without changing the ALBS provenance graph contract.
+Current adapters populate this model from RPM `requires`/`provides`, RPM header and payload ELF facts, `dnf repoquery`/`repograph`/`rpmgraph` output, native Go/Cargo resolvers, Python requirements and imports, SPDX/CycloneDX components and source `.spec` declarations. Source manifest detection records ecosystem evidence from actual files; it does not assume npm, Maven, Gradle, pip or Poetry participation unless a corresponding file exists in the source tree. Remaining resolver adapters (pip/uv, Poetry, Maven/Gradle, npm) plug into the same contract without changing the ALBS provenance graph.
 
 ## Identity Model: PURL vs CPE vs ALBS/CAS
 
@@ -358,9 +369,9 @@ The system separates three concerns that are often conflated in dependency graph
 
 - provenance backbone: ALBS source, build, artifact, signature, release and CAS evidence
 - dependency facts: normalized package identities, scopes, constraints, contexts and observed components
-- resolver implementations: ecosystem-specific logic that can later mimic Pip, Poetry, Maven, Gradle, npm, Cargo or Go
+- resolver implementations: ecosystem-specific logic behind a typed contract — implemented for RPM (`dnf`/`rpmgraph`), Go and Cargo; Pip, Poetry, Maven, Gradle and npm still to come
 
-The current code implements the provenance layer, RPM/SBOM evidence and source evidence discovery for the Enterprise Linux case. It deliberately does not claim to solve package-manager resolution yet. That next layer would consume the detected project manifests and lockfiles, run ecosystem-specific resolution strategies, and emit resolved dependency facts back into this graph.
+The current code implements the provenance layer, RPM/SBOM/header/ELF evidence, source evidence discovery, and real resolution for the Enterprise Linux (RPM) case plus Go and Cargo. The remaining resolver layer consumes the detected project manifests and lockfiles for the other ecosystems, runs their native resolution strategies behind the same contract, and emits resolved dependency facts back into this graph.
 
 ## Trust Semantics
 

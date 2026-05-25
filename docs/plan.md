@@ -160,9 +160,10 @@ Ordered by value-per-effort and tractability under public access.
 
 ### Medium term
 4. ✅ **Rung 4 — payload ELF analysis.** Done — downloads the payload, parses
-   ELF `DT_NEEDED`/RPATH/RUNPATH/dlopen/linkage/toolchain. Remaining follow-up:
-   parse `.go.buildinfo` to enumerate a static Go binary's module graph (Rust
-   metadata likewise), turning "toolchain detected" into a static dependency BOM.
+   ELF `DT_NEEDED`/RPATH/RUNPATH/dlopen/linkage/toolchain, **and** reads
+   `.go.buildinfo` so a static Go binary contributes a real module BOM
+   (`go_static_claims` emits STATIC RESOLVED claims). Rust has no comparable
+   embedded BOM, so it stays toolchain-detected.
 5. **Rung 5 — real resolvers behind the contract.** RPM via
    `dnf repograph`/`rpmgraph`; **Go** (`go list -m all`) and **Cargo**
    (`cargo metadata`) via `resolver_for` + the `resolve` command. Next: wire
