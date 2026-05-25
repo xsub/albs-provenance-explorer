@@ -711,6 +711,26 @@ consumer needs. CLI: `license --sbom FILE [--sbom-subject RPM]`.
 
 ---
 
+## D32 — Native language resolvers behind the contract (E1)
+
+**Files:** `albs_graph/dependency/native_resolvers.py`, `cli/main.py` (`resolve`)
+
+Real resolvers for the rung-5 contract, shelling out to the authoritative tool
+rather than reimplementing resolution: `GoResolver` runs `go list -m all`,
+`CargoResolver` runs `cargo metadata`. Each satisfies the `DependencyResolver`
+protocol and returns a `ResolverResult` whose resolved specs carry concrete
+versions, so `add_resolver_result` feeds them into the graph and they count
+toward the resolution axis. `resolver_for(ecosystem)` returns the wired resolver
+or falls back to `NullResolver`.
+
+Like every native adapter: injectable runner (fully tested offline), and an
+absent/failing tool yields an `UNRESOLVABLE` result rather than raising. CLI:
+`resolve --ecosystem go --manifest go.mod [--build-id … --subject <rpm>]` runs
+the tool and (with a build) attaches the resolved deps + reports the resolution
+axis. pip/Maven/npm remain `NullResolver` until wired the same way.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

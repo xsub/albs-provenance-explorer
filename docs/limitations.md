@@ -72,10 +72,13 @@ Implemented: full RPM download → cpio payload → ELF parse of confirmed
   empty analysis. 32-bit and big-endian are handled but exercised less.
 
 ### Rung 5 — real per-ecosystem resolvers
-RPM resolution is available via `dnf repograph` / `rpmgraph` (see below). For the
-language ecosystems, only `NullResolver` exists (marks everything
-`RESOLUTION_SKIPPED`); the typed contract is in place but nothing yet shells out
-to uv/pip-tools, Maven/Gradle, `cargo metadata` or `go list`.
+RPM resolution is available via `dnf repograph` / `rpmgraph`; **Go**
+(`go list -m all`) and **Cargo** (`cargo metadata`) now have real resolvers
+behind the contract (`resolve` command, decisions.md D32). Still on
+`NullResolver`: **pip/uv**, **Maven/Gradle**, **npm** — the contract is in place,
+they just need wiring the same way. All resolvers are host tools: they run
+against a checked-out project on the host (the `resolve` CLI is host-side; the
+adapters are tested offline with injected runners).
 
 ### `dnf repoquery` caveats
 - **Host tool, many subprocess calls.** `coverage --use-dnf` runs several

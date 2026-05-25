@@ -163,12 +163,12 @@ Ordered by value-per-effort and tractability under public access.
    ELF `DT_NEEDED`/RPATH/RUNPATH/dlopen/linkage/toolchain. Remaining follow-up:
    parse `.go.buildinfo` to enumerate a static Go binary's module graph (Rust
    metadata likewise), turning "toolchain detected" into a static dependency BOM.
-5. **Rung 5 — real resolvers behind the contract.** RPM is done via
-   `dnf repograph` / `rpmgraph` (native libsolv/rpm). Next: feed those resolver
-   results through the typed `ResolverResult` contract rather than direct dot
-   ingest, then language ecosystems via their own tools (uv, mvn, cargo, go),
-   sandboxed, against mirrored registries, cached on `(ecosystem, manifest,
-   lockfile, context)`.
+5. **Rung 5 — real resolvers behind the contract.** RPM via
+   `dnf repograph`/`rpmgraph`; **Go** (`go list -m all`) and **Cargo**
+   (`cargo metadata`) via `resolver_for` + the `resolve` command. Next: wire
+   **pip/uv**, **Maven/Gradle**, **npm** the same way; feed repograph results
+   through `ResolverResult` rather than direct dot ingest; sandbox + cache on
+   `(ecosystem, manifest, lockfile, context)`.
 6. **CPE verification adapter.** Match `cpe_candidates` against the NVD CPE
    dictionary; populate `cpe` / flip `verified` only on confirmed match. Moves
    `identity` off 0.00. Handle the AlmaLinux backport case explicitly (shipped

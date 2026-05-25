@@ -43,7 +43,8 @@ from albs_graph.model import NodeType, ProvenanceGraph
 from albs_graph.provenance.coverage import coverage_report
 from albs_graph.provenance.identify import identify_file
 from albs_graph.provenance.license import license_report
-from albs_graph.provenance.reconcile import reconcile_dependency_claims
+from albs_graph.dependency import Ecosystem, ResolverRequest, resolver_for
+from albs_graph.provenance.reconcile import add_resolver_result, reconcile_dependency_claims
 from albs_graph.provenance.slsa import slsa_provenance
 from albs_graph.provenance.vuln import vulnerability_report
 from albs_graph.provenance.universe import (
@@ -1124,6 +1125,76 @@ def license_command(
         table.add_row("(no license)", str(len(report.unlicensed)))
     console.print(table)
     console.print(f"{report.distinct_licenses} distinct licenses; {len(report.unlicensed)} unlicensed")
+
+
+@app.command(
+    "resolve",
+    help="Resolve a language manifest with its native tool (go list / cargo metadata).",
+    short_help="Native dependency resolution.",
+    no_args_is_help=True,
+)
+def resolve_command(
+    ecosystem: str = typer.Option(..., "--ecosystem", help="go, cargo, pypi, npm, ..."),
+    manifest: Path = typer.Option(..., "--manifest", help="Path to go.mod / Cargo.toml / etc."),
+    build_id: Optional[int] = typer.Option(None, "--build-id", "-b", help="Fetch a live ALBS build."),
+    source: Optional[Path] = typer.Option(None, "--source", "-s", help="Cached ALBS metadata JSON."),
+    subject: Optional[str] = typer.Option(
+        None, "--subject", help="Binary RPM to attach resolved deps to (with --build-id/--source)."
+    ),
+    arch: Optional[str] = typer.Option(None, "--arch"),
+    output_format: str = typer.Option("summary", "--format", "-f", help="summary or json."),
+    base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
+    cache: Optional[Path] = typer.Option(None, "--cache"),
+    cache_ttl: int = typer.Option(300, "--cache-ttl"),
+    refresh_cache: bool = typer.Option(False, "--refresh-cache"),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    eco = Ecosystem(ecosystem)
+    _log_step(verbose, f"Resolving {manifest} with the {eco} native resolver")
+    result = resolver_for(eco).resolve(ResolverRequest(eco, str(manifest)))
+
+    if build_id is None and source is None:
+        if output_format.lower() == "json":
+            sys.stdout.write(json.dumps(result.to_dict(), indent=2) + "\n")
+        else:
+            console.print(
+                f"{result.tool}: {len(result.resolved)} resolved, "
+                f"{len(result.unresolved)} unresolved"
+            )
+        return
+
+    if build_id is not None:
+        metadata = fetch_build_metadata(
+            build_id,
+            base_url=base_url,
+            progress=_progress(verbose),
+            cache_path=cache,
+            refresh_cache=refresh_cache,
+            cache_ttl_seconds=cache_ttl,
+        )
+        graph = graph_from_build_metadata(metadata)
+    else:
+        assert source is not None
+        graph = load_synthetic_build_fixture(source)
+
+    subject_node = (
+        find_binary_rpm(graph, subject, arch=arch)
+        if subject
+        else select_default_binary_rpm(graph, arch=arch)
+    )
+    add_resolver_result(graph, result, subject_node.id)
+    reconcile_dependency_claims(graph)
+    report = coverage_report(graph)
+
+    if output_format.lower() == "json":
+        sys.stdout.write(
+            json.dumps({"resolver": result.to_dict(), "coverage": report.to_dict()}, indent=2) + "\n"
+        )
+        return
+    console.print(
+        f"{result.tool}: {len(result.resolved)} resolved deps attached to {subject_node.label}"
+    )
+    console.print(f"resolution axis: {report.resolution.covered}/{report.resolution.total}")
 
 
 @app.command(

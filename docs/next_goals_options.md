@@ -55,10 +55,10 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
 
 ## E. Real resolvers behind the existing contract (rung 5, non-RPM)
 
-- **E1 — Wire `uv`/pip-tools, `cargo metadata`, `go list -m all`,
-  `mvn dependency:tree`** as shell-out-if-present resolvers, exactly like `dnf`.
-  The `ResolverResult` contract already exists; this moves `resolution` for the
-  language ecosystems. *Effort: medium per ecosystem.*
+- **E1 — Native language resolvers.** ✅ Done for **Go** (`go list -m all`) and
+  **Cargo** (`cargo metadata`) via `resolver_for` + the `resolve` command;
+  injectable runner, UNRESOLVABLE on failure. *(decisions.md D32)* pip/Maven/npm
+  remain `NullResolver` until wired the same way.
 
 ## F. The "why does this exist" payoff — a consumer report
 

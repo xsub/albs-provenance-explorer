@@ -12,6 +12,7 @@ from .model import (
     dependency_spec_node_id,
     package_identity_from_purl,
 )
+from .native_resolvers import CargoResolver, GoResolver, resolver_for
 from .resolver import (
     DependencyResolver,
     NullResolver,
@@ -21,9 +22,11 @@ from .resolver import (
 )
 
 __all__ = [
+    "CargoResolver",
     "DependencyContext",
     "DependencyCoverageSummary",
     "DependencyResolver",
+    "GoResolver",
     "DependencyScope",
     "DependencySpec",
     "Ecosystem",
@@ -38,5 +41,6 @@ __all__ = [
     "dependency_node_metadata",
     "dependency_spec_node_id",
     "package_identity_from_purl",
+    "resolver_for",
     "summarize_dependency_coverage",
 ]
