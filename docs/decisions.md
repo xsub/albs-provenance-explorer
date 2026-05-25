@@ -731,6 +731,22 @@ axis. pip/Maven/npm remain `NullResolver` until wired the same way.
 
 ---
 
+## D33 - Verbose detail for the coverage report (`--verbose`)
+
+**Files:** `cli/main.py` (`coverage`), `provenance/reconcile.py` (`resolution_details`)
+
+The `coverage` summary lines ("RPM header enrichment: ...", "Reconciled
+dependencies: N; conflicts: M") stay one-line by default; `--verbose` expands
+them. `resolution_details(graph)` is a read-only listing of every reconciled
+group (subject, coordinate, verdict, versions, evidence sources); verbose prints
+the agreement breakdown plus each resolution grouped by subject, and lists
+header/payload fetch failures. Detail prints with `markup=False` so soname and
+evidence tokens in `[...]` are not swallowed as Rich markup (the same fix
+hardened the pre-existing conflict listing). Capped at 40 rows to stay readable
+on `--all-packages` runs.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

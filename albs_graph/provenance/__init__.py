@@ -23,10 +23,12 @@ from .reconcile import (
     DependencyClaim,
     DependencyConflict,
     ReconciliationReport,
+    ResolutionDetail,
     add_dependency_claim,
     add_resolver_result,
     claims_from_resolver_result,
     reconcile_dependency_claims,
+    resolution_details,
 )
 from .slsa import slsa_provenance
 from .trust import make_binary_rpm_selector, trust_path, trust_reports
@@ -62,6 +64,7 @@ __all__ = [
     "PackageVulnAssessment",
     "VulnReport",
     "ReconciliationReport",
+    "ResolutionDetail",
     "SignTaskTiming",
     "TaskTiming",
     "TimingStep",
@@ -88,6 +91,7 @@ __all__ = [
     "license_report",
     "make_binary_rpm_selector",
     "reconcile_dependency_claims",
+    "resolution_details",
     "rpm_artifact_inventory",
     "summarize",
     "summarize_artifacts_by_build_arch",

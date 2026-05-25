@@ -12,6 +12,7 @@ from albs_graph.provenance import (
     DependencyClaim,
     add_dependency_claim,
     reconcile_dependency_claims,
+    resolution_details,
 )
 
 SUBJECT = "rpm:app:1.0:x86_64"
@@ -207,6 +208,30 @@ def test_satisfied_declared_range_is_no_conflict() -> None:
 
     report = reconcile_dependency_claims(graph)
     assert not any(conflict.kind == ConflictKind.RANGE_VIOLATION for conflict in report.conflicts)
+
+
+def test_resolution_details_list_each_group_for_verbose_output() -> None:
+    graph = _graph_with_subject()
+    add_dependency_claim(graph, _claim("openssl", "3.0.7", "lockfile", state=ResolutionState.LOCKED))
+    add_dependency_claim(
+        graph, _claim("openssl", "3.0.7", "resolver:uv", state=ResolutionState.RESOLVED)
+    )
+    add_dependency_claim(
+        graph, _claim("libssl.so.3", None, "rpm_header_soname", state=ResolutionState.OBSERVED)
+    )
+    reconcile_dependency_claims(graph)
+
+    details = resolution_details(graph)
+
+    # One detail row per reconciled group, carrying verdict + evidence sources.
+    assert len(details) == 2
+    assert any("libssl.so.3" in d.coordinate for d in details)
+    openssl = next(d for d in details if "openssl" in d.coordinate)
+    assert openssl.agreement == str(Agreement.CONSENSUS)
+    assert openssl.versions == ("3.0.7",)
+    assert set(openssl.evidence) == {"lockfile", "resolver:uv"}
+    # Sorted deterministically (by subject, then coordinate) for stable output.
+    assert details == sorted(details, key=lambda d: (d.subject_id, d.coordinate))
 
 
 def test_resolver_asserted_range_violation_surfaces_as_conflict() -> None:

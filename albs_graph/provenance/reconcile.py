@@ -121,6 +121,39 @@ class ReconciliationReport:
         }
 
 
+@dataclass(frozen=True)
+class ResolutionDetail:
+    """One reconciled dependency group, for verbose per-item reporting."""
+
+    subject_id: str
+    coordinate: str
+    agreement: str
+    versions: tuple[str, ...]
+    evidence: tuple[str, ...]
+
+
+def resolution_details(graph: ProvenanceGraph) -> list[ResolutionDetail]:
+    """Read-only listing of each resolution group written by the reconciler.
+
+    Used by verbose CLI output to expand the "Reconciled dependencies: N"
+    summary into the concrete coordinates, verdicts and evidence sources.
+    """
+
+    details: list[ResolutionDetail] = []
+    for node in graph.find_by_type(NodeType.DEPENDENCY_RESOLUTION):
+        md = node.metadata
+        details.append(
+            ResolutionDetail(
+                subject_id=str(md.get("subject", "")),
+                coordinate=str(md.get("coordinate", node.label)),
+                agreement=str(md.get("agreement", "")),
+                versions=tuple(str(v) for v in (md.get("versions") or [])),
+                evidence=tuple(str(e) for e in (md.get("evidence") or [])),
+            )
+        )
+    return sorted(details, key=lambda d: (d.subject_id, d.coordinate))
+
+
 def claim_node_id(claim: DependencyClaim) -> str:
     coordinate = claim.spec.identity.coordinates()
     version = claim.asserted_version or "any"

@@ -44,7 +44,11 @@ from albs_graph.provenance.coverage import coverage_report
 from albs_graph.provenance.identify import identify_file
 from albs_graph.provenance.license import license_report
 from albs_graph.dependency import Ecosystem, ResolverRequest, resolver_for
-from albs_graph.provenance.reconcile import add_resolver_result, reconcile_dependency_claims
+from albs_graph.provenance.reconcile import (
+    add_resolver_result,
+    reconcile_dependency_claims,
+    resolution_details,
+)
 from albs_graph.provenance.slsa import slsa_provenance
 from albs_graph.provenance.vuln import vulnerability_report
 from albs_graph.provenance.universe import (
@@ -640,6 +644,9 @@ def coverage_command(
             f"RPM header enrichment: {enrichment.headers_fetched}/{enrichment.artifacts_seen} "
             f"headers fetched, {enrichment.claims_added} dynamic-linkage claims added"
         )
+        if verbose and enrichment.failures:
+            for name in enrichment.failures[:20]:
+                console.print(f"  header fetch failed: {name}", markup=False)
     if payload_result is not None:
         console.print(
             f"RPM payload analysis: {payload_result.payloads_read}/{payload_result.artifacts_seen} "
@@ -648,6 +655,9 @@ def coverage_command(
             f"{payload_result.static_objects} static objects, "
             f"{payload_result.go_claims} Go module claims"
         )
+        if verbose and payload_result.failures:
+            for name in payload_result.failures[:20]:
+                console.print(f"  payload fetch/parse failed: {name}", markup=False)
     if cas_report is not None:
         if not cas_report.available:
             console.print(
@@ -674,9 +684,35 @@ def coverage_command(
         f"Reconciled dependencies: {reconciliation.resolutions}; "
         f"conflicts: {reconciliation.conflict_count}"
     )
+    if verbose:
+        if reconciliation.agreements:
+            breakdown = ", ".join(
+                f"{verdict}={count}"
+                for verdict, count in sorted(
+                    reconciliation.agreements.items(), key=lambda kv: (-kv[1], kv[0])
+                )
+            )
+            console.print(f"  agreements: {breakdown}", markup=False)
+        details = resolution_details(graph)
+        last_subject: str | None = None
+        for detail in details[:40]:
+            if detail.subject_id != last_subject:
+                console.print(f"  {detail.subject_id}:", markup=False)
+                last_subject = detail.subject_id
+            evidence = ", ".join(detail.evidence) or "n/a"
+            versions = ", ".join(detail.versions)
+            version_part = f" @ {versions}" if versions else ""
+            console.print(
+                f"    {detail.coordinate}{version_part} -> {detail.agreement} [{evidence}]",
+                markup=False,
+            )
+        if len(details) > 40:
+            console.print(f"  ... and {len(details) - 40} more resolutions", markup=False)
     for conflict in reconciliation.conflicts[:20]:
         versions = ", ".join(conflict.versions) or "n/a"
-        console.print(f"  [{conflict.kind}] {conflict.coordinate}: versions={versions}")
+        console.print(
+            f"  [{conflict.kind}] {conflict.coordinate}: versions={versions}", markup=False
+        )
 
 
 @app.command(
