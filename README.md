@@ -305,11 +305,12 @@ On an AlmaLinux host, install `cas` if missing and verify the source and RPM art
 ./example--almalinux.sh
 ```
 
-Two end-to-end coverage demos exercise the cost ladder and reconciliation across evidence sources: `example.sh` is portable (any OS; offline fixture plus network header/payload reads), and `example--almalinux-native.sh` adds the AlmaLinux-native stack (`dnf repoquery`/`repograph`, `rpmgraph`, CAS). Set `VERBOSE=1` on either to expand each `coverage` step from the one-line summaries into the per-claim reconciliation detail (coordinate -> verdict `[evidence]`, grouped by subject) plus any fetch failures:
+Two end-to-end coverage demos exercise the cost ladder and reconciliation across evidence sources: `example.sh` is portable (any OS; offline fixture plus network header/payload reads), and `example--almalinux-native.sh` adds the AlmaLinux-native stack (`dnf repoquery`/`repograph`, `rpmgraph`, CAS). Both run **verbose by default**, so each `coverage` step prints the per-claim reconciliation detail (coordinate -> verdict `[evidence]`, grouped by subject) alongside step progress; set `VERBOSE=0` for the concise one-line summaries:
 
 ```bash
 ./example.sh
-VERBOSE=1 ./example--almalinux-native.sh
+./example--almalinux-native.sh
+VERBOSE=0 ./example.sh   # concise summaries only
 ```
 
 Inspect local RPM metadata:

@@ -16,7 +16,8 @@
 #   BUILD_ID (default 17812)  PACKAGE (default nginx-core)  ARCH (default x86_64)
 #   REPO     (e.g. baseos/appstream; enables live `dnf repograph REPO`)
 #   FULL=1   run the full --all-archs --all-packages matrix (heavy; network)
-#   VERBOSE=1 add --verbose (per-claim reconciliation detail) to coverage steps
+#   VERBOSE   (default 1) run steps with --verbose (per-claim reconciliation
+#             detail in coverage); set VERBOSE=0 for concise one-line summaries
 
 set -uo pipefail
 
@@ -26,7 +27,7 @@ ARCH="${ARCH:-x86_64}"
 REPO="${REPO:-}"
 LIVE_DIR="${LIVE_DIR:-examples/live-build-$BUILD_ID}"
 CACHE="${CACHE:-$LIVE_DIR/build-$BUILD_ID.albs.json}"
-VERBOSE="${VERBOSE:-0}"
+VERBOSE="${VERBOSE:-1}"
 verbose_flag=""
 [ "$VERBOSE" = "1" ] && verbose_flag="--verbose"
 
@@ -50,7 +51,7 @@ printf 'tools: dnf=%s rpm=%s rpmgraph=%s cas=%s zstandard=%s\n' \
 
 step "Fetch ALBS build metadata (cached ${CACHE})"
 run fetch --build-id "$BUILD_ID" --cache "$CACHE" --cache-ttl 300 --format json \
-  -o "$LIVE_DIR/build-$BUILD_ID.json" || true
+  -o "$LIVE_DIR/build-$BUILD_ID.json" $verbose_flag || true
 if [[ ! -f "$CACHE" ]]; then
   printf 'ERROR: no cached metadata at %s (need network for the first run).\n' "$CACHE" >&2
   exit 1

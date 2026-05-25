@@ -22,11 +22,12 @@ ARCH="${ARCH:-x86_64}"
 LIVE_DIR="${LIVE_DIR:-examples/live-build-$BUILD_ID}"
 CACHE="${CACHE:-$LIVE_DIR/build-$BUILD_ID.albs.json}"
 LIMIT="${LIMIT:-5}"
-VERBOSE="${VERBOSE:-0}"
+VERBOSE="${VERBOSE:-1}"
 
-# VERBOSE=1 adds --verbose to the coverage steps: the per-claim reconciliation
-# detail (coordinate -> verdict [evidence], grouped by subject) and any fetch
-# failures, instead of just the one-line summaries.
+# Verbose by default: the albs-graph steps run with --verbose, so coverage prints
+# the per-claim reconciliation detail (coordinate -> verdict [evidence], grouped
+# by subject) and fetch/trust-path print step progress. Set VERBOSE=0 for the
+# concise one-line summaries.
 verbose_flag=""
 [ "$VERBOSE" = "1" ] && verbose_flag="--verbose"
 
@@ -47,7 +48,7 @@ run inspect-fixture synthetic
 
 step "Fetch ALBS build metadata (cached ${CACHE}, 5 min TTL)"
 optional run fetch --build-id "$BUILD_ID" --cache "$CACHE" --cache-ttl 300 --format json \
-  -o "$LIVE_DIR/build-$BUILD_ID.json"
+  -o "$LIVE_DIR/build-$BUILD_ID.json" $verbose_flag
 
 if [[ ! -f "$CACHE" ]]; then
   printf '\nERROR: no cached metadata at %s and fetch failed (offline?).\n' "$CACHE" >&2
@@ -59,7 +60,7 @@ step "Five-axis coverage (offline, from cached metadata)"
 run coverage --source "$CACHE" $verbose_flag
 
 step "Trust path for ${PACKAGE} (${ARCH})"
-optional run trust-path --source "$CACHE" --rpm "$PACKAGE" --arch "$ARCH"
+optional run trust-path --source "$CACHE" --rpm "$PACKAGE" --arch "$ARCH" $verbose_flag
 
 step "Rung 3: range-read real RPM headers -> dynamic-linkage claims (network)"
 optional run coverage --source "$CACHE" --with-rpm-headers --arch "$ARCH" --limit "$LIMIT" $verbose_flag
