@@ -22,6 +22,13 @@ ARCH="${ARCH:-x86_64}"
 LIVE_DIR="${LIVE_DIR:-examples/live-build-$BUILD_ID}"
 CACHE="${CACHE:-$LIVE_DIR/build-$BUILD_ID.albs.json}"
 LIMIT="${LIMIT:-5}"
+VERBOSE="${VERBOSE:-0}"
+
+# VERBOSE=1 adds --verbose to the coverage steps: the per-claim reconciliation
+# detail (coordinate -> verdict [evidence], grouped by subject) and any fetch
+# failures, instead of just the one-line summaries.
+verbose_flag=""
+[ "$VERBOSE" = "1" ] && verbose_flag="--verbose"
 
 mkdir -p "$LIVE_DIR"
 
@@ -49,17 +56,17 @@ if [[ ! -f "$CACHE" ]]; then
 fi
 
 step "Five-axis coverage (offline, from cached metadata)"
-run coverage --source "$CACHE"
+run coverage --source "$CACHE" $verbose_flag
 
 step "Trust path for ${PACKAGE} (${ARCH})"
 optional run trust-path --source "$CACHE" --rpm "$PACKAGE" --arch "$ARCH"
 
 step "Rung 3: range-read real RPM headers -> dynamic-linkage claims (network)"
-optional run coverage --source "$CACHE" --with-rpm-headers --arch "$ARCH" --limit "$LIMIT"
+optional run coverage --source "$CACHE" --with-rpm-headers --arch "$ARCH" --limit "$LIMIT" $verbose_flag
 
 step "Rung 4: download RPM payloads -> ELF analysis (network; needs '.[payload]')"
 if "$PYTHON_BIN" -c "import zstandard" >/dev/null 2>&1; then
-  optional run coverage --source "$CACHE" --with-rpm-payloads --package "$PACKAGE" --arch "$ARCH" --limit 2
+  optional run coverage --source "$CACHE" --with-rpm-payloads --package "$PACKAGE" --arch "$ARCH" --limit 2 $verbose_flag
 else
   printf '   (skipped: install the payload extra for zstd:  pip install -e ".[payload]")\n'
 fi

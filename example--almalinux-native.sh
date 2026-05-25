@@ -16,6 +16,7 @@
 #   BUILD_ID (default 17812)  PACKAGE (default nginx-core)  ARCH (default x86_64)
 #   REPO     (e.g. baseos/appstream; enables live `dnf repograph REPO`)
 #   FULL=1   run the full --all-archs --all-packages matrix (heavy; network)
+#   VERBOSE=1 add --verbose (per-claim reconciliation detail) to coverage steps
 
 set -uo pipefail
 
@@ -25,6 +26,9 @@ ARCH="${ARCH:-x86_64}"
 REPO="${REPO:-}"
 LIVE_DIR="${LIVE_DIR:-examples/live-build-$BUILD_ID}"
 CACHE="${CACHE:-$LIVE_DIR/build-$BUILD_ID.albs.json}"
+VERBOSE="${VERBOSE:-0}"
+verbose_flag=""
+[ "$VERBOSE" = "1" ] && verbose_flag="--verbose"
 
 mkdir -p "$LIVE_DIR"
 
@@ -53,34 +57,34 @@ if [[ ! -f "$CACHE" ]]; then
 fi
 
 step "Baseline five-axis coverage (offline)"
-run coverage --source "$CACHE"
+run coverage --source "$CACHE" $verbose_flag
 
 if have dnf; then
   step "Native dnf repoquery resolution for ${PACKAGE} (runtime + weak deps)"
-  run coverage --source "$CACHE" --use-dnf --package "$PACKAGE" --arch "$ARCH"
+  run coverage --source "$CACHE" --use-dnf --package "$PACKAGE" --arch "$ARCH" $verbose_flag
 else
   step "dnf not found; skipping native repoquery resolution"
 fi
 
 if have dnf && [[ -n "$REPO" ]]; then
   step "Whole-repo dependency graph via 'dnf repograph ${REPO}'"
-  run coverage --source "$CACHE" --repograph "$REPO" --arch "$ARCH"
+  run coverage --source "$CACHE" --repograph "$REPO" --arch "$ARCH" $verbose_flag
 else
   step "Skipping repograph (set REPO=baseos|appstream to enable live 'dnf repograph')"
 fi
 
 step "Rung 3: RPM header range reads -> dynamic sonames"
-run coverage --source "$CACHE" --with-rpm-headers --arch "$ARCH" --limit 5 || true
+run coverage --source "$CACHE" --with-rpm-headers --arch "$ARCH" --limit 5 $verbose_flag || true
 
 if "$PYTHON_BIN" -c 'import zstandard' >/dev/null 2>&1; then
   step "Rung 4: RPM payload ELF analysis (RPATH/RUNPATH/dlopen/static)"
-  run coverage --source "$CACHE" --with-rpm-payloads --package "$PACKAGE" --arch "$ARCH" --limit 2 || true
+  run coverage --source "$CACHE" --with-rpm-payloads --package "$PACKAGE" --arch "$ARCH" --limit 2 $verbose_flag || true
 else
   step "Rung 4 skipped (install zstd:  pip install -e '.[payload]')"
 fi
 
 step "CAS verification (opt-in; records 'unavailable' if cas is missing)"
-run coverage --source "$CACHE" --use-cas --format summary || true
+run coverage --source "$CACHE" --use-cas --format summary $verbose_flag || true
 
 if [[ "${FULL:-0}" == "1" ]]; then
   step "FULL matrix: every package and arch (heavy; network + dnf)"

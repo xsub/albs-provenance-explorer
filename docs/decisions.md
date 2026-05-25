@@ -743,7 +743,8 @@ the agreement breakdown plus each resolution grouped by subject, and lists
 header/payload fetch failures. Detail prints with `markup=False` so soname and
 evidence tokens in `[...]` are not swallowed as Rich markup (the same fix
 hardened the pre-existing conflict listing). Capped at 40 rows to stay readable
-on `--all-packages` runs.
+on `--all-packages` runs. The two coverage-running example scripts (`example.sh`,
+`example--almalinux-native.sh`) expose it via a `VERBOSE=1` env toggle.
 
 ---
 
