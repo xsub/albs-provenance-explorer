@@ -43,3 +43,15 @@ def test_short_help_flag_is_supported(capsys: CaptureFixture[str]) -> None:
 
     assert exit_code == 0
     assert "Fetch an ALBS build by --build-id" in output
+
+
+def test_coverage_has_independent_imports_subject(capsys: CaptureFixture[str]) -> None:
+    # Regression: imports reused --requirements-subject, so they could not be
+    # targeted at a different RPM. Both subject options must exist independently.
+    exit_code = main(["coverage", "--help"])
+
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "--imports-subject" in output
+    assert "--requirements-subject" in output

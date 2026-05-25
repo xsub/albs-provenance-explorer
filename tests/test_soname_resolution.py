@@ -87,6 +87,26 @@ def test_resolve_adds_package_provider_claims() -> None:
     assert provider.metadata["version"] == "1.2.11-40.el9"
 
 
+def test_resolved_counts_unique_sonames_not_claims() -> None:
+    # Two RPMs both require libz.so.1: resolved counts the soname once (1/1), not
+    # once per claim (regression: the summary reported 2/1).
+    graph = ProvenanceGraph()
+    for subj in ("rpm:a", "rpm:b"):
+        graph.add_node(Node(subj, NodeType.BINARY_RPM, subj, {"name": subj, "arch": "x86_64"}))
+        spec = DependencySpec(
+            identity=PackageIdentity(Ecosystem.RPM, "libz.so.1"),
+            linkage=Linkage.DYNAMIC,
+            resolution_state=ResolutionState.OBSERVED,
+        )
+        add_dependency_claim(graph, DependencyClaim(subj, spec, evidence="elf_dt_needed"))
+
+    result = resolve_soname_claims(graph, {"libz.so.1": "zlib-1.2.11-40.el9.x86_64"})
+
+    assert result.sonames == 1
+    assert result.resolved == 1  # one unique soname, not two claim occurrences
+    assert result.claims_added == 2  # one provider claim per subject
+
+
 def test_resolved_soname_corroborates_sbom_package() -> None:
     graph = _graph()
     add_dependency_claim(graph, _soname_claim("libz.so.1"))

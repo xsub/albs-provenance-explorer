@@ -62,6 +62,37 @@ def test_fetch_build_metadata_reuses_fresh_local_cache(tmp_path: Path, monkeypat
     assert len(fake_requests.calls) == 1
 
 
+def test_fetch_build_metadata_ignores_cache_for_a_different_build(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    # A fresh cache whose build id does not match the request must be refetched,
+    # not silently reused (regression: one cache path reused across builds
+    # returned a graph for the wrong build).
+    payload = {
+        "id": 17812,
+        "package": "nginx",
+        "tasks": [
+            {
+                "ref": {
+                    "url": "https://git.almalinux.org/rpms/nginx.git",
+                    "git_commit_hash": "abc123",
+                },
+                "artifacts": [],
+            }
+        ],
+    }
+    fake_requests = FakeRequests(payload)
+    monkeypatch.setitem(__import__("sys").modules, "requests", fake_requests)
+    cache = tmp_path / "shared.albs.json"
+    # Fresh mtime, but it holds a DIFFERENT build id.
+    cache.write_text('{"id": 999, "package": "other-build", "tasks": []}\n', encoding="utf-8")
+
+    metadata = fetch_build_metadata(17812, cache_path=cache)
+
+    assert metadata.package == "nginx"  # refetched the requested build, not the cache
+    assert len(fake_requests.calls) == 1  # did not reuse the id=999 cache
+
+
 def test_fetch_build_metadata_refreshes_stale_local_cache(tmp_path: Path, monkeypatch: Any) -> None:
     payload = {
         "id": 17812,

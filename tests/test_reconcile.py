@@ -161,6 +161,9 @@ def test_semantically_equal_versions_do_not_drift() -> None:
 
     assert report.conflict_count == 0
     assert resolution.metadata["agreement"] == str(Agreement.CONSENSUS)
+    # The claim-pair edge must agree with the verdict: corroborate, not conflict.
+    assert any(edge.relation == Relation.CORROBORATES for edge in graph.edges)
+    assert not any(edge.relation == Relation.CONFLICTS_WITH for edge in graph.edges)
 
 
 def test_semantic_drift_still_detected() -> None:

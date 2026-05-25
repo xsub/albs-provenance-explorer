@@ -235,7 +235,7 @@ def resolve_soname_claims(
     """
 
     sonames: set[str] = set()
-    resolved = 0
+    resolved_sonames: set[str] = set()
     added = 0
     seen: set[tuple[str, str, str]] = set()
     for node in graph.find_by_type(NodeType.DEPENDENCY_CLAIM):
@@ -246,7 +246,7 @@ def resolve_soname_claims(
         provider = index.get(name)
         if not provider:
             continue
-        resolved += 1
+        resolved_sonames.add(name)  # count unique sonames, not per-claim occurrences
         subject = str(node.metadata.get("subject", ""))
         pkg_name, pkg_version = parse_nevra(provider)
         key = (subject, pkg_name, pkg_version or "")
@@ -265,7 +265,7 @@ def resolve_soname_claims(
         )
         add_dependency_claim(graph, DependencyClaim(subject, spec, evidence="soname_provider"))
         added += 1
-    return SonameResolutionResult(len(sonames), resolved, added)
+    return SonameResolutionResult(len(sonames), len(resolved_sonames), added)
 
 
 def _add_claim(

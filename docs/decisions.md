@@ -840,6 +840,33 @@ shows real analysis instead of a single flat list.
 
 ---
 
+## D39 - External code-review fixes (P1-P3)
+
+A second-agent review found six real issues; all fixed with regression tests.
+
+- **Cache build_id guard** (`adapters/albs.py`): `fetch_build_metadata` reuses a
+  fresh cache only when its `id` matches the requested build, so a reused cache
+  path can no longer silently return another build's graph.
+- **Version-aware corroboration edges** (`provenance/reconcile.py`):
+  `_link_claims` uses `version_compare` (rpmvercmp), not string `==`, so
+  semantically equal versions (1.01/1.1) corroborate instead of getting a false
+  `VERSION_DRIFT` edge that contradicted the CONSENSUS verdict.
+- **Soname resolution count** (`adapters/dnf.py`): reports unique resolved
+  sonames, not per-claim occurrences (no more "12/6").
+- **SQLite capability lookup** (`store.py`): the `cap:` LIKE gained a trailing
+  wildcard, so a partial soname (`libssl`) matches `cap:rpm:libssl.so.3`,
+  mirroring the in-memory substring matcher.
+- **Independent `--imports-subject`** (`cli/main.py`): Python import evidence is
+  no longer attached via `--requirements-subject`; imports can target their own
+  RPM.
+- **Cargo skips workspace/root crates** (`dependency/native_resolvers.py`):
+  `cargo metadata` lists the local crate(s); its `workspace_members` are now
+  excluded from the resolved deps. The resolver-contract docstring distinguishes
+  request-matching from discovery resolvers (Go/Cargo legitimately return
+  `unresolved=()` on success).
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

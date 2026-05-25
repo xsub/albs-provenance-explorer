@@ -351,7 +351,9 @@ def _link_claims(graph: ProvenanceGraph, members: list[Node]) -> None:
             left_version = _version_of(left)
             right_version = _version_of(right)
             if left_version is not None and right_version is not None:
-                if left_version == right_version:
+                # Use rpmvercmp, not string equality, so 1.01 and 1.1 corroborate
+                # (matching the verdict path) instead of a false VERSION_DRIFT edge.
+                if version_compare(left_version, right_version) == 0:
                     graph.add_edge(left.id, right.id, Relation.CORROBORATES, on="version")
                 else:
                     graph.add_edge(

@@ -360,6 +360,9 @@ def coverage_command(
     imports: Optional[Path] = typer.Option(
         None, "--imports", help="Python source file: scan imports -> mapped PyPI claims."
     ),
+    imports_subject: Optional[str] = typer.Option(
+        None, "--imports-subject", help="Binary RPM the scanned imports belong to."
+    ),
     module_map: Optional[Path] = typer.Option(
         None, "--module-map", help="JSON {import_name: pypi_package} overriding the built-in map."
     ),
@@ -488,14 +491,14 @@ def coverage_command(
 
     import_result = None
     if imports is not None:
-        imports_subject = (
-            find_binary_rpm(graph, requirements_subject, arch=arch)
-            if requirements_subject
+        imports_node = (
+            find_binary_rpm(graph, imports_subject, arch=arch)
+            if imports_subject
             else select_default_binary_rpm(graph, arch=arch)
         )
         mapping = json.loads(module_map.read_text(encoding="utf-8")) if module_map else None
-        _log_step(verbose, f"Scanning Python imports in {imports} for {imports_subject.id}")
-        import_result = attach_python_imports(graph, imports_subject.id, imports, mapping=mapping)
+        _log_step(verbose, f"Scanning Python imports in {imports} for {imports_node.id}")
+        import_result = attach_python_imports(graph, imports_node.id, imports, mapping=mapping)
 
     errata_id = None
     if errata is not None:

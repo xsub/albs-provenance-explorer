@@ -45,15 +45,24 @@ def fetch_build_metadata(
     cache = Path(cache_path) if cache_path else None
     if cache and cache.exists() and not refresh_cache:
         cache_age = time.time() - cache.stat().st_mtime
-        if cache_age <= cache_ttl_seconds:
+        if cache_age > cache_ttl_seconds:
             if progress:
-                progress(f"Loading ALBS build metadata from fresh cache {cache}")
-            return parse_build_metadata(json.loads(cache.read_text(encoding="utf-8")))
-        if progress:
-            progress(
-                f"Ignoring stale ALBS metadata cache {cache} "
-                f"({cache_age:.0f}s old, ttl {cache_ttl_seconds}s)"
-            )
+                progress(
+                    f"Ignoring stale ALBS metadata cache {cache} "
+                    f"({cache_age:.0f}s old, ttl {cache_ttl_seconds}s)"
+                )
+        else:
+            cached = json.loads(cache.read_text(encoding="utf-8"))
+            # Guard against a reused cache path: only trust the cache when its
+            # build id matches the requested one. An absent id means a non-API
+            # fixture (the HTML fallback / synthetic), which we still accept.
+            cached_id = cached.get("id")
+            if cached_id is None or str(cached_id) == str(build_id):
+                if progress:
+                    progress(f"Loading ALBS build metadata from fresh cache {cache}")
+                return parse_build_metadata(cached)
+            if progress:
+                progress(f"Cache {cache} holds build {cached_id}, not {build_id}; refetching")
 
     root = base_url.rstrip("/")
     api_url = f"{root}/api/v1/builds/{build_id}/"

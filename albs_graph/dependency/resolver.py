@@ -88,10 +88,17 @@ class ResolverResult:
 class DependencyResolver(Protocol):
     """Anything that can turn a :class:`ResolverRequest` into concrete facts.
 
-    Implementations must not invent versions: every input spec ends up in
-    exactly one of ``resolved`` / ``unresolved``. Caching is the caller's
-    concern, keyed on :meth:`ResolverRequest.cache_key`; invalidation is
-    registry-state driven (a yank or deletion), not age-based.
+    Implementations must not invent versions. Two shapes are allowed:
+
+    * *request-matching* resolvers place every input ``request.requested`` spec
+      in exactly one of ``resolved`` / ``unresolved`` (e.g. ``NullResolver``
+      marks them all unresolvable); and
+    * *discovery* resolvers (Go, Cargo) enumerate the manifest's full resolved
+      tree into ``resolved`` and leave ``unresolved`` empty on success, marking
+      ``request.requested`` unresolvable only when the tool itself fails.
+
+    Caching is the caller's concern, keyed on :meth:`ResolverRequest.cache_key`;
+    invalidation is registry-state driven (a yank or deletion), not age-based.
     """
 
     ecosystem: Ecosystem

@@ -146,9 +146,12 @@ def sql_dependencies(
 
 
 def _matching_ids(connection: sqlite3.Connection, needle: str) -> list[str]:
+    # Trailing wildcard too, so a partial capability (`libssl`) matches
+    # `cap:rpm:libssl.so.3` -- mirroring the in-memory substring matcher rather
+    # than only an exact suffix.
     rows = connection.execute(
         "SELECT id FROM nodes WHERE label = ? OR id = ? OR id = ? OR id LIKE ?",
-        (needle, needle, f"pkg:{needle}", f"cap:%{needle}"),
+        (needle, needle, f"pkg:{needle}", f"cap:%{needle}%"),
     ).fetchall()
     return [row[0] for row in rows]
 

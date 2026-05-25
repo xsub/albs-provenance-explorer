@@ -49,6 +49,25 @@ def test_cargo_resolver_parses_packages() -> None:
     assert result.tool == "cargo"
 
 
+def test_cargo_resolver_skips_workspace_and_root_crates() -> None:
+    # cargo metadata lists the local crate(s) in `packages`; the workspace members
+    # are the package being built, not dependencies, so they must be dropped.
+    output = json.dumps(
+        {
+            "packages": [
+                {"name": "myapp", "version": "0.1.0", "id": "path+file:///proj#myapp@0.1.0"},
+                {"name": "serde", "version": "1.0.0", "id": "registry+https://x#serde@1.0.0"},
+            ],
+            "workspace_members": ["path+file:///proj#myapp@0.1.0"],
+        }
+    )
+    result = CargoResolver(runner=lambda _a, _c: (0, output)).resolve(
+        ResolverRequest(Ecosystem.CARGO, "/proj/Cargo.toml")
+    )
+
+    assert {s.identity.name for s in result.resolved} == {"serde"}  # myapp (root) excluded
+
+
 def test_resolver_for_factory() -> None:
     assert isinstance(resolver_for(Ecosystem.GO), GoResolver)
     assert isinstance(resolver_for(Ecosystem.CARGO), CargoResolver)

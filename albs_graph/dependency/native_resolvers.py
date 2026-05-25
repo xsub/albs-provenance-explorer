@@ -69,13 +69,19 @@ class CargoResolver:
         if returncode != 0:
             return _unresolved(request, "cargo", f"cargo metadata failed (exit {returncode})")
         try:
-            packages = json.loads(output).get("packages", [])
+            metadata = json.loads(output)
         except (ValueError, TypeError):
             return _unresolved(request, "cargo", "could not parse cargo metadata")
+        if not isinstance(metadata, dict):
+            return _unresolved(request, "cargo", "could not parse cargo metadata")
+        packages = metadata.get("packages", [])
+        # `cargo metadata` lists the local crate(s) too; the workspace members are
+        # the package being built, not its dependencies, so drop them.
+        workspace = set(metadata.get("workspace_members", []))
         resolved = [
             _resolved_spec(Ecosystem.CARGO, pkg["name"], pkg.get("version"), "cargo metadata")
             for pkg in packages
-            if isinstance(pkg, dict) and pkg.get("name")
+            if isinstance(pkg, dict) and pkg.get("name") and pkg.get("id") not in workspace
         ]
         return ResolverResult(request, resolved=tuple(resolved), unresolved=(), tool="cargo")
 
