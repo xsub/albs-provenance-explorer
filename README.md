@@ -335,6 +335,66 @@ albs-graph source-evidence sources/build-17812 --build-id 17812 --format json -o
 
 `source-evidence` starts from ALBS build metadata, attaches a hashed source-file inventory, parses RPM `.spec` files for `BuildRequires`, `Requires`, `Source` and `Patch`, and records detected ecosystem manifests such as `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `pom.xml` and Gradle build files. Manifest *detection* is evidence, not resolution; the separate `resolve` command runs native resolvers (Go and Cargo today) that consume those manifests and emit resolved dependency facts.
 
+## Coverage, enrichment and analysis
+
+The commands above build and inspect the provenance backbone; these realize the five coverage axes and the cost ladder, and project the graph for each consumer. All take either a live `--build-id` or a cached `--source` metadata JSON (shown here as `CACHE`).
+
+Five-axis coverage, then climb the cost ladder: rung 3 reads RPM headers over HTTP Range, rung 4 downloads full payloads and parses ELF (both network):
+
+```bash
+albs-graph coverage --source examples/live-build-17812/build-17812.albs.json
+albs-graph coverage --source CACHE --with-rpm-headers --arch x86_64 --limit 5
+albs-graph coverage --source CACHE --with-rpm-payloads --package nginx-core --arch x86_64
+```
+
+AlmaLinux-native resolution (rung 5; needs `dnf`/`rpmgraph` on the host, otherwise a graceful no-op):
+
+```bash
+albs-graph coverage --source CACHE --use-dnf --package nginx-core --arch x86_64
+albs-graph coverage --source CACHE --repograph appstream --arch x86_64
+albs-graph coverage --source CACHE --repograph-dot appstream.dot
+albs-graph coverage --source CACHE --resolve-sonames --arch x86_64
+```
+
+Attach evidence and run real verification (these move the `security_context` and `identity` axes):
+
+```bash
+albs-graph coverage --source CACHE --sbom sbom.json --sbom-subject nginx-core
+albs-graph coverage --source CACHE --requirements requirements.txt
+albs-graph coverage --source CACHE --errata errata.json --verify-cpe cpe-dict.json
+albs-graph coverage --source CACHE --verify-signatures --arch x86_64
+albs-graph coverage --source CACHE --use-cas
+```
+
+Trace any installed file back through its full lineage (source -> commit -> build -> RPM -> signature -> release -> deps):
+
+```bash
+albs-graph identify /usr/sbin/nginx --source CACHE
+```
+
+Build a repo-wide dependency **universe**, persist it to a low-footprint SQLite store, and traverse it (one-hop queries run in SQL without loading the whole graph):
+
+```bash
+albs-graph universe --repograph-dot appstream.dot --repograph-dot baseos.dot --save universe.db
+albs-graph universe --db universe.db --dependents-of libcrypto.so.3
+albs-graph universe --db universe.db --path-from nginx-core --path-to glibc --format svg -o path.svg
+```
+
+Resolve a language manifest with its native tool (Go `go list -m all`, Cargo `cargo metadata`) behind the resolver contract:
+
+```bash
+albs-graph resolve --ecosystem go --manifest ./go.mod
+albs-graph resolve --ecosystem cargo --manifest ./Cargo.toml --source CACHE --subject mypkg
+```
+
+Consumer reports projected from the same graph: vulnerability applicability, license rollup, and SLSA/in-toto provenance:
+
+```bash
+albs-graph vuln --source CACHE --errata errata.json --verify-cpe cpe-dict.json --cve-feed cve-feed.json
+albs-graph license --source CACHE --sbom-subject nginx-core
+albs-graph slsa nginx-core --source CACHE -o nginx-core.intoto.json
+```
+
 ## Model
 
 Canonical node types include:
@@ -399,11 +459,13 @@ For live ALBS builds, the adapter preserves `alma_commit_cas_hash` on the source
 
 ```text
 albs_graph/
-  model/        node, edge and graph core
-  dependency/   normalized dependency facts, context and coverage summaries
-  adapters/     ALBS, RPM, SBOM and errata ingestion
-  provenance/   trust-path and lineage analysis
+  model/        node, edge and graph core (canonical vocabulary)
+  dependency/   normalized dependency-claim model, resolver contract, native resolvers
+  adapters/     ingestion: ALBS, RPM header/payload (ELF), SBOM, errata, dnf, repograph, CAS, Python
+  security/     PURL/CPE identity, CPE verification, CVE-feed matching
+  provenance/   reconcile, five-axis coverage, trust path, identify, universe, vuln, license, slsa
   render/       JSON, DOT and SVG output
+  store.py      low-footprint SQLite persistence for the universe
   cli/          Typer CLI commands
   examples/     synthetic build metadata fixture
 tests/
