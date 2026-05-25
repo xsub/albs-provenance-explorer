@@ -1,103 +1,175 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1056" viewBox="0 0 1200 1056">
-<style>text{font-family:Inter,Arial,sans-serif;font-size:13px}.meta{fill:#607D8B;font-size:11px}.node{fill:#F8FAFC;stroke:#90A4AE;rx:6}.edge{stroke:#546E7A;stroke-width:1.4;marker-end:url(#arrow)}</style>
-<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#546E7A"/></marker></defs>
-<rect width="100%" height="100%" fill="white"/>
-<text x="40" y="34" font-size="18" font-weight="700">ALBS provenance graph</text>
-<text class="meta" x="40" y="56">Graphviz unavailable: [Errno 2] No such file or directory: 'dot'</text>
-<rect class="node" x="40" y="92" width="260" height="48"/>
-<text x="52" y="112">nginx</text>
-<text class="meta" x="52" y="130">source_package</text>
-<line class="edge" x1="318" y1="116" x2="538" y2="116"/>
-<text class="meta" text-anchor="middle" x="430" y="110">stored_in</text>
-<rect class="node" x="560" y="92" width="260" height="48"/>
-<text x="572" y="112">https://git.almalinux.org/rpms/ngi</text>
-<text class="meta" x="572" y="130">git_repository</text>
-<rect class="node" x="40" y="170" width="260" height="48"/>
-<text x="52" y="190">https://git.almalinux.org/rpms/ngi</text>
-<text class="meta" x="52" y="208">git_repository</text>
-<line class="edge" x1="318" y1="194" x2="538" y2="194"/>
-<text class="meta" text-anchor="middle" x="430" y="188">points_to</text>
-<rect class="node" x="560" y="170" width="260" height="48"/>
-<text x="572" y="190">28f9805350513bcbe76fc51fd6012055aa</text>
-<text class="meta" x="572" y="208">git_commit</text>
-<rect class="node" x="40" y="248" width="260" height="48"/>
-<text x="52" y="268">28f9805350513bcbe76fc51fd6012055aa</text>
-<text class="meta" x="52" y="286">git_commit</text>
-<line class="edge" x1="318" y1="272" x2="538" y2="272"/>
-<text class="meta" text-anchor="middle" x="430" y="266">authenticated_by</text>
-<rect class="node" x="560" y="248" width="260" height="48"/>
-<text x="572" y="268">28f9805350513bcbe76fc51fd6012055aa</text>
-<text class="meta" x="572" y="286">cas_attestation</text>
-<rect class="node" x="40" y="326" width="260" height="48"/>
-<text x="52" y="346">28f9805350513bcbe76fc51fd6012055aa</text>
-<text class="meta" x="52" y="364">cas_attestation</text>
-<line class="edge" x1="318" y1="350" x2="538" y2="350"/>
-<text class="meta" text-anchor="middle" x="430" y="344">built_by</text>
-<rect class="node" x="560" y="326" width="260" height="48"/>
-<text x="572" y="346">ALBS task 418779 x86_64</text>
-<text class="meta" x="572" y="364">build_task</text>
-<rect class="node" x="40" y="404" width="260" height="48"/>
-<text x="52" y="424">ALBS build 57810</text>
-<text class="meta" x="52" y="442">build_task</text>
-<line class="edge" x1="318" y1="428" x2="538" y2="428"/>
-<text class="meta" text-anchor="middle" x="430" y="422">derived_from</text>
-<rect class="node" x="560" y="404" width="260" height="48"/>
-<text x="572" y="424">ALBS task 418779 x86_64</text>
-<text class="meta" x="572" y="442">build_task</text>
-<rect class="node" x="40" y="482" width="260" height="48"/>
-<text x="52" y="502">ALBS task 418779 x86_64</text>
-<text class="meta" x="52" y="520">build_task</text>
-<line class="edge" x1="318" y1="506" x2="538" y2="506"/>
-<text class="meta" text-anchor="middle" x="430" y="500">built_in</text>
-<rect class="node" x="560" y="482" width="260" height="48"/>
-<text x="572" y="502">AlmaLinux-10 x86_64</text>
-<text class="meta" x="572" y="520">build_environment</text>
-<rect class="node" x="40" y="560" width="260" height="48"/>
-<text x="52" y="580">ALBS task 418779 x86_64</text>
-<text class="meta" x="52" y="598">build_task</text>
-<line class="edge" x1="318" y1="584" x2="538" y2="584"/>
-<text class="meta" text-anchor="middle" x="430" y="578">produces</text>
-<rect class="node" x="560" y="560" width="260" height="48"/>
-<text x="572" y="580">nginx-1.26.3-6.el10_2.3.src.rpm</text>
-<text class="meta" x="572" y="598">srpm</text>
-<rect class="node" x="40" y="638" width="260" height="48"/>
-<text x="52" y="658">nginx-1.26.3-6.el10_2.3.src.rpm</text>
-<text class="meta" x="52" y="676">srpm</text>
-<line class="edge" x1="318" y1="662" x2="538" y2="662"/>
-<text class="meta" text-anchor="middle" x="430" y="656">authenticated_by</text>
-<rect class="node" x="560" y="638" width="260" height="48"/>
-<text x="572" y="658">e26d5d3d54614ddf9b72c2d41e8f19e165</text>
-<text class="meta" x="572" y="676">cas_attestation</text>
-<rect class="node" x="40" y="716" width="260" height="48"/>
-<text x="52" y="736">ALBS task 418779 x86_64</text>
-<text class="meta" x="52" y="754">build_task</text>
-<line class="edge" x1="318" y1="740" x2="538" y2="740"/>
-<text class="meta" text-anchor="middle" x="430" y="734">produces</text>
-<rect class="node" x="560" y="716" width="260" height="48"/>
-<text x="572" y="736">nginx-core-1.26.3-6.el10_2.3.x86_6</text>
-<text class="meta" x="572" y="754">binary_rpm</text>
-<rect class="node" x="40" y="794" width="260" height="48"/>
-<text x="52" y="814">nginx-core-1.26.3-6.el10_2.3.x86_6</text>
-<text class="meta" x="52" y="832">binary_rpm</text>
-<line class="edge" x1="318" y1="818" x2="538" y2="818"/>
-<text class="meta" text-anchor="middle" x="430" y="812">authenticated_by</text>
-<rect class="node" x="560" y="794" width="260" height="48"/>
-<text x="572" y="814">300eb6e84d90e76cd26041ae3e3dee83f7</text>
-<text class="meta" x="572" y="832">cas_attestation</text>
-<rect class="node" x="40" y="872" width="260" height="48"/>
-<text x="52" y="892">nginx-core-1.26.3-6.el10_2.3.x86_6</text>
-<text class="meta" x="52" y="910">binary_rpm</text>
-<line class="edge" x1="318" y1="896" x2="538" y2="896"/>
-<text class="meta" text-anchor="middle" x="430" y="890">released_to</text>
-<rect class="node" x="560" y="872" width="260" height="48"/>
-<text x="572" y="892">ALBS release 35402</text>
-<text class="meta" x="572" y="910">repository_release</text>
-<rect class="node" x="40" y="950" width="260" height="48"/>
-<text x="52" y="970">nginx-core-1.26.3-6.el10_2.3.x86_6</text>
-<text class="meta" x="52" y="988">binary_rpm</text>
-<line class="edge" x1="318" y1="974" x2="538" y2="974"/>
-<text class="meta" text-anchor="middle" x="430" y="968">signed_as</text>
-<rect class="node" x="560" y="950" width="260" height="48"/>
-<text x="572" y="970">ALBS sign task 45219</text>
-<text class="meta" x="572" y="988">signature</text>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 9.0.0 (20230911.1827)
+ -->
+<!-- Title: albs_provenance Pages: 1 -->
+<svg width="2459pt" height="206pt"
+ viewBox="0.00 0.00 2458.64 206.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 202)">
+<title>albs_provenance</title>
+<polygon fill="white" stroke="none" points="-4,4 -4,-202 2454.64,-202 2454.64,4 -4,4"/>
+<!-- build:albs&#45;task:418779 -->
+<g id="node1" class="node">
+<title>build:albs&#45;task:418779</title>
+<path fill="#f3e5f5" stroke="black" d="M1526.1,-117C1526.1,-117 1363.83,-117 1363.83,-117 1357.83,-117 1351.83,-111 1351.83,-105 1351.83,-105 1351.83,-93 1351.83,-93 1351.83,-87 1357.83,-81 1363.83,-81 1363.83,-81 1526.1,-81 1526.1,-81 1532.1,-81 1538.1,-87 1538.1,-93 1538.1,-93 1538.1,-105 1538.1,-105 1538.1,-111 1532.1,-117 1526.1,-117"/>
+<text text-anchor="middle" x="1444.97" y="-96.62" font-family="Inter" font-size="10.00">build_task\nALBS task 418779 x86_64</text>
+</g>
+<!-- buildenv:AlmaLinux&#45;10:x86_64 -->
+<g id="node3" class="node">
+<title>buildenv:AlmaLinux&#45;10:x86_64</title>
+<path fill="#f5f5f5" stroke="black" d="M1838.37,-171C1838.37,-171 1655.1,-171 1655.1,-171 1649.1,-171 1643.1,-165 1643.1,-159 1643.1,-159 1643.1,-147 1643.1,-147 1643.1,-141 1649.1,-135 1655.1,-135 1655.1,-135 1838.37,-135 1838.37,-135 1844.37,-135 1850.37,-141 1850.37,-147 1850.37,-147 1850.37,-159 1850.37,-159 1850.37,-165 1844.37,-171 1838.37,-171"/>
+<text text-anchor="middle" x="1746.74" y="-150.62" font-family="Inter" font-size="10.00">build_environment\nAlmaLinux&#45;10 x86_64</text>
+</g>
+<!-- build:albs&#45;task:418779&#45;&gt;buildenv:AlmaLinux&#45;10:x86_64 -->
+<g id="edge6" class="edge">
+<title>build:albs&#45;task:418779&#45;&gt;buildenv:AlmaLinux&#45;10:x86_64</title>
+<path fill="none" stroke="#546e7a" d="M1538.35,-115.64C1568.96,-121.16 1603.34,-127.35 1635.17,-133.08"/>
+<polygon fill="#546e7a" stroke="#546e7a" points="1634.39,-135.43 1641.72,-134.26 1635.26,-130.61 1634.39,-135.43"/>
+<text text-anchor="middle" x="1575.6" y="-128.2" font-family="Inter" font-size="9.00">built_in</text>
+</g>
+<!-- rpm:6901620:nginx&#45;core&#45;1.26.3&#45;6.el10_2.3.x86_64.rpm -->
+<g id="node10" class="node">
+<title>rpm:6901620:nginx&#45;core&#45;1.26.3&#45;6.el10_2.3.x86_64.rpm</title>
+<path fill="#e0f7fa" stroke="black" d="M1868.37,-117C1868.37,-117 1625.1,-117 1625.1,-117 1619.1,-117 1613.1,-111 1613.1,-105 1613.1,-105 1613.1,-93 1613.1,-93 1613.1,-87 1619.1,-81 1625.1,-81 1625.1,-81 1868.37,-81 1868.37,-81 1874.37,-81 1880.37,-87 1880.37,-93 1880.37,-93 1880.37,-105 1880.37,-105 1880.37,-111 1874.37,-117 1868.37,-117"/>
+<text text-anchor="middle" x="1746.74" y="-96.62" font-family="Inter" font-size="10.00">binary_rpm\nnginx&#45;core&#45;1.26.3&#45;6.el10_2.3.x86_64.rpm</text>
+</g>
+<!-- build:albs&#45;task:418779&#45;&gt;rpm:6901620:nginx&#45;core&#45;1.26.3&#45;6.el10_2.3.x86_64.rpm -->
+<g id="edge9" class="edge">
+<title>build:albs&#45;task:418779&#45;&gt;rpm:6901620:nginx&#45;core&#45;1.26.3&#45;6.el10_2.3.x86_64.rpm</title>
+<path fill="none" stroke="#546e7a" d="M1538.35,-99C1559.27,-99 1581.94,-99 1604.36,-99"/>
+<polygon fill="#546e7a" stroke="#546e7a" points="1604.09,-101.45 1611.09,-99 1604.09,-96.55 1604.09,-101.45"/>
+<text text-anchor="middle" x="1575.6" y="-103.2" font-family="Inter" font-size="9.00">produces</text>
+</g>
+<!-- srpm:6900285:nginx&#45;1.26.3&#45;6.el10_2.3.src.rpm -->
+<g id="node13" class="node">
+<title>srpm:6900285:nginx&#45;1.26.3&#45;6.el10_2.3.src.rpm</title>
+<path fill="#e0f7fa" stroke="black" d="M1831.62,-50C1831.62,-50 1661.85,-50 1661.85,-50 1655.85,-50 1649.85,-44 1649.85,-38 1649.85,-38 1649.85,-26 1649.85,-26 1649.85,-20 1655.85,-14 1661.85,-14 1661.85,-14 1831.62,-14 1831.62,-14 1837.62,-14 1843.62,-20 1843.62,-26 1843.62,-26 1843.62,-38 1843.62,-38 1843.62,-44 1837.62,-50 1831.62,-50"/>
+<text text-anchor="middle" x="1746.74" y="-29.62" font-family="Inter" font-size="10.00">srpm\nnginx&#45;1.26.3&#45;6.el10_2.3.src.rpm</text>
+</g>
+<!-- build:albs&#45;task:418779&#45;&gt;srpm:6900285:nginx&#45;1.26.3&#45;6.el10_2.3.src.rpm -->
+<g id="edge7" class="edge">
+<title>build:albs&#45;task:418779&#45;&gt;srpm:6900285:nginx&#45;1.26.3&#45;6.el10_2.3.src.rpm</title>
+<path fill="none" stroke="#546e7a" d="M1528.67,-80.51C1567.83,-71.76 1614.69,-61.29 1654.84,-52.32"/>
+<polygon fill="#546e7a" stroke="#546e7a" points="1655.26,-54.73 1661.56,-50.81 1654.2,-49.95 1655.26,-54.73"/>
+<text text-anchor="middle" x="1575.6" y="-78.2" font-family="Inter" font-size="9.00">produces</text>
+</g>
+<!-- build:albs:57810 -->
+<g id="node2" class="node">
+<title>build:albs:57810</title>
+<path fill="#f3e5f5" stroke="black" d="M1163.96,-144C1163.96,-144 1039.94,-144 1039.94,-144 1033.94,-144 1027.94,-138 1027.94,-132 1027.94,-132 1027.94,-120 1027.94,-120 1027.94,-114 1033.94,-108 1039.94,-108 1039.94,-108 1163.96,-108 1163.96,-108 1169.96,-108 1175.96,-114 1175.96,-120 1175.96,-120 1175.96,-132 1175.96,-132 1175.96,-138 1169.96,-144 1163.96,-144"/>
+<text text-anchor="middle" x="1101.95" y="-123.62" font-family="Inter" font-size="10.00">build_task\nALBS build 57810</text>
+</g>
+<!-- build:albs:57810&#45;&gt;build:albs&#45;task:418779 -->
+<g id="edge5" class="edge">
+<title>build:albs:57810&#45;&gt;build:albs&#45;task:418779</title>
+<path fill="none" stroke="#546e7a" d="M1176.1,-120.21C1224.87,-116.35 1289.63,-111.22 1343.25,-106.97"/>
+<polygon fill="#546e7a" stroke="#546e7a" points="1343.12,-109.44 1349.91,-106.45 1342.74,-104.56 1343.12,-109.44"/>
+<text text-anchor="middle" x="1306.08" y="-115.2" font-family="Inter" font-size="9.00">derived_from</text>
+</g>
+<!-- cas:artifact:300eb6e84d90e76cd26041ae3e3dee83f7d735b3e30d9dd2719dc8b71ad04fef -->
+<g id="node4" class="node">
+<title>cas:artifact:300eb6e84d90e76cd26041ae3e3dee83f7d735b3e30d9dd2719dc8b71ad04fef</title>
+<path fill="#fff8e1" stroke="black" d="M2438.64,-198C2438.64,-198 1999.62,-198 1999.62,-198 1993.62,-198 1987.62,-192 1987.62,-186 1987.62,-186 1987.62,-174 1987.62,-174 1987.62,-168 1993.62,-162 1999.62,-162 1999.62,-162 2438.64,-162 2438.64,-162 2444.64,-162 2450.64,-168 2450.64,-174 2450.64,-174 2450.64,-186 2450.64,-186 2450.64,-192 2444.64,-198 2438.64,-198"/>
+<text text-anchor="middle" x="2219.13" y="-177.62" font-family="Inter" font-size="10.00">cas_attestation\n300eb6e84d90e76cd26041ae3e3dee83f7d735b3e30d9dd2719dc8b71ad04fef</text>
+</g>
+<!-- cas:artifact:e26d5d3d54614ddf9b72c2d41e8f19e1653a7cada9cb52a31237519aff70eeca -->
+<g id="node5" class="node">
+<title>cas:artifact:e26d5d3d54614ddf9b72c2d41e8f19e1653a7cada9cb52a31237519aff70eeca</title>
+<path fill="#fff8e1" stroke="black" d="M2434.14,-36C2434.14,-36 2004.12,-36 2004.12,-36 1998.12,-36 1992.12,-30 1992.12,-24 1992.12,-24 1992.12,-12 1992.12,-12 1992.12,-6 1998.12,0 2004.12,0 2004.12,0 2434.14,0 2434.14,0 2440.14,0 2446.14,-6 2446.14,-12 2446.14,-12 2446.14,-24 2446.14,-24 2446.14,-30 2440.14,-36 2434.14,-36"/>
+<text text-anchor="middle" x="2219.13" y="-15.62" font-family="Inter" font-size="10.00">cas_attestation\ne26d5d3d54614ddf9b72c2d41e8f19e1653a7cada9cb52a31237519aff70eeca</text>
+</g>
+<!-- cas:source:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd -->
+<g id="node6" class="node">
+<title>cas:source:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd</title>
+<path fill="#fff8e1" stroke="black" d="M1248.33,-90C1248.33,-90 955.56,-90 955.56,-90 949.56,-90 943.56,-84 943.56,-78 943.56,-78 943.56,-66 943.56,-66 943.56,-60 949.56,-54 955.56,-54 955.56,-54 1248.33,-54 1248.33,-54 1254.33,-54 1260.33,-60 1260.33,-66 1260.33,-66 1260.33,-78 1260.33,-78 1260.33,-84 1254.33,-90 1248.33,-90"/>
+<text text-anchor="middle" x="1101.95" y="-69.62" font-family="Inter" font-size="10.00">cas_attestation\n28f9805350513bcbe76fc51fd6012055aabf66bd</text>
+</g>
+<!-- cas:source:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd&#45;&gt;build:albs&#45;task:418779 -->
+<g id="edge4" class="edge">
+<title>cas:source:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd&#45;&gt;build:albs&#45;task:418779</title>
+<path fill="none" stroke="#546e7a" d="M1260.48,-84.47C1288.67,-86.7 1317.33,-88.97 1343.36,-91.04"/>
+<polygon fill="#546e7a" stroke="#546e7a" points="1343.04,-93.47 1350.21,-91.58 1343.43,-88.58 1343.04,-93.47"/>
+<text text-anchor="middle" x="1306.08" y="-95.2" font-family="Inter" font-size="9.00">built_by</text>
+</g>
+<!-- commit:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd -->
+<g id="node7" class="node">
+<title>commit:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd</title>
+<path fill="#e3f2fd" stroke="black" d="M824.31,-90C824.31,-90 549.54,-90 549.54,-90 543.54,-90 537.54,-84 537.54,-78 537.54,-78 537.54,-66 537.54,-66 537.54,-60 543.54,-54 549.54,-54 549.54,-54 824.31,-54 824.31,-54 830.31,-54 836.31,-60 836.31,-66 836.31,-66 836.31,-78 836.31,-78 836.31,-84 830.31,-90 824.31,-90"/>
+<text text-anchor="middle" x="686.93" y="-69.62" font-family="Inter" font-size="10.00">git_commit\n28f9805350513bcbe76fc51fd6012055aabf66bd</text>
+</g>
+<!-- commit:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd&#45;&gt;cas:source:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd -->
+<g id="edge3" class="edge">
+<title>commit:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd&#45;&gt;cas:source:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd</title>
+<path fill="none" stroke="#546e7a" d="M836.74,-72C868.6,-72 902.45,-72 934.92,-72"/>
+<polygon fill="#546e7a" stroke="#546e7a" points="934.62,-74.45 941.62,-72 934.62,-69.55 934.62,-74.45"/>
+<text text-anchor="middle" x="889.94" y="-76.2" font-family="Inter" font-size="9.00">authenticated_by</text>
+</g>
+<!-- git:https://git.almalinux.org/rpms/nginx.git -->
+<g id="node8" class="node">
+<title>git:https://git.almalinux.org/rpms/nginx.git</title>
+<path fill="#e3f2fd" stroke="black" d="M452.04,-90C452.04,-90 206.52,-90 206.52,-90 200.52,-90 194.52,-84 194.52,-78 194.52,-78 194.52,-66 194.52,-66 194.52,-60 200.52,-54 206.52,-54 206.52,-54 452.04,-54 452.04,-54 458.04,-54 464.04,-60 464.04,-66 464.04,-66 464.04,-78 464.04,-78 464.04,-84 458.04,-90 452.04,-90"/>
+<text text-anchor="middle" x="329.28" y="-69.62" font-family="Inter" font-size="10.00">git_repository\nhttps://git.almalinux.org/rpms/nginx.git</text>
+</g>
+<!-- git:https://git.almalinux.org/rpms/nginx.git&#45;&gt;commit:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd -->
+<g id="edge2" class="edge">
+<title>git:https://git.almalinux.org/rpms/nginx.git&#45;&gt;commit:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd</title>
+<path fill="none" stroke="#546e7a" d="M464.48,-72C485.42,-72 507.21,-72 528.61,-72"/>
+<polygon fill="#546e7a" stroke="#546e7a" points="528.59,-74.45 535.59,-72 528.59,-69.55 528.59,-74.45"/>
+<text text-anchor="middle" x="500.79" y="-76.2" font-family="Inter" font-size="9.00">points_to</text>
+</g>
+<!-- repo&#45;release:ALBS release 35402 -->
+<g id="node9" class="node">
+<title>repo&#45;release:ALBS release 35402</title>
+<path fill="#e8eaf6" stroke="black" d="M2307.02,-144C2307.02,-144 2131.24,-144 2131.24,-144 2125.24,-144 2119.24,-138 2119.24,-132 2119.24,-132 2119.24,-120 2119.24,-120 2119.24,-114 2125.24,-108 2131.24,-108 2131.24,-108 2307.02,-108 2307.02,-108 2313.02,-108 2319.02,-114 2319.02,-120 2319.02,-120 2319.02,-132 2319.02,-132 2319.02,-138 2313.02,-144 2307.02,-144"/>
+<text text-anchor="middle" x="2219.13" y="-123.62" font-family="Inter" font-size="10.00">repository_release\nALBS release 35402</text>
+</g>
+<!-- rpm:6901620:nginx&#45;core&#45;1.26.3&#45;6.el10_2.3.x86_64.rpm&#45;&gt;cas:artifact:300eb6e84d90e76cd26041ae3e3dee83f7d735b3e30d9dd2719dc8b71ad04fef -->
+<g id="edge10" class="edge">
+<title>rpm:6901620:nginx&#45;core&#45;1.26.3&#45;6.el10_2.3.x86_64.rpm&#45;&gt;cas:artifact:300eb6e84d90e76cd26041ae3e3dee83f7d735b3e30d9dd2719dc8b71ad04fef</title>
+<path fill="none" stroke="#546e7a" d="M1841.33,-117.49C1854.46,-120.25 1867.77,-123.13 1880.37,-126 1928.3,-136.91 1939.27,-144.12 1987.62,-153 2002,-155.64 2016.93,-158.07 2031.97,-160.31"/>
+<polygon fill="#546e7a" stroke="#546e7a" points="2031.56,-162.72 2038.84,-161.31 2032.27,-157.88 2031.56,-162.72"/>
+<text text-anchor="middle" x="1934" y="-153.2" font-family="Inter" font-size="9.00">authenticated_by</text>
+</g>
+<!-- rpm:6901620:nginx&#45;core&#45;1.26.3&#45;6.el10_2.3.x86_64.rpm&#45;&gt;repo&#45;release:ALBS release 35402 -->
+<g id="edge11" class="edge">
+<title>rpm:6901620:nginx&#45;core&#45;1.26.3&#45;6.el10_2.3.x86_64.rpm&#45;&gt;repo&#45;release:ALBS release 35402</title>
+<path fill="none" stroke="#546e7a" d="M1880.65,-106.63C1953.35,-110.8 2042.26,-115.91 2110.56,-119.83"/>
+<polygon fill="#546e7a" stroke="#546e7a" points="2110.15,-122.26 2117.28,-120.21 2110.43,-117.36 2110.15,-122.26"/>
+<text text-anchor="middle" x="1934" y="-115.2" font-family="Inter" font-size="9.00">released_to</text>
+</g>
+<!-- sig:albs:45219 -->
+<g id="node11" class="node">
+<title>sig:albs:45219</title>
+<path fill="#fff3e0" stroke="black" d="M2288.64,-90C2288.64,-90 2149.62,-90 2149.62,-90 2143.62,-90 2137.62,-84 2137.62,-78 2137.62,-78 2137.62,-66 2137.62,-66 2137.62,-60 2143.62,-54 2149.62,-54 2149.62,-54 2288.64,-54 2288.64,-54 2294.64,-54 2300.64,-60 2300.64,-66 2300.64,-66 2300.64,-78 2300.64,-78 2300.64,-84 2294.64,-90 2288.64,-90"/>
+<text text-anchor="middle" x="2219.13" y="-69.62" font-family="Inter" font-size="10.00">signature\nALBS sign task 45219</text>
+</g>
+<!-- rpm:6901620:nginx&#45;core&#45;1.26.3&#45;6.el10_2.3.x86_64.rpm&#45;&gt;sig:albs:45219 -->
+<g id="edge12" class="edge">
+<title>rpm:6901620:nginx&#45;core&#45;1.26.3&#45;6.el10_2.3.x86_64.rpm&#45;&gt;sig:albs:45219</title>
+<path fill="none" stroke="#546e7a" d="M1880.8,-91.26C1886.74,-90.92 1892.62,-90.58 1898.37,-90.25 1976.2,-85.77 2064.69,-80.72 2128.82,-77.07"/>
+<polygon fill="#546e7a" stroke="#546e7a" points="2128.95,-79.52 2135.8,-76.68 2128.67,-74.63 2128.95,-79.52"/>
+<text text-anchor="middle" x="1934" y="-95.2" font-family="Inter" font-size="9.00">signed_as</text>
+</g>
+<!-- src:nginx -->
+<g id="node12" class="node">
+<title>src:nginx</title>
+<path fill="#e8f5e9" stroke="black" d="M108.27,-90C108.27,-90 12,-90 12,-90 6,-90 0,-84 0,-78 0,-78 0,-66 0,-66 0,-60 6,-54 12,-54 12,-54 108.27,-54 108.27,-54 114.27,-54 120.27,-60 120.27,-66 120.27,-66 120.27,-78 120.27,-78 120.27,-84 114.27,-90 108.27,-90"/>
+<text text-anchor="middle" x="60.14" y="-69.62" font-family="Inter" font-size="10.00">source_package\nnginx</text>
+</g>
+<!-- src:nginx&#45;&gt;git:https://git.almalinux.org/rpms/nginx.git -->
+<g id="edge1" class="edge">
+<title>src:nginx&#45;&gt;git:https://git.almalinux.org/rpms/nginx.git</title>
+<path fill="none" stroke="#546e7a" d="M120.76,-72C140.27,-72 162.86,-72 185.81,-72"/>
+<polygon fill="#546e7a" stroke="#546e7a" points="185.76,-74.45 192.76,-72 185.76,-69.55 185.76,-74.45"/>
+<text text-anchor="middle" x="157.4" y="-76.2" font-family="Inter" font-size="9.00">stored_in</text>
+</g>
+<!-- srpm:6900285:nginx&#45;1.26.3&#45;6.el10_2.3.src.rpm&#45;&gt;cas:artifact:e26d5d3d54614ddf9b72c2d41e8f19e1653a7cada9cb52a31237519aff70eeca -->
+<g id="edge8" class="edge">
+<title>srpm:6900285:nginx&#45;1.26.3&#45;6.el10_2.3.src.rpm&#45;&gt;cas:artifact:e26d5d3d54614ddf9b72c2d41e8f19e1653a7cada9cb52a31237519aff70eeca</title>
+<path fill="none" stroke="#546e7a" d="M1844.06,-29.13C1884.8,-27.92 1934.2,-26.45 1983.56,-24.98"/>
+<polygon fill="#546e7a" stroke="#546e7a" points="1983.37,-27.44 1990.29,-24.78 1983.22,-22.54 1983.37,-27.44"/>
+<text text-anchor="middle" x="1934" y="-32.2" font-family="Inter" font-size="9.00">authenticated_by</text>
+</g>
+</g>
 </svg>
