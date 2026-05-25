@@ -319,6 +319,13 @@ Resolution fidelity follows the *resolving host's* repos: `dnf` and soname resol
 BUILD_ID=58167 PACKAGE=libsndfile ./example--almalinux-native.sh
 ```
 
+For a single end-to-end walk through most of the system (provenance trust path; `identify`, which points at a binary **file** and traces its full lineage; five-axis coverage up the cost ladder; SLSA/in-toto export; the `vuln` report; and the dependency `universe`), run the grand tour:
+
+```bash
+./example--tour.sh
+# retarget: BUILD_ID=58167 PACKAGE=libsndfile FILE=/usr/lib64/libsndfile.so.1 OWNER=libsndfile ./example--tour.sh
+```
+
 Inspect local RPM metadata:
 
 ```bash
