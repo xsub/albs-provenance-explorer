@@ -3,7 +3,7 @@
 The target: a unified, scalable provenance + dependency graph over ALBS builds
 that **resolves** dependencies (not merely declares them), disambiguates identity
 (PURL/CPE/CAS), captures static vs dynamic linkage, and serves three consumers
-equally — vuln triage, license compliance, reproducibility — while reporting the
+equally - vuln triage, license compliance, reproducibility - while reporting the
 irreducible residue honestly.
 
 This file describes the whole intended system. What is built today is a subset;
@@ -11,7 +11,7 @@ see the status markers and `limitations.md`.
 
 ---
 
-## 1. Objective function — five coverage axes
+## 1. Objective function - five coverage axes
 
 Success is measurable. Each axis is computed per build and aggregated; the goal
 is to push each toward 1.0 and enumerate what remains.
@@ -33,7 +33,7 @@ No axis may be sacrificed for another ("design for the union").
 - **All three consumers equally.** One conflict-aware graph that each consumer
   projects differently, rather than three pipelines.
 - **Model the disagreement.** When manifest / lockfile / resolver / artifact
-  disagree, record all of them as distinct evidence and emit a typed conflict —
+  disagree, record all of them as distinct evidence and emit a typed conflict -
   never pick a single "source of truth" and discard the rest.
 
 ---
@@ -67,11 +67,11 @@ Acquire only as much as a question needs; climb when the objective rewards it.
 | 5 | resolver execution (uv/mvn/cargo/go/libsolv) | compute + sandbox | resolved trees | **RPM done via `dnf repograph`/`rpmgraph`**; other ecosystems contract-only |
 
 Rung 3 is the maximal rung reachable with **current public access** because the
-RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse needed.
+RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed.
 
 ---
 
-## 5. Status — what is implemented
+## 5. Status - what is implemented
 
 - ✅ Conflict-aware claim/reconcile model (`provenance/reconcile.py`).
 - ✅ `ResolutionState` failure outcomes + `resolution_note`.
@@ -82,7 +82,7 @@ RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse need
 - ✅ CycloneDX-from-file SBOM claims (`adapters/sbom.py`): components become
   versioned dependency claims that raise the resolution axis and drift-check
   against other sources.
-- ✅ Rung 4: full payload ELF analysis (`adapters/elf.py`, `rpm_payload.py`) —
+- ✅ Rung 4: full payload ELF analysis (`adapters/elf.py`, `rpm_payload.py`) -
   own dependency-free ELF parser; recovers confirmed `DT_NEEDED`, RPATH/RUNPATH,
   dynamic-vs-static, `dlopen`, and Go/Rust toolchain. NEEDED claims corroborate
   rung-3 header sonames.
@@ -99,7 +99,7 @@ RPM header already carries `DT_NEEDED` sonames — no payload, no ELF parse need
   [--sbom FILE] [--repograph-dot FILE] [--package P] [--arch A] [--all-archs]`.
 - ✅ Soname → package resolution (`coverage --resolve-sonames` / `--provides-map`)
   bridging the soname↔package coordinate gap.
-- ✅ `identify <filepath>` — traces a file to every element behind its creation
+- ✅ `identify <filepath>` - traces a file to every element behind its creation
   and installation (source → commit → build → RPM → signature → release → deps).
 - ✅ Dependency **universe** + traversal (`universe` command): `universe_from_dot`
   builds a repo-wide graph (libc connected to everything that links it);
@@ -131,12 +131,12 @@ Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,
 provenance 1.00; live vault header reads added real sonames (`libssl.so.3`,
 `libcrypto.so.3`, `libperl.so.5.32`, …) lifting linkage 0.00 → 0.06; a CycloneDX
 SBOM attached to `nginx-core` resolved 5 package versions (resolution 0.25 over
-the 20 reconciled deps) — SBOM packages and header sonames coexisting with
+the 20 reconciled deps) - SBOM packages and header sonames coexisting with
 **zero** false conflicts.
 
 ---
 
-## 6. Roadmap — what is next
+## 6. Roadmap - what is next
 
 Ordered by value-per-effort and tractability under public access.
 
@@ -159,12 +159,12 @@ Ordered by value-per-effort and tractability under public access.
    cache so repeated `coverage` runs don't refetch.
 
 ### Medium term
-4. ✅ **Rung 4 — payload ELF analysis.** Done — downloads the payload, parses
+4. ✅ **Rung 4 - payload ELF analysis.** Done - downloads the payload, parses
    ELF `DT_NEEDED`/RPATH/RUNPATH/dlopen/linkage/toolchain, **and** reads
    `.go.buildinfo` so a static Go binary contributes a real module BOM
    (`go_static_claims` emits STATIC RESOLVED claims). Rust has no comparable
    embedded BOM, so it stays toolchain-detected.
-5. **Rung 5 — real resolvers behind the contract.** RPM via
+5. **Rung 5 - real resolvers behind the contract.** RPM via
    `dnf repograph`/`rpmgraph`; **Go** (`go list -m all`) and **Cargo**
    (`cargo metadata`) via `resolver_for` + the `resolve` command. Next: wire
    **pip/uv**, **Maven/Gradle**, **npm** the same way; feed repograph results
@@ -194,6 +194,6 @@ Ordered by value-per-effort and tractability under public access.
 - **Contract first.** Publish the dependency-fact envelope and node/edge
   vocabulary as a versioned contract; adapters and consumers depend on it.
 - **One adapter at a time.** Ship one ecosystem adapter against the contract
-  before adding more — adapter #2 is what reveals where the contract was wrong.
+  before adding more - adapter #2 is what reveals where the contract was wrong.
 - **"Couldn't resolve" is a deliverable.** Always report the unresolved /
   unverified residue; never claim 100% coverage.

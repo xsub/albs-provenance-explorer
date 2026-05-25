@@ -12,7 +12,7 @@ RPM/DNF use), so ranges are evaluated correctly rather than by string equality.
 The feed is supplied (offline, testable); pointing it at a real NVD/OSV export
 is a drop-in. The `distro_backport` flag from A1 still matters: a backported
 package keeps its upstream version, so a range match may be a false positive
-(the fix was backported without a version bump) — the report carries that
+(the fix was backported without a version bump) - the report carries that
 caveat rather than this module silently trusting the version.
 """
 

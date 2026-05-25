@@ -1,4 +1,4 @@
-"""rpmvercmp-style version comparison — a neutral, dependency-free utility.
+"""rpmvercmp-style version comparison - a neutral, dependency-free utility.
 
 Lives at the package root (depends on nothing) so both the security layer
 (CVE range matching) and the provenance layer (reconciler drift/range checks)

@@ -1,4 +1,4 @@
-"""Vulnerability-applicability report — the consumer payoff (F1).
+"""Vulnerability-applicability report - the consumer payoff (F1).
 
 Ties together what the other layers produced:
 
@@ -11,7 +11,7 @@ Ties together what the other layers produced:
   static objects (baked-in dependencies).
 
 It answers, per package, "what CVEs are in play here, with what confidence, and
-what is the reachability picture?" It does **not** invent CVE data — without a
+what is the reachability picture?" It does **not** invent CVE data - without a
 CVE feed it reports the CVEs already linked via errata; the identity/backport/
 linkage signals frame how reliable a naive version match would be.
 """

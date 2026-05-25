@@ -1,7 +1,7 @@
 # Limitations
 
 An honest register of what the system does **not** do today, why, and what would
-lift each limit. Stating the residue explicitly is part of the design goal — a
+lift each limit. Stating the residue explicitly is part of the design goal - a
 tool that hides its gaps is worse than one that names them.
 
 Coverage axes referenced below are defined in `plan.md`.
@@ -20,7 +20,7 @@ Two distinct facts here:
   retrieved with the `alma-sbom`/`cas` tooling, which require an API key and
   login. There is no documented anonymous read path, so nothing fetches an SBOM
   automatically. `coverage --sbom FILE` ingests a *provided* CycloneDX file (the
-  artifact `alma-sbom` produces) — that path is implemented; the credentialed
+  artifact `alma-sbom` produces) - that path is implemented; the credentialed
   fetch is not.
 - **The axis is binary-complete and needs errata too.** `security_context_complete`
   requires *both* an attached SBOM **and** an errata/CVE link. `coverage --errata
@@ -32,14 +32,14 @@ Two distinct facts here:
 ### `identity` needs a supplied CPE dictionary
 `coverage --verify-cpe FILE` moves the `identity` axis by matching
 `cpe_candidates` against a CPE dictionary, but:
-- **Dictionary is supplied, not fetched** — point it at an NVD cpe:2.3 export.
+- **Dictionary is supplied, not fetched** - point it at an NVD cpe:2.3 export.
   Without it the axis stays 0.00 (candidates remain unverified, by design).
 - **Ambiguous vendors are not asserted.** A product mapping to several vendors is
-  recorded as `ambiguous_vendor`, not verified — honest, but uncounted.
+  recorded as `ambiguous_vendor`, not verified - honest, but uncounted.
 - **Backport flag, not CVE math.** `.elN` releases are flagged `distro_backport`;
   full affected-range evaluation is the vuln-report's job, not CPE verification.
 
-### `resolution` ≈ 0.00 — sonames carry no version
+### `resolution` ≈ 0.00 - sonames carry no version
 Header-derived soname claims have no package version (the symbol version lives in
 the name, not a NEVRA), so each reconciles to `INSUFFICIENT_EVIDENCE`. The
 resolution axis only rises once a version-resolving source (SBOM or a real
@@ -50,7 +50,7 @@ resolver) is added.
 
 ## Rungs not yet implemented
 
-### Rung 4 — payload ELF analysis (implemented, with caveats)
+### Rung 4 - payload ELF analysis (implemented, with caveats)
 Implemented: full RPM download → cpio payload → ELF parse of confirmed
 `DT_NEEDED`, `DT_RPATH`/`DT_RUNPATH`, dynamic-vs-static linkage, a best-effort
 `dlopen` flag, and Go/Rust toolchain detection. Remaining limits:
@@ -71,11 +71,11 @@ Implemented: full RPM download → cpio payload → ELF parse of confirmed
   distro RPM binaries); objects stripped of sections return `is_elf=True` with
   empty analysis. 32-bit and big-endian are handled but exercised less.
 
-### Rung 5 — real per-ecosystem resolvers
+### Rung 5 - real per-ecosystem resolvers
 RPM resolution is available via `dnf repograph` / `rpmgraph`; **Go**
 (`go list -m all`) and **Cargo** (`cargo metadata`) now have real resolvers
 behind the contract (`resolve` command, decisions.md D32). Still on
-`NullResolver`: **pip/uv**, **Maven/Gradle**, **npm** — the contract is in place,
+`NullResolver`: **pip/uv**, **Maven/Gradle**, **npm** - the contract is in place,
 they just need wiring the same way. All resolvers are host tools: they run
 against a checked-out project on the host (the `resolve` CLI is host-side; the
 adapters are tested offline with injected runners).
@@ -164,7 +164,7 @@ The reconciler (see `decisions.md` D7, D26):
 `rpmkeys --checksig`, but:
 - **Host + network.** It needs `rpmkeys`/`rpm` with the AlmaLinux GPG keys
   imported, and downloads full RPMs (scope with `--package`/`--arch`/`--limit`).
-  Absent `rpmkeys` it records `unavailable` and skips downloads — never an error.
+  Absent `rpmkeys` it records `unavailable` and skips downloads - never an error.
 - **Report-only.** Like CAS, a successful check flips `signature_verified` /
   `externally_verified` but does **not** change the presence-based `provenance`
   axis; verification is surfaced separately.
@@ -179,7 +179,7 @@ not *cryptographically re-verified*.
 `--use-cas` is opt-in and crash-proof, but in practice the `cas` binary is now
 **uninstallable** (Codenotary changed product lines; `getcas.codenotary.io` and
 the GitHub releases 404). So on most hosts CAS verification records `unavailable`
-and changes nothing — by design, never an error. If you have a host that still
+and changes nothing - by design, never an error. If you have a host that still
 has `cas`, `--use-cas` will use it.
 
 ---
@@ -200,7 +200,7 @@ into PyPI claims, but:
 file to its owning package depends on:
 - `--owner` (explicit), or an `owner_lookup`, or ELF paths from rung-4 payload
   analysis, then host `rpm -qf` (installed files), then `dnf repoquery --file`
-  (repo files — works even when the package is not installed locally).
+  (repo files - works even when the package is not installed locally).
 - Full RPM **file lists are stored when rung-4 payload analysis has run**
   (`--with-rpm-payloads`), making any owned file (configs, docs) resolvable
   offline from graph data. Without payload analysis, a file that is neither
@@ -214,7 +214,7 @@ against the feed's affected ranges). Remaining limits:
 - **Feed is supplied, not fetched.** `--cve-feed FILE` takes a JSON feed; wiring
   a live NVD/OSV pull is the next step (the matcher is a drop-in).
 - **Backport matches are advisory.** A `distro_backport` package keeps its
-  upstream version, so a range match is flagged "verify" rather than asserted —
+  upstream version, so a range match is flagged "verify" rather than asserted -
   it may be a false positive (fix backported without a version bump).
 - **Reachability is a hint, not a proof.** `dlopen` / static counts indicate
   exposure breadth; they do not prove a specific CVE's code path is reachable.
@@ -230,7 +230,7 @@ positional argument (`dnf repograph appstream` is rejected). `run_repograph` and
 but:
 - **Sources are supplied, not fetched.** `build_arch_universe` merges many
   repograph dots / builds you provide, but there is no one-command "fetch +
-  repograph every repo of an arch" yet — you generate the dots on a host.
+  repograph every repo of an arch" yet - you generate the dots on a host.
 - **First definition wins on merge.** When the same `pkg:<name>` appears in
   several sources, `merge_graphs` keeps the first node's metadata (e.g. arch);
   edges from all sources are unioned.
@@ -262,7 +262,7 @@ The current implementation targets correctness and demonstrability, not the
 stated "thousands of applications":
 - Beyond the SQLite store, there is **no heavier query backend**; multi-hop
   traversal still happens in memory after a full load.
-- Header fetches are **sequential and uncached** — each `coverage --with-rpm-
+- Header fetches are **sequential and uncached** - each `coverage --with-rpm-
   headers` run refetches; there is no on-disk header cache and no parallelism.
 - Reconciliation is a single full pass; there is no incremental re-reconciliation
   as new evidence arrives.
@@ -275,7 +275,7 @@ stated "thousands of applications":
 
 Per the repo rule, tests never hit the network. The remote RPM path is exercised
 by serving a hand-built RPM byte structure through a fake range fetcher, so the
-parser, incremental fetch loop, and claim generation are covered — but **live
+parser, incremental fetch loop, and claim generation are covered - but **live
 vault/mirror behavior** (redirects, `Accept-Ranges` quirks, 404s, throttling) is
 only validated manually, not in CI.
 

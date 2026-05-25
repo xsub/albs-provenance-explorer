@@ -2,7 +2,7 @@
 
 These tools ship on AlmaLinux (dnf-plugins-core and rpm) and emit a package
 dependency graph in Graphviz dot. That is a *real* RPM resolution (libsolv /
-rpm's own dependency logic) — rung 5 for the RPM ecosystem, using the
+rpm's own dependency logic) - rung 5 for the RPM ecosystem, using the
 authoritative tooling rather than a reimplemented solver.
 
 This adapter parses dot edges and turns them into resolved dependency claims
@@ -139,7 +139,7 @@ def enrich_graph_with_rpmgraph(
 
 
 def _parse_node_token(token: str) -> tuple[str, str | None]:
-    """Split an RPM node label into (name, version) — handles NEVRA or bare name."""
+    """Split an RPM node label into (name, version) - handles NEVRA or bare name."""
 
     base = token
     for arch in _ARCH_SUFFIXES:

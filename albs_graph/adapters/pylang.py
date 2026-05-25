@@ -1,6 +1,6 @@
 """Python language dependencies: requirements.txt and import scanning.
 
-The graph is not RPM-only — application dependencies declared in language
+The graph is not RPM-only - application dependencies declared in language
 ecosystems are first-class evidence too. This adapter turns Python
 ``requirements.txt`` lines and top-level ``import`` statements into PyPI
 dependency claims that reconcile alongside RPM/SBOM/dnf claims.

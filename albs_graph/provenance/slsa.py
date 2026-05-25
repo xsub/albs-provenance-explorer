@@ -3,7 +3,7 @@
 The graph already holds the full backbone (source -> git commit -> build task ->
 artifact -> signature). This renders it as an in-toto Statement v1 carrying a
 SLSA provenance v1 predicate, the standard interchange format for supply-chain
-attestations — so the graph's provenance becomes consumable by SLSA-aware
+attestations - so the graph's provenance becomes consumable by SLSA-aware
 tooling, not just this CLI.
 
 It reports only what the graph contains (no fabricated fields). The subject

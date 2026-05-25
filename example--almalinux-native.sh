@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # AlmaLinux-native demo: exercises the native RPM/DNF stack as deeply as the
-# host allows. Every step is gated on tool availability and skips gracefully —
+# host allows. Every step is gated on tool availability and skips gracefully -
 # the script never hard-fails because a tool is missing.
 #
 # Native sources used:

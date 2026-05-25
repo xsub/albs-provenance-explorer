@@ -1,7 +1,7 @@
 """License-compliance rollup over SBOM component claims.
 
 Aggregates the licenses captured from CycloneDX components (by the SBOM ingest)
-into a per-license count plus an explicit "unlicensed" bucket — the license
+into a per-license count plus an explicit "unlicensed" bucket - the license
 view a compliance consumer needs. Reports only what the SBOM carried; components
 with no license field are surfaced as unknown rather than guessed.
 """

@@ -11,7 +11,7 @@ requirements to concrete provider NEVRAs and expose the full relation set:
 
 Everything shells out through an injectable runner, so the parsing is tested
 offline with canned ``dnf`` output. When ``dnf`` is absent the orchestrator
-returns ``available=False`` and changes nothing — it never crashes.
+returns ``available=False`` and changes nothing - it never crashes.
 """
 
 from __future__ import annotations

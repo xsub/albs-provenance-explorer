@@ -1,4 +1,4 @@
-"""The dependency "universe" — a traversable graph across many packages.
+"""The dependency "universe" - a traversable graph across many packages.
 
 Two ways to build it:
 
@@ -27,7 +27,7 @@ from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
 from .trust import make_binary_rpm_selector
 
 NodeSelector = Callable[[Node], bool]
-# "X requires Y" edges — used for dependents/dependencies (direction matters).
+# "X requires Y" edges - used for dependents/dependencies (direction matters).
 _REQUIRES_RELATIONS = (Relation.REQUIRES_RUNTIME, Relation.DECLARES_DEPENDENCY)
 # Traversal also follows PROVIDES so a soname capability bridges to its provider
 # package (cap:zlib -PROVIDES-> cap:libz.so.1) when walking chains.

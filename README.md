@@ -2,7 +2,7 @@
 
 `albs-provenance-explorer` is a read-only Python PoC that builds a provenance-aware graph over AlmaLinux Build System (ALBS), RPM, SBOM, CAS and errata data.
 
-It traces Enterprise Linux supply-chain lineage from source package to shipped artifact and layers a conflict-aware dependency model on top. Release context, errata linkage and build provenance sit next to the raw package relationships, so backported security fixes stay visible — a version that looks older than upstream can still carry the patch.
+It traces Enterprise Linux supply-chain lineage from source package to shipped artifact and layers a conflict-aware dependency model on top. Release context, errata linkage and build provenance sit next to the raw package relationships, so backported security fixes stay visible - a version that looks older than upstream can still carry the patch.
 
 ALBS is the provenance backbone:
 
@@ -88,7 +88,7 @@ Status is tracked in three honest buckets. "Couldn't resolve" is a deliverable h
 
 ### Partial
 
-- Python dependencies are recorded from `requirements.txt` and import scanning, but without a real pip/uv resolver — no transitive closure or environment-marker evaluation
+- Python dependencies are recorded from `requirements.txt` and import scanning, but without a real pip/uv resolver - no transitive closure or environment-marker evaluation
 - CPE verification and CVE-feed matching consume **supplied** dictionary/feed files; there is no live NVD or errata fetch yet
 - vault URL reconstruction is a heuristic over known AlmaLinux repo layouts, not an exhaustive mirror map
 - SQLite is a deliberately lightweight persistence layer for the PoC, not the final production graph platform
@@ -274,7 +274,7 @@ Focused graph:  examples/demo-build-17812/nginx-x86_64-trust.svg
 
 The numbered `Common RPM package set` counts package names, while the per-architecture `Artifacts` column counts ALBS artifact rows. For build `17812`, each binary platform has `18` common package names but `19` RPM artifact rows because ALBS also records the repeated SRPM evidence row: `16` arch-specific RPMs, `2` `noarch` RPMs and `1` SRPM. If a future build has architecture-specific differences, the `Package set` column reports `delta` with `+package` and `-package` entries instead of `common`.
 
-The shell wrapper is thin — it only passes parameters into `python3 -m albs_graph.cli.demo_verbose`; fetching, graph construction, inventory, timing analysis and rendering all live in Python modules.
+The shell wrapper is thin - it only passes parameters into `python3 -m albs_graph.cli.demo_verbose`; fetching, graph construction, inventory, timing analysis and rendering all live in Python modules.
 
 ALBS builds usually produce many artifacts per build task architecture: binary RPMs, subpackages, modules, `debuginfo`, `debugsource`, repeated SRPM evidence, `noarch` outputs and build logs/configuration artifacts. The verbose demo writes this as `build-<id>-artifact-inventory.json` in the demo output directory.
 
@@ -363,7 +363,7 @@ The system separates three concerns that are often conflated in dependency graph
 
 - provenance backbone: ALBS source, build, artifact, signature, release and CAS evidence
 - dependency facts: normalized package identities, scopes, constraints, contexts and observed components
-- resolver implementations: ecosystem-specific logic behind a typed contract — implemented for RPM (`dnf`/`rpmgraph`), Go and Cargo; Pip, Poetry, Maven, Gradle and npm still to come
+- resolver implementations: ecosystem-specific logic behind a typed contract - implemented for RPM (`dnf`/`rpmgraph`), Go and Cargo; Pip, Poetry, Maven, Gradle and npm still to come
 
 The current code implements the provenance layer, RPM/SBOM/header/ELF evidence, source evidence discovery, and real resolution for the Enterprise Linux (RPM) case plus Go and Cargo. The remaining resolver layer consumes the detected project manifests and lockfiles for the other ecosystems, runs their native resolution strategies behind the same contract, and emits resolved dependency facts back into this graph.
 
@@ -380,7 +380,7 @@ Trust-path reports separate source-to-artifact provenance from security context 
 
 The SBOM adapter imports SPDX JSON and CycloneDX JSON as provenance evidence using `sbom` nodes and `described_by` edges. ALBS source and RPM artifact trust evidence is modeled as `cas_attestation` nodes connected with `authenticated_by` edges, matching the Codenotary CAS/BOM shape used by AlmaLinux SBOM integration.
 
-For live ALBS builds, the adapter preserves `alma_commit_cas_hash` on the source commit path and artifact `cas_hash` values on SRPM/RPM outputs. These fields are CAS evidence as reported by ALBS; a verification step marks them externally verified when it succeeds — `coverage --use-cas` for CAS hashes, or `coverage --verify-signatures` for GPG signatures.
+For live ALBS builds, the adapter preserves `alma_commit_cas_hash` on the source commit path and artifact `cas_hash` values on SRPM/RPM outputs. These fields are CAS evidence as reported by ALBS; a verification step marks them externally verified when it succeeds - `coverage --use-cas` for CAS hashes, or `coverage --verify-signatures` for GPG signatures.
 
 ## Layout
 

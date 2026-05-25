@@ -1,4 +1,4 @@
-"""RPM GPG signature verification — real provenance verification.
+"""RPM GPG signature verification - real provenance verification.
 
 ALBS gives us signature *nodes* (from sign tasks), but until now nothing checked
 the actual RPM's GPG signature. With Codenotary CAS gone, this is the verification

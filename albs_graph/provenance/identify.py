@@ -1,10 +1,10 @@
-"""``identify`` — trace every element behind a file in the distribution.
+"""``identify`` - trace every element behind a file in the distribution.
 
 Given a path (``/usr/sbin/nginx``, a config, a doc, anything), find the package
 that owns it and walk the provenance graph to report the full lineage: the
 source package, git repo + commit, CAS source attestation, build task and
 environment, SRPM, the binary RPM itself, its signature, release repository,
-artifact CAS attestation, attached SBOM, and its resolved dependencies — i.e.
+artifact CAS attestation, attached SBOM, and its resolved dependencies - i.e.
 everything that took part in creating and installing that entity.
 
 Ownership is resolved from (in order): an explicit ``owner_package``, an

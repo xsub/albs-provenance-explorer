@@ -1,7 +1,7 @@
 """Low-footprint SQLite persistence for a ProvenanceGraph / universe.
 
 Deliberately minimal: stdlib ``sqlite3`` + JSON metadata, no extensions, no
-external dependencies, no graph-DB. It gives "build once, query later" — persist
+external dependencies, no graph-DB. It gives "build once, query later" - persist
 a (possibly large arch-wide) universe to a single file and either reload it whole
 (`load_graph`) or run common one-hop queries directly in SQL without loading
 everything into memory (`sql_dependents` / `sql_dependencies`).
