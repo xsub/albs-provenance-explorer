@@ -790,6 +790,25 @@ Verified live: an el10 appstream universe now connects 3000+ packages and
 
 ---
 
+## D36 - Per-source attribution for multi-source (batch) builds
+
+**Files:** `adapters/albs.py` (`_graph_from_albs_api_build`, `_source_package_name`)
+
+An ALBS build can bundle many source packages (build 57810: 91 SRPMs across 12
+sources). The adapter modelled a single build-level `source_package` (from the
+first/representative SRPM), so every binary RPM's trust path resolved to that
+one source -- e.g. `nginx-core` traced to `nghttp2`. Now each task gets its own
+source chain (`source_package -> git_repository -> git_commit`) derived from the
+task's own `ref` + SRPM, and the task's CAS attestation links to that per-task
+commit. The package name stays SRPM-authoritative (the git ref/url can be a
+non-authoritative mirror, per `_package_from_build_metadata`).
+`source_to_artifact_path` already walks the binary's own task->cas->commit->
+source edges, so `identify`/`trust-path` now report the correct source per
+binary. Ref-less / single-package builds (e.g. 17812) fall back to the
+build-level source, so they are unchanged.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

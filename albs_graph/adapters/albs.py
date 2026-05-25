@@ -236,6 +236,18 @@ def graph_from_build_metadata(build: AlbsBuildMetadata) -> ProvenanceGraph:
     return graph
 
 
+def _source_package_name(git_url: str) -> str:
+    """Derive a source package name from its git URL.
+
+    ``https://git.almalinux.org/rpms/nginx.git`` -> ``nginx``. Used so a
+    multi-source (batch) build attributes each task to its own source rather
+    than a single build-level package.
+    """
+
+    tail = git_url.rstrip("/").rsplit("/", 1)[-1]
+    return tail[:-4] if tail.endswith(".git") else tail
+
+
 def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
     graph = ProvenanceGraph()
     source_id = f"src:{build.package}"
@@ -302,8 +314,46 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
         ref = task.get("ref") or {}
         platform_name = str(platform.get("name") or "")
         distro = _distro_from_platform(platform_name)
+        # Each ALBS task builds one source package; attribute the source per task
+        # from its own ref so a multi-source (batch) build is not collapsed into a
+        # single source_package node. A ref-less task falls back to the build-level
+        # source, so single-package builds are unchanged. (decisions.md D36)
+        task_repo = str(ref.get("url") or build.source_repository or "")
+        task_commit = str(ref.get("git_commit_hash") or build.commit or "")
+        srpm_name = _task_srpm_name(task)
+        # The SRPM filename is authoritative for the package name (the git ref/url
+        # can be a non-authoritative mirror), matching _package_from_build_metadata.
+        task_pkg = (
+            (_source_name_from_rpm_filename(srpm_name) if srpm_name else None)
+            or _source_name_from_git_ref(str(ref.get("git_ref") or ""))
+            or (_source_package_name(task_repo) if task_repo else None)
+            or build.package
+        )
+        t_src_id = f"src:{task_pkg}"
+        t_repo_id = f"git:{task_repo}" if task_repo else repo_id
+        t_commit_id = f"commit:{task_pkg}:{task_commit}"
+        if t_src_id not in graph.nodes:
+            graph.add_node(
+                Node(
+                    t_src_id,
+                    NodeType.SOURCE_PACKAGE,
+                    task_pkg,
+                    {"ecosystem": "rpm", "albs_package_source": build.package_source},
+                )
+            )
+        if t_repo_id not in graph.nodes:
+            graph.add_node(
+                Node(t_repo_id, NodeType.GIT_REPOSITORY, task_repo, {"system": "ALBS"})
+            )
+            graph.add_edge(t_src_id, t_repo_id, Relation.STORED_IN)
+        if t_commit_id not in graph.nodes:
+            graph.add_node(
+                Node(t_commit_id, NodeType.GIT_COMMIT, task_commit, {"package": task_pkg})
+            )
+            graph.add_edge(t_repo_id, t_commit_id, Relation.POINTS_TO)
+
         task_cas = task.get("alma_commit_cas_hash") or build.source_cas_hash
-        task_cas_id = f"cas:source:{build.package}:{task_cas or build.commit}"
+        task_cas_id = f"cas:source:{task_pkg}:{task_cas or task_commit}"
         task_cas_metadata = _cas_evidence_metadata(
             "source_commit",
             task_cas,
@@ -321,11 +371,11 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
                 Node(
                     task_cas_id,
                     NodeType.CAS_ATTESTATION,
-                    str(task_cas or f"unverified source commit {build.commit}"),
+                    str(task_cas or f"unverified source commit {task_commit}"),
                     task_cas_metadata,
                 )
             )
-            graph.add_edge(commit_id, task_cas_id, Relation.AUTHENTICATED_BY)
+            graph.add_edge(t_commit_id, task_cas_id, Relation.AUTHENTICATED_BY)
         else:
             _merge_node_metadata(graph, task_cas_id, task_cas_metadata)
 
@@ -361,7 +411,6 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
             )
         graph.add_edge(task_id, env_id, Relation.BUILT_IN)
 
-        srpm_name = _task_srpm_name(task)
         for artifact in task.get("artifacts", []):
             if artifact.get("type") != "rpm":
                 continue

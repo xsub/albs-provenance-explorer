@@ -1,6 +1,50 @@
 from __future__ import annotations
 
 from albs_graph.adapters.albs import graph_from_build_metadata, parse_build_metadata
+from albs_graph.model import NodeType
+
+
+def test_multi_source_build_attributes_each_binary_to_its_own_source() -> None:
+    # A batch build with two source packages: each binary must trace to ITS own
+    # source, not a single build-level package (regression: nginx-core -> nghttp2).
+    metadata = parse_build_metadata(
+        {
+            "id": 99,
+            "tasks": [
+                {
+                    "id": 1,
+                    "arch": "x86_64",
+                    "ref": {"url": "https://git.almalinux.org/rpms/nginx.git", "git_commit_hash": "aaa"},
+                    "artifacts": [
+                        {"id": 10, "type": "rpm", "name": "nginx-1.26.3-6.el10.src.rpm"},
+                        {"id": 11, "type": "rpm", "name": "nginx-core-1.26.3-6.el10.x86_64.rpm"},
+                    ],
+                },
+                {
+                    "id": 2,
+                    "arch": "x86_64",
+                    "ref": {"url": "https://git.almalinux.org/rpms/nghttp2.git", "git_commit_hash": "bbb"},
+                    "artifacts": [
+                        {"id": 20, "type": "rpm", "name": "nghttp2-1.68.0-3.el10.src.rpm"},
+                        {"id": 21, "type": "rpm", "name": "libnghttp2-1.68.0-3.el10.x86_64.rpm"},
+                    ],
+                },
+            ],
+        }
+    )
+    graph = graph_from_build_metadata(metadata)
+
+    def source_of(label_substr: str) -> str:
+        rpm = next(
+            n for n in graph.find_by_type(NodeType.BINARY_RPM) if label_substr in n.label
+        )
+        path = graph.source_to_artifact_path(rpm.id)
+        return graph.nodes[path[0]].label  # path[0] is the source_package node
+
+    assert source_of("nginx-core") == "nginx"
+    assert source_of("libnghttp2") == "nghttp2"
+    assert "src:nginx" in graph.nodes
+    assert "src:nghttp2" in graph.nodes
 
 
 def test_parse_build_metadata_extracts_package_from_srpm_artifact() -> None:
