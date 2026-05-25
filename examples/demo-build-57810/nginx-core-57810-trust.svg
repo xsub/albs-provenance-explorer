@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1056" viewBox="0 0 1200 1056">
+<style>text{font-family:Inter,Arial,sans-serif;font-size:13px}.meta{fill:#607D8B;font-size:11px}.node{fill:#F8FAFC;stroke:#90A4AE;rx:6}.edge{stroke:#546E7A;stroke-width:1.4;marker-end:url(#arrow)}</style>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#546E7A"/></marker></defs>
+<rect width="100%" height="100%" fill="white"/>
+<text x="40" y="34" font-size="18" font-weight="700">ALBS provenance graph</text>
+<text class="meta" x="40" y="56">Graphviz unavailable: [Errno 2] No such file or directory: 'dot'</text>
+<rect class="node" x="40" y="92" width="260" height="48"/>
+<text x="52" y="112">nginx</text>
+<text class="meta" x="52" y="130">source_package</text>
+<line class="edge" x1="318" y1="116" x2="538" y2="116"/>
+<text class="meta" text-anchor="middle" x="430" y="110">stored_in</text>
+<rect class="node" x="560" y="92" width="260" height="48"/>
+<text x="572" y="112">https://git.almalinux.org/rpms/ngi</text>
+<text class="meta" x="572" y="130">git_repository</text>
+<rect class="node" x="40" y="170" width="260" height="48"/>
+<text x="52" y="190">https://git.almalinux.org/rpms/ngi</text>
+<text class="meta" x="52" y="208">git_repository</text>
+<line class="edge" x1="318" y1="194" x2="538" y2="194"/>
+<text class="meta" text-anchor="middle" x="430" y="188">points_to</text>
+<rect class="node" x="560" y="170" width="260" height="48"/>
+<text x="572" y="190">28f9805350513bcbe76fc51fd6012055aa</text>
+<text class="meta" x="572" y="208">git_commit</text>
+<rect class="node" x="40" y="248" width="260" height="48"/>
+<text x="52" y="268">28f9805350513bcbe76fc51fd6012055aa</text>
+<text class="meta" x="52" y="286">git_commit</text>
+<line class="edge" x1="318" y1="272" x2="538" y2="272"/>
+<text class="meta" text-anchor="middle" x="430" y="266">authenticated_by</text>
+<rect class="node" x="560" y="248" width="260" height="48"/>
+<text x="572" y="268">28f9805350513bcbe76fc51fd6012055aa</text>
+<text class="meta" x="572" y="286">cas_attestation</text>
+<rect class="node" x="40" y="326" width="260" height="48"/>
+<text x="52" y="346">28f9805350513bcbe76fc51fd6012055aa</text>
+<text class="meta" x="52" y="364">cas_attestation</text>
+<line class="edge" x1="318" y1="350" x2="538" y2="350"/>
+<text class="meta" text-anchor="middle" x="430" y="344">built_by</text>
+<rect class="node" x="560" y="326" width="260" height="48"/>
+<text x="572" y="346">ALBS task 418779 x86_64</text>
+<text class="meta" x="572" y="364">build_task</text>
+<rect class="node" x="40" y="404" width="260" height="48"/>
+<text x="52" y="424">ALBS build 57810</text>
+<text class="meta" x="52" y="442">build_task</text>
+<line class="edge" x1="318" y1="428" x2="538" y2="428"/>
+<text class="meta" text-anchor="middle" x="430" y="422">derived_from</text>
+<rect class="node" x="560" y="404" width="260" height="48"/>
+<text x="572" y="424">ALBS task 418779 x86_64</text>
+<text class="meta" x="572" y="442">build_task</text>
+<rect class="node" x="40" y="482" width="260" height="48"/>
+<text x="52" y="502">ALBS task 418779 x86_64</text>
+<text class="meta" x="52" y="520">build_task</text>
+<line class="edge" x1="318" y1="506" x2="538" y2="506"/>
+<text class="meta" text-anchor="middle" x="430" y="500">built_in</text>
+<rect class="node" x="560" y="482" width="260" height="48"/>
+<text x="572" y="502">AlmaLinux-10 x86_64</text>
+<text class="meta" x="572" y="520">build_environment</text>
+<rect class="node" x="40" y="560" width="260" height="48"/>
+<text x="52" y="580">ALBS task 418779 x86_64</text>
+<text class="meta" x="52" y="598">build_task</text>
+<line class="edge" x1="318" y1="584" x2="538" y2="584"/>
+<text class="meta" text-anchor="middle" x="430" y="578">produces</text>
+<rect class="node" x="560" y="560" width="260" height="48"/>
+<text x="572" y="580">nginx-1.26.3-6.el10_2.3.src.rpm</text>
+<text class="meta" x="572" y="598">srpm</text>
+<rect class="node" x="40" y="638" width="260" height="48"/>
+<text x="52" y="658">nginx-1.26.3-6.el10_2.3.src.rpm</text>
+<text class="meta" x="52" y="676">srpm</text>
+<line class="edge" x1="318" y1="662" x2="538" y2="662"/>
+<text class="meta" text-anchor="middle" x="430" y="656">authenticated_by</text>
+<rect class="node" x="560" y="638" width="260" height="48"/>
+<text x="572" y="658">e26d5d3d54614ddf9b72c2d41e8f19e165</text>
+<text class="meta" x="572" y="676">cas_attestation</text>
+<rect class="node" x="40" y="716" width="260" height="48"/>
+<text x="52" y="736">ALBS task 418779 x86_64</text>
+<text class="meta" x="52" y="754">build_task</text>
+<line class="edge" x1="318" y1="740" x2="538" y2="740"/>
+<text class="meta" text-anchor="middle" x="430" y="734">produces</text>
+<rect class="node" x="560" y="716" width="260" height="48"/>
+<text x="572" y="736">nginx-core-1.26.3-6.el10_2.3.x86_6</text>
+<text class="meta" x="572" y="754">binary_rpm</text>
+<rect class="node" x="40" y="794" width="260" height="48"/>
+<text x="52" y="814">nginx-core-1.26.3-6.el10_2.3.x86_6</text>
+<text class="meta" x="52" y="832">binary_rpm</text>
+<line class="edge" x1="318" y1="818" x2="538" y2="818"/>
+<text class="meta" text-anchor="middle" x="430" y="812">authenticated_by</text>
+<rect class="node" x="560" y="794" width="260" height="48"/>
+<text x="572" y="814">300eb6e84d90e76cd26041ae3e3dee83f7</text>
+<text class="meta" x="572" y="832">cas_attestation</text>
+<rect class="node" x="40" y="872" width="260" height="48"/>
+<text x="52" y="892">nginx-core-1.26.3-6.el10_2.3.x86_6</text>
+<text class="meta" x="52" y="910">binary_rpm</text>
+<line class="edge" x1="318" y1="896" x2="538" y2="896"/>
+<text class="meta" text-anchor="middle" x="430" y="890">released_to</text>
+<rect class="node" x="560" y="872" width="260" height="48"/>
+<text x="572" y="892">ALBS release 35402</text>
+<text class="meta" x="572" y="910">repository_release</text>
+<rect class="node" x="40" y="950" width="260" height="48"/>
+<text x="52" y="970">nginx-core-1.26.3-6.el10_2.3.x86_6</text>
+<text class="meta" x="52" y="988">binary_rpm</text>
+<line class="edge" x1="318" y1="974" x2="538" y2="974"/>
+<text class="meta" text-anchor="middle" x="430" y="968">signed_as</text>
+<rect class="node" x="560" y="950" width="260" height="48"/>
+<text x="572" y="970">ALBS sign task 45219</text>
+<text class="meta" x="572" y="988">signature</text>
+</svg>
