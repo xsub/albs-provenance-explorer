@@ -101,6 +101,66 @@ def build_elf(
     return ehdr + bytes(body) + sh
 
 
+def _uvarint(value: int) -> bytes:
+    out = bytearray()
+    while True:
+        byte = value & 0x7F
+        value >>= 7
+        if value:
+            out.append(byte | 0x80)
+        else:
+            out.append(byte)
+            return bytes(out)
+
+
+def _go_buildinfo_blob(go_version: str, deps: tuple[tuple[str, str], ...]) -> bytes:
+    lines = ["path\tmymod", "mod\tmymod\tv0.0.0\t"]
+    lines += [f"dep\t{module}\t{version}\t" for module, version in deps]
+    content = ("\n".join(lines) + "\n").encode()  # must end with newline
+    sentinel = b"\x00" * 16
+    modinfo = sentinel + content + sentinel
+    header = b"\xff Go buildinf:" + bytes([8, 0x02]) + b"\x00" * 16  # 32-byte inline header
+    version = go_version.encode()
+    return header + _uvarint(len(version)) + version + _uvarint(len(modinfo)) + modinfo
+
+
+def build_go_elf(
+    *,
+    go_version: str = "go1.21.0",
+    deps: tuple[tuple[str, str], ...] = (
+        ("github.com/foo/bar", "v1.2.3"),
+        ("golang.org/x/sys", "v0.10.0"),
+    ),
+) -> bytes:
+    """A minimal ELF carrying a .go.buildinfo section (Go 1.18+ inline format)."""
+
+    blob = _go_buildinfo_blob(go_version, deps)
+    shstr = b"\x00.shstrtab\x00.go.buildinfo\x00"
+    n_shstrtab = shstr.index(b".shstrtab")
+    n_buildinfo = shstr.index(b".go.buildinfo")
+    ehsize = 64
+    body = bytearray()
+    o_blob = ehsize + len(body)
+    body += blob
+    o_shstr = ehsize + len(body)
+    body += shstr
+    while (ehsize + len(body)) % 8:
+        body += b"\x00"
+    o_sh = ehsize + len(body)
+
+    def shdr(name: int, stype: int, offset: int, size: int) -> bytes:
+        return struct.pack("<IIQQQQIIQQ", name, stype, 0, 0, offset, size, 0, 0, 1, 0)
+
+    sh = shdr(0, 0, 0, 0) + shdr(n_shstrtab, 3, o_shstr, len(shstr)) + shdr(
+        n_buildinfo, 1, o_blob, len(blob)
+    )
+    ident = b"\x7fELF" + bytes([2, 1, 1, 0]) + b"\x00" * 8
+    ehdr = ident + struct.pack(
+        "<HHIQQQIHHHHHH", 2, 0x3E, 1, 0, 0, o_sh, 0, ehsize, 0, 0, 64, 3, 1
+    )
+    return ehdr + bytes(body) + sh
+
+
 def _rpm_section(entries: list[tuple[int, int, object]]) -> bytes:
     store = bytearray()
     index: list[tuple[int, int, int, int]] = []

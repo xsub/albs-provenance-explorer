@@ -40,10 +40,11 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
 
 ## C. Complete rung 4 (static linkage is invisible today)
 
-- **C1 — Go `.go.buildinfo` / Rust metadata module extraction.** Turn "toolchain
-  detected" into actual static dependency *claims*. Statically-linked deps
-  currently contribute a flag but no edges, capping the `linkage` axis.
-  *Effort: medium-high (binary buildinfo parsing).*
+- **C1 — Go `.go.buildinfo` module extraction.** ✅ Done — the ELF parser reads
+  `.go.buildinfo` (inline format) and `go_static_claims` emits Go STATIC RESOLVED
+  dependency claims, so a static Go binary contributes a real module BOM.
+  *(decisions.md D29)* Rust has no comparable embedded BOM; it stays
+  toolchain-detected.
 
 ## D. Real verification (CAS is gone; this is the verification story now)
 

@@ -58,6 +58,7 @@ class PayloadEnrichmentResult:
     elf_objects: int
     soname_claims: int
     static_objects: int
+    go_claims: int = 0
     failures: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict[str, object]:
@@ -67,6 +68,7 @@ class PayloadEnrichmentResult:
             "elf_objects": self.elf_objects,
             "soname_claims": self.soname_claims,
             "static_objects": self.static_objects,
+            "go_claims": self.go_claims,
             "failures": list(self.failures),
         }
 
@@ -128,6 +130,29 @@ def payload_dependency_claims(
     return claims
 
 
+def go_static_claims(subject_id: str, elfs: list[tuple[str, ElfInfo]]) -> list[DependencyClaim]:
+    """Static dependency claims from Go binaries' embedded .go.buildinfo modules."""
+
+    seen: set[tuple[str, str]] = set()
+    claims: list[DependencyClaim] = []
+    for path, info in elfs:
+        for module, version in info.go_deps:
+            key = (module, version)
+            if key in seen:
+                continue
+            seen.add(key)
+            spec = DependencySpec(
+                identity=PackageIdentity(Ecosystem.GO, module, version=version),
+                scope=DependencyScope.RUNTIME,
+                linkage=Linkage.STATIC,
+                resolution_state=ResolutionState.RESOLVED,
+                source="go_buildinfo",
+                raw={"object": path},
+            )
+            claims.append(DependencyClaim(subject_id=subject_id, spec=spec, evidence="go_buildinfo"))
+    return claims
+
+
 def elf_analysis_summary(elfs: list[tuple[str, ElfInfo]]) -> dict[str, object]:
     return {
         "elf_objects": len(elfs),
@@ -156,6 +181,7 @@ def enrich_graph_with_rpm_payloads(
     read = 0
     elf_total = 0
     claims_added = 0
+    go_total = 0
     static_total = 0
     failures: list[str] = []
 
@@ -184,6 +210,9 @@ def enrich_graph_with_rpm_payloads(
         for claim in payload_dependency_claims(node.id, elfs):
             add_dependency_claim(graph, claim)
             claims_added += 1
+        for claim in go_static_claims(node.id, elfs):
+            add_dependency_claim(graph, claim)
+            go_total += 1
         if on_progress:
             on_progress(f"analyzed {len(elfs)} ELF objects in {filename}")
     return PayloadEnrichmentResult(
@@ -192,6 +221,7 @@ def enrich_graph_with_rpm_payloads(
         elf_objects=elf_total,
         soname_claims=claims_added,
         static_objects=static_total,
+        go_claims=go_total,
         failures=tuple(failures),
     )
 

@@ -1,5 +1,5 @@
 from albs_graph.adapters.elf import is_elf, parse_elf
-from synthetic_binaries import build_elf
+from synthetic_binaries import build_elf, build_go_elf
 
 
 def test_parse_elf_extracts_needed_soname_runpath_and_dlopen() -> None:
@@ -34,3 +34,11 @@ def test_elf_to_dict_is_serializable() -> None:
     assert data["linkage"] == "dynamic"
     assert "libc.so.6" in data["needed"]
     assert data["runpath"] == ["/opt/lib", "/usr/lib"]
+
+
+def test_parse_go_buildinfo_extracts_modules() -> None:
+    info = parse_elf(build_go_elf())
+
+    assert info.go_version == "go1.21.0"
+    assert ("github.com/foo/bar", "v1.2.3") in info.go_deps
+    assert ("golang.org/x/sys", "v0.10.0") in info.go_deps

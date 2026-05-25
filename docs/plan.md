@@ -63,7 +63,7 @@ Acquire only as much as a question needs; climb when the objective rewards it.
 | 1 | ALBS metadata | ~free | provenance backbone | done (pre-existing) |
 | 2 | git checkout: spec + manifests | cheap | declared deps, BuildRequires | done (pre-existing) |
 | 3 | RPM header via HTTP Range | tens of KB | **dynamic-linkage claims** | **done** |
-| 4 | full payload ELF | MBs | **RPATH/RUNPATH, dlopen, static detection, toolchain** | **done** (Go/Rust module BOM pending) |
+| 4 | full payload ELF | MBs | **RPATH/RUNPATH, dlopen, static, toolchain, Go module BOM** | **done** (Rust module BOM n/a) |
 | 5 | resolver execution (uv/mvn/cargo/go/libsolv) | compute + sandbox | resolved trees | **RPM done via `dnf repograph`/`rpmgraph`**; other ecosystems contract-only |
 
 Rung 3 is the maximal rung reachable with **current public access** because the

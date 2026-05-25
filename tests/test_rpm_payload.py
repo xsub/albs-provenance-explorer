@@ -11,9 +11,11 @@ from albs_graph.adapters.rpm_payload import (
     payload_contents,
     payload_dependency_claims,
 )
-from albs_graph.dependency import Linkage
+from albs_graph.adapters.elf import parse_elf
+from albs_graph.adapters.rpm_payload import go_static_claims
+from albs_graph.dependency import Ecosystem, Linkage, ResolutionState
 from albs_graph.model import Node, NodeType, ProvenanceGraph
-from synthetic_binaries import build_elf, build_rpm
+from synthetic_binaries import build_elf, build_go_elf, build_rpm
 
 _FILENAME = "demo-1.0-1.el9.x86_64.rpm"
 
@@ -69,6 +71,20 @@ def test_payload_dependency_claims_are_dynamic_needed() -> None:
     assert {claim.spec.identity.name for claim in claims} == {"libc.so.6", "libssl.so.3"}
     assert all(claim.spec.linkage == Linkage.DYNAMIC for claim in claims)
     assert all(claim.evidence == "elf_dt_needed" for claim in claims)
+
+
+def test_go_static_claims_from_buildinfo() -> None:
+    elfs = [("./usr/bin/gobin", parse_elf(build_go_elf()))]
+    claims = go_static_claims("rpm:gobin", elfs)
+
+    by_name = {c.spec.identity.name: c for c in claims}
+    assert "github.com/foo/bar" in by_name
+    bar = by_name["github.com/foo/bar"]
+    assert bar.spec.identity.ecosystem == Ecosystem.GO
+    assert bar.spec.identity.version == "v1.2.3"
+    assert bar.spec.linkage == Linkage.STATIC
+    assert bar.spec.resolution_state == ResolutionState.RESOLVED
+    assert bar.evidence == "go_buildinfo"
 
 
 def test_enrich_graph_records_elf_analysis_and_claims() -> None:

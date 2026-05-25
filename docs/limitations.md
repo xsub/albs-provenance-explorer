@@ -59,10 +59,11 @@ Implemented: full RPM download → cpio payload → ELF parse of confirmed
   rather than stream-decompressing with early-abort. Bounded at 256 MB.
 - **zstd needs an optional dependency.** Real el9 payloads are zstd; install
   `pip install '.[payload]'`. gzip/xz/bzip2 work out of the box.
-- **Static BOM is detected, not enumerated.** A static Go/Rust binary is flagged
-  by toolchain, but its embedded module graph is not parsed (`.go.buildinfo` /
-  Rust metadata). So static binaries contribute a linkage *fact* but no static
-  dependency *claims* yet.
+- **Static BOM: Go done, Rust not.** A static **Go** binary's embedded module
+  list is now parsed from `.go.buildinfo` (inline format) into Go dependency
+  claims (decisions.md D29). Older pointer-based Go layouts are not dereferenced,
+  and **Rust** has no comparable embedded module list, so it stays
+  toolchain-detected (flag only).
 - **`dlopen` is a heuristic.** It scans the dynamic symbol table for
   `dlopen`/`dlmopen` imports; a binary that reaches `dlopen` only transitively,
   or is fully stripped of section headers, may be missed.

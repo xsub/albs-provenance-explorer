@@ -665,6 +665,24 @@ unknown modules pass through unchanged.
 
 ---
 
+## D29 — Go static BOM from `.go.buildinfo` (C1)
+
+**Files:** `albs_graph/adapters/elf.py`, `adapters/rpm_payload.py`
+
+Completes rung 4's static story for Go. The ELF parser now reads the
+`.go.buildinfo` section (Go 1.18+ inline format: 32-byte header, uvarint-prefixed
+version + module-info strings, 16-byte sentinels stripped) and extracts the
+embedded `mod` / `dep` module list. `go_static_claims` turns those into Go
+dependency claims (`evidence="go_buildinfo"`, `linkage=STATIC`,
+`resolution_state=RESOLVED`), so a statically linked Go binary now contributes a
+real dependency BOM instead of just a "toolchain: go" flag.
+
+Scope: the inline buildinfo format only (older pointer-based layouts are not
+dereferenced); Rust has no comparable embedded module list, so it stays
+toolchain-detected.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -51,6 +51,8 @@ class ElfInfo:
     runpath: tuple[str, ...] = ()
     dlopen: bool = False
     toolchains: tuple[str, ...] = field(default_factory=tuple)
+    go_version: str | None = None
+    go_deps: tuple[tuple[str, str], ...] = ()  # (module, version) from .go.buildinfo
 
     def linkage_kind(self) -> str:
         """Plain-string linkage classification (mapped to the Linkage enum by callers)."""
@@ -74,6 +76,8 @@ class ElfInfo:
             "runpath": list(self.runpath),
             "dlopen": self.dlopen,
             "toolchains": list(self.toolchains),
+            "go_version": self.go_version,
+            "go_deps": [list(dep) for dep in self.go_deps],
         }
 
 
@@ -151,6 +155,12 @@ def _parse(data: bytes) -> ElfInfo:
     if dynsym and dynstr:
         dlopen = _has_dlopen(data, en, bits, dynsym, dynstr)
 
+    go_version: str | None = None
+    go_deps: tuple[tuple[str, str], ...] = ()
+    buildinfo = names.get(".go.buildinfo")
+    if buildinfo:
+        go_version, go_deps = _parse_go_buildinfo(data[buildinfo[2] : buildinfo[2] + buildinfo[3]])
+
     return ElfInfo(
         is_elf=True,
         bits=bits,
@@ -164,6 +174,8 @@ def _parse(data: bytes) -> ElfInfo:
         runpath=tuple(runpath),
         dlopen=dlopen,
         toolchains=toolchains,
+        go_version=go_version,
+        go_deps=go_deps,
     )
 
 
@@ -216,6 +228,63 @@ def _has_dlopen(
         if _cstr_from(strtab, st_name) in _DLOPEN_SYMBOLS:
             return True
     return False
+
+
+_GO_BUILDINFO_MAGIC = b"\xff Go buildinf:"
+_GO_FLAG_VERSION_INLINE = 0x2
+
+
+def _parse_go_buildinfo(section: bytes) -> tuple[str | None, tuple[tuple[str, str], ...]]:
+    """Extract (go version, [(module, version)]) from a .go.buildinfo section.
+
+    Handles the Go 1.18+ inline-string format (flag 0x2): a 32-byte header,
+    then a uvarint-length-prefixed version string and module-info string. The
+    module-info is framed by 16-byte sentinels which are stripped before
+    parsing its tab-separated ``mod`` / ``dep`` lines. Older pointer-based
+    layouts are not resolved (returns no deps).
+    """
+
+    if len(section) < 16 or section[:14] != _GO_BUILDINFO_MAGIC:
+        return None, ()
+    flags = section[15]
+    if not (flags & _GO_FLAG_VERSION_INLINE):
+        return None, ()
+    try:
+        version_bytes, pos = _decode_go_string(section, 32)
+        modinfo_bytes, _ = _decode_go_string(section, pos)
+    except (IndexError, ValueError):
+        return None, ()
+    if len(modinfo_bytes) >= 33 and modinfo_bytes[-17] == 0x0A:  # newline before suffix sentinel
+        modinfo_bytes = modinfo_bytes[16:-16]
+    version = version_bytes.decode("utf-8", "replace") or None
+    return version, _go_deps_from_modinfo(modinfo_bytes.decode("utf-8", "replace"))
+
+
+def _decode_go_string(data: bytes, offset: int) -> tuple[bytes, int]:
+    length, pos = _uvarint(data, offset)
+    return data[pos : pos + length], pos + length
+
+
+def _uvarint(data: bytes, offset: int) -> tuple[int, int]:
+    result = shift = 0
+    pos = offset
+    while pos < len(data):
+        byte = data[pos]
+        pos += 1
+        result |= (byte & 0x7F) << shift
+        if not byte & 0x80:
+            return result, pos
+        shift += 7
+    raise ValueError("truncated uvarint")
+
+
+def _go_deps_from_modinfo(modinfo: str) -> tuple[tuple[str, str], ...]:
+    deps: list[tuple[str, str]] = []
+    for line in modinfo.split("\n"):
+        parts = line.split("\t")
+        if parts[0] in ("dep", "mod") and len(parts) >= 3 and parts[1] and parts[2]:
+            deps.append((parts[1], parts[2]))
+    return tuple(deps)
 
 
 def _detect_toolchains(names: Mapping[str, object]) -> tuple[str, ...]:

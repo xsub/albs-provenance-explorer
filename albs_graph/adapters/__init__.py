@@ -42,6 +42,7 @@ from .rpm_payload import (
     PayloadError,
     analyze_rpm_payload,
     enrich_graph_with_rpm_payloads,
+    go_static_claims,
     payload_contents,
     payload_dependency_claims,
 )
@@ -120,6 +121,7 @@ __all__ = [
     "enrich_graph_with_dnf",
     "enrich_graph_with_rpm_payloads",
     "enrich_graph_with_rpmgraph",
+    "go_static_claims",
     "parse_dot_edges",
     "parse_imports",
     "parse_requirements",

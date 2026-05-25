@@ -642,7 +642,8 @@ def coverage_command(
             f"RPM payload analysis: {payload_result.payloads_read}/{payload_result.artifacts_seen} "
             f"payloads, {payload_result.elf_objects} ELF objects, "
             f"{payload_result.soname_claims} NEEDED claims, "
-            f"{payload_result.static_objects} static objects"
+            f"{payload_result.static_objects} static objects, "
+            f"{payload_result.go_claims} Go module claims"
         )
     if cas_report is not None:
         if not cas_report.available:
