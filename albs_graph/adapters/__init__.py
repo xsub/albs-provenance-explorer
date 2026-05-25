@@ -27,7 +27,9 @@ from .elf import ElfInfo, parse_elf
 from .errata import attach_errata_file
 from .pylang import (
     PythonDepsResult,
+    attach_python_imports,
     attach_python_requirements,
+    module_to_package,
     parse_imports,
     parse_requirements,
     python_import_claims,
@@ -106,6 +108,7 @@ __all__ = [
     "analyze_rpm_payload",
     "attach_cyclonedx_sbom_claims",
     "attach_errata_file",
+    "attach_python_imports",
     "attach_python_requirements",
     "attach_sbom",
     "build_soname_index",
@@ -142,6 +145,7 @@ __all__ = [
     "header_dependency_claims",
     "import_sbom",
     "load_synthetic_build_fixture",
+    "module_to_package",
     "parse_elf",
     "parse_rpm_header",
     "payload_dependency_claims",

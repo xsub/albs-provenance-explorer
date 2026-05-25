@@ -1,9 +1,12 @@
 from pathlib import Path
 
 from albs_graph.adapters.pylang import (
+    attach_python_imports,
     attach_python_requirements,
+    module_to_package,
     parse_imports,
     parse_requirements,
+    python_import_claims,
 )
 from albs_graph.dependency import Ecosystem, ResolutionState
 from albs_graph.model import Node, NodeType, ProvenanceGraph
@@ -43,6 +46,32 @@ def test_parse_requirements_extracts_names_versions_extras() -> None:
 
 def test_parse_imports_excludes_stdlib_and_relative() -> None:
     assert parse_imports(_SOURCE) == ["flask", "numpy", "requests"]
+
+
+def test_module_to_package_maps_known_and_overrides() -> None:
+    assert module_to_package("cv2") == "opencv-python"
+    assert module_to_package("PIL") == "pillow"
+    assert module_to_package("unknownmod") == "unknownmod"  # passthrough
+    assert module_to_package("cv2", {"cv2": "custom-cv"}) == "custom-cv"  # override wins
+
+
+def test_python_import_claims_map_module_to_package() -> None:
+    claims = {c.spec.identity.name: c for c in python_import_claims("rpm:app", "import cv2\n")}
+    assert "opencv-python" in claims
+    assert claims["opencv-python"].spec.raw["module"] == "cv2"
+
+
+def test_attach_python_imports(tmp_path: Path) -> None:
+    path = tmp_path / "app.py"
+    path.write_text("import cv2\nimport requests\nimport os\n", encoding="utf-8")
+    graph = ProvenanceGraph()
+    graph.add_node(Node(SUBJECT, NodeType.BINARY_RPM, "app", {"name": "app"}))
+
+    result = attach_python_imports(graph, SUBJECT, path)
+
+    assert result.imports == 2  # cv2, requests (os is stdlib)
+    names = {n.metadata["name"] for n in graph.find_by_type(NodeType.DEPENDENCY_CLAIM)}
+    assert names == {"opencv-python", "requests"}
 
 
 def test_attach_requirements_adds_claims_and_raises_resolution(tmp_path: Path) -> None:

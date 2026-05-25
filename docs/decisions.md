@@ -651,6 +651,20 @@ verification is a distinct quality the report surfaces.
 
 ---
 
+## D28 — Python import -> distribution mapping (B3)
+
+**Files:** `albs_graph/adapters/pylang.py`, `cli/main.py` (`coverage --imports`)
+
+The module you `import` is often not the distribution you install
+(`cv2` -> `opencv-python`, `PIL` -> `pillow`). `module_to_package` applies a
+built-in common map plus an optional supplied override (`--module-map FILE`), so
+import-scan claims (`python_import`) carry the real PyPI package while keeping
+the original module in `raw`. `coverage --imports FILE` scans a Python source
+file's top-level imports and attaches the mapped claims. Best-effort by design;
+unknown modules pass through unchanged.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

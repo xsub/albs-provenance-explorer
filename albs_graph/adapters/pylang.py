@@ -114,15 +114,46 @@ def python_requirement_claims(subject_id: str, text: str) -> list[DependencyClai
     ]
 
 
-def python_import_claims(subject_id: str, text: str) -> list[DependencyClaim]:
+# Common import-name -> PyPI-distribution mappings (the module you import is
+# often not the package you install). A supplied map overrides/extends this.
+_MODULE_TO_PACKAGE = {
+    "cv2": "opencv-python",
+    "PIL": "pillow",
+    "yaml": "pyyaml",
+    "bs4": "beautifulsoup4",
+    "sklearn": "scikit-learn",
+    "OpenSSL": "pyopenssl",
+    "Crypto": "pycryptodome",
+    "dateutil": "python-dateutil",
+    "git": "gitpython",
+    "dotenv": "python-dotenv",
+    "attr": "attrs",
+    "jwt": "pyjwt",
+    "serial": "pyserial",
+    "usb": "pyusb",
+}
+
+
+def module_to_package(module: str, mapping: dict[str, str] | None = None) -> str:
+    """Map a Python import name to its PyPI distribution (best effort)."""
+
+    if mapping and module in mapping:
+        return mapping[module]
+    return _MODULE_TO_PACKAGE.get(module, module)
+
+
+def python_import_claims(
+    subject_id: str, text: str, *, mapping: dict[str, str] | None = None
+) -> list[DependencyClaim]:
     claims: list[DependencyClaim] = []
     for module in parse_imports(text):
+        package = module_to_package(module, mapping)
         spec = DependencySpec(
-            identity=PackageIdentity(Ecosystem.PYPI, module),
+            identity=PackageIdentity(Ecosystem.PYPI, package),
             scope=DependencyScope.RUNTIME,
             resolution_state=ResolutionState.DECLARED,
             source="python_import",
-            raw={"module": module},
+            raw={"module": module, "package": package},
         )
         claims.append(DependencyClaim(subject_id, spec, evidence="python_import"))
     return claims
@@ -138,3 +169,19 @@ def attach_python_requirements(
     for claim in claims:
         add_dependency_claim(graph, claim)
     return PythonDepsResult(requirements=len(claims), imports=0, claims_added=len(claims))
+
+
+def attach_python_imports(
+    graph: ProvenanceGraph,
+    subject_id: str,
+    path: str | Path,
+    *,
+    mapping: dict[str, str] | None = None,
+) -> PythonDepsResult:
+    """Scan a Python source file's imports and attach mapped PyPI claims."""
+
+    text = Path(path).read_text(encoding="utf-8")
+    claims = python_import_claims(subject_id, text, mapping=mapping)
+    for claim in claims:
+        add_dependency_claim(graph, claim)
+    return PythonDepsResult(requirements=0, imports=len(claims), claims_added=len(claims))

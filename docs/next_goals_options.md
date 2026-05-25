@@ -34,8 +34,9 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
   moved to `albs_graph/vercmp.py` and wired into the reconciler: `VERSION_DRIFT`
   is now rpmvercmp-semantic and `RANGE_VIOLATION` fires on declared relational
   constraints (the backport case is detected in the graph). *(decisions.md D26)*
-- **B3 — Python module → package mapping** (`cv2` -> `opencv-python`) so import
-  claims resolve to distributions. *Effort: low-medium.*
+- **B3 — Python module → package mapping** ✅ Done — `module_to_package`
+  (built-in map + `--module-map` override); `coverage --imports FILE` scans a
+  source file's imports and attaches mapped PyPI claims. *(decisions.md D28)*
 
 ## C. Complete rung 4 (static linkage is invisible today)
 

@@ -28,7 +28,7 @@ from albs_graph.adapters.dnf import (
     resolve_soname_claims,
 )
 from albs_graph.adapters.errata import attach_errata_file
-from albs_graph.adapters.pylang import attach_python_requirements
+from albs_graph.adapters.pylang import attach_python_imports, attach_python_requirements
 from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
 from albs_graph.adapters.rpmsig import verify_graph_signatures
@@ -349,6 +349,12 @@ def coverage_command(
     requirements_subject: Optional[str] = typer.Option(
         None, "--requirements-subject", help="Binary RPM the requirements belong to."
     ),
+    imports: Optional[Path] = typer.Option(
+        None, "--imports", help="Python source file: scan imports -> mapped PyPI claims."
+    ),
+    module_map: Optional[Path] = typer.Option(
+        None, "--module-map", help="JSON {import_name: pypi_package} overriding the built-in map."
+    ),
     errata: Optional[Path] = typer.Option(
         None, "--errata", help="Errata JSON (id, type, severity, cves) to attach as security context."
     ),
@@ -472,6 +478,17 @@ def coverage_command(
         _log_step(verbose, f"Attaching Python requirements {requirements} to {req_subject.id}")
         python_result = attach_python_requirements(graph, req_subject.id, requirements)
 
+    import_result = None
+    if imports is not None:
+        imports_subject = (
+            find_binary_rpm(graph, requirements_subject, arch=arch)
+            if requirements_subject
+            else select_default_binary_rpm(graph, arch=arch)
+        )
+        mapping = json.loads(module_map.read_text(encoding="utf-8")) if module_map else None
+        _log_step(verbose, f"Scanning Python imports in {imports} for {imports_subject.id}")
+        import_result = attach_python_imports(graph, imports_subject.id, imports, mapping=mapping)
+
     errata_id = None
     if errata is not None:
         errata_node_subject = (
@@ -552,6 +569,8 @@ def coverage_command(
             payload["soname_resolution"] = soname_result.to_dict()
         if python_result is not None:
             payload["python"] = python_result.to_dict()
+        if import_result is not None:
+            payload["python_imports"] = import_result.to_dict()
         if errata_id is not None:
             payload["errata"] = errata_id
         if cpe_result is not None:
@@ -599,6 +618,11 @@ def coverage_command(
         console.print(
             f"Python: {python_result.claims_added} PyPI claims from "
             f"{python_result.requirements} requirements"
+        )
+    if import_result is not None:
+        console.print(
+            f"Python imports: {import_result.claims_added} mapped PyPI claims from "
+            f"{import_result.imports} imports"
         )
     if errata_id is not None:
         console.print(f"Errata: attached {errata_id} (security context)")
