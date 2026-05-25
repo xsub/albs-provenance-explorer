@@ -1,0 +1,31 @@
+digraph albs_provenance {
+  graph [rankdir=LR, bgcolor="white", fontname="Inter"];
+  node [shape=box, style="rounded,filled", fontname="Inter", fontsize=10, margin="0.08,0.06"];
+  edge [fontname="Inter", fontsize=9, color="#546E7A", arrowsize=0.7];
+  "build:albs-task:188077" [label="build_task\\nALBS task 188077 x86_64", fillcolor="#F3E5F5"];
+  "build:albs:17812" [label="build_task\\nALBS build 17812", fillcolor="#F3E5F5"];
+  "buildenv:AlmaLinux-9:x86_64" [label="build_environment\\nAlmaLinux-9 x86_64", fillcolor="#F5F5F5"];
+  "cas:artifact:c9eb94574cde7178cb275a8273fdf401a87792905d75660adf854c88c637762a" [label="cas_attestation\\nc9eb94574cde7178cb275a8273fdf401a87792905d75660adf854c88c637762a", fillcolor="#FFF8E1"];
+  "cas:artifact:f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510" [label="cas_attestation\\nf8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510", fillcolor="#FFF8E1"];
+  "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc" [label="cas_attestation\\n911945c71710c83cf6f760447c32d8d6cae737dc", fillcolor="#FFF8E1"];
+  "commit:nginx:911945c71710c83cf6f760447c32d8d6cae737dc" [label="git_commit\\n911945c71710c83cf6f760447c32d8d6cae737dc", fillcolor="#E3F2FD"];
+  "git:https://git.almalinux.org/rpms/nginx.git" [label="git_repository\\nhttps://git.almalinux.org/rpms/nginx.git", fillcolor="#E3F2FD"];
+  "repo-release:ALBS release 7396" [label="repository_release\\nALBS release 7396", fillcolor="#E8EAF6"];
+  "rpm:3237133:nginx-1.20.1-16.el9_4.1.x86_64.rpm" [label="binary_rpm\\nnginx-1.20.1-16.el9_4.1.x86_64.rpm", fillcolor="#E0F7FA"];
+  "sig:albs:11754" [label="signature\\nALBS sign task 11754", fillcolor="#FFF3E0"];
+  "src:nginx" [label="source_package\\nnginx", fillcolor="#E8F5E9"];
+  "srpm:3237035:nginx-1.20.1-16.el9_4.1.src.rpm" [label="srpm\\nnginx-1.20.1-16.el9_4.1.src.rpm", fillcolor="#E0F7FA"];
+  "src:nginx" -> "git:https://git.almalinux.org/rpms/nginx.git" [label="stored_in"];
+  "git:https://git.almalinux.org/rpms/nginx.git" -> "commit:nginx:911945c71710c83cf6f760447c32d8d6cae737dc" [label="points_to"];
+  "commit:nginx:911945c71710c83cf6f760447c32d8d6cae737dc" -> "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc" [label="authenticated_by"];
+  "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc" -> "build:albs:17812" [label="built_by"];
+  "cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc" -> "build:albs-task:188077" [label="built_by"];
+  "build:albs:17812" -> "build:albs-task:188077" [label="derived_from"];
+  "build:albs-task:188077" -> "buildenv:AlmaLinux-9:x86_64" [label="built_in"];
+  "build:albs-task:188077" -> "srpm:3237035:nginx-1.20.1-16.el9_4.1.src.rpm" [label="produces"];
+  "srpm:3237035:nginx-1.20.1-16.el9_4.1.src.rpm" -> "cas:artifact:f8e2a823ffc9fe9311dac3e3a50c349c3a0689b951656fefa955cd4405ddf510" [label="authenticated_by"];
+  "build:albs-task:188077" -> "rpm:3237133:nginx-1.20.1-16.el9_4.1.x86_64.rpm" [label="produces"];
+  "rpm:3237133:nginx-1.20.1-16.el9_4.1.x86_64.rpm" -> "cas:artifact:c9eb94574cde7178cb275a8273fdf401a87792905d75660adf854c88c637762a" [label="authenticated_by"];
+  "rpm:3237133:nginx-1.20.1-16.el9_4.1.x86_64.rpm" -> "repo-release:ALBS release 7396" [label="released_to"];
+  "rpm:3237133:nginx-1.20.1-16.el9_4.1.x86_64.rpm" -> "sig:albs:11754" [label="signed_as"];
+}

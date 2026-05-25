@@ -1,0 +1,4479 @@
+{
+  "artifact_timings": [
+    {
+      "artifact_id": "3237116",
+      "artifact_type": "build_log",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "albs.188077.1725369770.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_id": "3237108",
+      "artifact_type": "build_log",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "mock.188077.1725369998.cfg",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_id": "3237103",
+      "artifact_type": "build_log",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "mock.srpm.188077.1725369805.cfg",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_id": "3237111",
+      "artifact_type": "build_log",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "mock_build.188077.1725369998.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_id": "3237105",
+      "artifact_type": "build_log",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "mock_build.srpm.188077.1725369805.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_id": "3237113",
+      "artifact_type": "build_log",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "mock_hw_info.188077.1725369998.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_id": "3237107",
+      "artifact_type": "build_log",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "mock_hw_info.srpm.188077.1725369805.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_id": "3237114",
+      "artifact_type": "build_log",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "mock_installed_pkgs.188077.1725369998.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_id": "3237112",
+      "artifact_type": "build_log",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "mock_root.188077.1725369998.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_id": "3237106",
+      "artifact_type": "build_log",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "mock_root.srpm.188077.1725369805.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_id": "3237110",
+      "artifact_type": "build_log",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "mock_state.188077.1725369998.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_id": "3237104",
+      "artifact_type": "build_log",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "mock_state.srpm.188077.1725369805.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_id": "3237115",
+      "artifact_type": "build_log",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "mock_stderr.188077.1725369998.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_id": "3237109",
+      "artifact_type": "build_log",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "mock_stderr.srpm.188077.1725369805.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "src",
+      "artifact_id": "3237035",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-1.20.1-16.el9_4.1.src.rpm",
+      "package_name": "nginx",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237133",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "noarch",
+      "artifact_id": "3237131",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
+      "package_name": "nginx-all-modules",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237140",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-core",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237141",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-core-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237147",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237144",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-debugsource-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-debugsource",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "noarch",
+      "artifact_id": "3237137",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
+      "package_name": "nginx-filesystem",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237138",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-mod-devel-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-mod-devel",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237134",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-mod-http-image-filter",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237148",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-mod-http-image-filter-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237139",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-mod-http-perl",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237145",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-mod-http-perl-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237132",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-mod-http-xslt-filter",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237143",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-mod-http-xslt-filter-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237135",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-mod-mail-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-mod-mail",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237142",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-mod-mail-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237136",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-mod-stream-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-mod-stream",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_arch": "x86_64",
+      "artifact_id": "3237146",
+      "artifact_type": "rpm",
+      "build_arch": "x86_64",
+      "build_task_id": "188077",
+      "name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.x86_64.rpm",
+      "package_name": "nginx-mod-stream-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 44.145094,
+        "build_done_stats.logs_processing": 14.292583,
+        "build_done_stats.multilib_processing": 0.651019,
+        "build_done_stats.packages_processing": 28.983738,
+        "build_node_stats.build_all": 229.448087,
+        "build_node_stats.build_binaries": 195.109731,
+        "build_node_stats.build_node_task": 353.246004,
+        "build_node_stats.build_packages": 229.047389,
+        "build_node_stats.build_srpm": 33.676429,
+        "build_node_stats.cas_notarize_artifacts": 5.869509,
+        "build_node_stats.sources_unpack": 0.400515,
+        "build_node_stats.upload": 110.952335
+      },
+      "task_wall_seconds": 398.212342
+    },
+    {
+      "artifact_id": "3237193",
+      "artifact_type": "build_log",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "albs.188078.1725384169.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_id": "3237190",
+      "artifact_type": "build_log",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "mock.188078.1725370079.cfg",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_id": "3237184",
+      "artifact_type": "build_log",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "mock.srpm.188078.1725369858.cfg",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_id": "3237181",
+      "artifact_type": "build_log",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "mock_build.188078.1725370079.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_id": "3237191",
+      "artifact_type": "build_log",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "mock_build.srpm.188078.1725369858.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_id": "3237180",
+      "artifact_type": "build_log",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "mock_hw_info.188078.1725370079.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_id": "3237189",
+      "artifact_type": "build_log",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "mock_hw_info.srpm.188078.1725369858.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_id": "3237186",
+      "artifact_type": "build_log",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "mock_installed_pkgs.188078.1725370079.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_id": "3237182",
+      "artifact_type": "build_log",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "mock_root.188078.1725370079.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_id": "3237183",
+      "artifact_type": "build_log",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "mock_root.srpm.188078.1725369858.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_id": "3237185",
+      "artifact_type": "build_log",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "mock_state.188078.1725370079.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_id": "3237192",
+      "artifact_type": "build_log",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "mock_state.srpm.188078.1725369858.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_id": "3237188",
+      "artifact_type": "build_log",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "mock_stderr.188078.1725370079.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_id": "3237187",
+      "artifact_type": "build_log",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "mock_stderr.srpm.188078.1725369858.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237202",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "src",
+      "artifact_id": "3237036",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-1.20.1-16.el9_4.1.src.rpm",
+      "package_name": "nginx",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "noarch",
+      "artifact_id": "3237194",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
+      "package_name": "nginx-all-modules",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237203",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-core-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-core",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237209",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-core-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237208",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237207",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-debugsource-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-debugsource",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "noarch",
+      "artifact_id": "3237195",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
+      "package_name": "nginx-filesystem",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237198",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-mod-devel-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-mod-devel",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237199",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-mod-http-image-filter",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237210",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-mod-http-image-filter-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237200",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-mod-http-perl",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237205",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-mod-http-perl-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237196",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-mod-http-xslt-filter",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237204",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-mod-http-xslt-filter-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237201",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-mod-mail-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-mod-mail",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237211",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-mod-mail-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237197",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-mod-stream-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-mod-stream",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_arch": "aarch64",
+      "artifact_id": "3237206",
+      "artifact_type": "rpm",
+      "build_arch": "aarch64",
+      "build_task_id": "188078",
+      "name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.aarch64.rpm",
+      "package_name": "nginx-mod-stream-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 49.312226,
+        "build_done_stats.logs_processing": 13.617816,
+        "build_done_stats.packages_processing": 28.134338,
+        "build_node_stats.build_all": 314.784714,
+        "build_node_stats.build_binaries": 225.665404,
+        "build_node_stats.build_node_task": 434.638931,
+        "build_node_stats.build_packages": 313.790306,
+        "build_node_stats.build_srpm": 87.821866,
+        "build_node_stats.cas_notarize_artifacts": 6.182466,
+        "build_node_stats.sources_unpack": 0.987777,
+        "build_node_stats.upload": 106.522687
+      },
+      "task_wall_seconds": 484.329335
+    },
+    {
+      "artifact_id": "3237084",
+      "artifact_type": "build_log",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "albs.188080.1725369766.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_id": "3237077",
+      "artifact_type": "build_log",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "mock.188080.1725369934.cfg",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_id": "3237071",
+      "artifact_type": "build_log",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "mock.srpm.188080.1725369834.cfg",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_id": "3237079",
+      "artifact_type": "build_log",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "mock_build.188080.1725369934.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_id": "3237073",
+      "artifact_type": "build_log",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "mock_build.srpm.188080.1725369834.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_id": "3237081",
+      "artifact_type": "build_log",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "mock_hw_info.188080.1725369934.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_id": "3237075",
+      "artifact_type": "build_log",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "mock_hw_info.srpm.188080.1725369834.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_id": "3237082",
+      "artifact_type": "build_log",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "mock_installed_pkgs.188080.1725369934.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_id": "3237080",
+      "artifact_type": "build_log",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "mock_root.188080.1725369934.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_id": "3237074",
+      "artifact_type": "build_log",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "mock_root.srpm.188080.1725369834.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_id": "3237078",
+      "artifact_type": "build_log",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "mock_state.188080.1725369934.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_id": "3237072",
+      "artifact_type": "build_log",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "mock_state.srpm.188080.1725369834.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_id": "3237083",
+      "artifact_type": "build_log",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "mock_stderr.188080.1725369934.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_id": "3237076",
+      "artifact_type": "build_log",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "mock_stderr.srpm.188080.1725369834.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237094",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "src",
+      "artifact_id": "3237038",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-1.20.1-16.el9_4.1.src.rpm",
+      "package_name": "nginx",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "noarch",
+      "artifact_id": "3237091",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
+      "package_name": "nginx-all-modules",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237086",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-core-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-core",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237097",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-core-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237095",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237098",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-debugsource-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-debugsource",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "noarch",
+      "artifact_id": "3237092",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
+      "package_name": "nginx-filesystem",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237087",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-mod-devel-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-mod-devel",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237089",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-mod-http-image-filter",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237102",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-mod-http-image-filter-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237085",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-mod-http-perl",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237100",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-mod-http-perl-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237088",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-mod-http-xslt-filter",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237099",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-mod-http-xslt-filter-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237090",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-mod-mail-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-mod-mail",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237096",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-mod-mail-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237093",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-mod-stream-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-mod-stream",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_arch": "ppc64le",
+      "artifact_id": "3237101",
+      "artifact_type": "rpm",
+      "build_arch": "ppc64le",
+      "build_task_id": "188080",
+      "name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.ppc64le.rpm",
+      "package_name": "nginx-mod-stream-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 45.820657,
+        "build_done_stats.logs_processing": 17.099251,
+        "build_done_stats.packages_processing": 28.606756,
+        "build_node_stats.build_all": 169.518718,
+        "build_node_stats.build_binaries": 101.537561,
+        "build_node_stats.build_node_task": 323.841554,
+        "build_node_stats.build_packages": 168.748367,
+        "build_node_stats.build_srpm": 67.193216,
+        "build_node_stats.cas_notarize_artifacts": 17.422735,
+        "build_node_stats.sources_unpack": 0.770192,
+        "build_node_stats.upload": 129.578265
+      },
+      "task_wall_seconds": 370.070048
+    },
+    {
+      "artifact_id": "3237052",
+      "artifact_type": "build_log",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "albs.188079.1725384167.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_id": "3237049",
+      "artifact_type": "build_log",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "mock.188079.1725369887.cfg",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_id": "3237047",
+      "artifact_type": "build_log",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "mock.srpm.188079.1725369814.cfg",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_id": "3237042",
+      "artifact_type": "build_log",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "mock_build.188079.1725369887.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_id": "3237039",
+      "artifact_type": "build_log",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "mock_build.srpm.188079.1725369814.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_id": "3237048",
+      "artifact_type": "build_log",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "mock_hw_info.188079.1725369887.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_id": "3237046",
+      "artifact_type": "build_log",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "mock_hw_info.srpm.188079.1725369814.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_id": "3237040",
+      "artifact_type": "build_log",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "mock_installed_pkgs.188079.1725369887.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_id": "3237050",
+      "artifact_type": "build_log",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "mock_root.188079.1725369887.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_id": "3237044",
+      "artifact_type": "build_log",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "mock_root.srpm.188079.1725369814.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_id": "3237045",
+      "artifact_type": "build_log",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "mock_state.188079.1725369887.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_id": "3237041",
+      "artifact_type": "build_log",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "mock_state.srpm.188079.1725369814.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_id": "3237051",
+      "artifact_type": "build_log",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "mock_stderr.188079.1725369887.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_id": "3237043",
+      "artifact_type": "build_log",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "mock_stderr.srpm.188079.1725369814.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237057",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "src",
+      "artifact_id": "3237037",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-1.20.1-16.el9_4.1.src.rpm",
+      "package_name": "nginx",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "noarch",
+      "artifact_id": "3237058",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
+      "package_name": "nginx-all-modules",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237053",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-core-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-core",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237063",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-core-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237066",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237065",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-debugsource-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-debugsource",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "noarch",
+      "artifact_id": "3237059",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
+      "package_name": "nginx-filesystem",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237062",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-mod-devel-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-mod-devel",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237055",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-mod-http-image-filter",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237068",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-mod-http-image-filter-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237061",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-mod-http-perl",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237070",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-mod-http-perl-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237054",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-mod-http-xslt-filter",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237067",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-mod-http-xslt-filter-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237060",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-mod-mail-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-mod-mail",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237064",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-mod-mail-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237056",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-mod-stream-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-mod-stream",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_arch": "s390x",
+      "artifact_id": "3237069",
+      "artifact_type": "rpm",
+      "build_arch": "s390x",
+      "build_task_id": "188079",
+      "name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.s390x.rpm",
+      "package_name": "nginx-mod-stream-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 47.42057,
+        "build_done_stats.logs_processing": 15.286657,
+        "build_done_stats.packages_processing": 32.023518,
+        "build_node_stats.build_all": 120.276819,
+        "build_node_stats.build_binaries": 74.012922,
+        "build_node_stats.build_node_task": 251.531674,
+        "build_node_stats.build_packages": 120.009514,
+        "build_node_stats.build_srpm": 45.982766,
+        "build_node_stats.cas_notarize_artifacts": 5.856355,
+        "build_node_stats.sources_unpack": 0.267166,
+        "build_node_stats.upload": 116.64391
+      },
+      "task_wall_seconds": 299.279163
+    },
+    {
+      "artifact_id": "3237130",
+      "artifact_type": "build_log",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "albs.188076.1725369769.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_id": "3237122",
+      "artifact_type": "build_log",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "mock.188076.1725370028.cfg",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_id": "3237118",
+      "artifact_type": "build_log",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "mock.srpm.188076.1725369917.cfg",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_id": "3237125",
+      "artifact_type": "build_log",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "mock_build.188076.1725370028.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_id": "3237119",
+      "artifact_type": "build_log",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "mock_build.srpm.188076.1725369917.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_id": "3237127",
+      "artifact_type": "build_log",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "mock_hw_info.188076.1725370028.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_id": "3237121",
+      "artifact_type": "build_log",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "mock_hw_info.srpm.188076.1725369917.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_id": "3237128",
+      "artifact_type": "build_log",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "mock_installed_pkgs.188076.1725370028.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_id": "3237126",
+      "artifact_type": "build_log",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "mock_root.188076.1725370028.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_id": "3237120",
+      "artifact_type": "build_log",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "mock_root.srpm.188076.1725369917.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_id": "3237124",
+      "artifact_type": "build_log",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "mock_state.188076.1725370028.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_id": "3237117",
+      "artifact_type": "build_log",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "mock_state.srpm.188076.1725369917.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_id": "3237129",
+      "artifact_type": "build_log",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "mock_stderr.188076.1725370028.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_id": "3237123",
+      "artifact_type": "build_log",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "mock_stderr.srpm.188076.1725369917.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237153",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "src",
+      "artifact_id": "3237034",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-1.20.1-16.el9_4.1.src.rpm",
+      "package_name": "nginx",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "noarch",
+      "artifact_id": "3237157",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-all-modules-1.20.1-16.el9_4.1.noarch.rpm",
+      "package_name": "nginx-all-modules",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237149",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-core-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-core",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237159",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-core-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-core-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237165",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237160",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-debugsource-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-debugsource",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "noarch",
+      "artifact_id": "3237158",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-filesystem-1.20.1-16.el9_4.1.noarch.rpm",
+      "package_name": "nginx-filesystem",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237150",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-mod-devel-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-mod-devel",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237156",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-mod-http-image-filter-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-mod-http-image-filter",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237166",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-mod-http-image-filter-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-mod-http-image-filter-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237154",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-mod-http-perl-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-mod-http-perl",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237163",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-mod-http-perl-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-mod-http-perl-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237155",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-mod-http-xslt-filter-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-mod-http-xslt-filter",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237164",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-mod-http-xslt-filter-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-mod-http-xslt-filter-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237152",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-mod-mail-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-mod-mail",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237161",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-mod-mail-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-mod-mail-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237151",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-mod-stream-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-mod-stream",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_arch": "i686",
+      "artifact_id": "3237162",
+      "artifact_type": "rpm",
+      "build_arch": "i686",
+      "build_task_id": "188076",
+      "name": "nginx-mod-stream-debuginfo-1.20.1-16.el9_4.1.i686.rpm",
+      "package_name": "nginx-mod-stream-debuginfo",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 43.158224,
+        "build_done_stats.logs_processing": 13.768955,
+        "build_done_stats.packages_processing": 29.283952,
+        "build_node_stats.build_all": 260.035815,
+        "build_node_stats.build_binaries": 111.976572,
+        "build_node_stats.build_node_task": 380.362344,
+        "build_node_stats.build_packages": 259.323853,
+        "build_node_stats.build_srpm": 147.322653,
+        "build_node_stats.cas_notarize_artifacts": 5.642326,
+        "build_node_stats.sources_unpack": 0.711723,
+        "build_node_stats.upload": 108.129031
+      },
+      "task_wall_seconds": 423.840987
+    },
+    {
+      "artifact_id": "3237032",
+      "artifact_type": "build_log",
+      "build_arch": "src",
+      "build_task_id": "188075",
+      "name": "albs.188075.1725369477.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 24.991276,
+        "build_done_stats.logs_processing": 12.580897,
+        "build_done_stats.packages_processing": 12.32106,
+        "build_node_stats.build_all": 225.774362,
+        "build_node_stats.build_node_task": 262.317847,
+        "build_node_stats.build_packages": 224.193231,
+        "build_node_stats.build_srpm": 224.184118,
+        "build_node_stats.cas_notarize_artifacts": 1.314085,
+        "build_node_stats.cas_source_authenticate": 0.226372,
+        "build_node_stats.git_checkout": 0.691819,
+        "build_node_stats.upload": 28.647765
+      },
+      "task_wall_seconds": 287.641859
+    },
+    {
+      "artifact_id": "3237026",
+      "artifact_type": "build_log",
+      "build_arch": "src",
+      "build_task_id": "188075",
+      "name": "mock.srpm.188075.1725369703.cfg",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 24.991276,
+        "build_done_stats.logs_processing": 12.580897,
+        "build_done_stats.packages_processing": 12.32106,
+        "build_node_stats.build_all": 225.774362,
+        "build_node_stats.build_node_task": 262.317847,
+        "build_node_stats.build_packages": 224.193231,
+        "build_node_stats.build_srpm": 224.184118,
+        "build_node_stats.cas_notarize_artifacts": 1.314085,
+        "build_node_stats.cas_source_authenticate": 0.226372,
+        "build_node_stats.git_checkout": 0.691819,
+        "build_node_stats.upload": 28.647765
+      },
+      "task_wall_seconds": 287.641859
+    },
+    {
+      "artifact_id": "3237028",
+      "artifact_type": "build_log",
+      "build_arch": "src",
+      "build_task_id": "188075",
+      "name": "mock_build.srpm.188075.1725369703.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 24.991276,
+        "build_done_stats.logs_processing": 12.580897,
+        "build_done_stats.packages_processing": 12.32106,
+        "build_node_stats.build_all": 225.774362,
+        "build_node_stats.build_node_task": 262.317847,
+        "build_node_stats.build_packages": 224.193231,
+        "build_node_stats.build_srpm": 224.184118,
+        "build_node_stats.cas_notarize_artifacts": 1.314085,
+        "build_node_stats.cas_source_authenticate": 0.226372,
+        "build_node_stats.git_checkout": 0.691819,
+        "build_node_stats.upload": 28.647765
+      },
+      "task_wall_seconds": 287.641859
+    },
+    {
+      "artifact_id": "3237030",
+      "artifact_type": "build_log",
+      "build_arch": "src",
+      "build_task_id": "188075",
+      "name": "mock_hw_info.srpm.188075.1725369703.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 24.991276,
+        "build_done_stats.logs_processing": 12.580897,
+        "build_done_stats.packages_processing": 12.32106,
+        "build_node_stats.build_all": 225.774362,
+        "build_node_stats.build_node_task": 262.317847,
+        "build_node_stats.build_packages": 224.193231,
+        "build_node_stats.build_srpm": 224.184118,
+        "build_node_stats.cas_notarize_artifacts": 1.314085,
+        "build_node_stats.cas_source_authenticate": 0.226372,
+        "build_node_stats.git_checkout": 0.691819,
+        "build_node_stats.upload": 28.647765
+      },
+      "task_wall_seconds": 287.641859
+    },
+    {
+      "artifact_id": "3237029",
+      "artifact_type": "build_log",
+      "build_arch": "src",
+      "build_task_id": "188075",
+      "name": "mock_root.srpm.188075.1725369703.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 24.991276,
+        "build_done_stats.logs_processing": 12.580897,
+        "build_done_stats.packages_processing": 12.32106,
+        "build_node_stats.build_all": 225.774362,
+        "build_node_stats.build_node_task": 262.317847,
+        "build_node_stats.build_packages": 224.193231,
+        "build_node_stats.build_srpm": 224.184118,
+        "build_node_stats.cas_notarize_artifacts": 1.314085,
+        "build_node_stats.cas_source_authenticate": 0.226372,
+        "build_node_stats.git_checkout": 0.691819,
+        "build_node_stats.upload": 28.647765
+      },
+      "task_wall_seconds": 287.641859
+    },
+    {
+      "artifact_id": "3237027",
+      "artifact_type": "build_log",
+      "build_arch": "src",
+      "build_task_id": "188075",
+      "name": "mock_state.srpm.188075.1725369703.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 24.991276,
+        "build_done_stats.logs_processing": 12.580897,
+        "build_done_stats.packages_processing": 12.32106,
+        "build_node_stats.build_all": 225.774362,
+        "build_node_stats.build_node_task": 262.317847,
+        "build_node_stats.build_packages": 224.193231,
+        "build_node_stats.build_srpm": 224.184118,
+        "build_node_stats.cas_notarize_artifacts": 1.314085,
+        "build_node_stats.cas_source_authenticate": 0.226372,
+        "build_node_stats.git_checkout": 0.691819,
+        "build_node_stats.upload": 28.647765
+      },
+      "task_wall_seconds": 287.641859
+    },
+    {
+      "artifact_id": "3237031",
+      "artifact_type": "build_log",
+      "build_arch": "src",
+      "build_task_id": "188075",
+      "name": "mock_stderr.srpm.188075.1725369703.log",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 24.991276,
+        "build_done_stats.logs_processing": 12.580897,
+        "build_done_stats.packages_processing": 12.32106,
+        "build_node_stats.build_all": 225.774362,
+        "build_node_stats.build_node_task": 262.317847,
+        "build_node_stats.build_packages": 224.193231,
+        "build_node_stats.build_srpm": 224.184118,
+        "build_node_stats.cas_notarize_artifacts": 1.314085,
+        "build_node_stats.cas_source_authenticate": 0.226372,
+        "build_node_stats.git_checkout": 0.691819,
+        "build_node_stats.upload": 28.647765
+      },
+      "task_wall_seconds": 287.641859
+    },
+    {
+      "artifact_arch": "src",
+      "artifact_id": "3237033",
+      "artifact_type": "rpm",
+      "build_arch": "src",
+      "build_task_id": "188075",
+      "name": "nginx-1.20.1-16.el9_4.1.src.rpm",
+      "package_name": "nginx",
+      "task_step_seconds": {
+        "build_done_stats.build_done": 24.991276,
+        "build_done_stats.logs_processing": 12.580897,
+        "build_done_stats.packages_processing": 12.32106,
+        "build_node_stats.build_all": 225.774362,
+        "build_node_stats.build_node_task": 262.317847,
+        "build_node_stats.build_packages": 224.193231,
+        "build_node_stats.build_srpm": 224.184118,
+        "build_node_stats.cas_notarize_artifacts": 1.314085,
+        "build_node_stats.cas_source_authenticate": 0.226372,
+        "build_node_stats.git_checkout": 0.691819,
+        "build_node_stats.upload": 28.647765
+      },
+      "task_wall_seconds": 287.641859
+    }
+  ],
+  "build_id": "17812",
+  "created_at": "2024-09-03T13:17:19.527127",
+  "finished_at": "2024-09-03T13:30:53.682871",
+  "sign_timings": [
+    {
+      "finished_at": "2024-09-03T13:36:14.543733",
+      "sign_task_id": "11754",
+      "started_at": "2024-09-03T13:31:58.839332",
+      "stats_seconds": {
+        "download_packages_time": 8.0,
+        "notarization_packages_time": 7.0,
+        "sign_packages_time": 22.0,
+        "signature_check_packages_time": 0.0,
+        "upload_packages_time": 187.0,
+        "web_server_processing_time": 29.0
+      },
+      "status": 3,
+      "wall_seconds": 255.704401
+    }
+  ],
+  "task_timings": [
+    {
+      "arch": "x86_64",
+      "artifact_counts": {
+        "build_log": 14,
+        "rpm": 19
+      },
+      "finished_at": "2024-09-03T13:29:29.159285",
+      "started_at": "2024-09-03T13:22:50.946943",
+      "status": 2,
+      "steps": [
+        {
+          "finished_at": "2024-09-03 13:29:29.159052",
+          "name": "build_done_stats.build_done",
+          "seconds": 44.145094,
+          "started_at": "2024-09-03 13:28:45.013958"
+        },
+        {
+          "finished_at": "2024-09-03 13:28:59.413787",
+          "name": "build_done_stats.logs_processing",
+          "seconds": 14.292583,
+          "started_at": "2024-09-03 13:28:45.121204"
+        },
+        {
+          "finished_at": "2024-09-03 13:29:29.048987",
+          "name": "build_done_stats.multilib_processing",
+          "seconds": 0.651019,
+          "started_at": "2024-09-03 13:29:28.397968"
+        },
+        {
+          "finished_at": "2024-09-03 13:29:28.397721",
+          "name": "build_done_stats.packages_processing",
+          "seconds": 28.983738,
+          "started_at": "2024-09-03 13:28:59.413983"
+        },
+        {
+          "finished_at": "2024-09-03 13:26:40.396968",
+          "name": "build_node_stats.build_all",
+          "seconds": 229.448087,
+          "started_at": "2024-09-03 13:22:50.948881"
+        },
+        {
+          "finished_at": "2024-09-03 13:26:40.396071",
+          "name": "build_node_stats.build_binaries",
+          "seconds": 195.109731,
+          "started_at": "2024-09-03 13:23:25.286340"
+        },
+        {
+          "finished_at": "2024-09-03 13:28:44.192947",
+          "name": "build_node_stats.build_node_task",
+          "seconds": 353.246004,
+          "started_at": "2024-09-03 13:22:50.946943"
+        },
+        {
+          "finished_at": "2024-09-03 13:26:40.396939",
+          "name": "build_node_stats.build_packages",
+          "seconds": 229.047389,
+          "started_at": "2024-09-03 13:22:51.349550"
+        },
+        {
+          "finished_at": "2024-09-03 13:23:25.026524",
+          "name": "build_node_stats.build_srpm",
+          "seconds": 33.676429,
+          "started_at": "2024-09-03 13:22:51.350095"
+        },
+        {
+          "finished_at": "2024-09-03 13:26:46.266660",
+          "name": "build_node_stats.cas_notarize_artifacts",
+          "seconds": 5.869509,
+          "started_at": "2024-09-03 13:26:40.397151"
+        },
+        {
+          "finished_at": "2024-09-03 13:22:51.349415",
+          "name": "build_node_stats.sources_unpack",
+          "seconds": 0.400515,
+          "started_at": "2024-09-03 13:22:50.948900"
+        },
+        {
+          "finished_at": "2024-09-03 13:28:37.220600",
+          "name": "build_node_stats.upload",
+          "seconds": 110.952335,
+          "started_at": "2024-09-03 13:26:46.268265"
+        }
+      ],
+      "task_id": "188077",
+      "test_step_totals": {
+        "initial_provision": 13154.32165,
+        "initialize_terraform": 40.840446,
+        "install_package": 3449.22854,
+        "package_integrity_tests": 33.090991,
+        "start_environment": 292.431014,
+        "stop_environment": 272.134878,
+        "system_info": 80.495475,
+        "third_party_tests_wrapper": 0.000836,
+        "uninstall_package": 263.008967
+      },
+      "test_tasks": 18,
+      "wall_seconds": 398.212342
+    },
+    {
+      "arch": "aarch64",
+      "artifact_counts": {
+        "build_log": 14,
+        "rpm": 19
+      },
+      "finished_at": "2024-09-03T13:30:53.549055",
+      "started_at": "2024-09-03T13:22:49.219720",
+      "status": 2,
+      "steps": [
+        {
+          "finished_at": "2024-09-03 13:30:53.548819",
+          "name": "build_done_stats.build_done",
+          "seconds": 49.312226,
+          "started_at": "2024-09-03 13:30:04.236593"
+        },
+        {
+          "finished_at": "2024-09-03 13:30:17.899565",
+          "name": "build_done_stats.logs_processing",
+          "seconds": 13.617816,
+          "started_at": "2024-09-03 13:30:04.281749"
+        },
+        {
+          "finished_at": "2024-09-03 13:30:46.034108",
+          "name": "build_done_stats.packages_processing",
+          "seconds": 28.134338,
+          "started_at": "2024-09-03 13:30:17.899770"
+        },
+        {
+          "finished_at": "2024-09-03 13:28:04.052682",
+          "name": "build_node_stats.build_all",
+          "seconds": 314.784714,
+          "started_at": "2024-09-03 13:22:49.267968"
+        },
+        {
+          "finished_at": "2024-09-03 13:28:04.036683",
+          "name": "build_node_stats.build_binaries",
+          "seconds": 225.665404,
+          "started_at": "2024-09-03 13:24:18.371279"
+        },
+        {
+          "finished_at": "2024-09-03 13:30:03.858651",
+          "name": "build_node_stats.build_node_task",
+          "seconds": 434.638931,
+          "started_at": "2024-09-03 13:22:49.219720"
+        },
+        {
+          "finished_at": "2024-09-03 13:28:04.052435",
+          "name": "build_node_stats.build_packages",
+          "seconds": 313.790306,
+          "started_at": "2024-09-03 13:22:50.262129"
+        },
+        {
+          "finished_at": "2024-09-03 13:24:18.097200",
+          "name": "build_node_stats.build_srpm",
+          "seconds": 87.821866,
+          "started_at": "2024-09-03 13:22:50.275334"
+        },
+        {
+          "finished_at": "2024-09-03 13:28:10.236750",
+          "name": "build_node_stats.cas_notarize_artifacts",
+          "seconds": 6.182466,
+          "started_at": "2024-09-03 13:28:04.054284"
+        },
+        {
+          "finished_at": "2024-09-03 13:22:50.257125",
+          "name": "build_node_stats.sources_unpack",
+          "seconds": 0.987777,
+          "started_at": "2024-09-03 13:22:49.269348"
+        },
+        {
+          "finished_at": "2024-09-03 13:29:56.778736",
+          "name": "build_node_stats.upload",
+          "seconds": 106.522687,
+          "started_at": "2024-09-03 13:28:10.256049"
+        }
+      ],
+      "task_id": "188078",
+      "test_step_totals": {
+        "initial_provision": 1180.881482,
+        "initialize_terraform": 1.752543,
+        "install_package": 678.456239,
+        "package_integrity_tests": 13.71782,
+        "start_environment": 16.629143,
+        "stop_environment": 58.181622,
+        "system_info": 20.537019,
+        "third_party_tests_wrapper": 0.000573,
+        "uninstall_package": 60.148915
+      },
+      "test_tasks": 18,
+      "wall_seconds": 484.329335
+    },
+    {
+      "arch": "ppc64le",
+      "artifact_counts": {
+        "build_log": 14,
+        "rpm": 19
+      },
+      "finished_at": "2024-09-03T13:28:56.649087",
+      "started_at": "2024-09-03T13:22:46.579039",
+      "status": 2,
+      "steps": [
+        {
+          "finished_at": "2024-09-03 13:28:56.648880",
+          "name": "build_done_stats.build_done",
+          "seconds": 45.820657,
+          "started_at": "2024-09-03 13:28:10.828223"
+        },
+        {
+          "finished_at": "2024-09-03 13:28:27.982566",
+          "name": "build_done_stats.logs_processing",
+          "seconds": 17.099251,
+          "started_at": "2024-09-03 13:28:10.883315"
+        },
+        {
+          "finished_at": "2024-09-03 13:28:56.589529",
+          "name": "build_done_stats.packages_processing",
+          "seconds": 28.606756,
+          "started_at": "2024-09-03 13:28:27.982773"
+        },
+        {
+          "finished_at": "2024-09-03 13:25:36.099932",
+          "name": "build_node_stats.build_all",
+          "seconds": 169.518718,
+          "started_at": "2024-09-03 13:22:46.581214"
+        },
+        {
+          "finished_at": "2024-09-03 13:25:36.099435",
+          "name": "build_node_stats.build_binaries",
+          "seconds": 101.537561,
+          "started_at": "2024-09-03 13:23:54.561874"
+        },
+        {
+          "finished_at": "2024-09-03 13:28:10.420593",
+          "name": "build_node_stats.build_node_task",
+          "seconds": 323.841554,
+          "started_at": "2024-09-03 13:22:46.579039"
+        },
+        {
+          "finished_at": "2024-09-03 13:25:36.099920",
+          "name": "build_node_stats.build_packages",
+          "seconds": 168.748367,
+          "started_at": "2024-09-03 13:22:47.351553"
+        },
+        {
+          "finished_at": "2024-09-03 13:23:54.545308",
+          "name": "build_node_stats.build_srpm",
+          "seconds": 67.193216,
+          "started_at": "2024-09-03 13:22:47.352092"
+        },
+        {
+          "finished_at": "2024-09-03 13:25:53.522807",
+          "name": "build_node_stats.cas_notarize_artifacts",
+          "seconds": 17.422735,
+          "started_at": "2024-09-03 13:25:36.100072"
+        },
+        {
+          "finished_at": "2024-09-03 13:22:47.351414",
+          "name": "build_node_stats.sources_unpack",
+          "seconds": 0.770192,
+          "started_at": "2024-09-03 13:22:46.581222"
+        },
+        {
+          "finished_at": "2024-09-03 13:28:03.102241",
+          "name": "build_node_stats.upload",
+          "seconds": 129.578265,
+          "started_at": "2024-09-03 13:25:53.523976"
+        }
+      ],
+      "task_id": "188080",
+      "test_step_totals": {
+        "initial_provision": 2115.262433,
+        "initialize_terraform": 3.888765,
+        "install_package": 1034.457936,
+        "package_integrity_tests": 23.535082,
+        "start_environment": 22.32176,
+        "stop_environment": 81.699785,
+        "system_info": 42.326024,
+        "third_party_tests_wrapper": 0.000478,
+        "uninstall_package": 124.217737
+      },
+      "test_tasks": 18,
+      "wall_seconds": 370.070048
+    },
+    {
+      "arch": "s390x",
+      "artifact_counts": {
+        "build_log": 14,
+        "rpm": 19
+      },
+      "finished_at": "2024-09-03T13:27:47.275025",
+      "started_at": "2024-09-03T13:22:47.995862",
+      "status": 2,
+      "steps": [
+        {
+          "finished_at": "2024-09-03 13:27:47.274787",
+          "name": "build_done_stats.build_done",
+          "seconds": 47.42057,
+          "started_at": "2024-09-03 13:26:59.854217"
+        },
+        {
+          "finished_at": "2024-09-03 13:27:15.186868",
+          "name": "build_done_stats.logs_processing",
+          "seconds": 15.286657,
+          "started_at": "2024-09-03 13:26:59.900211"
+        },
+        {
+          "finished_at": "2024-09-03 13:27:47.210591",
+          "name": "build_done_stats.packages_processing",
+          "seconds": 32.023518,
+          "started_at": "2024-09-03 13:27:15.187073"
+        },
+        {
+          "finished_at": "2024-09-03 13:24:48.274213",
+          "name": "build_node_stats.build_all",
+          "seconds": 120.276819,
+          "started_at": "2024-09-03 13:22:47.997394"
+        },
+        {
+          "finished_at": "2024-09-03 13:24:48.273699",
+          "name": "build_node_stats.build_binaries",
+          "seconds": 74.012922,
+          "started_at": "2024-09-03 13:23:34.260777"
+        },
+        {
+          "finished_at": "2024-09-03 13:26:59.527536",
+          "name": "build_node_stats.build_node_task",
+          "seconds": 251.531674,
+          "started_at": "2024-09-03 13:22:47.995862"
+        },
+        {
+          "finished_at": "2024-09-03 13:24:48.274200",
+          "name": "build_node_stats.build_packages",
+          "seconds": 120.009514,
+          "started_at": "2024-09-03 13:22:48.264686"
+        },
+        {
+          "finished_at": "2024-09-03 13:23:34.248375",
+          "name": "build_node_stats.build_srpm",
+          "seconds": 45.982766,
+          "started_at": "2024-09-03 13:22:48.265609"
+        },
+        {
+          "finished_at": "2024-09-03 13:24:54.130698",
+          "name": "build_node_stats.cas_notarize_artifacts",
+          "seconds": 5.856355,
+          "started_at": "2024-09-03 13:24:48.274343"
+        },
+        {
+          "finished_at": "2024-09-03 13:22:48.264577",
+          "name": "build_node_stats.sources_unpack",
+          "seconds": 0.267166,
+          "started_at": "2024-09-03 13:22:47.997411"
+        },
+        {
+          "finished_at": "2024-09-03 13:26:50.779646",
+          "name": "build_node_stats.upload",
+          "seconds": 116.64391,
+          "started_at": "2024-09-03 13:24:54.135736"
+        }
+      ],
+      "task_id": "188079",
+      "test_step_totals": {
+        "initial_provision": 2635.473638,
+        "initialize_terraform": 2.280297,
+        "install_package": 795.720007,
+        "package_integrity_tests": 28.351747,
+        "start_environment": 76.739034,
+        "stop_environment": 84.549057,
+        "system_info": 52.541603,
+        "third_party_tests_wrapper": 0.000699,
+        "uninstall_package": 215.788769
+      },
+      "test_tasks": 18,
+      "wall_seconds": 299.279163
+    },
+    {
+      "arch": "i686",
+      "artifact_counts": {
+        "build_log": 14,
+        "rpm": 19
+      },
+      "finished_at": "2024-09-03T13:29:53.516763",
+      "started_at": "2024-09-03T13:22:49.675776",
+      "status": 2,
+      "steps": [
+        {
+          "finished_at": "2024-09-03 13:29:53.516543",
+          "name": "build_done_stats.build_done",
+          "seconds": 43.158224,
+          "started_at": "2024-09-03 13:29:10.358319"
+        },
+        {
+          "finished_at": "2024-09-03 13:29:24.171947",
+          "name": "build_done_stats.logs_processing",
+          "seconds": 13.768955,
+          "started_at": "2024-09-03 13:29:10.402992"
+        },
+        {
+          "finished_at": "2024-09-03 13:29:53.456094",
+          "name": "build_done_stats.packages_processing",
+          "seconds": 29.283952,
+          "started_at": "2024-09-03 13:29:24.172142"
+        },
+        {
+          "finished_at": "2024-09-03 13:27:09.714670",
+          "name": "build_node_stats.build_all",
+          "seconds": 260.035815,
+          "started_at": "2024-09-03 13:22:49.678855"
+        },
+        {
+          "finished_at": "2024-09-03 13:27:09.714083",
+          "name": "build_node_stats.build_binaries",
+          "seconds": 111.976572,
+          "started_at": "2024-09-03 13:25:17.737511"
+        },
+        {
+          "finished_at": "2024-09-03 13:29:10.038120",
+          "name": "build_node_stats.build_node_task",
+          "seconds": 380.362344,
+          "started_at": "2024-09-03 13:22:49.675776"
+        },
+        {
+          "finished_at": "2024-09-03 13:27:09.714654",
+          "name": "build_node_stats.build_packages",
+          "seconds": 259.323853,
+          "started_at": "2024-09-03 13:22:50.390801"
+        },
+        {
+          "finished_at": "2024-09-03 13:25:17.714276",
+          "name": "build_node_stats.build_srpm",
+          "seconds": 147.322653,
+          "started_at": "2024-09-03 13:22:50.391623"
+        },
+        {
+          "finished_at": "2024-09-03 13:27:15.357103",
+          "name": "build_node_stats.cas_notarize_artifacts",
+          "seconds": 5.642326,
+          "started_at": "2024-09-03 13:27:09.714777"
+        },
+        {
+          "finished_at": "2024-09-03 13:22:50.390606",
+          "name": "build_node_stats.sources_unpack",
+          "seconds": 0.711723,
+          "started_at": "2024-09-03 13:22:49.678883"
+        },
+        {
+          "finished_at": "2024-09-03 13:29:03.487124",
+          "name": "build_node_stats.upload",
+          "seconds": 108.129031,
+          "started_at": "2024-09-03 13:27:15.358093"
+        }
+      ],
+      "task_id": "188076",
+      "test_step_totals": {
+        "initial_provision": 10209.278205,
+        "initialize_terraform": 25.223134,
+        "install_package": 1931.799586,
+        "package_integrity_tests": 22.293483,
+        "start_environment": 285.057778,
+        "stop_environment": 231.543549,
+        "system_info": 88.688954,
+        "third_party_tests_wrapper": 0.000691,
+        "uninstall_package": 334.421998
+      },
+      "test_tasks": 18,
+      "wall_seconds": 423.840987
+    },
+    {
+      "arch": "src",
+      "artifact_counts": {
+        "build_log": 7,
+        "rpm": 1
+      },
+      "finished_at": "2024-09-03T13:22:45.495354",
+      "started_at": "2024-09-03T13:17:57.853495",
+      "status": 2,
+      "steps": [
+        {
+          "finished_at": "2024-09-03 13:22:45.480583",
+          "name": "build_done_stats.build_done",
+          "seconds": 24.991276,
+          "started_at": "2024-09-03 13:22:20.489307"
+        },
+        {
+          "finished_at": "2024-09-03 13:22:33.112127",
+          "name": "build_done_stats.logs_processing",
+          "seconds": 12.580897,
+          "started_at": "2024-09-03 13:22:20.531230"
+        },
+        {
+          "finished_at": "2024-09-03 13:22:45.433399",
+          "name": "build_done_stats.packages_processing",
+          "seconds": 12.32106,
+          "started_at": "2024-09-03 13:22:33.112339"
+        },
+        {
+          "finished_at": "2024-09-03 13:21:43.630874",
+          "name": "build_node_stats.build_all",
+          "seconds": 225.774362,
+          "started_at": "2024-09-03 13:17:57.856512"
+        },
+        {
+          "finished_at": "2024-09-03 13:22:20.171342",
+          "name": "build_node_stats.build_node_task",
+          "seconds": 262.317847,
+          "started_at": "2024-09-03 13:17:57.853495"
+        },
+        {
+          "finished_at": "2024-09-03 13:21:43.630837",
+          "name": "build_node_stats.build_packages",
+          "seconds": 224.193231,
+          "started_at": "2024-09-03 13:17:59.437606"
+        },
+        {
+          "finished_at": "2024-09-03 13:21:43.622281",
+          "name": "build_node_stats.build_srpm",
+          "seconds": 224.184118,
+          "started_at": "2024-09-03 13:17:59.438163"
+        },
+        {
+          "finished_at": "2024-09-03 13:21:44.945037",
+          "name": "build_node_stats.cas_notarize_artifacts",
+          "seconds": 1.314085,
+          "started_at": "2024-09-03 13:21:43.630952"
+        },
+        {
+          "finished_at": "2024-09-03 13:17:58.774905",
+          "name": "build_node_stats.cas_source_authenticate",
+          "seconds": 0.226372,
+          "started_at": "2024-09-03 13:17:58.548533"
+        },
+        {
+          "finished_at": "2024-09-03 13:17:58.548440",
+          "name": "build_node_stats.git_checkout",
+          "seconds": 0.691819,
+          "started_at": "2024-09-03 13:17:57.856621"
+        },
+        {
+          "finished_at": "2024-09-03 13:22:13.593488",
+          "name": "build_node_stats.upload",
+          "seconds": 28.647765,
+          "started_at": "2024-09-03 13:21:44.945723"
+        }
+      ],
+      "task_id": "188075",
+      "test_step_totals": {},
+      "test_tasks": 0,
+      "wall_seconds": 287.641859
+    }
+  ],
+  "totals": {
+    "aggregate_build_task_wall_seconds": 2263.373734,
+    "aggregate_sign_task_wall_seconds": 255.704401,
+    "artifact_arches": {
+      "aarch64": 16,
+      "i686": 16,
+      "noarch": 10,
+      "non_rpm": 77,
+      "ppc64le": 16,
+      "s390x": 16,
+      "src": 6,
+      "x86_64": 16
+    },
+    "artifact_count": 173,
+    "artifact_types": {
+      "build_log": 77,
+      "rpm": 96
+    },
+    "build_step_totals_seconds": {
+      "build_done_stats.build_done": 254.848047,
+      "build_done_stats.logs_processing": 86.646159,
+      "build_done_stats.multilib_processing": 0.651019,
+      "build_done_stats.packages_processing": 159.353362,
+      "build_node_stats.build_all": 1319.838515,
+      "build_node_stats.build_binaries": 708.30219,
+      "build_node_stats.build_node_task": 2005.938354,
+      "build_node_stats.build_packages": 1315.11266,
+      "build_node_stats.build_srpm": 606.181048,
+      "build_node_stats.cas_notarize_artifacts": 42.287476,
+      "build_node_stats.cas_source_authenticate": 0.226372,
+      "build_node_stats.git_checkout": 0.691819,
+      "build_node_stats.sources_unpack": 3.137373,
+      "build_node_stats.upload": 600.473993
+    },
+    "build_task_count": 6,
+    "critical_build_task_wall_seconds": 484.329335,
+    "sign_step_totals_seconds": {
+      "download_packages_time": 8.0,
+      "notarization_packages_time": 7.0,
+      "sign_packages_time": 22.0,
+      "signature_check_packages_time": 0.0,
+      "upload_packages_time": 187.0,
+      "web_server_processing_time": 29.0
+    },
+    "sign_task_count": 1
+  },
+  "wall_seconds": 814.155744
+}
