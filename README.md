@@ -152,17 +152,29 @@ Regenerate demo artifacts in one verbose run. The script fetches ALBS metadata o
 ```
 
 <details>
-<summary>Sample verbose run with host name sanitized</summary>
+<summary>Sample verbose run (`bash -x`) on an AlmaLinux host, host name sanitized</summary>
 
 ```text
-(_venv_Mac) pawel@codebook:~/albs-provenance-explorer $ bash example--verbose.sh
+[almalinux@host albs-provenance-explorer]$ bash -x example--verbose.sh
++ set -euo pipefail
++ BUILD_ID=17812
++ RPM_NAME=
++ ARCH=
++ OUT_DIR=examples/demo-build-17812
++ LIVE_DIR=examples/live-build-17812
++ CACHE_FILE=examples/live-build-17812/build-17812.albs.json
++ CACHE_TTL=300
++ VERIFY_GIT=0
++ python3 -m albs_graph.cli.demo_verbose --build-id 17812 --rpm '' --arch '' --out-dir examples/demo-build-17812 --live-dir examples/live-build-17812 --cache examples/live-build-17812/build-17812.albs.json --cache-ttl 300 --verify-git 0
 ==> ALBS graph tool: albs-graph installed; using Python orchestration for single-pass demo
 ==> Build: 17812
 ==> Focused RPM selector: <none; representative artifact selected after ALBS metadata>
 ==> Raw ALBS metadata cache: examples/live-build-17812/build-17812.albs.json
 ==> Cache TTL: 300s
 ==> Verify git source commit: 0
-step Loading ALBS build metadata from fresh cache examples/live-build-17812/build-17812.albs.json
+step Fetching ALBS build metadata from https://build.almalinux.org/api/v1/builds/17812/
+step Writing ALBS build metadata cache to examples/live-build-17812/build-17812.albs.json
+step Parsing ALBS API JSON response
 step Source package: nginx (from ALBS srpm_artifact)
 step Building full provenance graph from ALBS metadata
 step Full graph: 289 nodes, 484 edges, 85 CAS attestations
@@ -268,6 +280,7 @@ step Writing focused graph svg output to examples/demo-build-17812/nginx-x86_64-
 Metadata cache: examples/live-build-17812/build-17812.albs.json
 Full graph:     examples/demo-build-17812/build-17812-full.svg
 Focused graph:  examples/demo-build-17812/nginx-x86_64-trust.svg
+[almalinux@host albs-provenance-explorer]$
 ```
 
 </details>
