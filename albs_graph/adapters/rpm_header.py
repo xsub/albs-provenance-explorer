@@ -172,6 +172,10 @@ def classify_capability(name: str) -> tuple[str, str | None]:
         return "file", None
     if ".so" in name:
         return "soname", name.split("(", 1)[0]
+    # Other parenthesised capabilities (rtld(GNU_HASH), feature(...)) are synthetic
+    # rpm features, not real package names -- never emit them as package requires.
+    if "(" in name:
+        return "rpmlib", None
     return "package", None
 
 

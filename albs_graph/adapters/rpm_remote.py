@@ -30,7 +30,13 @@ from albs_graph.dependency import (
 from albs_graph.model import Node, NodeType, ProvenanceGraph
 from albs_graph.provenance.reconcile import DependencyClaim, add_dependency_claim
 
-from .rpm_header import RpmHeader, RpmHeaderError, parse_rpm_header, required_header_length
+from .rpm_header import (
+    RpmDependency,
+    RpmHeader,
+    RpmHeaderError,
+    parse_rpm_header,
+    required_header_length,
+)
 
 # A range fetcher returns the bytes for an inclusive [start, end] byte range.
 RangeFetcher = Callable[[str, int, int], bytes]
@@ -40,6 +46,38 @@ NodeSelector = Callable[[Node], bool]
 _DEFAULT_VAULT_BASE = "https://repo.almalinux.org/vault"
 _DEFAULT_REPOS = ("BaseOS", "AppStream", "CRB", "extras", "HighAvailability")
 _MAX_FETCH_BYTES = 16 * 1024 * 1024
+
+# RPMSENSE comparison bits (rpmlib): a require's flags encode the operator.
+_RPMSENSE_LESS = 1 << 1
+_RPMSENSE_GREATER = 1 << 2
+_RPMSENSE_EQUAL = 1 << 3
+_RPMSENSE_SENSE_MASK = _RPMSENSE_LESS | _RPMSENSE_GREATER | _RPMSENSE_EQUAL
+_SENSE_OP = {
+    _RPMSENSE_EQUAL: "=",
+    _RPMSENSE_EQUAL | _RPMSENSE_GREATER: ">=",
+    _RPMSENSE_EQUAL | _RPMSENSE_LESS: "<=",
+    _RPMSENSE_GREATER: ">",
+    _RPMSENSE_LESS: "<",
+}
+
+
+def _package_constraint(dep: RpmDependency) -> tuple[str | None, str | None]:
+    """Translate a package require's flags+version into (exact_version, requested).
+
+    An ``=`` dependency yields a concrete version (counts toward the resolution
+    axis); a relational operator yields a ``requested`` constraint string (drives
+    RANGE_VIOLATION); a bare name yields neither.
+    """
+
+    version = (dep.version or "").strip()
+    if not version:
+        return None, None
+    operator = _SENSE_OP.get(dep.flags & _RPMSENSE_SENSE_MASK)
+    if operator is None:
+        return None, None
+    if operator == "=":
+        return version, None
+    return None, f"{dep.name} {operator} {version}"
 
 
 class RpmHeaderFetchError(RuntimeError):
@@ -102,24 +140,39 @@ def header_dependency_claims(
     single claim whose raw payload keeps every original expression.
     """
 
-    groups: dict[tuple[str, str, Linkage], list[str]] = {}
-    order: list[tuple[str, str, Linkage]] = []
+    soname_groups: dict[str, list[str]] = {}
+    soname_order: list[str] = []
+    package_claims: list[DependencyClaim] = []
+    seen_packages: set[tuple[str, str | None, str | None]] = set()
     for dep in header.requires:
         if dep.kind == "soname" and dep.soname:
-            key = (dep.soname, "rpm_header_soname", Linkage.DYNAMIC)
+            if dep.soname not in soname_groups:
+                soname_groups[dep.soname] = []
+                soname_order.append(dep.soname)
+            soname_groups[dep.soname].append(dep.name)
         elif include_packages and dep.kind == "package":
-            key = (dep.name, "rpm_header_requires", Linkage.UNKNOWN)
-        else:
-            continue
-        if key not in groups:
-            groups[key] = []
-            order.append(key)
-        groups[key].append(dep.name)
+            version, requested = _package_constraint(dep)
+            dedupe = (dep.name, version, requested)
+            if dedupe in seen_packages:
+                continue
+            seen_packages.add(dedupe)
+            package_claims.append(
+                _claim(
+                    subject_id,
+                    dep.name,
+                    Linkage.UNKNOWN,
+                    "rpm_header_requires",
+                    [dep.name],
+                    version=version,
+                    requested=requested,
+                )
+            )
 
-    return [
-        _claim(subject_id, name, linkage, evidence, groups[(name, evidence, linkage)])
-        for name, evidence, linkage in order
+    soname_claims = [
+        _claim(subject_id, soname, Linkage.DYNAMIC, "rpm_header_soname", soname_groups[soname])
+        for soname in soname_order
     ]
+    return soname_claims + package_claims
 
 
 def enrich_graph_with_rpm_headers(
@@ -156,7 +209,7 @@ def enrich_graph_with_rpm_headers(
         fetched += 1
         if on_progress:
             on_progress(f"parsed header for {filename} from {used_url}")
-        for claim in header_dependency_claims(node.id, header):
+        for claim in header_dependency_claims(node.id, header, include_packages=True):
             add_dependency_claim(graph, claim)
             claims_added += 1
     return HeaderEnrichmentResult(artifacts, fetched, claims_added, tuple(failures))
@@ -204,13 +257,21 @@ def _try_candidates(
 
 
 def _claim(
-    subject_id: str, name: str, linkage: Linkage, evidence: str, expressions: list[str]
+    subject_id: str,
+    name: str,
+    linkage: Linkage,
+    evidence: str,
+    expressions: list[str],
+    *,
+    version: str | None = None,
+    requested: str | None = None,
 ) -> DependencyClaim:
     spec = DependencySpec(
-        identity=PackageIdentity(Ecosystem.RPM, name),
+        identity=PackageIdentity(Ecosystem.RPM, name, version=version),
         scope=DependencyScope.RUNTIME,
         linkage=linkage,
         resolution_state=ResolutionState.OBSERVED,
+        requested=requested,
         source="rpm_header",
         raw={"capability": name, "expressions": expressions},
     )

@@ -14,19 +14,23 @@ from albs_graph.adapters.rpm_remote import (
 )
 from albs_graph.dependency import Linkage
 from albs_graph.model import Node, NodeType, ProvenanceGraph
+from albs_graph.provenance import reconcile_dependency_claims, resolution_details
 
 # RPM header data types.
 _STRING = 6
 _INT32 = 4
 _STRING_ARRAY = 8
 
+# (capability, RPMSENSE flags, version): flags 8 = "=", 12 = ">=", 10 = "<=".
 _REQUIRES = [
-    "libc.so.6()(64bit)",
-    "libssl.so.3",
-    "rpmlib(CompressedFileNames) <= 3.0.4-1",
-    "bash",
-    "/bin/sh",
-    "(nginx if systemd)",
+    ("libc.so.6()(64bit)", 0, ""),
+    ("libssl.so.3", 0, ""),
+    ("rpmlib(CompressedFileNames)", 10, "3.0.4-1"),
+    ("bash", 0, ""),
+    ("/bin/sh", 0, ""),
+    ("(nginx if systemd)", 0, ""),
+    ("openssl-libs", 12, "1:3.0.7"),  # versioned range require (>=)
+    ("nginx-filesystem", 8, "1:1.20.1-16.el9_4.1"),  # exact-version require (=)
 ]
 
 
@@ -64,9 +68,12 @@ def _build_rpm(
     version: str = "1.20.1",
     release: str = "16.el9_4.1",
     arch: str = "x86_64",
-    requires: list[str] | None = None,
+    requires: list[tuple[str, int, str]] | None = None,
 ) -> bytes:
     reqs = requires if requires is not None else _REQUIRES
+    names = [r[0] for r in reqs]
+    flags = [r[1] for r in reqs]
+    versions = [r[2] for r in reqs]
     lead = b"\xed\xab\xee\xdb" + b"\x00" * 92  # 96-byte lead
     # Signature header with one short string tag, forcing 8-byte padding.
     sig = _section([(62, _STRING, "sig")])
@@ -77,8 +84,9 @@ def _build_rpm(
             (1001, _STRING, version),
             (1002, _STRING, release),
             (1022, _STRING, arch),
-            (1049, _STRING_ARRAY, reqs),
-            (1048, _INT32, [0] * len(reqs)),
+            (1049, _STRING_ARRAY, names),
+            (1048, _INT32, flags),
+            (1050, _STRING_ARRAY, versions),
         ]
     )
     payload = b"\x1f\x8b" + b"\x00" * 64  # token "compressed payload"
@@ -97,6 +105,7 @@ def test_classify_capability_distinguishes_sonames() -> None:
     assert classify_capability("bash") == ("package", None)
     assert classify_capability("/bin/sh") == ("file", None)
     assert classify_capability("rpmlib(Foo)") == ("rpmlib", None)
+    assert classify_capability("rtld(GNU_HASH)") == ("rpmlib", None)
     assert classify_capability("(a if b)") == ("rich", None)
 
 
@@ -140,6 +149,53 @@ def test_fetch_rpm_header_drives_incremental_range_reads() -> None:
     assert all(claim.evidence == "rpm_header_soname" for claim in claims)
 
 
+def test_header_package_requires_carry_versions_and_constraints() -> None:
+    header = fetch_rpm_header("http://example/test.rpm", _range_fetcher(_build_rpm()))
+    claims = header_dependency_claims("rpm:test", header, include_packages=True)
+    by_name = {claim.spec.identity.name: claim for claim in claims}
+
+    # Sonames stay dynamic-linkage observations.
+    assert by_name["libssl.so.3"].spec.linkage == Linkage.DYNAMIC
+    assert by_name["libssl.so.3"].evidence == "rpm_header_soname"
+    # Package requires become rpm_header_requires claims: "=" -> concrete version,
+    # ">=" -> a requested constraint string, bare name -> neither.
+    assert by_name["nginx-filesystem"].evidence == "rpm_header_requires"
+    assert by_name["nginx-filesystem"].spec.identity.version == "1:1.20.1-16.el9_4.1"
+    assert by_name["openssl-libs"].spec.requested == "openssl-libs >= 1:3.0.7"
+    assert by_name["openssl-libs"].spec.identity.version is None
+    assert by_name["bash"].spec.identity.version is None
+    assert by_name["bash"].spec.requested is None
+    # rpmlib / file / rich capabilities are not package requires.
+    assert "/bin/sh" not in by_name
+
+
+def test_versioned_package_require_reconciles_as_compatible() -> None:
+    graph = ProvenanceGraph()
+    graph.add_node(
+        Node(
+            "rpm:nginx-core",
+            NodeType.BINARY_RPM,
+            "nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
+            {"name": "nginx-core", "filename": "nginx-core-1.20.1-16.el9_4.1.x86_64.rpm"},
+        )
+    )
+    enrich_graph_with_rpm_headers(
+        graph,
+        fetch=_range_fetcher(_build_rpm()),
+        url_resolver=lambda _filename: ["http://example/nginx-core.rpm"],
+    )
+    reconcile_dependency_claims(graph)
+
+    # The exact-version package require resolves to a concrete version (COMPATIBLE),
+    # so it counts toward the resolution axis instead of staying insufficient.
+    nginx_fs = next(d for d in resolution_details(graph) if "nginx-filesystem" in d.coordinate)
+    assert nginx_fs.agreement == "compatible"
+    assert nginx_fs.versions == ("1:1.20.1-16.el9_4.1",)
+    # The bare soname remains an unversioned observation.
+    soname = next(d for d in resolution_details(graph) if d.coordinate.endswith("libssl.so.3"))
+    assert soname.agreement == "insufficient_evidence"
+
+
 def test_enrich_graph_adds_dynamic_linkage_claims() -> None:
     graph = ProvenanceGraph()
     graph.add_node(
@@ -157,11 +213,16 @@ def test_enrich_graph_adds_dynamic_linkage_claims() -> None:
     )
 
     assert result.headers_fetched == 1
-    assert result.claims_added == 2
+    # 2 soname claims + 3 package requires (bash, openssl-libs, nginx-filesystem);
+    # rpmlib / file / rich capabilities are not emitted as claims.
+    assert result.claims_added == 5
     assert result.failures == ()
     claim_nodes = graph.find_by_type(NodeType.DEPENDENCY_CLAIM)
-    assert len(claim_nodes) == 2
-    assert all(node.metadata.get("linkage") == "dynamic" for node in claim_nodes)
+    assert len(claim_nodes) == 5
+    # The two soname claims carry dynamic linkage; package requires carry unknown.
+    soname_nodes = [n for n in claim_nodes if n.metadata.get("evidence") == "rpm_header_soname"]
+    assert len(soname_nodes) == 2
+    assert all(n.metadata.get("linkage") == "dynamic" for n in soname_nodes)
 
 
 def test_vault_candidate_urls_reconstructs_point_release_path() -> None:

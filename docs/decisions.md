@@ -749,6 +749,29 @@ output), threading the flag through their fetch/trust-path/coverage steps.
 
 ---
 
+## D34 - Versioned package requires from the RPM header (rung 3)
+
+**Files:** `adapters/rpm_remote.py`, `adapters/rpm_header.py`, `provenance/reconcile.py`
+
+The rung-3 header we already range-fetch carries the full REQUIRE
+name/flags/version, not just the DT_NEEDED sonames. `header_dependency_claims`
+now also emits the package-kind requires (`evidence="rpm_header_requires"`): an
+`=` require becomes a concrete `identity.version` (counts toward the resolution
+axis as COMPATIBLE), a relational one (`>=`/`<=`) becomes a `requested`
+constraint string (drives RANGE_VIOLATION), and a bare name is a name-only
+declaration. These are the deps the el-N RPM itself declares -- no host repos,
+no extra fetch. `_evidence_class` maps `rpm_header_requires` to the *declared*
+class (the package's declared dependency contract), so it is the declaration
+baseline for presence-gap detection rather than an artifact observation.
+`classify_capability` now treats parenthesised non-soname capabilities
+(`rtld(GNU_HASH)`) as synthetic rpm features, not packages.
+
+Note: many RPMs (e.g. nginx-core) declare name-only requires, so the version
+value appears only where the spec/auto-deps carry an EVR; the resolved provider
+NEVRA still comes from the buildroot or the repo closure.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -459,6 +459,11 @@ def _evidence_class(evidence: str, state: ResolutionState) -> str:
     # (checked before the "soname" artifact token).
     if "sbom" in lowered or "provider" in lowered:
         return "resolved"
+    # RPM REQUIRES are the package's declared dependency contract (often
+    # versioned/constrained), distinct from auto-derived soname/ELF artifact
+    # facts -- so they are a declaration baseline, not an artifact observation.
+    if "rpm_header_requires" in lowered:
+        return "declared"
     if any(token in lowered for token in ("rpm_header", "soname", "elf", "needed", "dlopen", "bom")):
         return _ARTIFACT_CLASS
     if "lockfile" in lowered or state == ResolutionState.LOCKED:
