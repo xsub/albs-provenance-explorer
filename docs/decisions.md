@@ -698,6 +698,19 @@ fabricated). CLI: `slsa --build-id … --rpm <name> --arch <arch>`.
 
 ---
 
+## D31 — License-compliance rollup (F2)
+
+**Files:** `albs_graph/adapters/sbom.py` (capture licenses), `provenance/license.py`,
+`cli/main.py` (`license`)
+
+The SBOM ingest now captures each CycloneDX component's licenses (ids and
+expressions) into the claim's raw payload. `license_report` rolls those up into a
+per-license component count plus an explicit **unlicensed** bucket (components
+with no license field are surfaced as unknown, not guessed) — the view a license
+consumer needs. CLI: `license --sbom FILE [--sbom-subject RPM]`.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -214,11 +214,28 @@ def cyclonedx_dependency_claims(subject_id: str, data: dict[str, Any]) -> list[D
                     key: component.get(key)
                     for key in ("bom-ref", "type", "purl", "cpe", "version")
                     if component.get(key) is not None
-                }
+                },
+                "licenses": _cyclonedx_licenses(component),
             },
         )
         claims.append(DependencyClaim(subject_id=subject_id, spec=spec, evidence="sbom"))
     return claims
+
+
+def _cyclonedx_licenses(component: dict[str, Any]) -> list[str]:
+    """Extract license ids / expressions from a CycloneDX component."""
+
+    licenses: list[str] = []
+    for entry in component.get("licenses", []):
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("expression"):
+            licenses.append(str(entry["expression"]))
+        elif isinstance(entry.get("license"), dict):
+            value = entry["license"].get("id") or entry["license"].get("name")
+            if value:
+                licenses.append(str(value))
+    return licenses
 
 
 def attach_cyclonedx_sbom_claims(

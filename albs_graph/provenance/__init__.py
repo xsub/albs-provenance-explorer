@@ -9,6 +9,7 @@ from .build_analysis import (
 )
 from .coverage import AxisCoverage, CoverageReport, coverage_report
 from .identify import IdentifiedElement, IdentifyReport, identify_file
+from .license import LicenseReport, license_report
 from .inventory import (
     ArtifactArchSummary,
     ArtifactInventoryItem,
@@ -57,6 +58,7 @@ __all__ = [
     "GraphSummary",
     "IdentifiedElement",
     "IdentifyReport",
+    "LicenseReport",
     "PackageVulnAssessment",
     "VulnReport",
     "ReconciliationReport",
@@ -83,6 +85,7 @@ __all__ = [
     "coverage_report",
     "cves_for_artifact",
     "identify_file",
+    "license_report",
     "make_binary_rpm_selector",
     "reconcile_dependency_claims",
     "rpm_artifact_inventory",

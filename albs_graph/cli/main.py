@@ -42,6 +42,7 @@ from albs_graph.fixtures import build_synthetic_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
 from albs_graph.provenance.coverage import coverage_report
 from albs_graph.provenance.identify import identify_file
+from albs_graph.provenance.license import license_report
 from albs_graph.provenance.reconcile import reconcile_dependency_claims
 from albs_graph.provenance.slsa import slsa_provenance
 from albs_graph.provenance.vuln import vulnerability_report
@@ -1064,6 +1065,65 @@ def vuln_command(
         f"{len(report.packages)} packages; {report.addressed_cve_count} addressed, "
         f"{report.potentially_affected_count} potentially-affected distinct CVEs"
     )
+
+
+@app.command(
+    "license",
+    help="License-compliance rollup over an attached CycloneDX SBOM.",
+    short_help="License rollup from an SBOM.",
+    no_args_is_help=True,
+)
+def license_command(
+    sbom: Path = typer.Option(..., "--sbom", help="CycloneDX JSON SBOM to roll up."),
+    build_id: Optional[int] = typer.Option(None, "--build-id", "-b", help="Fetch a live ALBS build."),
+    source: Optional[Path] = typer.Option(None, "--source", "-s", help="Cached ALBS metadata JSON."),
+    sbom_subject: Optional[str] = typer.Option(
+        None, "--sbom-subject", help="Binary RPM the SBOM describes."
+    ),
+    arch: Optional[str] = typer.Option(None, "--arch"),
+    output_format: str = typer.Option("summary", "--format", "-f", help="summary or json."),
+    base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
+    cache: Optional[Path] = typer.Option(None, "--cache"),
+    cache_ttl: int = typer.Option(300, "--cache-ttl"),
+    refresh_cache: bool = typer.Option(False, "--refresh-cache"),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    if build_id is not None:
+        metadata = fetch_build_metadata(
+            build_id,
+            base_url=base_url,
+            progress=_progress(verbose),
+            cache_path=cache,
+            refresh_cache=refresh_cache,
+            cache_ttl_seconds=cache_ttl,
+        )
+        graph = graph_from_build_metadata(metadata)
+    elif source:
+        graph = load_synthetic_build_fixture(source)
+    else:
+        raise ValueError("license requires --build-id or --source")
+
+    subject = (
+        find_binary_rpm(graph, sbom_subject, arch=arch)
+        if sbom_subject
+        else select_default_binary_rpm(graph, arch=arch)
+    )
+    attach_cyclonedx_sbom_claims(graph, subject.id, sbom)
+    report = license_report(graph)
+
+    if output_format.lower() == "json":
+        sys.stdout.write(json.dumps(report.to_dict(), indent=2) + "\n")
+        return
+
+    table = Table(title=f"License rollup ({report.components} components)")
+    table.add_column("License")
+    table.add_column("Components", justify="right")
+    for license_id, count in report.licenses.items():
+        table.add_row(license_id, str(count))
+    if report.unlicensed:
+        table.add_row("(no license)", str(len(report.unlicensed)))
+    console.print(table)
+    console.print(f"{report.distinct_licenses} distinct licenses; {len(report.unlicensed)} unlicensed")
 
 
 @app.command(

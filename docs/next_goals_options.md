@@ -67,7 +67,9 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
   linkage (`dlopen` / static) per package *(decisions.md D24)*, and
   `--cve-feed` matches verified CPE + version (rpmvercmp ranges) to report
   **potentially-affected** CVEs beyond those an errata addresses *(D25)*.
-- **F2 — License-compliance rollup** from SBOM license fields + resolved trees.
+- **F2 — License-compliance rollup** ✅ Done — the SBOM ingest captures component
+  licenses and the `license` command rolls them up per-license with an
+  unlicensed bucket. *(decisions.md D31)*
 - **F3 — SLSA / in-toto provenance export** ✅ Done — `slsa` command renders the
   backbone as an in-toto Statement v1 + SLSA provenance v1 predicate (subject
   sha256, git resolvedDependencies, signature status). *(decisions.md D30)*
@@ -103,4 +105,7 @@ identifiable, drift/range conflicts are version-semantic, RPM signatures are
 verifiable, and the `vuln` command (with `--cve-feed`) is the consumer
 deliverable. Remaining open items above: **B3** (py module→package), **C1**
 (Go/Rust static BOM), **E1** (language resolvers), **F2/F3** (license / SLSA
-export), **G** (scale/perf), live CVE/NVD feed fetch, and the live arch builder.
+export — F2 done), **G** (scale/perf), live CVE/NVD feed fetch, language
+resolvers (E1), and the live arch builder. The remaining items are mostly
+network/host-heavy (live feed, E1 resolver tools, live arch builder) or
+infra-heavy (G), so they need recorded fixtures or an AlmaLinux host to exercise.
