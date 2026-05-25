@@ -35,7 +35,14 @@ Runner = Callable[[list[str]], tuple[int, str]]
 NodeSelector = Callable[[Node], bool]
 
 _ARCH_SUFFIXES = ("x86_64", "aarch64", "ppc64le", "s390x", "i686", "noarch", "src")
-_EDGE = re.compile(r'(?:"([^"]+)"|(\S+))\s*->\s*(?:"([^"]+)"|([^"\s;\[]+))')
+# A dot node: quoted ("foo bar") or a bare token that never starts with a brace.
+_NODE = r'(?:"([^"]+)"|([A-Za-z0-9_./+][^\s{}\[\];,]*))'
+# Block form (dnf repograph): `SRC -> { "A" "B" ... }`, possibly spanning lines.
+_BLOCK_EDGE = re.compile(_NODE + r"\s*->\s*\{([^}]*)\}", re.DOTALL)
+# Simple form (rpmgraph / older dnf): `SRC -> DST`. The dst node cannot be a "{",
+# so this never mis-captures a block opener.
+_SIMPLE_EDGE = re.compile(_NODE + r"\s*->\s*" + _NODE)
+_NODE_TOKEN = re.compile(_NODE)
 
 
 class RpmgraphUnavailable(RuntimeError):
@@ -80,15 +87,28 @@ def run_rpmgraph(paths: list[str], *, runner: Runner | None = None) -> str:
 def parse_dot_edges(dot_text: str) -> list[tuple[str, str]]:
     """Extract directed ``A -> B`` edges from Graphviz dot text.
 
-    Uses ``finditer`` over the whole text so multiple edges on one line are all
-    captured (``dnf repograph`` emits one per line, but be robust to both).
+    Handles both forms ``dnf``/``rpmgraph`` emit:
+
+    * simple ``"A" -> "B";`` (one or many per line), and
+    * block ``"A" -> { "B" "C" ... }`` spanning lines, which modern
+      ``dnf repograph`` uses -- each token in the block is an edge ``A -> token``.
+
+    The two passes are disjoint: a simple edge's destination can never be ``{``.
     """
 
     edges: list[tuple[str, str]] = []
-    for match in _EDGE.finditer(dot_text):
+    for match in _BLOCK_EDGE.finditer(dot_text):
+        src = (match.group(1) or match.group(2) or "").strip()
+        if not src:
+            continue
+        for token in _NODE_TOKEN.finditer(match.group(3)):
+            dst = (token.group(1) or token.group(2) or "").strip()
+            if dst:
+                edges.append((src, dst))
+    for match in _SIMPLE_EDGE.finditer(dot_text):
         src = (match.group(1) or match.group(2) or "").strip().rstrip(";")
         dst = (match.group(3) or match.group(4) or "").strip().rstrip(";")
-        if src and dst and src != "->" and dst != "->":
+        if src and dst:
             edges.append((src, dst))
     return edges
 

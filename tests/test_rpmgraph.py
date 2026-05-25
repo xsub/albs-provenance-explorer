@@ -52,6 +52,26 @@ def test_parse_dot_edges_captures_multiple_edges_per_line() -> None:
     assert edges == [("a", "b"), ("c", "b"), ("a", "c")]
 
 
+def test_parse_dot_edges_expands_repograph_block_form() -> None:
+    # Modern `dnf repograph` emits `A -> { B C ... }` spanning lines; each token
+    # in the block is an edge A -> token, and the "{" must never become a node.
+    dot = (
+        'digraph packages {\n'
+        '"389-ds-base" [color="0.89 0.99 1.0"];\n'
+        '"389-ds-base" -> {\n"perl-libs"\n"nss"\n"zlib-ng-compat"\n}\n'
+        '"nss" -> "glibc";\n'
+        '}'
+    )
+    edges = parse_dot_edges(dot)
+    assert ("389-ds-base", "perl-libs") in edges
+    assert ("389-ds-base", "nss") in edges
+    assert ("389-ds-base", "zlib-ng-compat") in edges
+    assert ("nss", "glibc") in edges  # simple edge still captured
+    assert all(dst != "{" for _src, dst in edges)  # no brace garbage
+    # No phantom edge to the color attribute string.
+    assert all("0.89" not in dst for _src, dst in edges)
+
+
 def test_run_repograph_selects_repo_with_repo_flag() -> None:
     # Regression: `dnf repograph appstream` is rejected; the repo goes via --repo.
     captured: dict[str, list[str]] = {}

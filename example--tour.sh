@@ -88,7 +88,13 @@ if have dnf && [[ -n "$REPO" ]]; then
   db="$LIVE_DIR/universe-$REPO.db"
   if dnf repograph --repo "$REPO" > "$dot" 2>/dev/null && [[ -s "$dot" ]]; then
     optional run universe --repograph-dot "$dot" --save "$db"
-    optional run universe --db "$db" --dependents-of "libcrypto.so.3"
+    # Pick the most-referenced package node (exclude color attrs, which contain
+    # spaces) so the traversal is meaningful, then list its dependents.
+    top=$(grep -oE '"[^"]+"' "$dot" | tr -d '"' | grep -vE '[ ]' | sort | uniq -c | sort -rn | head -1 | sed -E 's/^ *[0-9]+ +//')
+    if [ -n "$top" ]; then
+      printf '   most-depended-upon package in %s: %s\n' "$REPO" "$top"
+      run universe --db "$db" --dependents-of "$top" 2>/dev/null | head -15
+    fi
   else
     printf '   (skipped: dnf repograph --repo %s produced no graph)\n' "$REPO"
   fi

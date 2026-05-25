@@ -40,6 +40,20 @@ def test_universe_from_dot_connects_libc_to_everything() -> None:
     assert dependencies_of(universe, "pkg:nginx-core") == ["glibc", "openssl-libs"]
 
 
+def test_universe_from_dot_handles_repograph_block_form() -> None:
+    # `dnf repograph` block form: A -> { B C }. Each token is a real edge, so the
+    # universe must connect them (regression: blocks were parsed as a chain).
+    dot = (
+        'digraph packages {\n'
+        '"curl" -> {\n"openssl-libs"\n"glibc"\n}\n'
+        '"openssl-libs" -> {\n"glibc"\n}\n'
+        '}'
+    )
+    universe = universe_from_dot(dot)
+    assert dependents_of(universe, "glibc") == ["curl", "openssl-libs"]
+    assert dependencies_of(universe, "pkg:curl") == ["glibc", "openssl-libs"]
+
+
 def test_universe_traversal_finds_chains_to_libc() -> None:
     universe = universe_from_dot(_REPO_DOT)
     paths = dependency_paths(universe, "pkg:nginx-core", "glibc")

@@ -772,6 +772,24 @@ NEVRA still comes from the buildroot or the repo closure.
 
 ---
 
+## D35 - Parse `dnf repograph` block-form dot edges
+
+**Files:** `adapters/rpmgraph.py` (`parse_dot_edges`)
+
+Modern `dnf repograph` (EL10) emits the Graphviz **block form**
+`"A" -> { "B" "C" ... }` spanning lines, not pairwise `"A" -> "B";`. The old
+single-regex parser captured only `A -> {` (taking `{` as the destination) and
+missed every real target, so a whole-repo universe collapsed to ~one edge per
+node and `dependents_of` returned nothing (and `coverage --repograph` claims
+were bogus). `parse_dot_edges` now runs two disjoint passes: a block pass that
+expands each token inside `-> { ... }` into an `A -> token` edge, and a simple
+pass for `A -> B` (whose destination can never be `{`). Node colour attributes
+(`"389-ds-base" [color="0.89 1.0"]`) are ignored because they are not edges.
+Verified live: an el10 appstream universe now connects 3000+ packages and
+`--dependents-of perl-libs` returns its real dependents.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
