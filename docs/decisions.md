@@ -809,6 +809,23 @@ build-level source, so they are unchanged.
 
 ---
 
+## D37 - Live-repo URL candidates for current builds
+
+**Files:** `adapters/rpm_remote.py` (`vault_candidate_urls`)
+
+The range-read rungs (3/4) and GPG signature verification reconstruct public
+download URLs from a RPM's NEVRA. Only **vault** paths were generated, so a
+*current* build -- whose RPMs are still on the live mirror, not archived --
+returned 404 (e.g. el10_2 `nginx-core` fetched 0 headers). The resolver now
+offers both layouts per repository, interleaved live-then-vault:
+`.../almalinux/<ver>/<repo>/<arch>/os/Packages/<file>` (current point release)
+and `.../vault/<ver>/...` (archived). The reader tries each until one serves
+bytes, so headers/payloads/signatures work for current and EOL builds alike.
+Verified out-of-band: the el10_2 live URL returns HTTP 206 to a range request
+where the vault path 404s/redirects.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

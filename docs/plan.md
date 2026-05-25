@@ -124,7 +124,7 @@ RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed
 - ✅ Semantic version comparison in the reconciler (`VERSION_DRIFT` /
   `RANGE_VIOLATION` via rpmvercmp) and **GPG signature verification**
   (`coverage --verify-signatures`, real provenance verification now CAS is gone).
-- ✅ Offline tests for all of the above (166 tests; ruff + mypy --strict clean),
+- ✅ Offline tests for all of the above (167 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not 17812-specific.
 
 Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,
@@ -154,9 +154,10 @@ Ordered by value-per-effort and tractability under public access.
    (`git.almalinux.org/almalinux/cas_wrapper`). Note: `cas` is now effectively
    uninstallable (Codenotary changed product lines), so this mostly records
    `unavailable` until a host has the binary.
-3. **Vault URL resolver hardening.** Cover i686/module/CRB layouts, debug repos,
-   and live-repo (non-vault) paths for current builds; add a small on-disk header
-   cache so repeated `coverage` runs don't refetch.
+3. **Vault URL resolver hardening.** ✅ live-repo (non-vault) paths for current
+   builds are now generated alongside vault paths (D37), so range reads work for
+   current el10 builds. Remaining: i686/module/CRB layouts, debug repos, and a
+   small on-disk header cache so repeated `coverage` runs don't refetch.
 
 ### Medium term
 4. ✅ **Rung 4 - payload ELF analysis.** Done - downloads the payload, parses

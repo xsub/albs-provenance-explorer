@@ -234,3 +234,21 @@ def test_vault_candidate_urls_reconstructs_point_release_path() -> None:
     )
     # A malformed filename yields no candidates rather than a bad guess.
     assert vault_candidate_urls("not-an-rpm") == []
+
+
+def test_candidate_urls_include_live_repo_for_current_builds() -> None:
+    # Current (non-archived) point releases live under /almalinux/<ver>/, not the
+    # vault, so both layouts must be offered (regression: el10 fetches 0 headers).
+    urls = vault_candidate_urls("nginx-core-1.26.3-6.el10_2.3.x86_64.rpm")
+
+    assert (
+        "https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/"
+        "nginx-core-1.26.3-6.el10_2.3.x86_64.rpm" in urls
+    )
+    assert any(u.startswith("https://repo.almalinux.org/vault/10.2/") for u in urls)
+    # Live candidate is tried before vault for each repo.
+    live = urls.index("https://repo.almalinux.org/almalinux/10.2/BaseOS/x86_64/os/Packages/"
+                      "nginx-core-1.26.3-6.el10_2.3.x86_64.rpm")
+    vault = urls.index("https://repo.almalinux.org/vault/10.2/BaseOS/x86_64/os/Packages/"
+                       "nginx-core-1.26.3-6.el10_2.3.x86_64.rpm")
+    assert live < vault

@@ -44,6 +44,7 @@ UrlResolver = Callable[[str], list[str]]
 NodeSelector = Callable[[Node], bool]
 
 _DEFAULT_VAULT_BASE = "https://repo.almalinux.org/vault"
+_DEFAULT_LIVE_BASE = "https://repo.almalinux.org/almalinux"
 _DEFAULT_REPOS = ("BaseOS", "AppStream", "CRB", "extras", "HighAvailability")
 _MAX_FETCH_BYTES = 16 * 1024 * 1024
 
@@ -220,13 +221,21 @@ def vault_candidate_urls(
     *,
     base: str = _DEFAULT_VAULT_BASE,
     repos: tuple[str, ...] = _DEFAULT_REPOS,
+    live_base: str = _DEFAULT_LIVE_BASE,
 ) -> list[str]:
     """Best-effort public download URLs for an AlmaLinux RPM, by filename.
 
-    The ALBS artifact ``href`` is a Pulp content path that does not resolve to
-    a download without the distribution context, so we reconstruct vault URLs
-    from the RPM's own NEVRA (the ``.elN_M`` release encodes the point release)
-    and try each repository.
+    The ALBS artifact ``href`` is a Pulp content path that does not resolve to a
+    download without the distribution context, so we reconstruct URLs from the
+    RPM's own NEVRA (the ``.elN_M`` release encodes the point release). Where a
+    package lives depends on whether its point release is current or archived,
+    so both layouts are offered per repository:
+
+    * live   ``.../almalinux/<ver>/<repo>/<arch>/os/Packages/<file>`` and
+    * vault  ``.../vault/<ver>/<repo>/<arch>/os/Packages/<file>``.
+
+    They are interleaved per repo (live then vault) so the reader reaches the
+    right one in a couple of range reads whether the build is current or EOL.
     """
 
     parsed = _parse_nevra(filename)
@@ -237,7 +246,12 @@ def vault_candidate_urls(
     version = _distro_version_from_release(release)
     if not version:
         return []
-    return [f"{base}/{version}/{repo}/{arch}/os/Packages/{filename}" for repo in repos]
+    urls: list[str] = []
+    for repo in repos:
+        path = f"{repo}/{arch}/os/Packages/{filename}"
+        urls.append(f"{live_base}/{version}/{path}")
+        urls.append(f"{base}/{version}/{path}")
+    return urls
 
 
 def _try_candidates(
