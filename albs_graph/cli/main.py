@@ -56,6 +56,7 @@ from albs_graph.provenance.universe import (
     dependencies_of,
     dependency_paths,
     dependents_of,
+    most_depended_upon,
     neighborhood_subgraph,
     path_subgraph,
 )
@@ -977,6 +978,11 @@ def universe_command(
             f"Universe: {len(graph.nodes)} nodes, {len(graph.edges)} edges "
             f"({len(graph.find_by_type(NodeType.BINARY_RPM))} packages)"
         )
+        leaders = most_depended_upon(graph, 10)
+        if leaders:
+            console.print("Most-depended-upon packages (direct dependents = blast radius):")
+            for name, count in leaders:
+                console.print(f"  {count:>5}  {name}")
         return
     _emit_graph(graph, output_format, output)
 

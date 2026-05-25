@@ -18,7 +18,7 @@ traverse with the helpers here: ``dependencies_of``, ``dependents_of``,
 
 from __future__ import annotations
 
-from collections import deque
+from collections import Counter, deque
 from collections.abc import Iterable
 from typing import Callable
 
@@ -197,6 +197,24 @@ def dependents_of(graph: ProvenanceGraph, capability: str) -> list[str]:
             for edge in graph.incoming(target, relation):
                 dependents.add(graph.nodes[edge.source].label)
     return sorted(dependents)
+
+
+def most_depended_upon(graph: ProvenanceGraph, limit: int = 10) -> list[tuple[str, int]]:
+    """The packages with the most direct dependents -- the repo's foundational nodes.
+
+    Each ``requires`` edge into a package is one dependent, so a high count is the
+    package's "blast radius": how many packages would be impacted if it changed or
+    carried a vulnerability. Returns ``(name, dependent_count)`` highest first.
+    """
+
+    seen: set[tuple[str, str]] = set()
+    counts: Counter[str] = Counter()
+    requires = set(_REQUIRES_RELATIONS)
+    for edge in graph.edges:
+        if edge.relation in requires and (edge.source, edge.target) not in seen:
+            seen.add((edge.source, edge.target))
+            counts[graph.nodes[edge.target].label] += 1
+    return counts.most_common(limit)
 
 
 def reachable_dependencies(graph: ProvenanceGraph, start_id: str) -> set[str]:

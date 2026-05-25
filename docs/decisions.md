@@ -826,6 +826,20 @@ where the vault path 404s/redirects.
 
 ---
 
+## D38 - Most-depended-upon leaderboard in the universe summary
+
+**Files:** `provenance/universe.py` (`most_depended_upon`), `cli/main.py` (universe)
+
+Building a 10k-edge repo universe but printing only "N nodes, M edges" buried
+the insight. `most_depended_upon(graph, n)` counts each package's direct
+dependents (distinct requires edges = its blast radius), and the `universe`
+summary now lists the top-N -- the repo's foundational packages (e.g. for el10
+AppStream, `perl-libs` leads). The grand tour traverses both directions for the
+top package (dependents = impact, dependencies = needs), so the universe step
+shows real analysis instead of a single flat list.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

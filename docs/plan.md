@@ -124,7 +124,7 @@ RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed
 - ✅ Semantic version comparison in the reconciler (`VERSION_DRIFT` /
   `RANGE_VIOLATION` via rpmvercmp) and **GPG signature verification**
   (`coverage --verify-signatures`, real provenance verification now CAS is gone).
-- ✅ Offline tests for all of the above (167 tests; ruff + mypy --strict clean),
+- ✅ Offline tests for all of the above (168 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not 17812-specific.
 
 Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,

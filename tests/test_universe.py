@@ -13,6 +13,7 @@ from albs_graph.provenance import (
     dependencies_of,
     dependency_paths,
     dependents_of,
+    most_depended_upon,
     neighborhood_subgraph,
     path_subgraph,
     reachable_dependencies,
@@ -38,6 +39,18 @@ def test_universe_from_dot_connects_libc_to_everything() -> None:
     # glibc is required by everything else in the repo graph.
     assert dependents_of(universe, "glibc") == ["curl", "nginx-core", "openssl-libs", "zlib"]
     assert dependencies_of(universe, "pkg:nginx-core") == ["glibc", "openssl-libs"]
+
+
+def test_most_depended_upon_ranks_foundational_packages() -> None:
+    universe = universe_from_dot(_REPO_DOT)
+    leaders = dict(most_depended_upon(universe, limit=5))
+
+    # glibc is required by nginx-core, openssl-libs, curl and zlib (4).
+    assert leaders["glibc"] == 4
+    # openssl-libs is required by nginx-core and curl (2).
+    assert leaders["openssl-libs"] == 2
+    # The most-depended-upon package ranks first.
+    assert most_depended_upon(universe, limit=1) == [("glibc", 4)]
 
 
 def test_universe_from_dot_handles_repograph_block_form() -> None:

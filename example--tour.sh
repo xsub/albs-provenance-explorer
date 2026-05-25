@@ -87,13 +87,15 @@ if have dnf && [[ -n "$REPO" ]]; then
   dot="$LIVE_DIR/$REPO.dot"
   db="$LIVE_DIR/universe-$REPO.db"
   if dnf repograph --repo "$REPO" > "$dot" 2>/dev/null && [[ -s "$dot" ]]; then
+    # Build + persist; the summary now ranks the most-depended-upon packages.
     optional run universe --repograph-dot "$dot" --save "$db"
-    # Pick the most-referenced package node (exclude color attrs, which contain
-    # spaces) so the traversal is meaningful, then list its dependents.
+    # Then traverse both directions for the top (most-referenced) package.
     top=$(grep -oE '"[^"]+"' "$dot" | tr -d '"' | grep -vE '[ ]' | sort | uniq -c | sort -rn | head -1 | sed -E 's/^ *[0-9]+ +//')
     if [ -n "$top" ]; then
-      printf '   most-depended-upon package in %s: %s\n' "$REPO" "$top"
-      run universe --db "$db" --dependents-of "$top" 2>/dev/null | head -15
+      printf '\n   blast radius -- packages that directly require %s (first 8):\n' "$top"
+      run universe --db "$db" --dependents-of "$top" 2>/dev/null | head -9
+      printf '   ...and what %s itself requires:\n' "$top"
+      run universe --db "$db" --dependencies-of "$top" 2>/dev/null | head -9
     fi
   else
     printf '   (skipped: dnf repograph --repo %s produced no graph)\n' "$REPO"
