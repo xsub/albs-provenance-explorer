@@ -43,6 +43,7 @@ from albs_graph.model import NodeType, ProvenanceGraph
 from albs_graph.provenance.coverage import coverage_report
 from albs_graph.provenance.identify import identify_file
 from albs_graph.provenance.reconcile import reconcile_dependency_claims
+from albs_graph.provenance.slsa import slsa_provenance
 from albs_graph.provenance.vuln import vulnerability_report
 from albs_graph.provenance.universe import (
     build_arch_universe,
@@ -1063,6 +1064,54 @@ def vuln_command(
         f"{len(report.packages)} packages; {report.addressed_cve_count} addressed, "
         f"{report.potentially_affected_count} potentially-affected distinct CVEs"
     )
+
+
+@app.command(
+    "slsa",
+    help="Export an RPM's provenance as an in-toto / SLSA provenance statement (JSON).",
+    short_help="Export SLSA provenance.",
+    no_args_is_help=True,
+)
+def slsa_command(
+    package: Optional[str] = typer.Argument(None, help="Binary RPM name or node id."),
+    build_id: Optional[int] = typer.Option(None, "--build-id", "-b", help="Fetch a live ALBS build."),
+    source: Optional[Path] = typer.Option(None, "--source", "-s", help="Cached ALBS metadata JSON."),
+    rpm: Optional[str] = typer.Option(None, "--rpm", help="Binary RPM name or node id."),
+    arch: Optional[str] = typer.Option(None, "--arch", help="RPM architecture."),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+    base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
+    cache: Optional[Path] = typer.Option(None, "--cache"),
+    cache_ttl: int = typer.Option(300, "--cache-ttl"),
+    refresh_cache: bool = typer.Option(False, "--refresh-cache"),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    if build_id is not None:
+        metadata = fetch_build_metadata(
+            build_id,
+            base_url=base_url,
+            progress=_progress(verbose),
+            cache_path=cache,
+            refresh_cache=refresh_cache,
+            cache_ttl_seconds=cache_ttl,
+        )
+        graph = graph_from_build_metadata(metadata)
+    elif source:
+        graph = load_synthetic_build_fixture(source)
+    else:
+        raise ValueError("slsa requires --build-id or --source")
+
+    selector = rpm or package
+    rpm_node = (
+        find_binary_rpm(graph, selector, arch=arch)
+        if selector
+        else select_default_binary_rpm(graph, arch=arch)
+    )
+    statement = slsa_provenance(graph, rpm_node.id)
+    content = json.dumps(statement, indent=2) + "\n"
+    if output:
+        output.write_text(content, encoding="utf-8")
+    else:
+        sys.stdout.write(content)
 
 
 @app.command(

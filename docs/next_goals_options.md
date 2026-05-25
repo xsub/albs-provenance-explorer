@@ -68,8 +68,9 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
   `--cve-feed` matches verified CPE + version (rpmvercmp ranges) to report
   **potentially-affected** CVEs beyond those an errata addresses *(D25)*.
 - **F2 — License-compliance rollup** from SBOM license fields + resolved trees.
-- **F3 — SLSA / in-toto provenance export** of the backbone the graph already
-  holds.
+- **F3 — SLSA / in-toto provenance export** ✅ Done — `slsa` command renders the
+  backbone as an in-toto Statement v1 + SLSA provenance v1 predicate (subject
+  sha256, git resolvedDependencies, signature status). *(decisions.md D30)*
 
 ## G. Scale / performance (without the live builder)
 

@@ -27,6 +27,7 @@ from .reconcile import (
     claims_from_resolver_result,
     reconcile_dependency_claims,
 )
+from .slsa import slsa_provenance
 from .trust import make_binary_rpm_selector, trust_path, trust_reports
 from .universe import (
     build_arch_universe,
@@ -75,6 +76,7 @@ __all__ = [
     "neighborhood_subgraph",
     "path_subgraph",
     "reachable_dependencies",
+    "slsa_provenance",
     "universe_from_dot",
     "vulnerability_report",
     "claims_from_resolver_result",

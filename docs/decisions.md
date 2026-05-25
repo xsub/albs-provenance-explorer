@@ -683,6 +683,21 @@ toolchain-detected.
 
 ---
 
+## D30 — SLSA / in-toto provenance export (F3)
+
+**Files:** `albs_graph/provenance/slsa.py`, `cli/main.py` (`slsa`)
+
+`slsa_provenance` renders a binary RPM's backbone (source -> git commit -> build
+task -> artifact -> signature) as an in-toto **Statement v1** with a **SLSA
+provenance v1** predicate — the standard supply-chain attestation format, so the
+graph's provenance is consumable by SLSA-aware tooling. The subject digest uses
+the artifact CAS hash (a sha256); `resolvedDependencies` records the git source
+(`git+<repo>@<ref>` + `gitCommit`); and the D27 signature-verification status is
+surfaced under run metadata. Only graph-present fields are emitted (nothing
+fabricated). CLI: `slsa --build-id … --rpm <name> --arch <arch>`.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
