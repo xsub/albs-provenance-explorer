@@ -313,6 +313,12 @@ Two end-to-end coverage demos exercise the cost ladder and reconciliation across
 VERBOSE=0 ./example.sh   # concise summaries only
 ```
 
+Resolution fidelity follows the *resolving host's* repos: `dnf` and soname resolution attach whatever versions that host can see, so the most faithful results come from matching the host to the build's distro. On an AlmaLinux 10 host, point the demos at an el10 build (override `BUILD_ID`/`PACKAGE`). For example, an el10 `libsndfile` build resolves all 18 runtime/devel dependencies to concrete `.el10` versions, whereas resolving an el9 build on an el10 host yields mismatched providers:
+
+```bash
+BUILD_ID=58167 PACKAGE=libsndfile ./example--almalinux-native.sh
+```
+
 Inspect local RPM metadata:
 
 ```bash
