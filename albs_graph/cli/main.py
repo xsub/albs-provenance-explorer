@@ -41,7 +41,11 @@ from albs_graph.adapters.rpmgraph import (
     enrich_graph_with_rpmgraph,
     run_repograph,
 )
-from albs_graph.adapters.sbom import attach_cyclonedx_sbom_claims, import_sbom
+from albs_graph.adapters.sbom import (
+    attach_cyclonedx_sbom_claims,
+    enrich_graph_with_build_sbom,
+    import_sbom,
+)
 from albs_graph.fixtures import build_synthetic_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
 from albs_graph.provenance.coverage import coverage_report
@@ -355,6 +359,12 @@ def coverage_command(
         "--sbom-subject",
         help="Binary RPM name/node id the SBOM describes (defaults to a representative RPM).",
     ),
+    build_sbom: Optional[Path] = typer.Option(
+        None,
+        "--build-sbom",
+        help="CycloneDX build SBOM (e.g. from alma-sbom) matched to the build's own RPMs: "
+        "attaches each RPM's vendor CPE (moves the identity axis) + PURL/hash + an SBOM link.",
+    ),
     requirements: Optional[Path] = typer.Option(
         None, "--requirements", help="Python requirements.txt to attach as PyPI dependency claims."
     ),
@@ -449,6 +459,15 @@ def coverage_command(
     _log_graph_stats(verbose, graph)
     selector = make_binary_rpm_selector(package=package, arch=arch, all_archs=all_archs)
     _ = all_packages  # default behavior; flag documents intent and pairs with --all-archs
+
+    build_sbom_result = None
+    if build_sbom is not None:
+        _log_step(verbose, f"Enriching the build's RPMs from build SBOM {build_sbom}")
+        # No selector: a build SBOM describes every RPM, so enrich the whole build
+        # (the identity axis is measured across all binaries, not just the subject).
+        build_sbom_result = enrich_graph_with_build_sbom(
+            graph, build_sbom, on_progress=_progress(verbose)
+        )
 
     rpmgraph_result = None
     dot_text: str | None = None
@@ -572,6 +591,8 @@ def coverage_command(
             payload["rpm_payload_enrichment"] = payload_result.to_dict()
         if sbom_result is not None:
             payload["sbom"] = sbom_result.to_dict()
+        if build_sbom_result is not None:
+            payload["build_sbom"] = build_sbom_result.to_dict()
         if cas_report is not None:
             payload["cas"] = cas_report.to_dict()
         if signature_report is not None:
@@ -646,6 +667,11 @@ def coverage_command(
             f"CPE: {cpe_result.verified} verified, {cpe_result.ambiguous} ambiguous, "
             f"{cpe_result.unmatched} unmatched of {cpe_result.binaries} binaries "
             f"({cpe_result.backported} distro-backported)"
+        )
+    if build_sbom_result is not None:
+        console.print(
+            f"Build SBOM (alma-sbom): matched {build_sbom_result.matched} RPMs, "
+            f"set {build_sbom_result.cpes_set} vendor CPEs from {build_sbom_result.components} components"
         )
     if enrichment is not None:
         console.print(
@@ -740,6 +766,9 @@ def identify_command(
         None, "--owner", help="Owning package name (skips host rpm -qf lookup)."
     ),
     arch: Optional[str] = typer.Option(None, "--arch", help="Disambiguate by architecture."),
+    build_sbom: Optional[Path] = typer.Option(
+        None, "--build-sbom", help="CycloneDX build SBOM (alma-sbom) to attach to the build's RPMs."
+    ),
     output_format: str = typer.Option("summary", "--format", "-f", help="summary or json."),
     base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
     cache: Optional[Path] = typer.Option(None, "--cache", help="ALBS metadata cache JSON."),
@@ -761,6 +790,10 @@ def identify_command(
         graph = load_synthetic_build_fixture(source)
     else:
         raise ValueError("identify requires --build-id or --source")
+
+    if build_sbom is not None:
+        _log_step(verbose, f"Attaching build SBOM {build_sbom} to the build's RPMs")
+        enrich_graph_with_build_sbom(graph, build_sbom, on_progress=_progress(verbose))
 
     report = identify_file(graph, filepath, owner_package=owner, arch=arch)
 
@@ -831,6 +864,11 @@ def trust_path_command(
         "-s",
         help="Optional synthetic ALBS build metadata JSON.",
     ),
+    build_sbom: Optional[Path] = typer.Option(
+        None,
+        "--build-sbom",
+        help="CycloneDX build SBOM (alma-sbom) to attach, so the trust path's has_sbom check passes.",
+    ),
 ) -> None:
     if build_id is not None:
         metadata = fetch_build_metadata(
@@ -850,6 +888,9 @@ def trust_path_command(
     else:
         raise ValueError("trust-path requires --build-id or --source")
     _log_graph_stats(verbose, graph)
+    if build_sbom is not None:
+        _log_step(verbose, f"Attaching build SBOM {build_sbom} to the build's RPMs")
+        enrich_graph_with_build_sbom(graph, build_sbom, on_progress=_progress(verbose))
 
     rpm_selector = rpm or package
     if rpm_selector is None:
@@ -1025,6 +1066,11 @@ def vuln_command(
     verify_cpe: Optional[Path] = typer.Option(
         None, "--verify-cpe", help="CPE dictionary JSON to verify candidates against."
     ),
+    build_sbom: Optional[Path] = typer.Option(
+        None,
+        "--build-sbom",
+        help="CycloneDX build SBOM (alma-sbom): set each RPM's vendor CPE so identities resolve.",
+    ),
     cve_feed: Optional[Path] = typer.Option(
         None,
         "--cve-feed",
@@ -1067,6 +1113,9 @@ def vuln_command(
     if verify_cpe is not None:
         _log_step(verbose, f"Verifying CPEs against {verify_cpe}")
         verify_graph_cpe(graph, CpeDictionary.from_file(verify_cpe), node_selector=selector)
+    if build_sbom is not None:
+        _log_step(verbose, f"Setting vendor CPEs from build SBOM {build_sbom}")
+        enrich_graph_with_build_sbom(graph, build_sbom, on_progress=_progress(verbose))
     if errata is not None:
         subject_selector = errata_subject or package
         subject = (

@@ -935,6 +935,37 @@ import); suite now 178.
 
 ---
 
+## D42 - The build SBOM enriches every report (vendor CPEs -> identity 1.00)
+
+D41 ingested the real `alma-sbom` SBOM only via `import-sbom` (a standalone
+graph). But its components carry per-RPM **CPEs, PURLs and SHA-256 hashes** that
+describe the build's *own* binary RPMs, so it should enrich them in place rather
+than sit beside them.
+
+`enrich_graph_with_build_sbom` (`adapters/sbom.py`) matches each component to its
+binary-RPM node by `(name, arch)` and attaches: a `described_by` edge to the
+SBOM, the component PURL/SHA-256, and - the big lever - the vendor-asserted CPE
+into the node's `security_identity` (`cpe_source="almalinux_sbom"`, a verified
+candidate). It never overrides a node that already has a CPE (e.g. an NVD match),
+so it only fills gaps. Wired as `--build-sbom FILE` on `coverage`, `vuln`,
+`trust-path` and `identify`; the build SBOM is applied to the whole build (no
+selector) because the `identity` axis is measured across all binaries.
+
+Effect on build 57810: `identity` moves **0.00 -> 1.00** (456/456 vendor CPEs
+from 457 components), the trust path's `has_sbom` flips **missing -> ok**, and
+the `vuln` report's identities go **candidate_only -> verified**. This is honest:
+the CPE comes from AlmaLinux's own published SBOM, labelled as vendor-asserted
+and kept distinct from an NVD dictionary verification. `security_context` stays
+0.00 because it still requires errata in addition to the SBOM.
+
+On the strict PURL/CPE stance: asserting a CPE from the *vendor's own* SBOM is
+not the forbidden case (guessing an official match without evidence) - the
+vendor is the authority for its artifact's CPE; the `cpe_source` label keeps the
+provenance of the assertion explicit. Tests +2 (vendor CPE moves the identity
+axis; wrong-arch / pre-existing-CPE skip); suite now 180.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

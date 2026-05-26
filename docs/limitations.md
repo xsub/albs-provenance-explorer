@@ -36,11 +36,18 @@ Two distinct facts here:
   **single subject** (a live errata.almalinux.org fetch, and per-package
   attachment across all of a build's binaries, are future work).
 
-### `identity` needs a supplied CPE dictionary
-`coverage --verify-cpe FILE` moves the `identity` axis by matching
-`cpe_candidates` against a CPE dictionary, but:
+### `identity` - two real CPE sources, both honest
+The `identity` axis counts binaries with a verified CPE. Two paths populate it:
+- **Vendor SBOM (`coverage --build-sbom FILE`).** AlmaLinux's own `alma-sbom`
+  asserts a CPE per RPM; matched by `(name, arch)` it sets `cpe` with
+  `cpe_source=almalinux_sbom`. On build 57810 this lifts identity to 1.00. This
+  is the vendor's own assertion (the authority for its artifact), labelled as
+  such and never overriding a stronger prior match.
+- **NVD dictionary (`coverage --verify-cpe FILE`).** Matches `cpe_candidates`
+  against a supplied cpe:2.3 dictionary, but:
 - **Dictionary is supplied, not fetched** - point it at an NVD cpe:2.3 export.
-  Without it the axis stays 0.00 (candidates remain unverified, by design).
+  Without it (and without a build SBOM) the axis stays 0.00 (candidates remain
+  unverified, by design).
 - **Ambiguous vendors are not asserted.** A product mapping to several vendors is
   recorded as `ambiguous_vendor`, not verified - honest, but uncounted.
 - **Backport flag, not CVE math.** `.elN` releases are flagged `distro_backport`;

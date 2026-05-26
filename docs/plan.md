@@ -124,7 +124,7 @@ RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed
 - ✅ Semantic version comparison in the reconciler (`VERSION_DRIFT` /
   `RANGE_VIOLATION` via rpmvercmp) and **GPG signature verification**
   (`coverage --verify-signatures`, real provenance verification now CAS is gone).
-- ✅ Offline tests for all of the above (178 tests; ruff + mypy --strict clean),
+- ✅ Offline tests for all of the above (180 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not specific to any
   single build.
 
@@ -139,8 +139,10 @@ kept, none discarded. Licenses are real too: `nginx-core`'s `BSD-2-Clause` comes
 from the RPM `License:` header tag, and `license --rpm-licenses` rolls up the
 subject + 6 runtime deps into 6 distinct licenses via `dnf repoquery %{license}`.
 AlmaLinux's `alma-sbom` generates a real CycloneDX build SBOM anonymously (457
-components, real PURL/CPE/hash, no licenses); the demo ingests it via
-`import-sbom` (433 package nodes). Nothing is fabricated.
+components, real PURL/CPE/hash, no licenses); applied with `--build-sbom` it
+enriches the build's own 456 RPMs with their vendor CPEs, moving the `identity`
+axis **0.00 -> 1.00**, flipping the trust path's `has_sbom` to `ok`, and
+resolving the `vuln` identities to `verified`. Nothing is fabricated.
 
 ---
 

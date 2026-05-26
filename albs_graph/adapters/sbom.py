@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from albs_graph.dependency import (
     DependencyScope,
@@ -291,3 +292,132 @@ def attach_cyclonedx_sbom_claims(
         components=len(data.get("components", [])),
         claims_added=len(claims),
     )
+
+
+@dataclass(frozen=True)
+class SbomEnrichmentResult:
+    """Outcome of matching a build SBOM's components to the build's binary RPMs."""
+
+    sbom_id: str
+    components: int
+    matched: int
+    cpes_set: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "sbom_id": self.sbom_id,
+            "components": self.components,
+            "matched": self.matched,
+            "cpes_set": self.cpes_set,
+        }
+
+
+def enrich_graph_with_build_sbom(
+    graph: ProvenanceGraph,
+    sbom_path: str | Path,
+    *,
+    node_selector: Callable[[Node], bool] | None = None,
+    on_progress: Callable[[str], None] | None = None,
+) -> SbomEnrichmentResult:
+    """Enrich the build's *own* binary RPMs from a CycloneDX **build** SBOM.
+
+    Unlike :func:`attach_cyclonedx_sbom_claims` (components-as-deps-of-a-subject),
+    a build SBOM (e.g. ``alma-sbom build --build-id``) describes the build's RPMs
+    themselves. We match each component to its binary-RPM node by ``(name, arch)``
+    and attach real evidence: a ``described_by`` edge to the SBOM, the component
+    PURL/SHA-256, and -- crucially for the ``identity`` axis -- the vendor-asserted
+    CPE the SBOM carries (``cpe_source="almalinux_sbom"``, distinct from an NVD
+    dictionary match). A node that already has a verified CPE is left untouched.
+    """
+
+    path = Path(sbom_path)
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    if data.get("bomFormat") != "CycloneDX":
+        raise ValueError(f"not a CycloneDX SBOM: {path}")
+
+    sbom_id = f"sbom:{data.get('serialNumber') or path.name}"
+    graph.add_node(
+        Node(
+            sbom_id,
+            NodeType.SBOM,
+            path.name,
+            {
+                "format": "CycloneDX",
+                "bomFormat": data.get("bomFormat"),
+                "specVersion": data.get("specVersion"),
+                "source_path": str(path),
+            },
+        )
+    )
+
+    index: dict[tuple[str, str | None], dict[str, Any]] = {}
+    for component in data.get("components", []):
+        name = component.get("name")
+        if name:
+            index.setdefault((str(name), _component_arch(component)), component)
+
+    matched = 0
+    cpes_set = 0
+    for node in graph.find_by_type(NodeType.BINARY_RPM):
+        if node_selector and not node_selector(node):
+            continue
+        name = node.metadata.get("name")
+        if not name:
+            continue
+        arch = node.metadata.get("arch") or node.metadata.get("build_arch")
+        component = index.get((str(name), str(arch) if arch else None)) or index.get(
+            (str(name), None)
+        )
+        if component is None:
+            continue
+        matched += 1
+        graph.add_edge(node.id, sbom_id, Relation.DESCRIBED_BY)
+        purl = component.get("purl")
+        if purl:
+            node.metadata["sbom_purl"] = purl
+        sha256 = _component_sha256(component)
+        if sha256:
+            node.metadata["sbom_sha256"] = sha256
+        cpe = component.get("cpe")
+        if cpe and _apply_sbom_cpe(node.metadata, str(cpe)):
+            cpes_set += 1
+    if on_progress:
+        on_progress(
+            f"build SBOM matched {matched} RPMs, set {cpes_set} vendor CPEs from {path.name}"
+        )
+    return SbomEnrichmentResult(sbom_id, len(data.get("components", [])), matched, cpes_set)
+
+
+def _component_arch(component: dict[str, Any]) -> str | None:
+    match = re.search(r"[?&]arch=([^&]+)", str(component.get("purl") or ""))
+    return match.group(1) if match else None
+
+
+def _component_sha256(component: dict[str, Any]) -> str | None:
+    for entry in component.get("hashes", []):
+        if isinstance(entry, dict) and str(entry.get("alg", "")).upper().replace("-", "") == "SHA256":
+            content = entry.get("content")
+            return str(content) if content else None
+    return None
+
+
+def _apply_sbom_cpe(metadata: dict[str, Any], cpe: str) -> bool:
+    """Set the vendor-asserted CPE on a node's security_identity (in place).
+
+    Returns False if the node already carries a CPE (e.g. NVD-verified), so the
+    SBOM never overrides a prior, possibly stronger, verification.
+    """
+
+    identity = metadata.get("security_identity")
+    if not isinstance(identity, dict):
+        identity = {"cpe": None, "cpe_candidates": [], "cpe_status": "unresolved"}
+        metadata["security_identity"] = identity
+    if identity.get("cpe"):
+        return False
+    identity["cpe"] = cpe
+    identity["cpe_status"] = "verified"
+    identity["cpe_source"] = "almalinux_sbom"
+    candidates = identity.get("cpe_candidates")
+    if isinstance(candidates, list):
+        candidates.append({"cpe23": cpe, "source": "almalinux_sbom", "verified": True})
+    return True

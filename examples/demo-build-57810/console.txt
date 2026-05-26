@@ -13,6 +13,8 @@ step Writing json output to examples/live-build-57810/build-57810.json
 ========== 1. Provenance: source-to-artifact trust path for nginx-core ==========
 step Loading synthetic ALBS build metadata from examples/live-build-57810/build-57810.albs.json
 step Graph: 1613 nodes, 2775 edges, 470 CAS attestations
+step Attaching build SBOM examples/build-57810.cyclonedx.json to the build's RPMs
+step build SBOM matched 456 RPMs, set 456 vendor CPEs from build-57810.cyclonedx.json
 step Resolving binary RPM selector: nginx-core
 step Selected RPM node: rpm:6901620:nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
 step Analyzing source-to-artifact trust path
@@ -26,13 +28,13 @@ step Analyzing source-to-artifact trust path
 │ has_release                  │ ok      │
 │ has_source_cas_attestation   │ ok      │
 │ has_artifact_cas_attestation │ ok      │
-│ has_sbom                     │ missing │
+│ has_sbom                     │ ok      │
 │ has_errata_link              │ missing │
 └──────────────────────────────┴─────────┘
 Provenance complete: True
 Security context complete: False
 Complete: False
-Missing security context: has_sbom, has_errata_link
+Missing security context: has_errata_link
 Path:
   src:nginx
   git:https://git.almalinux.org/rpms/nginx.git
@@ -57,6 +59,7 @@ Path:
 │ signature                │ ALBS sign task 45219                                             │
 │ repository_release       │ ALBS release 35402                                               │
 │ cas_artifact_attestation │ 300eb6e84d90e76cd26041ae3e3dee83f7d735b3e30d9dd2719dc8b71ad04fef │
+│ sbom                     │ build-57810.cyclonedx.json                                       │
 └──────────────────────────┴──────────────────────────────────────────────────────────────────┘
 Provenance complete: True
 Security context complete: False
@@ -64,6 +67,8 @@ Security context complete: False
 ========== 3. Five-axis coverage up the cost ladder (verbose) ==========
 step Loading ALBS build metadata from examples/live-build-57810/build-57810.albs.json
 step Graph: 1613 nodes, 2775 edges, 470 CAS attestations
+step Enriching the build's RPMs from build SBOM examples/build-57810.cyclonedx.json
+step build SBOM matched 456 RPMs, set 456 vendor CPEs from build-57810.cyclonedx.json
 step Resolving dependencies per package with dnf repoquery
 step dnf repoquery resolved dependencies for nginx-core
 step dnf repoquery resolved dependencies for nginx-core-debuginfo
@@ -86,12 +91,13 @@ step Reconciling dependency claims
 ┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━┩
 │ resolution       │       3 │    14 │     0.21 │
 │ linkage          │       1 │   456 │     0.00 │
-│ identity         │       0 │   456 │     0.00 │
+│ identity         │     456 │   456 │     1.00 │
 │ provenance       │     456 │   456 │     1.00 │
 │ security_context │       0 │   456 │     0.00 │
 └──────────────────┴─────────┴───────┴──────────┘
 dnf repoquery: 6 runtime + 1 weak resolved claims across 2 packages
 soname resolution: 6/6 sonames mapped to packages, 5 provider claims added
+Build SBOM (alma-sbom): matched 456 RPMs, set 456 vendor CPEs from 457 components
 RPM header enrichment: 1/1 headers fetched, 8 dynamic-linkage claims added
 RPM license (from header): nginx-core=BSD-2-Clause
 RPM payload analysis: 1/1 payloads, 1 ELF objects, 6 NEEDED claims, 0 static objects, 0 Go module claims
@@ -118,13 +124,13 @@ Reconciled dependencies: 14; conflicts: 3
   [version_drift] rpm:almalinux/zlib-ng-compat: versions=0:2.2.3-2.el10, 0:2.2.3-3.el10_1
 
 ========== 4. Vulnerability-applicability report ==========
-                                    Vulnerability applicability                                    
-┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
-┃ Package              ┃ Arch   ┃ Identity       ┃ Addressed CVEs ┃ Potential CVEs ┃ Reachability ┃
-┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━┩
-│ nginx-core           │ x86_64 │ candidate_only │ -              │ -              │ dynamic      │
-│ nginx-core-debuginfo │ x86_64 │ candidate_only │ -              │ -              │ dynamic      │
-└──────────────────────┴────────┴────────────────┴────────────────┴────────────────┴──────────────┘
+                                 Vulnerability applicability                                 
+┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Package              ┃ Arch   ┃ Identity ┃ Addressed CVEs ┃ Potential CVEs ┃ Reachability ┃
+┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━┩
+│ nginx-core           │ x86_64 │ verified │ -              │ -              │ dynamic      │
+│ nginx-core-debuginfo │ x86_64 │ verified │ -              │ -              │ dynamic      │
+└──────────────────────┴────────┴──────────┴────────────────┴────────────────┴──────────────┘
 2 packages; 0 addressed, 0 potentially-affected distinct CVEs
 
 ========== 5. License rollup (real RPM licenses: subject from header in step 3, deps via dnf) ==========

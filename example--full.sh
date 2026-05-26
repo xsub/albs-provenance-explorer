@@ -65,11 +65,18 @@ main() {
     return 1
   fi
 
+  # The real alma-sbom build SBOM enriches every report: it carries each RPM's
+  # vendor CPE (moves the identity axis + verifies vuln identities), PURL/hash,
+  # and an SBOM link (flips the trust path's has_sbom check). Threaded into the
+  # report steps below when the file is present.
+  local sbom_args=()
+  [[ -f "$SBOM_FILE" ]] && sbom_args=(--build-sbom "$SBOM_FILE")
+
   step "1. Provenance: source-to-artifact trust path for ${PACKAGE}"
-  opt run trust-path --source "$CACHE" --rpm "$PACKAGE" --arch "$ARCH" --verbose
+  opt run trust-path --source "$CACHE" --rpm "$PACKAGE" --arch "$ARCH" "${sbom_args[@]}" --verbose
 
   step "2. Point at a binary file: full lineage of ${FILE}"
-  opt run identify "$FILE" --source "$CACHE" --owner "$OWNER" --arch "$ARCH"
+  opt run identify "$FILE" --source "$CACHE" --owner "$OWNER" --arch "$ARCH" "${sbom_args[@]}"
 
   step "3. Five-axis coverage up the cost ladder (verbose)"
   local cover=(--source "$CACHE" --package "$PACKAGE" --arch "$ARCH" --with-rpm-headers)
@@ -77,10 +84,11 @@ main() {
   have dnf && cover+=(--use-dnf --resolve-sonames)
   have rpmkeys && cover+=(--verify-signatures)
   have cas && cover+=(--use-cas)
+  cover+=("${sbom_args[@]}")
   opt run coverage "${cover[@]}" --verbose
 
   step "4. Vulnerability-applicability report"
-  opt run vuln --source "$CACHE" --package "$PACKAGE" --arch "$ARCH"
+  opt run vuln --source "$CACHE" --package "$PACKAGE" --arch "$ARCH" "${sbom_args[@]}"
 
   step "5. License rollup (real RPM licenses: subject from header in step 3, deps via dnf)"
   if have dnf; then
