@@ -84,16 +84,23 @@ def repoquery(
     relation: str,
     resolve: bool = False,
     repo: str | None = None,
+    arch: str | None = None,
     runner: Runner | None = None,
 ) -> list[str]:
-    """Run ``dnf repoquery --<relation> [--resolve] <package>`` -> output lines."""
+    """Run ``dnf repoquery --<relation> [--resolve] <package>[.<arch>]`` -> lines.
+
+    Passing ``arch`` scopes the query to that architecture's build of the package
+    (``name.arch``), so a multi-arch graph resolves each node against its own arch
+    instead of every arch inheriting the host arch's dependencies. ``src`` is not
+    a queryable binary arch and is ignored.
+    """
 
     args = ["dnf", "repoquery", "--quiet", f"--{relation}"]
     if resolve:
         args.append("--resolve")
     if repo:
         args += ["--repo", repo]
-    args.append(package)
+    args.append(f"{package}.{arch}" if arch and arch != "src" else package)
     return _lines(_run(args, runner))
 
 
@@ -177,6 +184,8 @@ def enrich_graph_with_dnf(
         if node_selector and not node_selector(node):
             continue
         name = str(node.metadata.get("name") or parse_nevra(node.label)[0])
+        arch = node.metadata.get("arch") or node.metadata.get("build_arch")
+        arch_str = str(arch) if arch else None
         if limit is not None and seen >= limit:
             break
         seen += 1
@@ -184,7 +193,7 @@ def enrich_graph_with_dnf(
         try:
             for relation, scope in relations:
                 for nevra in repoquery(
-                    name, relation=relation, resolve=True, repo=repo, runner=runner
+                    name, relation=relation, resolve=True, repo=repo, arch=arch_str, runner=runner
                 ):
                     dep_name, dep_version = parse_nevra(nevra)
                     key = (dep_name, dep_version or "", relation)
@@ -196,7 +205,7 @@ def enrich_graph_with_dnf(
                         resolved += 1
                     else:
                         weak += 1
-            recorded += _record_relations(graph, node, name, repo, runner)
+            recorded += _record_relations(graph, node, name, repo, arch_str, runner)
             queried += 1
             if on_progress:
                 on_progress(f"dnf repoquery resolved dependencies for {name}")
@@ -322,12 +331,13 @@ def _record_relations(
     node: Node,
     name: str,
     repo: str | None,
+    arch: str | None,
     runner: Runner | None,
 ) -> int:
     recorded = 0
     relations: dict[str, list[str]] = {}
     for relation in _RECORD_RELATIONS:
-        values = repoquery(name, relation=relation, repo=repo, runner=runner)
+        values = repoquery(name, relation=relation, repo=repo, arch=arch, runner=runner)
         if values:
             relations[relation] = values
             recorded += len(values)

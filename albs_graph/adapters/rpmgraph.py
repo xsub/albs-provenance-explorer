@@ -122,12 +122,16 @@ def enrich_graph_with_rpmgraph(
 ) -> RpmgraphEnrichmentResult:
     """Add resolved RPM dependency claims from a repograph/rpmgraph dot graph."""
 
-    name_to_node: dict[str, str] = {}
+    # A repograph dot is package-name level (no arch), so a name maps to every
+    # arch variant of that package in the graph. Index name -> all node ids and
+    # attach the dependency to each (the previous setdefault kept only the first
+    # arch, dropping the claim for the rest under --all-archs / a repo union).
+    name_to_nodes: dict[str, list[str]] = {}
     for node in graph.find_by_type(NodeType.BINARY_RPM):
         if node_selector and not node_selector(node):
             continue
         name = str(node.metadata.get("name") or _parse_node_token(node.label)[0])
-        name_to_node.setdefault(name, node.id)
+        name_to_nodes.setdefault(name, []).append(node.id)
 
     edges = parse_dot_edges(dot_text)
     matched = 0
@@ -135,26 +139,29 @@ def enrich_graph_with_rpmgraph(
     seen: set[tuple[str, str, str]] = set()
     for src, dst in edges:
         src_name, _ = _parse_node_token(src)
-        node_id = name_to_node.get(src_name)
-        if node_id is None:
+        node_ids = name_to_nodes.get(src_name)
+        if not node_ids:
             continue
         matched += 1
         dep_name, dep_version = _parse_node_token(dst)
-        key = (node_id, dep_name, dep_version or "")
-        if key in seen:
-            continue
-        seen.add(key)
-        spec = DependencySpec(
-            identity=PackageIdentity(
-                Ecosystem.RPM, dep_name, namespace="almalinux", version=dep_version
-            ),
-            scope=DependencyScope.RUNTIME,
-            resolution_state=ResolutionState.RESOLVED,
-            source=f"dnf {evidence}" if evidence == "repograph" else evidence,
-            raw={"edge": [src, dst]},
-        )
-        add_dependency_claim(graph, DependencyClaim(subject_id=node_id, spec=spec, evidence=evidence))
-        added += 1
+        for node_id in node_ids:  # every arch variant of the source package
+            key = (node_id, dep_name, dep_version or "")
+            if key in seen:
+                continue
+            seen.add(key)
+            spec = DependencySpec(
+                identity=PackageIdentity(
+                    Ecosystem.RPM, dep_name, namespace="almalinux", version=dep_version
+                ),
+                scope=DependencyScope.RUNTIME,
+                resolution_state=ResolutionState.RESOLVED,
+                source=f"dnf {evidence}" if evidence == "repograph" else evidence,
+                raw={"edge": [src, dst]},
+            )
+            add_dependency_claim(
+                graph, DependencyClaim(subject_id=node_id, spec=spec, evidence=evidence)
+            )
+            added += 1
     return RpmgraphEnrichmentResult(edges=len(edges), matched_edges=matched, claims_added=added)
 
 

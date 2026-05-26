@@ -100,6 +100,33 @@ def test_enrich_adds_resolved_claims_for_matching_subjects() -> None:
         assert node.metadata.get("ecosystem") == str(Ecosystem.RPM)
 
 
+def test_enrich_attaches_to_all_arch_variants_of_a_source() -> None:
+    # A repograph dot is package-name level; the dependency must reach every arch
+    # variant of the source, not just the first (the prior setdefault dropped the
+    # rest under --all-archs / a repo union).
+    graph = ProvenanceGraph()
+    for arch in ("x86_64", "aarch64"):
+        graph.add_node(
+            Node(
+                f"rpm:nginx-core:{arch}",
+                NodeType.BINARY_RPM,
+                f"nginx-core-1-1.el10.{arch}.rpm",
+                {"name": "nginx-core", "arch": arch},
+            )
+        )
+
+    result = enrich_graph_with_rpmgraph(graph, 'digraph p { "nginx-core" -> "glibc" }')
+
+    assert result.matched_edges == 1
+    assert result.claims_added == 2  # one glibc claim per arch variant
+    subjects = {
+        node.metadata.get("subject")
+        for node in graph.find_by_type(NodeType.DEPENDENCY_CLAIM)
+        if node.metadata.get("name") == "glibc"
+    }
+    assert subjects == {"rpm:nginx-core:x86_64", "rpm:nginx-core:aarch64"}
+
+
 def test_enrich_parses_nevra_versions() -> None:
     graph = _graph_with(["nginx-core"])
     enrich_graph_with_rpmgraph(graph, _RPMGRAPH_NEVRA_DOT, evidence="rpmgraph")

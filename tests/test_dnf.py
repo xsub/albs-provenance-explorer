@@ -114,6 +114,21 @@ def test_package_licenses_maps_names_to_real_licenses() -> None:
     }
 
 
+def test_enrich_scopes_repoquery_to_the_node_arch() -> None:
+    # A node's dnf resolution must be queried for its own arch (name.arch), so a
+    # multi-arch graph does not have every arch inherit the host arch's deps.
+    queried_specs: list[str] = []
+
+    def runner(args: list[str]) -> tuple[int, str]:
+        queried_specs.append(args[-1])  # the package spec is the trailing arg
+        return 0, ""
+
+    enrich_graph_with_dnf(_graph(), runner=runner)  # node nginx-core, arch x86_64
+
+    assert queried_specs  # at least one query ran
+    assert all(spec == "nginx-core.x86_64" for spec in queried_specs)
+
+
 def test_package_licenses_empty_names_skips_dnf() -> None:
     def runner(_args: list[str]) -> tuple[int, str]:  # pragma: no cover - must not run
         raise AssertionError("dnf should not be invoked for an empty name list")

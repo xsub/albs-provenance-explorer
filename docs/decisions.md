@@ -1097,6 +1097,28 @@ package's own per-task repo+commit (same attribution as the graph builder) and
 full-batch graph but attaches the source tree to the chosen package's source
 node. Tests +1 (resolver maps each batch source to its own ref; unknown -> None).
 
+### F8 - arch-scoped dnf + rpmgraph matching
+
+Native resolution attached claims by package **name** only, which is fine for a
+single selected arch but wrong for `--all-archs` / a repo union / multiple
+versions:
+
+- **rpmgraph** (`enrich_graph_with_rpmgraph`) indexed `name -> node` with
+  `setdefault`, so only the first arch variant of a package received the
+  dependency claims. A repograph dot is name-level (no arch), so the dependency
+  applies to *every* arch variant - it now indexes `name -> [node ids]` and
+  attaches to each.
+- **dnf** (`enrich_graph_with_dnf` / `repoquery`) queried the bare `name`, so on
+  a multi-arch graph every arch node inherited the host arch's resolution. The
+  query is now scoped to the node's arch (`name.arch`), so each node resolves
+  against its own architecture (verified on the el10 host: `nginx-core.x86_64`
+  returns the same 6 runtime + 1 weak as the bare name, so the demo is
+  unchanged). `src` is not a queryable binary arch and is left unscoped.
+
+Tests +2 (rpmgraph attaches to all arch variants; dnf query is arch-scoped).
+Suite now 190. This completes the external review's scope-boundary findings
+(F1-F8).
+
 ---
 
 ## Cross-cutting decisions
