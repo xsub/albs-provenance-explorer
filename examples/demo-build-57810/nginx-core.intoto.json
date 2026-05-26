@@ -1,0 +1,37 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "nginx-core-1.26.3-6.el10_2.3.x86_64.rpm",
+      "digest": {
+        "sha256": "300eb6e84d90e76cd26041ae3e3dee83f7d735b3e30d9dd2719dc8b71ad04fef"
+      }
+    }
+  ],
+  "predicateType": "https://slsa.dev/provenance/v1",
+  "predicate": {
+    "buildDefinition": {
+      "buildType": "https://build.almalinux.org/albs",
+      "externalParameters": {
+        "package": "nginx-core",
+        "build_id": "57810"
+      },
+      "resolvedDependencies": [
+        {
+          "uri": "git+https://git.almalinux.org/rpms/nginx.git@imports/c10/nginx-1.26.3-6.el10_2.3",
+          "digest": {
+            "gitCommit": "28f9805350513bcbe76fc51fd6012055aabf66bd"
+          }
+        }
+      ]
+    },
+    "runDetails": {
+      "builder": {
+        "id": "https://build.almalinux.org"
+      },
+      "metadata": {
+        "invocationId": "57810"
+      }
+    }
+  }
+}

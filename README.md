@@ -65,6 +65,43 @@ Focused provenance graph, 13 nodes / 13 edges:
 
 </details>
 
+## Demo: full feature run on build 57810 (AlmaLinux 10)
+
+`example--full.sh` runs almost the whole feature set end to end for one build/package and writes README-ready artifacts. It defaults to AlmaLinux 10 build [`57810`](https://build.almalinux.org/build/57810) (a multi-package batch that includes `nginx-1.26.3`), focused on `nginx-core`:
+
+```bash
+./example--full.sh
+# retarget: BUILD_ID=<id> PACKAGE=<rpm> FILE=<path> OWNER=<rpm> ./example--full.sh
+```
+
+It exercises the provenance trust path, `identify` (a binary file -> its full creation/install lineage), five-axis coverage up the cost ladder (RPM headers, payload ELF, `dnf repoquery`, soname -> providing package, GPG signatures, CAS), the `vuln` / `license` / `slsa` reports, and the dependency `universe`. Every console line is saved to [`console.txt`](examples/demo-build-57810/console.txt) and all graphs are rendered to SVG.
+
+On an AlmaLinux 10 host the providers resolve to matching `.el10` versions and the RPM signature verifies:
+
+```text
+resolution        3 / 14   0.21    dnf repoquery: 6 runtime + 1 weak claims
+linkage           1 / 456  0.00    header 1/1 (8 sonames), payload 1/1 (6 NEEDED)
+provenance      456 / 456  1.00    soname resolution: 6/6 -> providing packages
+Signatures: 1 verified, 0 nokey, 0 failed of 1 RPMs
+```
+
+Focused source-to-artifact trust path for `nginx-core` (correctly rooted at the **nginx** source, not the batch's first package):
+
+![nginx-core trust path, build 57810](examples/demo-build-57810/nginx-core-57810-trust.svg)
+
+`nginx-core`'s dependency neighbourhood in the AppStream universe:
+
+![nginx-core dependency neighbourhood](examples/demo-build-57810/universe-nginx-core-deps-57810.svg)
+
+<details>
+<summary>Full build provenance graph for 57810 - 456 binary RPMs across 12 source packages (large)</summary>
+
+![full build 57810 provenance graph](examples/demo-build-57810/build-57810.svg)
+
+</details>
+
+Also produced: the [SLSA / in-toto attestation](examples/demo-build-57810/nginx-core.intoto.json) and the full [console log](examples/demo-build-57810/console.txt).
+
 ## Scope
 
 Status is tracked in three honest buckets. "Couldn't resolve" is a deliverable here: the coverage report always names the unresolved residue rather than claiming 100%.
