@@ -13,3 +13,7 @@ build/
 /nginx-core-x86_64-trust.*
 examples/demo-nginx-core/nginx-core_x86_64-trust.*
 examples/live-build-17812/*.albs.json
+# ...except the build-17812 raw metadata: it is the build_analysis test fixture
+# (build 17812 is a finished, immutable build, so the data is stable), so commit
+# it rather than depend on a locally-generated cache that a clean checkout lacks.
+!examples/live-build-17812/build-17812.albs.json

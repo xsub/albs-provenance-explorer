@@ -984,6 +984,28 @@ source fan-out, full build). Tests +1; suite now 181.
 
 ---
 
+## D44 - Commit the `build_analysis` test fixture (build-17812.albs.json)
+
+`pytest` on a clean checkout (the VPS) showed 10 failures; two distinct causes:
+
+- **8 (test_trust, test_artifact_inventory): environment, not a bug.** The VPS
+  working tree was missing *committed* files under `examples/live-build-17812/`
+  (a concurrent checkout had deleted the tracked fixtures). `git checkout HEAD --`
+  restored them; those tests read `build-17812.json`, which is committed.
+- **2 (test_build_analysis): a real fragility.** Both read
+  `examples/live-build-17812/build-17812.albs.json`, which was **gitignored**
+  (`*.albs.json`). It only existed locally (left over from a demo fetch), so the
+  suite passed on a dev box but failed on any clean clone / CI / the VPS - the
+  tests silently depended on a non-committed file.
+
+Fix: un-ignore that single file and commit it as the fixture (295 KB; build
+17812 is finished and immutable, so its raw metadata never changes). No test
+edit; every other `*.albs.json` cache stays gitignored. The full suite (181)
+now passes from a clean checkout. Lesson reinforced: offline tests must read
+only committed fixtures, never a locally-generated cache.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -37,7 +37,7 @@ CAS (`--use-cas`) and the native RPM/DNF integrations (`--use-dnf`,
 `--repograph`, `--repograph-dot`, `--with-rpm-payloads`) are all optional and
 degrade gracefully when the tool is missing - never required, never fatal.
 
-The verbose demo caches raw ALBS metadata in `examples/live-build-17812/build-17812.albs.json` (gitignored). Cache TTL defaults to 5 minutes; override with `CACHE_TTL=<seconds>`. Force a refetch with `--refresh-cache` on CLI commands.
+The verbose demo caches raw ALBS metadata in `examples/live-build-17812/build-17812.albs.json`. That one file is committed (un-ignored in `.gitignore`) because the `build_analysis` tests use it as a fixture and build 17812 is a finished, immutable build; every *other* `*.albs.json` cache stays gitignored. Cache TTL defaults to 5 minutes; override with `CACHE_TTL=<seconds>`. Force a refetch with `--refresh-cache` on CLI commands.
 
 ## Architecture
 
