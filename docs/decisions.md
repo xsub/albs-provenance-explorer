@@ -1086,6 +1086,17 @@ nodes), but an ambiguous fallback is skipped rather than guessing. The
 single-build demo is unchanged (one NEVRA per name+arch). Tests +1 (two versions
 at one arch attach their own evidence).
 
+### F6 - per-source checkout / source-evidence selector
+
+`checkout-source` and `source-evidence` used the top-level
+`AlbsBuildMetadata.source_repository`/`commit`, which describe only the batch's
+representative source - so for build 57810 they only ever touched the first
+source. Both now take `--package`; `source_ref_for_package` resolves that
+package's own per-task repo+commit (same attribution as the graph builder) and
+`dataclasses.replace` retargets the metadata. `source-evidence` still builds the
+full-batch graph but attaches the source tree to the chosen package's source
+node. Tests +1 (resolver maps each batch source to its own ref; unknown -> None).
+
 ---
 
 ## Cross-cutting decisions

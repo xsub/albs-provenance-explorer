@@ -802,8 +802,8 @@ albs-graph trust-path --build-id 57810 --rpm nginx-core --arch x86_64 --format s
 Checkout and analyze source evidence referenced by an ALBS build:
 
 ```bash
-albs-graph checkout-source --build-id 57810 --dest sources/build-57810
-albs-graph source-evidence sources/build-57810 --build-id 57810 --format json -o build-57810-source-evidence.json
+albs-graph checkout-source --build-id 57810 --package nginx --dest sources/nginx
+albs-graph source-evidence sources/nginx --build-id 57810 --package nginx --format json -o nginx-source-evidence.json
 ```
 
 `source-evidence` starts from ALBS build metadata, attaches a hashed source-file inventory, parses RPM `.spec` files for `BuildRequires`, `Requires`, `Source` and `Patch`, and records detected ecosystem manifests such as `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `pom.xml` and Gradle build files. Manifest *detection* is evidence, not resolution; the separate `resolve` command runs native resolvers (Go and Cargo today) that consume those manifests and emit resolved dependency facts.

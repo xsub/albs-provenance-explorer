@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 import sys
 from typing import Callable, Optional
@@ -19,7 +20,12 @@ from albs_graph.adapters import (
     fetch_build_metadata,
     graph_from_local_rpm,
 )
-from albs_graph.adapters.albs import graph_from_build_metadata, load_synthetic_build_fixture
+from albs_graph.adapters.albs import (
+    AlbsBuildMetadata,
+    graph_from_build_metadata,
+    load_synthetic_build_fixture,
+    source_ref_for_package,
+)
 from albs_graph.adapters.cas import verify_graph_cas
 from albs_graph.adapters.dnf import (
     DnfUnavailable,
@@ -185,6 +191,28 @@ def fetch(
     _emit_graph(graph, output_format, output, verbose=verbose)
 
 
+def _retarget_source(
+    metadata: AlbsBuildMetadata, package: Optional[str], *, verbose: bool
+) -> AlbsBuildMetadata:
+    """Retarget build metadata to one source package's own ref (batch builds).
+
+    Returns ``metadata`` unchanged when no package is given; otherwise resolves
+    that package's per-task repo+commit and returns a copy pointed at it. Raises
+    a usage error when no task in the build produces the requested package.
+    """
+
+    if not package:
+        return metadata
+    ref = source_ref_for_package(metadata, package)
+    if ref is None:
+        raise typer.BadParameter(
+            f"no task in build {metadata.build_id} builds source package '{package}'"
+        )
+    repository, commit = ref
+    _log_step(verbose, f"Source for {package}: {repository} @ {commit}")
+    return replace(metadata, package=package, source_repository=repository, commit=commit)
+
+
 @app.command(
     "checkout-source",
     help="Checkout the exact git source commit referenced by an ALBS build.",
@@ -194,6 +222,12 @@ def fetch(
 def checkout_source(
     build_id: int = typer.Option(..., "--build-id", "-b", help="ALBS build id."),
     destination: Path = typer.Option(..., "--dest", "-d", help="Destination checkout directory."),
+    package: Optional[str] = typer.Option(
+        None,
+        "--package",
+        help="Source package to check out (batch builds have many); defaults to the "
+        "build's representative source.",
+    ),
     base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
     cache: Optional[Path] = typer.Option(
         None, "--cache", help="Read/write raw ALBS API metadata cache JSON."
@@ -215,6 +249,7 @@ def checkout_source(
         cache_ttl_seconds=cache_ttl,
     )
     _log_package_metadata(verbose, metadata.package, metadata.package_source)
+    metadata = _retarget_source(metadata, package, verbose=verbose)
     _log_step(
         verbose,
         f"Checking out {metadata.source_repository} at commit {metadata.commit}",
@@ -232,6 +267,12 @@ def checkout_source(
 def source_evidence(
     source_dir: Path = typer.Argument(..., exists=True, file_okay=False, help="Source checkout."),
     build_id: int = typer.Option(..., "--build-id", "-b", help="ALBS build id."),
+    package: Optional[str] = typer.Option(
+        None,
+        "--package",
+        help="Source package the checkout is for (batch builds have many); defaults to "
+        "the build's representative source.",
+    ),
     output_format: str = typer.Option(
         "summary", "--format", "-f", help="summary, json, dot or svg."
     ),
@@ -264,10 +305,14 @@ def source_evidence(
     _log_package_metadata(verbose, metadata.package, metadata.package_source)
     _log_step(verbose, "Building provenance graph from ALBS metadata")
     graph = graph_from_build_metadata(metadata)
+    # Build the full-batch graph from the original metadata, but attach the source
+    # tree to the chosen package's source node (and its repo/commit) so a batch's
+    # non-representative sources can have their own evidence.
+    attach_metadata = _retarget_source(metadata, package, verbose=verbose)
     _log_step(verbose, f"Scanning source evidence from {source_dir}")
     summary = attach_source_evidence(
         graph,
-        metadata,
+        attach_metadata,
         source_dir,
         include_file_inventory=file_inventory,
     )

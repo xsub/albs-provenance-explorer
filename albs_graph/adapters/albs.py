@@ -165,6 +165,33 @@ def parse_build_page(build_id: str, html: str, url: str) -> AlbsBuildMetadata:
     )
 
 
+def source_ref_for_package(build: AlbsBuildMetadata, package: str) -> tuple[str, str] | None:
+    """``(repo, commit)`` of the task whose source package matches ``package``.
+
+    A batch build has many sources; the top-level
+    ``AlbsBuildMetadata.source_repository``/``commit`` describe only the
+    representative one. This resolves a chosen package's own source ref from the
+    per-task ``ref`` (same attribution as the graph builder), so checkout and
+    source-evidence can target any source in the batch. Returns ``None`` when no
+    task builds that package.
+    """
+
+    for task in build.raw.get("tasks", []):
+        ref = task.get("ref") or {}
+        srpm = _task_srpm_name(task)
+        task_pkg = (
+            (_source_name_from_rpm_filename(srpm) if srpm else None)
+            or _source_name_from_git_ref(str(ref.get("git_ref") or ""))
+            or (_source_package_name(str(ref.get("url") or "")) if ref.get("url") else None)
+        )
+        if task_pkg == package:
+            return (
+                str(ref.get("url") or build.source_repository),
+                str(ref.get("git_commit_hash") or build.commit),
+            )
+    return None
+
+
 def graph_from_build_metadata(build: AlbsBuildMetadata) -> ProvenanceGraph:
     if "tasks" in build.raw:
         return _graph_from_albs_api_build(build)

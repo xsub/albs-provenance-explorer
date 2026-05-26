@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from albs_graph.adapters.albs import graph_from_build_metadata, parse_build_metadata
+from albs_graph.adapters.albs import (
+    graph_from_build_metadata,
+    parse_build_metadata,
+    source_ref_for_package,
+)
 from albs_graph.model import NodeType, Relation
 
 
@@ -45,6 +49,40 @@ def test_multi_source_build_attributes_each_binary_to_its_own_source() -> None:
     assert source_of("libnghttp2") == "nghttp2"
     assert "src:nginx" in graph.nodes
     assert "src:nghttp2" in graph.nodes
+
+
+def test_source_ref_for_package_resolves_each_batch_source() -> None:
+    # checkout-source / source-evidence --package need each source's own ref, not
+    # the build's representative one. The resolver maps a package to its task ref.
+    metadata = parse_build_metadata(
+        {
+            "id": 99,
+            "tasks": [
+                {
+                    "id": 1,
+                    "arch": "x86_64",
+                    "ref": {"url": "https://git.almalinux.org/rpms/nginx.git", "git_commit_hash": "aaa"},
+                    "artifacts": [{"id": 10, "type": "rpm", "name": "nginx-1.26.3-6.el10.src.rpm"}],
+                },
+                {
+                    "id": 2,
+                    "arch": "x86_64",
+                    "ref": {"url": "https://git.almalinux.org/rpms/nghttp2.git", "git_commit_hash": "bbb"},
+                    "artifacts": [{"id": 20, "type": "rpm", "name": "nghttp2-1.68.0-3.el10.src.rpm"}],
+                },
+            ],
+        }
+    )
+
+    assert source_ref_for_package(metadata, "nginx") == (
+        "https://git.almalinux.org/rpms/nginx.git",
+        "aaa",
+    )
+    assert source_ref_for_package(metadata, "nghttp2") == (
+        "https://git.almalinux.org/rpms/nghttp2.git",
+        "bbb",
+    )
+    assert source_ref_for_package(metadata, "does-not-exist") is None
 
 
 def test_shared_repo_across_sources_still_gets_each_stored_in_edge() -> None:
