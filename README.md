@@ -22,71 +22,28 @@ source package
 ```
 
 
-## Demo: nginx-core Trust Path
-
-This demo uses public ALBS build `17812`, an AlmaLinux 9 `nginx` build, and focuses the graph down to one binary RPM artifact: `nginx-core-1.20.1-16.el9_4.1.x86_64.rpm`.
-
-The full build graph is useful for analysis, but it is too dense for review. The focused trust graph keeps the source-to-artifact lineage and release evidence visible without rendering every package from every architecture.
-
-The same demo also exports build-level intelligence from the ALBS metadata:
-
-- `96` RPM artifact rows across `x86_64`, `aarch64`, `ppc64le`, `s390x`, `i686` and `src` build tasks
-- `18` common binary package names are shared by all binary build task platforms
-- each binary build task emits `19` RPM rows: `16` arch-specific RPMs, `2` `noarch` RPMs and `1` SRPM
-- processing analysis covers `173` raw artifacts total: `96` RPM artifacts and `77` build-log/config artifacts
-- build timing summary: `13.6m` wall time, `37.7m` aggregate task wall time, `8.1m` critical task wall time
-- signing/notarization timing summary: `4.3m` wall time, including package signing, CAS notarization, upload and web-server processing
-
-Machine-readable exports are kept in [`examples/demo-nginx-core/build-17812-artifact-inventory.json`](examples/demo-nginx-core/build-17812-artifact-inventory.json) and [`examples/demo-nginx-core/build-17812-processing-analysis.json`](examples/demo-nginx-core/build-17812-processing-analysis.json).
-
-```bash
-albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64
-albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64 --format svg -o examples/demo-nginx-core/nginx-core-x86_64-trust.svg
-```
-
-Console trust-path report from an AlmaLinux host, using a five-minute ALBS metadata cache and optional git source commit verification:
-
-```bash
-RPM_NAME=nginx-core ARCH=x86_64 OUT_DIR=examples/demo-nginx-core VERIFY_GIT=1 ./example--verbose.sh
-```
-
-![nginx-core trust-path console report](examples/demo-nginx-core/trust-path-console.svg)
-
-Full text output is kept in [`examples/demo-nginx-core/trust-path-console.txt`](examples/demo-nginx-core/trust-path-console.txt).
-
-Focused provenance graph, 13 nodes / 13 edges:
-
-![nginx-core focused trust graph](examples/demo-nginx-core/nginx-core-x86_64-trust.svg)
-
-<details>
-<summary>Full ALBS build graph for build 17812, 289 nodes / 484 edges</summary>
-
-![full ALBS build 17812 provenance graph](examples/demo-nginx-core/build-17812-full.svg)
-
-</details>
-
 ## Demo: full feature run on build 57810 (AlmaLinux 10)
 
-`example--full.sh` runs almost the whole feature set end to end for one build/package and writes README-ready artifacts. It defaults to AlmaLinux 10 build [`57810`](https://build.almalinux.org/build/57810) (a multi-package batch that includes `nginx-1.26.3`), focused on `nginx-core`:
+`example--full.sh` runs almost the whole feature set end to end for one build/package and writes README-ready artifacts. It defaults to AlmaLinux 10 build [`57810`](https://build.almalinux.org/build/57810) - a 13-source batch (buildah, crun, dnsmasq, grafana, grafana-pcp, krb5, nghttp2, nginx, opentelemetry-collector, rsync, rust-bootupd, skopeo, toolbox) totalling 456 binary RPMs across 6 platforms - focused on `nginx-core`:
 
 ```bash
 ./example--full.sh
 # retarget: BUILD_ID=<id> PACKAGE=<rpm> FILE=<path> OWNER=<rpm> ./example--full.sh
 ```
 
-It exercises the provenance trust path, `identify` (a binary file -> its full creation/install lineage), five-axis coverage up the cost ladder (RPM headers, payload ELF, `dnf repoquery`, soname -> providing package, GPG signatures, CAS), the `vuln` / `license` / `slsa` reports, and the dependency `universe`. Every console line is saved to [`console.txt`](examples/demo-build-57810/console.txt) and all graphs are rendered to SVG.
+It exercises the provenance trust path, `identify` (a binary file -> its full creation/install lineage), five-axis coverage up the cost ladder (RPM headers, payload ELF, `dnf repoquery`, soname -> providing package, GPG signatures, CAS), the `vuln` and `slsa` reports, and the dependency `universe`. Every console line is saved to [`console.txt`](examples/demo-build-57810/console.txt) and all graphs are rendered to SVG.
 
 On an AlmaLinux 10 host the providers resolve to matching `.el10` versions and the RPM signature verifies:
 
 ```text
-resolution        5 / 18   0.28    dnf repoquery: 6 runtime + 1 weak; SBOM: 9 components
+resolution        3 / 14   0.21    dnf repoquery: 6 runtime + 1 weak claims
 linkage           1 / 456  0.00    header 1/1 (8 sonames), payload 1/1 (6 NEEDED)
 provenance      456 / 456  1.00    soname resolution: 6/6 -> providing packages
-Reconciled dependencies: 18; conflicts: 5
+Reconciled dependencies: 14; conflicts: 3
 Signatures: 1 verified, 0 nokey, 0 failed of 1 RPMs
 ```
 
-The CycloneDX SBOM at [`examples/nginx-core.cyclonedx.json`](examples/nginx-core.cyclonedx.json) feeds both the license rollup (9 components, 7 distinct licenses, 0 unlicensed) and the resolution axis. It is an illustrative sample; point `SBOM=` at real output from AlmaLinux's own [`alma-sbom`](https://github.com/AlmaLinux/alma-sbom) (`alma-sbom --file-format cyclonedx-json build --build-id 57810`) to drive the same steps with live data. Where the SBOM's versions differ from the dnf-resolved `.el10` releases, the reconciler keeps every claim and flags a typed `version_drift` conflict instead of silently picking a winner - the conflict-aware model in action.
+The 3 conflicts are real, not contrived: the el10 repos carry two builds each of `glibc`, `openssl-libs` and `zlib-ng-compat`, so `dnf` and soname resolution legitimately disagree on the exact release, and the reconciler records every version behind a typed `version_drift` rather than picking one. There is no license rollup in this run: AlmaLinux's SBOMs need credentialed immudb access (no anonymous fetch path), so the demo ships no SBOM and never fabricates one. Supply a real CycloneDX file - e.g. from AlmaLinux's own [`alma-sbom`](https://github.com/AlmaLinux/alma-sbom) (`alma-sbom --file-format cyclonedx-json build --build-id 57810`) - to `coverage --sbom` / `license --sbom` to drive those steps.
 
 Focused source-to-artifact trust path for `nginx-core` (correctly rooted at the **nginx** source, not the batch's first package):
 
@@ -97,7 +54,7 @@ Focused source-to-artifact trust path for `nginx-core` (correctly rooted at the 
 ![nginx-core dependency neighbourhood](examples/demo-build-57810/universe-nginx-core-deps-57810.svg)
 
 <details>
-<summary>Full build provenance graph for 57810 - 456 binary RPMs across 12 source packages (large)</summary>
+<summary>Full build provenance graph for 57810 - 456 binary RPMs across 13 source packages (large)</summary>
 
 ![full build 57810 provenance graph](examples/demo-build-57810/build-57810.svg)
 
@@ -181,113 +138,359 @@ albs-graph fetch-build 12345 --format json
 Show step-by-step fetch, CAS extraction and render progress on stderr:
 
 ```bash
-albs-graph fetch --build-id 17812 --cache examples/live-build-17812/build-17812.albs.json --format json --verbose -o build-17812.json
-albs-graph trust-path --build-id 17812 --cache examples/live-build-17812/build-17812.albs.json --format svg --verbose -o build-17812-derived-trust.svg
+albs-graph fetch --build-id 57810 --cache examples/live-build-57810/build-57810.albs.json --format json --verbose -o build-57810.json
+albs-graph trust-path --build-id 57810 --cache examples/live-build-57810/build-57810.albs.json --format svg --verbose -o build-57810-derived-trust.svg
 ```
 
-Regenerate demo artifacts in one verbose run. The script fetches ALBS metadata once into a local cache, reports all ALBS build task platforms present in the build, prints an RPM artifact matrix, prints build/signing timing summaries, and reuses that metadata for JSON, DOT and SVG renders while the cache is fresh. Cache freshness defaults to 5 minutes and can be changed with `CACHE_TTL`:
+Regenerate build-intelligence demo artifacts in one verbose run. The script fetches ALBS metadata once into a local cache, reports all ALBS build task platforms present in the build, prints an RPM artifact matrix, prints build/signing timing summaries, and reuses that metadata for JSON, DOT and SVG renders while the cache is fresh. Cache freshness defaults to 5 minutes and can be changed with `CACHE_TTL` (it defaults to build 17812 - an AlmaLinux 9 single-source nginx build; the run below targets the el10 batch 57810):
 
 ```bash
-./example--verbose.sh
+BUILD_ID=57810 RPM_NAME=nginx-core ARCH=x86_64 ./example--verbose.sh
 ```
 
 <details>
 <summary>Sample verbose run (`bash -x`) on an AlmaLinux host, host name sanitized</summary>
 
 ```text
-[almalinux@host albs-provenance-explorer]$ bash -x example--verbose.sh
+[almalinux@host albs-provenance-explorer]$ BUILD_ID=57810 RPM_NAME=nginx-core ARCH=x86_64 bash -x example--verbose.sh
 + set -euo pipefail
-+ BUILD_ID=17812
-+ RPM_NAME=
-+ ARCH=
-+ OUT_DIR=examples/demo-build-17812
-+ LIVE_DIR=examples/live-build-17812
-+ CACHE_FILE=examples/live-build-17812/build-17812.albs.json
++ BUILD_ID=57810
++ RPM_NAME=nginx-core
++ ARCH=x86_64
++ OUT_DIR=examples/demo-build-57810
++ LIVE_DIR=examples/live-build-57810
++ CACHE_FILE=examples/live-build-57810/build-57810.albs.json
 + CACHE_TTL=300
 + VERIFY_GIT=0
-+ python3 -m albs_graph.cli.demo_verbose --build-id 17812 --rpm '' --arch '' --out-dir examples/demo-build-17812 --live-dir examples/live-build-17812 --cache examples/live-build-17812/build-17812.albs.json --cache-ttl 300 --verify-git 0
++ python3 -m albs_graph.cli.demo_verbose --build-id 57810 --rpm nginx-core --arch x86_64 --out-dir examples/demo-build-57810 --live-dir examples/live-build-57810 --cache examples/live-build-57810/build-57810.albs.json --cache-ttl 300 --verify-git 0
 ==> ALBS graph tool: albs-graph installed; using Python orchestration for single-pass demo
-==> Build: 17812
-==> Focused RPM selector: <none; representative artifact selected after ALBS metadata>
-==> Raw ALBS metadata cache: examples/live-build-17812/build-17812.albs.json
+==> Build: 57810
+==> Focused RPM selector: nginx-core.x86_64
+==> Raw ALBS metadata cache: examples/live-build-57810/build-57810.albs.json
 ==> Cache TTL: 300s
 ==> Verify git source commit: 0
-step Fetching ALBS build metadata from https://build.almalinux.org/api/v1/builds/17812/
-step Writing ALBS build metadata cache to examples/live-build-17812/build-17812.albs.json
+step Ignoring stale ALBS metadata cache examples/live-build-57810/build-57810.albs.json (4094s old, ttl 300s)
+step Fetching ALBS build metadata from https://build.almalinux.org/api/v1/builds/57810/
+step Writing ALBS build metadata cache to examples/live-build-57810/build-57810.albs.json
 step Parsing ALBS API JSON response
-step Source package: nginx (from ALBS srpm_artifact)
+step Source package: nghttp2 (from ALBS srpm_artifact)
 step Building full provenance graph from ALBS metadata
-step Full graph: 289 nodes, 484 edges, 85 CAS attestations
-step ALBS build task platforms: x86_64, aarch64, ppc64le, s390x, i686
+step Full graph: 1613 nodes, 2775 edges, 470 CAS attestations
+step ALBS build task platforms: x86_64, aarch64, ppc64le, s390x, i686, x86_64_v2
 step ALBS source build task: src
-step Common RPM package set applies to build task platforms: x86_64, aarch64, ppc64le, s390x, i686
-            Common RPM package set
+step Common RPM package set applies to build task platforms: x86_64, aarch64, ppc64le, s390x, i686, x86_64_v2
+            Common RPM package set            
 ┏━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃  # ┃ Packages                              ┃
 ┡━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│  1 │ nginx                                 │
-│  2 │ nginx-all-modules                     │
-│  3 │ nginx-core                            │
-│  4 │ nginx-core-debuginfo                  │
-│  5 │ nginx-debuginfo                       │
-│  6 │ nginx-debugsource                     │
-│  7 │ nginx-filesystem                      │
-│  8 │ nginx-mod-devel                       │
-│  9 │ nginx-mod-http-image-filter           │
-│ 10 │ nginx-mod-http-image-filter-debuginfo │
-│ 11 │ nginx-mod-http-perl                   │
-│ 12 │ nginx-mod-http-perl-debuginfo         │
-│ 13 │ nginx-mod-http-xslt-filter            │
-│ 14 │ nginx-mod-http-xslt-filter-debuginfo  │
-│ 15 │ nginx-mod-mail                        │
-│ 16 │ nginx-mod-mail-debuginfo              │
-│ 17 │ nginx-mod-stream                      │
-│ 18 │ nginx-mod-stream-debuginfo            │
+│  1 │ buildah                               │
+│  2 │ crun                                  │
+│  3 │ dnsmasq                               │
+│  4 │ dnsmasq-debuginfo                     │
+│  5 │ dnsmasq-debugsource                   │
+│  6 │ dnsmasq-langpack                      │
+│  7 │ dnsmasq-utils                         │
+│  8 │ dnsmasq-utils-debuginfo               │
+│  9 │ grafana                               │
+│ 10 │ grafana-pcp                           │
+│ 11 │ krb5                                  │
+│ 12 │ krb5-debuginfo                        │
+│ 13 │ krb5-debugsource                      │
+│ 14 │ krb5-devel                            │
+│ 15 │ krb5-libs                             │
+│ 16 │ krb5-libs-debuginfo                   │
+│ 17 │ krb5-pkinit                           │
+│ 18 │ krb5-pkinit-debuginfo                 │
+│ 19 │ krb5-server                           │
+│ 20 │ krb5-server-debuginfo                 │
+│ 21 │ krb5-server-ldap                      │
+│ 22 │ krb5-server-ldap-debuginfo            │
+│ 23 │ krb5-tests                            │
+│ 24 │ krb5-workstation                      │
+│ 25 │ krb5-workstation-debuginfo            │
+│ 26 │ krb5-xrealmauthz                      │
+│ 27 │ krb5-xrealmauthz-debuginfo            │
+│ 28 │ libkadm5                              │
+│ 29 │ libkadm5-debuginfo                    │
+│ 30 │ libnghttp2                            │
+│ 31 │ libnghttp2-debuginfo                  │
+│ 32 │ libnghttp2-devel                      │
+│ 33 │ nghttp2                               │
+│ 34 │ nghttp2-debuginfo                     │
+│ 35 │ nghttp2-debugsource                   │
+│ 36 │ nginx                                 │
+│ 37 │ nginx-all-modules                     │
+│ 38 │ nginx-core                            │
+│ 39 │ nginx-core-debuginfo                  │
+│ 40 │ nginx-debuginfo                       │
+│ 41 │ nginx-debugsource                     │
+│ 42 │ nginx-filesystem                      │
+│ 43 │ nginx-mod-devel                       │
+│ 44 │ nginx-mod-http-image-filter           │
+│ 45 │ nginx-mod-http-image-filter-debuginfo │
+│ 46 │ nginx-mod-http-perl                   │
+│ 47 │ nginx-mod-http-perl-debuginfo         │
+│ 48 │ nginx-mod-http-xslt-filter            │
+│ 49 │ nginx-mod-http-xslt-filter-debuginfo  │
+│ 50 │ nginx-mod-mail                        │
+│ 51 │ nginx-mod-mail-debuginfo              │
+│ 52 │ nginx-mod-stream                      │
+│ 53 │ nginx-mod-stream-debuginfo            │
+│ 54 │ opentelemetry-collector               │
+│ 55 │ rsync                                 │
+│ 56 │ rsync-daemon                          │
+│ 57 │ rsync-debuginfo                       │
+│ 58 │ rsync-debugsource                     │
+│ 59 │ rsync-rrsync                          │
+│ 60 │ rust-bootupd                          │
+│ 61 │ skopeo                                │
+│ 62 │ toolbox                               │
 └────┴───────────────────────────────────────┘
-                           ALBS RPM artifact matrix
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
-┃ Build task arch ┃ Artifacts ┃ Artifact arches             ┃ Package set    ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
-│ x86_64          │        19 │ x86_64=16, noarch=2, src=1  │ common         │
-│ aarch64         │        19 │ aarch64=16, noarch=2, src=1 │ common         │
-│ ppc64le         │        19 │ ppc64le=16, noarch=2, src=1 │ common         │
-│ s390x           │        19 │ s390x=16, noarch=2, src=1   │ common         │
-│ i686            │        19 │ i686=16, noarch=2, src=1    │ common         │
-│ src             │         1 │ src=1                       │ source package │
-│                 │           │                             │ nginx          │
-└─────────────────┴───────────┴─────────────────────────────┴────────────────┘
+                                  ALBS RPM artifact matrix                                   
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Build task arch ┃ Artifacts ┃ Artifact arches                ┃ Package set                ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ x86_64          │        94 │ x86_64=76, noarch=5, src=13    │ delta                      │
+│                 │           │                                │ + bootupd                  │
+│                 │           │                                │ + bootupd-debuginfo        │
+│                 │           │                                │ + buildah-debuginfo        │
+│                 │           │                                │ + buildah-debugsource      │
+│                 │           │                                │ + buildah-tests            │
+│                 │           │                                │ + buildah-tests-debuginfo  │
+│                 │           │                                │ + crun-debuginfo           │
+│                 │           │                                │ + crun-debugsource         │
+│                 │           │                                │ + crun-krun                │
+│                 │           │                                │ + grafana-debuginfo        │
+│                 │           │                                │ + grafana-debugsource      │
+│                 │           │                                │ + grafana-pcp-debuginfo    │
+│                 │           │                                │ + grafana-pcp-debugsource  │
+│                 │           │                                │ + grafana-selinux          │
+│                 │           │                                │ + rust-bootupd-debugsource │
+│                 │           │                                │ + skopeo-debuginfo         │
+│                 │           │                                │ + skopeo-debugsource       │
+│                 │           │                                │ + skopeo-tests             │
+│                 │           │                                │ + toolbox-debuginfo        │
+│                 │           │                                │ + toolbox-debugsource      │
+│                 │           │                                │ + toolbox-tests            │
+│ aarch64         │        94 │ aarch64=76, noarch=5, src=13   │ delta                      │
+│                 │           │                                │ + bootupd                  │
+│                 │           │                                │ + bootupd-debuginfo        │
+│                 │           │                                │ + buildah-debuginfo        │
+│                 │           │                                │ + buildah-debugsource      │
+│                 │           │                                │ + buildah-tests            │
+│                 │           │                                │ + buildah-tests-debuginfo  │
+│                 │           │                                │ + crun-debuginfo           │
+│                 │           │                                │ + crun-debugsource         │
+│                 │           │                                │ + crun-krun                │
+│                 │           │                                │ + grafana-debuginfo        │
+│                 │           │                                │ + grafana-debugsource      │
+│                 │           │                                │ + grafana-pcp-debuginfo    │
+│                 │           │                                │ + grafana-pcp-debugsource  │
+│                 │           │                                │ + grafana-selinux          │
+│                 │           │                                │ + rust-bootupd-debugsource │
+│                 │           │                                │ + skopeo-debuginfo         │
+│                 │           │                                │ + skopeo-debugsource       │
+│                 │           │                                │ + skopeo-tests             │
+│                 │           │                                │ + toolbox-debuginfo        │
+│                 │           │                                │ + toolbox-debugsource      │
+│                 │           │                                │ + toolbox-tests            │
+│ ppc64le         │        93 │ ppc64le=75, noarch=5, src=13   │ delta                      │
+│                 │           │                                │ + bootupd                  │
+│                 │           │                                │ + bootupd-debuginfo        │
+│                 │           │                                │ + buildah-debuginfo        │
+│                 │           │                                │ + buildah-debugsource      │
+│                 │           │                                │ + buildah-tests            │
+│                 │           │                                │ + buildah-tests-debuginfo  │
+│                 │           │                                │ + crun-debuginfo           │
+│                 │           │                                │ + crun-debugsource         │
+│                 │           │                                │ + grafana-debuginfo        │
+│                 │           │                                │ + grafana-debugsource      │
+│                 │           │                                │ + grafana-pcp-debuginfo    │
+│                 │           │                                │ + grafana-pcp-debugsource  │
+│                 │           │                                │ + grafana-selinux          │
+│                 │           │                                │ + rust-bootupd-debugsource │
+│                 │           │                                │ + skopeo-debuginfo         │
+│                 │           │                                │ + skopeo-debugsource       │
+│                 │           │                                │ + skopeo-tests             │
+│                 │           │                                │ + toolbox-debuginfo        │
+│                 │           │                                │ + toolbox-debugsource      │
+│                 │           │                                │ + toolbox-tests            │
+│ s390x           │        93 │ s390x=75, noarch=5, src=13     │ delta                      │
+│                 │           │                                │ + bootupd                  │
+│                 │           │                                │ + bootupd-debuginfo        │
+│                 │           │                                │ + buildah-debuginfo        │
+│                 │           │                                │ + buildah-debugsource      │
+│                 │           │                                │ + buildah-tests            │
+│                 │           │                                │ + buildah-tests-debuginfo  │
+│                 │           │                                │ + crun-debuginfo           │
+│                 │           │                                │ + crun-debugsource         │
+│                 │           │                                │ + grafana-debuginfo        │
+│                 │           │                                │ + grafana-debugsource      │
+│                 │           │                                │ + grafana-pcp-debuginfo    │
+│                 │           │                                │ + grafana-pcp-debugsource  │
+│                 │           │                                │ + grafana-selinux          │
+│                 │           │                                │ + rust-bootupd-debugsource │
+│                 │           │                                │ + skopeo-debuginfo         │
+│                 │           │                                │ + skopeo-debugsource       │
+│                 │           │                                │ + skopeo-tests             │
+│                 │           │                                │ + toolbox-debuginfo        │
+│                 │           │                                │ + toolbox-debugsource      │
+│                 │           │                                │ + toolbox-tests            │
+│ i686            │        66 │ i686=48, noarch=5, src=13      │ common                     │
+│ src             │        13 │ src=13                         │ source package             │
+│                 │           │                                │ buildah                    │
+│                 │           │                                │ crun                       │
+│                 │           │                                │ dnsmasq                    │
+│                 │           │                                │ grafana                    │
+│                 │           │                                │ grafana-pcp                │
+│                 │           │                                │ krb5                       │
+│                 │           │                                │ nghttp2                    │
+│                 │           │                                │ nginx                      │
+│                 │           │                                │ opentelemetry-collector    │
+│                 │           │                                │ rsync                      │
+│                 │           │                                │ rust-bootupd               │
+│                 │           │                                │ skopeo                     │
+│                 │           │                                │ toolbox                    │
+│ x86_64_v2       │        94 │ noarch=5, src=13, x86_64_v2=76 │ delta                      │
+│                 │           │                                │ + bootupd                  │
+│                 │           │                                │ + bootupd-debuginfo        │
+│                 │           │                                │ + buildah-debuginfo        │
+│                 │           │                                │ + buildah-debugsource      │
+│                 │           │                                │ + buildah-tests            │
+│                 │           │                                │ + buildah-tests-debuginfo  │
+│                 │           │                                │ + crun-debuginfo           │
+│                 │           │                                │ + crun-debugsource         │
+│                 │           │                                │ + crun-krun                │
+│                 │           │                                │ + grafana-debuginfo        │
+│                 │           │                                │ + grafana-debugsource      │
+│                 │           │                                │ + grafana-pcp-debuginfo    │
+│                 │           │                                │ + grafana-pcp-debugsource  │
+│                 │           │                                │ + grafana-selinux          │
+│                 │           │                                │ + rust-bootupd-debugsource │
+│                 │           │                                │ + skopeo-debuginfo         │
+│                 │           │                                │ + skopeo-debugsource       │
+│                 │           │                                │ + skopeo-tests             │
+│                 │           │                                │ + toolbox-debuginfo        │
+│                 │           │                                │ + toolbox-debugsource      │
+│                 │           │                                │ + toolbox-tests            │
+└─────────────────┴───────────┴────────────────────────────────┴────────────────────────────┘
 step Artifact inventory rows include each ALBS task artifact, including repeated SRPM/noarch outputs per build task
-step Writing artifact inventory json output to examples/demo-build-17812/build-17812-artifact-inventory.json
-                                                    ALBS processing timeline
-┏━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
-┃ Build task arch ┃ Wall ┃ Artifacts            ┃ build_srpm ┃ build_binaries ┃ upload ┃ packages_processing ┃ logs_processing ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
-│ x86_64          │ 6.6m │ build_log=14, rpm=19 │      33.7s │           3.3m │   1.8m │               29.0s │           14.3s │
-│ aarch64         │ 8.1m │ build_log=14, rpm=19 │       1.5m │           3.8m │   1.8m │               28.1s │           13.6s │
-│ ppc64le         │ 6.2m │ build_log=14, rpm=19 │       1.1m │           1.7m │   2.2m │               28.6s │           17.1s │
-│ s390x           │ 5.0m │ build_log=14, rpm=19 │      46.0s │           1.2m │   1.9m │               32.0s │           15.3s │
-│ i686            │ 7.1m │ build_log=14, rpm=19 │       2.5m │           1.9m │   1.8m │               29.3s │           13.8s │
-│ src             │ 4.8m │ build_log=7, rpm=1   │       3.7m │              - │  28.6s │               12.3s │           12.6s │
-└─────────────────┴──────┴──────────────────────┴────────────┴────────────────┴────────┴─────────────────────┴─────────────────┘
-step Build timing totals: wall=13.6m, aggregate task wall=37.7m, critical task wall=8.1m
-            ALBS signing/notarization timing
-┏━━━━━━━━━━━┳━━━━━━┳━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
-┃ Sign task ┃ Wall ┃  sign ┃ notarize ┃ upload ┃   web ┃
-┡━━━━━━━━━━━╇━━━━━━╇━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
-│ 11754     │ 4.3m │ 22.0s │     7.0s │   3.1m │ 29.0s │
-└───────────┴──────┴───────┴──────────┴────────┴───────┘
-step Writing processing analysis json output to examples/demo-build-17812/build-17812-processing-analysis.json
+step Writing artifact inventory json output to examples/demo-build-57810/build-57810-artifact-inventory.json
+                                                    ALBS processing timeline                                                     
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
+┃ Build task arch ┃  Wall ┃ Artifacts            ┃ build_srpm ┃ build_binaries ┃ upload ┃ packages_processing ┃ logs_processing ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
+│ x86_64          │  3.8m │ build_log=14, rpm=7  │      13.3s │           1.5m │   1.1m │               29.7s │           14.6s │
+│ x86_64          │  3.8m │ build_log=14, rpm=5  │      52.5s │           1.1m │  53.4s │               32.3s │           15.6s │
+│ x86_64          │  2.9m │ build_log=14, rpm=7  │      10.8s │          24.5s │   1.1m │               30.1s │           12.5s │
+│ x86_64          │  4.1m │ build_log=14, rpm=6  │       9.7s │           1.8m │   1.0m │               33.2s │           16.6s │
+│ x86_64          │  6.7m │ build_log=14, rpm=6  │      50.8s │           3.5m │   1.0m │               50.0s │           15.8s │
+│ x86_64          │  3.8m │ build_log=14, rpm=19 │      11.6s │          48.2s │   1.6m │               34.4s │           14.2s │
+│ x86_64          │  4.6m │ build_log=14, rpm=2  │      10.9s │           2.9m │  43.6s │               19.4s │           13.5s │
+│ x86_64          │  5.8m │ build_log=14, rpm=19 │      14.3s │           2.8m │   1.8m │               32.4s │           13.6s │
+│ x86_64          │  9.9m │ build_log=14, rpm=5  │      27.9s │           7.4m │   1.0m │               32.1s │           13.3s │
+│ x86_64          │  4.5m │ build_log=14, rpm=4  │      18.6s │           2.2m │  54.0s │               34.1s │           15.3s │
+│ x86_64          │  5.5m │ build_log=14, rpm=4  │      44.9s │           2.7m │  55.2s │               41.3s │           13.2s │
+│ x86_64          │  4.9m │ build_log=14, rpm=5  │      42.0s │           2.2m │  54.9s │               42.4s │           13.1s │
+│ x86_64          │  3.1m │ build_log=14, rpm=5  │       7.7s │          52.8s │  55.7s │               47.0s │           13.3s │
+│ aarch64         │  4.4m │ build_log=14, rpm=2  │      12.5s │           2.7m │  44.8s │               20.3s │           13.7s │
+│ aarch64         │  2.8m │ build_log=14, rpm=7  │      11.4s │          32.8s │   1.1m │               33.7s │           10.9s │
+│ aarch64         │  6.8m │ build_log=14, rpm=6  │       1.1m │           3.3m │   1.1m │               44.9s │           13.1s │
+│ aarch64         │  3.0m │ build_log=14, rpm=5  │       9.7s │           1.0m │  52.0s │               33.0s │           13.2s │
+│ aarch64         │  4.6m │ build_log=14, rpm=4  │      14.2s │           2.4m │  51.6s │               36.5s │           13.1s │
+│ aarch64         │  4.1m │ build_log=14, rpm=6  │      10.4s │           2.0m │  54.2s │               34.7s │           16.2s │
+│ aarch64         │  3.7m │ build_log=14, rpm=7  │      13.0s │           1.6m │   1.1m │               25.6s │           13.2s │
+│ aarch64         │  5.9m │ build_log=14, rpm=19 │      10.4s │           2.9m │   1.7m │               35.9s │           13.1s │
+│ aarch64         │  9.4m │ build_log=14, rpm=5  │      27.0s │           6.9m │   1.1m │               33.0s │           13.3s │
+│ aarch64         │  4.0m │ build_log=14, rpm=19 │      12.4s │          56.8s │   1.8m │               34.0s │           13.7s │
+│ aarch64         │  3.9m │ build_log=14, rpm=4  │      13.2s │           1.9m │  52.6s │               32.8s │           11.7s │
+│ aarch64         │  3.6m │ build_log=14, rpm=5  │      10.8s │           1.2m │   1.0m │               41.4s │           13.6s │
+│ aarch64         │  3.4m │ build_log=14, rpm=5  │       9.9s │           1.1m │  52.2s │               46.7s │           13.6s │
+│ ppc64le         │  8.7m │ build_log=14, rpm=6  │       1.9m │           4.5m │   1.1m │               34.9s │           14.4s │
+│ ppc64le         │  4.2m │ build_log=14, rpm=7  │      20.4s │           1.8m │   1.1m │               27.8s │           13.1s │
+│ ppc64le         │  3.9m │ build_log=14, rpm=4  │      17.5s │           1.5m │   1.0m │               32.6s │           18.8s │
+│ ppc64le         │  5.4m │ build_log=14, rpm=7  │       2.2m │           1.0m │   1.0m │               34.5s │           12.6s │
+│ ppc64le         │  6.3m │ build_log=14, rpm=4  │      26.5s │           3.7m │  51.5s │               33.3s │           13.1s │
+│ ppc64le         │  7.8m │ build_log=28, rpm=6  │       2.7m │           2.8m │   1.1m │               42.1s │           14.2s │
+│ ppc64le         │  6.9m │ build_log=14, rpm=4  │      18.4s │           4.5m │  55.6s │               36.0s │           13.3s │
+│ ppc64le         │  5.5m │ build_log=14, rpm=5  │      25.2s │           2.7m │  56.9s │               48.4s │           14.1s │
+│ ppc64le         │  5.7m │ build_log=14, rpm=5  │      21.9s │           2.9m │   1.0m │               47.6s │           15.1s │
+│ ppc64le         │  9.4m │ build_log=14, rpm=19 │      21.9s │           5.9m │   1.9m │               34.2s │           13.2s │
+│ ppc64le         │ 12.3m │ build_log=14, rpm=5  │      34.1s │           8.9m │   1.2m │               33.4s │           13.4s │
+│ ppc64le         │  4.6m │ build_log=14, rpm=19 │      19.8s │           1.1m │   1.9m │               35.7s │           14.9s │
+│ ppc64le         │  7.8m │ build_log=14, rpm=2  │      27.0s │           5.8m │  43.4s │               19.3s │           10.3s │
+│ s390x           │  5.5m │ build_log=14, rpm=4  │      53.3s │           2.6m │  58.3s │               31.8s │           15.3s │
+│ s390x           │ 16.6m │ build_log=14, rpm=6  │       1.5m │          13.0m │   1.2m │               31.6s │           13.5s │
+│ s390x           │  4.3m │ build_log=14, rpm=4  │      19.9s │           2.0m │  55.4s │               33.1s │           13.2s │
+│ s390x           │  2.9m │ build_log=14, rpm=7  │      10.5s │          34.5s │   1.0m │               31.8s │           12.9s │
+│ s390x           │ 19.9m │ build_log=14, rpm=5  │      37.0s │          17.1m │   1.1m │               31.1s │           14.1s │
+│ s390x           │  5.1m │ build_log=14, rpm=19 │      21.0s │           1.6m │   1.8m │               34.4s │           14.6s │
+│ s390x           │ 10.8m │ build_log=14, rpm=2  │      22.2s │           8.7m │  53.9s │               19.0s │           17.7s │
+│ s390x           │  4.5m │ build_log=14, rpm=6  │      13.2s │           2.0m │  55.0s │               31.5s │           13.3s │
+│ s390x           │  4.5m │ build_log=14, rpm=4  │      13.0s │           2.5m │  51.8s │               25.9s │           14.3s │
+│ s390x           │  3.8m │ build_log=14, rpm=5  │      13.2s │           1.4m │  55.9s │               44.1s │           14.3s │
+│ s390x           │  4.4m │ build_log=14, rpm=5  │       9.8s │           1.9m │  58.0s │               54.9s │           14.0s │
+│ s390x           │  8.9m │ build_log=14, rpm=19 │      29.3s │           5.5m │   1.8m │               35.0s │           14.4s │
+│ s390x           │  6.1m │ build_log=14, rpm=7  │       1.1m │           3.1m │   1.0m │               26.6s │           13.1s │
+│ i686            │  1.4m │ build_log=7, rpm=1   │      41.3s │              - │  23.2s │                0.0s │           11.3s │
+│ i686            │  1.4m │ build_log=7, rpm=1   │      26.9s │              - │  28.3s │                0.0s │           13.0s │
+│ i686            │  4.9m │ build_log=14, rpm=7  │      48.6s │           2.1m │   1.0m │               29.9s │           13.6s │
+│ i686            │  3.8m │ build_log=14, rpm=19 │      10.9s │          51.3s │   1.8m │               33.7s │           13.3s │
+│ i686            │ 54.8s │ build_log=7, rpm=1   │      10.9s │              - │  19.6s │                0.0s │           12.6s │
+│ i686            │ 51.2s │ build_log=7, rpm=1   │      11.6s │              - │  20.5s │                0.0s │           13.7s │
+│ i686            │ 53.0s │ build_log=7, rpm=1   │       9.5s │              - │  21.2s │                0.0s │           12.7s │
+│ i686            │  1.2m │ build_log=7, rpm=1   │      30.6s │              - │  21.0s │                0.0s │           12.5s │
+│ i686            │  2.5m │ build_log=14, rpm=7  │       9.5s │          27.3s │   1.0m │               27.1s │           15.0s │
+│ i686            │  1.1m │ build_log=7, rpm=1   │      22.1s │              - │  20.1s │                0.0s │           14.0s │
+│ i686            │  4.1m │ build_log=14, rpm=6  │       9.3s │           1.9m │   1.0m │               35.3s │           13.2s │
+│ i686            │ 57.3s │ build_log=7, rpm=1   │      15.1s │              - │  20.0s │                0.0s │           13.7s │
+│ i686            │  6.2m │ build_log=14, rpm=19 │       9.0s │           3.3m │   1.7m │               29.6s │           17.3s │
+│ src             │  1.1m │ build_log=7, rpm=1   │       9.7s │              - │  21.9s │               12.6s │           11.1s │
+│ src             │  1.9m │ build_log=7, rpm=1   │      51.3s │              - │  28.9s │               12.5s │           12.9s │
+│ src             │  2.3m │ build_log=7, rpm=1   │       1.3m │              - │  23.1s │               15.9s │           13.5s │
+│ src             │  1.1m │ build_log=7, rpm=1   │       9.1s │              - │  20.2s │               12.6s │           12.8s │
+│ src             │  1.3m │ build_log=7, rpm=1   │      11.6s │              - │  27.7s │               13.9s │           12.9s │
+│ src             │  1.1m │ build_log=7, rpm=1   │       8.0s │              - │  21.0s │               13.3s │           13.2s │
+│ src             │  1.3m │ build_log=7, rpm=1   │      12.1s │              - │  26.4s │               14.4s │           13.6s │
+│ src             │  1.3m │ build_log=7, rpm=1   │      10.3s │              - │  31.7s │               12.5s │           13.1s │
+│ src             │  1.4m │ build_log=7, rpm=1   │      12.2s │              - │  28.3s │               19.8s │           15.6s │
+│ src             │  1.3m │ build_log=7, rpm=1   │      13.4s │              - │  24.7s │               14.4s │           14.1s │
+│ src             │  1.3m │ build_log=7, rpm=1   │       9.8s │              - │  21.4s │               23.2s │           13.1s │
+│ src             │  1.2m │ build_log=7, rpm=1   │       9.4s │              - │  19.8s │               23.3s │           12.9s │
+│ src             │  1.9m │ build_log=7, rpm=1   │      25.0s │              - │  49.9s │               12.5s │           12.3s │
+│ x86_64_v2       │  3.3m │ build_log=14, rpm=7  │      14.1s │           1.3m │   1.0m │               26.0s │           13.9s │
+│ x86_64_v2       │  6.6m │ build_log=14, rpm=6  │      56.6s │           3.4m │   1.1m │               45.3s │           12.5s │
+│ x86_64_v2       │  3.9m │ build_log=14, rpm=4  │      10.0s │           1.9m │  50.6s │               37.4s │           14.6s │
+│ x86_64_v2       │  3.8m │ build_log=14, rpm=6  │       9.0s │           1.8m │  56.3s │               33.7s │           14.2s │
+│ x86_64_v2       │  8.5m │ build_log=14, rpm=5  │      22.5s │           6.1m │  59.2s │               33.5s │           13.4s │
+│ x86_64_v2       │  3.7m │ build_log=14, rpm=4  │      11.4s │           1.8m │  47.5s │               34.7s │           13.1s │
+│ x86_64_v2       │  3.3m │ build_log=14, rpm=5  │      12.2s │           1.1m │   1.0m │               33.5s │           13.7s │
+│ x86_64_v2       │  2.6m │ build_log=14, rpm=7  │       9.7s │          23.9s │   1.0m │               40.6s │            7.8s │
+│ x86_64_v2       │  3.8m │ build_log=14, rpm=19 │      14.8s │          51.4s │   1.7m │               36.2s │           13.9s │
+│ x86_64_v2       │  4.4m │ build_log=14, rpm=2  │      10.3s │           2.7m │  44.8s │               19.8s │           13.3s │
+│ x86_64_v2       │  5.0m │ build_log=14, rpm=19 │       9.4s │           2.2m │   1.6m │               37.2s │           12.9s │
+│ x86_64_v2       │  3.2m │ build_log=14, rpm=5  │       9.5s │           1.1m │  54.0s │               43.6s │           13.0s │
+│ x86_64_v2       │  3.4m │ build_log=14, rpm=5  │       9.1s │           1.0m │  57.8s │               54.2s │           14.0s │
+└─────────────────┴───────┴──────────────────────┴────────────┴────────────────┴────────┴─────────────────────┴─────────────────┘
+step Build timing totals: wall=101.8m, aggregate task wall=412.8m, critical task wall=19.9m
+            ALBS signing/notarization timing            
+┏━━━━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
+┃ Sign task ┃  Wall ┃  sign ┃ notarize ┃ upload ┃  web ┃
+┡━━━━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━┩
+│ 45219     │ 29.8m │ 18.5m │     1.8m │   5.2m │ 2.2m │
+└───────────┴───────┴───────┴──────────┴────────┴──────┘
+step Writing processing analysis json output to examples/demo-build-57810/build-57810-processing-analysis.json
 step Rendering full graph as JSON/DOT/SVG
-step Writing full graph json output to examples/live-build-17812/build-17812.json
-step Writing full graph dot output to examples/live-build-17812/build-17812.dot
-step Writing full graph svg output to examples/live-build-17812/build-17812.svg
-step Writing demo full graph json output to examples/demo-build-17812/build-17812-full.json
-step Writing demo full graph svg output to examples/demo-build-17812/build-17812-full.svg
-step No RPM selector provided; full build is multi-platform; selecting representative focused artifact for arch x86_64
-step Selected RPM node: rpm:3237133:nginx-1.20.1-16.el9_4.1.x86_64.rpm
+step Writing full graph json output to examples/live-build-57810/build-57810.json
+step Writing full graph dot output to examples/live-build-57810/build-57810.dot
+step Writing full graph svg output to examples/live-build-57810/build-57810.svg
+step Writing demo full graph json output to examples/demo-build-57810/build-57810-full.json
+step Writing demo full graph svg output to examples/demo-build-57810/build-57810-full.svg
+step Resolving binary RPM selector: nginx-core.x86_64
+step Selected RPM node: rpm:6901620:nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
 step Analyzing source-to-artifact trust path
-               Trust path:
-    nginx-1.20.1-16.el9_4.1.x86_64.rpm
+               Trust path:                
+ nginx-core-1.26.3-6.el10_2.3.x86_64.rpm  
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
 ┃ Check                        ┃ Result  ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
@@ -306,37 +509,37 @@ Missing security context: has_sbom, has_errata_link
 Path:
   src:nginx
   git:https://git.almalinux.org/rpms/nginx.git
-  commit:nginx:911945c71710c83cf6f760447c32d8d6cae737dc
-  cas:source:nginx:911945c71710c83cf6f760447c32d8d6cae737dc
-  build:albs-task:188077
-  rpm:3237133:nginx-1.20.1-16.el9_4.1.x86_64.rpm
+  commit:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd
+  cas:source:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd
+  build:albs-task:418779
+  rpm:6901620:nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
 step Building focused trust graph
-step Focused graph: 13 nodes, 13 edges, 3 CAS attestations
+step Focused graph: 13 nodes, 12 edges, 3 CAS attestations
 step Rendering focused trust graph as JSON/DOT/SVG
-step Writing focused graph json output to examples/demo-build-17812/nginx-x86_64-trust.json
-step Writing focused graph dot output to examples/demo-build-17812/nginx-x86_64-trust.dot
-step Writing focused graph svg output to examples/demo-build-17812/nginx-x86_64-trust.svg
+step Writing focused graph json output to examples/demo-build-57810/nginx-core-x86_64-trust.json
+step Writing focused graph dot output to examples/demo-build-57810/nginx-core-x86_64-trust.dot
+step Writing focused graph svg output to examples/demo-build-57810/nginx-core-x86_64-trust.svg
 ==> Done
-Metadata cache: examples/live-build-17812/build-17812.albs.json
-Full graph:     examples/demo-build-17812/build-17812-full.svg
-Focused graph:  examples/demo-build-17812/nginx-x86_64-trust.svg
+Metadata cache: examples/live-build-57810/build-57810.albs.json
+Full graph:     examples/demo-build-57810/build-57810-full.svg
+Focused graph:  examples/demo-build-57810/nginx-core-x86_64-trust.svg
 [almalinux@host albs-provenance-explorer]$
 ```
 
 </details>
 
-The numbered `Common RPM package set` counts package names, while the per-architecture `Artifacts` column counts ALBS artifact rows. For build `17812`, each binary platform has `18` common package names but `19` RPM artifact rows because ALBS also records the repeated SRPM evidence row: `16` arch-specific RPMs, `2` `noarch` RPMs and `1` SRPM. If a future build has architecture-specific differences, the `Package set` column reports `delta` with `+package` and `-package` entries instead of `common`.
+The `Source package: nghttp2` line names only the first SRPM ALBS lists; `57810` is a 13-source batch, so there is no single source package - the `src` row of the artifact matrix enumerates all 13, and the trust path still attributes each RPM to its own source (`nginx-core` -> `nginx`). The numbered `Common RPM package set` counts package names, while the per-architecture `Artifacts` column counts ALBS artifact rows. Because it is a batch, the `Package set` column shows real per-architecture differences instead of a single `common` set: `i686` is `common` (it omits the container/observability stack), while every full platform reports `delta` with the `+package` rows `i686` lacks (`bootupd`, `buildah-tests`, `crun-krun`, `grafana`, `grafana-selinux`, `skopeo`, `toolbox`, ...). The `x86_64` task emits `94` artifact rows: `76` x86_64 RPMs, `5` `noarch` RPMs and `13` SRPM evidence rows.
 
 The shell wrapper is thin - it only passes parameters into `python3 -m albs_graph.cli.demo_verbose`; fetching, graph construction, inventory, timing analysis and rendering all live in Python modules.
 
-ALBS builds usually produce many artifacts per build task architecture: binary RPMs, subpackages, modules, `debuginfo`, `debugsource`, repeated SRPM evidence, `noarch` outputs and build logs/configuration artifacts. The verbose demo writes this as `build-<id>-artifact-inventory.json` in the demo output directory.
+ALBS builds usually produce many artifacts per build task architecture: binary RPMs, subpackages, modules, `debuginfo`, `debugsource`, repeated SRPM evidence, `noarch` outputs and build logs/configuration artifacts. The verbose demo writes this as [`build-57810-artifact-inventory.json`](examples/demo-build-57810/build-57810-artifact-inventory.json) in the demo output directory.
 
-The same raw build metadata includes task `performance_stats`, test-task performance stats and signing stats. The demo turns those fields into `build-<id>-processing-analysis.json`, including per-task step durations, aggregate build/signing totals and per-artifact processing context inherited from the ALBS task that produced each artifact.
+The same raw build metadata includes task `performance_stats`, test-task performance stats and signing stats. The demo turns those fields into [`build-57810-processing-analysis.json`](examples/demo-build-57810/build-57810-processing-analysis.json), including per-task step durations, aggregate build/signing totals and per-artifact processing context inherited from the ALBS task that produced each artifact.
 
 If no focused RPM selector is provided, the full graph and artifact inventory still contain every ALBS task and artifact architecture; only the small trust-path graph chooses one representative artifact, preferring `x86_64` when available. Use `RPM_NAME` and `ARCH` to make that focus explicit:
 
 ```bash
-RPM_NAME=nginx-core ARCH=x86_64 ./example--verbose.sh
+BUILD_ID=57810 RPM_NAME=nginx-core ARCH=x86_64 ./example--verbose.sh
 ```
 
 On an AlmaLinux host, install `cas` if missing and verify the source and RPM artifact CAS hashes from the cached ALBS metadata:
@@ -372,26 +575,26 @@ Inspect local RPM metadata:
 albs-graph inspect-rpm ./bash.rpm --format json
 ```
 
-Import an SBOM (a sample CycloneDX file ships in `examples/`):
+Import an SBOM (SPDX or CycloneDX JSON, e.g. the output of `alma-sbom`):
 
 ```bash
-albs-graph import-sbom examples/nginx-core.cyclonedx.json --format dot
+albs-graph import-sbom sbom.json --format dot
 ```
 
 Show a focused trust graph for one RPM artifact from a live ALBS build:
 
 ```bash
-albs-graph trust-path --build-id 17812
-albs-graph trust-path --build-id 17812 --arch x86_64
-albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64
-albs-graph trust-path --build-id 17812 --rpm nginx-core --arch x86_64 --format svg -o nginx-core-x86_64-trust.svg
+albs-graph trust-path --build-id 57810
+albs-graph trust-path --build-id 57810 --arch x86_64
+albs-graph trust-path --build-id 57810 --rpm nginx-core --arch x86_64
+albs-graph trust-path --build-id 57810 --rpm nginx-core --arch x86_64 --format svg -o nginx-core-x86_64-trust.svg
 ```
 
 Checkout and analyze source evidence referenced by an ALBS build:
 
 ```bash
-albs-graph checkout-source --build-id 17812 --dest sources/build-17812
-albs-graph source-evidence sources/build-17812 --build-id 17812 --format json -o build-17812-source-evidence.json
+albs-graph checkout-source --build-id 57810 --dest sources/build-57810
+albs-graph source-evidence sources/build-57810 --build-id 57810 --format json -o build-57810-source-evidence.json
 ```
 
 `source-evidence` starts from ALBS build metadata, attaches a hashed source-file inventory, parses RPM `.spec` files for `BuildRequires`, `Requires`, `Source` and `Patch`, and records detected ecosystem manifests such as `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `pom.xml` and Gradle build files. Manifest *detection* is evidence, not resolution; the separate `resolve` command runs native resolvers (Go and Cargo today) that consume those manifests and emit resolved dependency facts.
@@ -403,7 +606,7 @@ The commands above build and inspect the provenance backbone; these realize the 
 Five-axis coverage, then climb the cost ladder: rung 3 reads RPM headers over HTTP Range, rung 4 downloads full payloads and parses ELF (both network):
 
 ```bash
-albs-graph coverage --source examples/live-build-17812/build-17812.albs.json
+albs-graph coverage --source examples/live-build-57810/build-57810.albs.json
 albs-graph coverage --source CACHE --with-rpm-headers --arch x86_64 --limit 5
 albs-graph coverage --source CACHE --with-rpm-payloads --package nginx-core --arch x86_64
 ```
@@ -452,7 +655,7 @@ Consumer reports projected from the same graph: vulnerability applicability, lic
 
 ```bash
 albs-graph vuln --source CACHE --errata errata.json --verify-cpe cpe-dict.json --cve-feed cve-feed.json
-albs-graph license --source CACHE --sbom examples/nginx-core.cyclonedx.json --sbom-subject nginx-core
+albs-graph license --source CACHE --sbom sbom.json --sbom-subject nginx-core
 albs-graph slsa nginx-core --source CACHE -o nginx-core.intoto.json
 ```
 

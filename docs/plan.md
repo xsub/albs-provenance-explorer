@@ -125,14 +125,18 @@ RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed
   `RANGE_VIOLATION` via rpmvercmp) and **GPG signature verification**
   (`coverage --verify-signatures`, real provenance verification now CAS is gone).
 - ✅ Offline tests for all of the above (173 tests; ruff + mypy --strict clean),
-  including multi-build coverage confirming the pipeline is not 17812-specific.
+  including multi-build coverage confirming the pipeline is not specific to any
+  single build.
 
-Demonstrated end to end on the real ALBS build 17812 (nginx): 90 binary RPMs,
-provenance 1.00; live vault header reads added real sonames (`libssl.so.3`,
-`libcrypto.so.3`, `libperl.so.5.32`, …) lifting linkage 0.00 → 0.06; a CycloneDX
-SBOM attached to `nginx-core` resolved 5 package versions (resolution 0.25 over
-the 20 reconciled deps) - SBOM packages and header sonames coexisting with
-**zero** false conflicts.
+Demonstrated end to end on the real AlmaLinux 10 ALBS build 57810 (a 13-source
+batch), focused on `nginx-core`: 456 binary RPMs, provenance 1.00. On an `el10`
+host `dnf repoquery` resolved 6 runtime + 1 weak dep, soname resolution mapped
+6/6 sonames to providers, a live header read added 8 dynamic-linkage claims, the
+payload ELF confirmed 6 `DT_NEEDED`, and the RPM GPG signature verified. The
+reconciler recorded 3 real `version_drift` conflicts where the el10 repos carry
+two builds each of `glibc` / `openssl-libs` / `zlib-ng-compat` - every claim
+kept, none discarded. No SBOM is fetched (AlmaLinux's live in credentialed
+immudb), so the demo runs no license rollup and fabricates nothing.
 
 ---
 

@@ -867,28 +867,31 @@ A second-agent review found six real issues; all fixed with regression tests.
 
 ---
 
-## D40 - Sample CycloneDX SBOM for the full demo (license step)
+## D40 - Demo shows only determinable data; consolidated on build 57810
 
-The `license` command requires `--sbom` (a CycloneDX file) - it rolls up the
-licenses each component carries, and there is no SBOM to roll up without one.
-`example--full.sh` called `license --source CACHE --sbom-subject nginx-core`
-with no `--sbom`, so step 5 of the demo aborted with `Error: Missing option
-'--sbom'.` (the README CLI example had the same omission).
+A short-lived earlier iteration shipped `examples/nginx-core.cyclonedx.json` - an
+illustrative CycloneDX SBOM with plausible-but-invented versions - so the demo's
+license rollup (the `license` command requires `--sbom`) would run. That was
+fabricated data: the versions did not come from build 57810, so the reconciler
+emitted synthetic `version_drift` conflicts that taught a reader nothing real.
 
-Fix: ship `examples/nginx-core.cyclonedx.json`, an illustrative CycloneDX 1.5
-SBOM for nginx-core (nginx plus its runtime libraries - openssl-libs, zlib-ng,
-pcre2, libxcrypt, glibc, libxml2/libxslt, perl-libs - with SPDX license ids and
-one dual-license `expression`). It is plausible AlmaLinux 10 data, not generated
-from build 57810; a `metadata.properties` note says so, because the project does
-not claim a real build SBOM where there isn't one.
+Decision: the demo must show only what the tool can actually determine under
+public access today. AlmaLinux's real SBOMs live in immudb and need the
+`alma-sbom`/immudb tooling plus credentials (no documented anonymous read path),
+and the RPM header carries no machine-readable license rollup - so a license
+rollup is **not** currently determinable without a supplied SBOM. Therefore:
 
-`example--full.sh` now defaults `SBOM=examples/$PACKAGE.cyclonedx.json`, feeds it
-to both the coverage step (`--sbom`/`--sbom-subject`, so the SBOM-driven
-resolution axis and the `security_context` axis move) and the license step, and
-skips gracefully when the file is absent (so a non-nginx `PACKAGE` override does
-not break the run). Rollup: 9 components, 7 distinct licenses, 0 unlicensed. The
-README CLI example now passes `--sbom` too. No code change, so the test count is
-unchanged.
+- removed `examples/nginx-core.cyclonedx.json`;
+- removed the license step from `example--full.sh` and dropped the SBOM
+  injection from its coverage step;
+- the `license` command itself stays (it works on a real supplied SBOM, e.g.
+  the output of `alma-sbom --file-format cyclonedx-json build --build-id 57810`);
+  the README documents it with a generic `--sbom FILE`, not a shipped fake.
+
+Also consolidated the README onto build 57810 (AlmaLinux 10) - the 17812
+(AlmaLinux 9) walkthrough is de-referenced so a single build is shown end to
+end; the 17812 example files stay on disk but are no longer in the README. No
+code change; test count unchanged.
 
 ---
 

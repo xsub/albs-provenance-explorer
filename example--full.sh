@@ -10,20 +10,14 @@
 #
 # Steps: provenance trust path, identify (file -> lineage), five-axis coverage up
 # the cost ladder (headers + payload ELF + dnf repoquery + soname->package + GPG
-# signatures + CAS), vulnerability + license + SLSA reports, and the dependency
-# universe (dnf repograph -> SQLite -> traverse). Every step is gated and skips
-# gracefully when a tool or the network is missing.
+# signatures + CAS), vulnerability + SLSA reports, and the dependency universe
+# (dnf repograph -> SQLite -> traverse). Every step is gated and skips gracefully
+# when a tool or the network is missing - nothing is fabricated.
 #
 # Defaults to AlmaLinux 10 build 57810 / nginx-core. Override via env:
-#   BUILD_ID PACKAGE ARCH FILE OWNER REPO OUT_DIR SBOM
+#   BUILD_ID PACKAGE ARCH FILE OWNER REPO OUT_DIR
 #
 # SVG rendering needs Graphviz (dot) on PATH; without it the graphs are skipped.
-#
-# The license rollup and the SBOM-driven resolution axis consume a CycloneDX
-# file. We ship an illustrative sample (examples/<pkg>.cyclonedx.json); point
-# SBOM= at a real one from AlmaLinux's own tool to use live data:
-#   alma-sbom --file-format cyclonedx-json build --build-id 57810 -o sbom.json
-#   SBOM=sbom.json ./example--full.sh        # https://github.com/AlmaLinux/alma-sbom
 #
 set -uo pipefail
 
@@ -33,7 +27,6 @@ ARCH="${ARCH:-x86_64}"
 FILE="${FILE:-/usr/sbin/nginx}"
 OWNER="${OWNER:-$PACKAGE}"
 REPO="${REPO:-appstream}"
-SBOM="${SBOM:-examples/$PACKAGE.cyclonedx.json}"
 LIVE_DIR="${LIVE_DIR:-examples/live-build-$BUILD_ID}"
 OUT_DIR="${OUT_DIR:-examples/demo-build-$BUILD_ID}"
 CACHE="${CACHE:-$LIVE_DIR/build-$BUILD_ID.albs.json}"
@@ -78,24 +71,16 @@ main() {
   have dnf && cover+=(--use-dnf --resolve-sonames)
   have rpmkeys && cover+=(--verify-signatures)
   have cas && cover+=(--use-cas)
-  [[ -f "$SBOM" ]] && cover+=(--sbom "$SBOM" --sbom-subject "$PACKAGE")
   opt run coverage "${cover[@]}" --verbose
 
   step "4. Vulnerability-applicability report"
   opt run vuln --source "$CACHE" --package "$PACKAGE" --arch "$ARCH"
 
-  step "5. License rollup"
-  if [[ -f "$SBOM" ]]; then
-    opt run license --source "$CACHE" --sbom "$SBOM" --sbom-subject "$PACKAGE" --arch "$ARCH"
-  else
-    printf '   (skipped: no CycloneDX SBOM at %s)\n' "$SBOM"
-  fi
-
-  step "6. SLSA / in-toto provenance attestation"
+  step "5. SLSA / in-toto provenance attestation"
   opt run slsa "$PACKAGE" --source "$CACHE" --arch "$ARCH" -o "$OUT_DIR/$PACKAGE.intoto.json"
   [[ -f "$OUT_DIR/$PACKAGE.intoto.json" ]] && printf '   wrote %s\n' "$OUT_DIR/$PACKAGE.intoto.json"
 
-  step "7. Render graphs to SVG"
+  step "6. Render graphs to SVG"
   if have dot; then
     opt run fetch --build-id "$BUILD_ID" --cache "$CACHE" --cache-ttl 86400 \
       --format svg -o "$OUT_DIR/build-$BUILD_ID.svg"
@@ -107,7 +92,7 @@ main() {
     printf '   (skipped: Graphviz "dot" not on PATH)\n'
   fi
 
-  step "8. Dependency universe via 'dnf repograph ${REPO}' (build, persist, traverse)"
+  step "7. Dependency universe via 'dnf repograph ${REPO}' (build, persist, traverse)"
   if have dnf; then
     local dot="$LIVE_DIR/$REPO.dot" db="$LIVE_DIR/universe-$REPO.db"
     if dnf repograph --repo "$REPO" > "$dot" 2>/dev/null && [[ -s "$dot" ]]; then
