@@ -867,6 +867,31 @@ A second-agent review found six real issues; all fixed with regression tests.
 
 ---
 
+## D40 - Sample CycloneDX SBOM for the full demo (license step)
+
+The `license` command requires `--sbom` (a CycloneDX file) - it rolls up the
+licenses each component carries, and there is no SBOM to roll up without one.
+`example--full.sh` called `license --source CACHE --sbom-subject nginx-core`
+with no `--sbom`, so step 5 of the demo aborted with `Error: Missing option
+'--sbom'.` (the README CLI example had the same omission).
+
+Fix: ship `examples/nginx-core.cyclonedx.json`, an illustrative CycloneDX 1.5
+SBOM for nginx-core (nginx plus its runtime libraries - openssl-libs, zlib-ng,
+pcre2, libxcrypt, glibc, libxml2/libxslt, perl-libs - with SPDX license ids and
+one dual-license `expression`). It is plausible AlmaLinux 10 data, not generated
+from build 57810; a `metadata.properties` note says so, because the project does
+not claim a real build SBOM where there isn't one.
+
+`example--full.sh` now defaults `SBOM=examples/$PACKAGE.cyclonedx.json`, feeds it
+to both the coverage step (`--sbom`/`--sbom-subject`, so the SBOM-driven
+resolution axis and the `security_context` axis move) and the license step, and
+skips gracefully when the file is absent (so a non-nginx `PACKAGE` override does
+not break the run). Rollup: 9 components, 7 distinct licenses, 0 unlicensed. The
+README CLI example now passes `--sbom` too. No code change, so the test count is
+unchanged.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

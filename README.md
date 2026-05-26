@@ -79,11 +79,14 @@ It exercises the provenance trust path, `identify` (a binary file -> its full cr
 On an AlmaLinux 10 host the providers resolve to matching `.el10` versions and the RPM signature verifies:
 
 ```text
-resolution        3 / 14   0.21    dnf repoquery: 6 runtime + 1 weak claims
+resolution        5 / 18   0.28    dnf repoquery: 6 runtime + 1 weak; SBOM: 9 components
 linkage           1 / 456  0.00    header 1/1 (8 sonames), payload 1/1 (6 NEEDED)
 provenance      456 / 456  1.00    soname resolution: 6/6 -> providing packages
+Reconciled dependencies: 18; conflicts: 5
 Signatures: 1 verified, 0 nokey, 0 failed of 1 RPMs
 ```
+
+The CycloneDX SBOM at [`examples/nginx-core.cyclonedx.json`](examples/nginx-core.cyclonedx.json) feeds both the license rollup (9 components, 7 distinct licenses, 0 unlicensed) and the resolution axis. It is an illustrative sample; point `SBOM=` at real output from AlmaLinux's own [`alma-sbom`](https://github.com/AlmaLinux/alma-sbom) (`alma-sbom --file-format cyclonedx-json build --build-id 57810`) to drive the same steps with live data. Where the SBOM's versions differ from the dnf-resolved `.el10` releases, the reconciler keeps every claim and flags a typed `version_drift` conflict instead of silently picking a winner - the conflict-aware model in action.
 
 Focused source-to-artifact trust path for `nginx-core` (correctly rooted at the **nginx** source, not the batch's first package):
 
@@ -369,10 +372,10 @@ Inspect local RPM metadata:
 albs-graph inspect-rpm ./bash.rpm --format json
 ```
 
-Import an SBOM:
+Import an SBOM (a sample CycloneDX file ships in `examples/`):
 
 ```bash
-albs-graph import-sbom sbom.json --format dot
+albs-graph import-sbom examples/nginx-core.cyclonedx.json --format dot
 ```
 
 Show a focused trust graph for one RPM artifact from a live ALBS build:
@@ -449,7 +452,7 @@ Consumer reports projected from the same graph: vulnerability applicability, lic
 
 ```bash
 albs-graph vuln --source CACHE --errata errata.json --verify-cpe cpe-dict.json --cve-feed cve-feed.json
-albs-graph license --source CACHE --sbom-subject nginx-core
+albs-graph license --source CACHE --sbom examples/nginx-core.cyclonedx.json --sbom-subject nginx-core
 albs-graph slsa nginx-core --source CACHE -o nginx-core.intoto.json
 ```
 

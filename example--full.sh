@@ -15,9 +15,15 @@
 # gracefully when a tool or the network is missing.
 #
 # Defaults to AlmaLinux 10 build 57810 / nginx-core. Override via env:
-#   BUILD_ID PACKAGE ARCH FILE OWNER REPO OUT_DIR
+#   BUILD_ID PACKAGE ARCH FILE OWNER REPO OUT_DIR SBOM
 #
 # SVG rendering needs Graphviz (dot) on PATH; without it the graphs are skipped.
+#
+# The license rollup and the SBOM-driven resolution axis consume a CycloneDX
+# file. We ship an illustrative sample (examples/<pkg>.cyclonedx.json); point
+# SBOM= at a real one from AlmaLinux's own tool to use live data:
+#   alma-sbom --file-format cyclonedx-json build --build-id 57810 -o sbom.json
+#   SBOM=sbom.json ./example--full.sh        # https://github.com/AlmaLinux/alma-sbom
 #
 set -uo pipefail
 
@@ -27,6 +33,7 @@ ARCH="${ARCH:-x86_64}"
 FILE="${FILE:-/usr/sbin/nginx}"
 OWNER="${OWNER:-$PACKAGE}"
 REPO="${REPO:-appstream}"
+SBOM="${SBOM:-examples/$PACKAGE.cyclonedx.json}"
 LIVE_DIR="${LIVE_DIR:-examples/live-build-$BUILD_ID}"
 OUT_DIR="${OUT_DIR:-examples/demo-build-$BUILD_ID}"
 CACHE="${CACHE:-$LIVE_DIR/build-$BUILD_ID.albs.json}"
@@ -71,13 +78,18 @@ main() {
   have dnf && cover+=(--use-dnf --resolve-sonames)
   have rpmkeys && cover+=(--verify-signatures)
   have cas && cover+=(--use-cas)
+  [[ -f "$SBOM" ]] && cover+=(--sbom "$SBOM" --sbom-subject "$PACKAGE")
   opt run coverage "${cover[@]}" --verbose
 
   step "4. Vulnerability-applicability report"
   opt run vuln --source "$CACHE" --package "$PACKAGE" --arch "$ARCH"
 
   step "5. License rollup"
-  opt run license --source "$CACHE" --sbom-subject "$PACKAGE"
+  if [[ -f "$SBOM" ]]; then
+    opt run license --source "$CACHE" --sbom "$SBOM" --sbom-subject "$PACKAGE" --arch "$ARCH"
+  else
+    printf '   (skipped: no CycloneDX SBOM at %s)\n' "$SBOM"
+  fi
 
   step "6. SLSA / in-toto provenance attestation"
   opt run slsa "$PACKAGE" --source "$CACHE" --arch "$ARCH" -o "$OUT_DIR/$PACKAGE.intoto.json"

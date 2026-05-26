@@ -21,7 +21,11 @@ Two distinct facts here:
   login. There is no documented anonymous read path, so nothing fetches an SBOM
   automatically. `coverage --sbom FILE` ingests a *provided* CycloneDX file (the
   artifact `alma-sbom` produces) - that path is implemented; the credentialed
-  fetch is not.
+  fetch is not. An illustrative sample ships at
+  `examples/nginx-core.cyclonedx.json` (used by `example--full.sh`); its
+  component versions are plausible AlmaLinux 10 values, not generated from the
+  build, so the reconciler honestly flags them as `version_drift` against the
+  dnf-resolved releases.
 - **The axis is binary-complete and needs errata too.** `security_context_complete`
   requires *both* an attached SBOM **and** an errata/CVE link. `coverage --errata
   FILE` now attaches errata, so SBOM + errata on the same subject completes the
