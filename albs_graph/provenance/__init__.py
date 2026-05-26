@@ -7,7 +7,7 @@ from .build_analysis import (
     TimingStep,
     analyze_albs_build,
 )
-from .coverage import AxisCoverage, CoverageReport, coverage_report
+from .coverage import AxisCoverage, CoverageReport, coverage_report, identity_strength
 from .identify import IdentifiedElement, IdentifyReport, identify_file
 from .license import LicenseReport, RpmLicenseRollup, license_report
 from .inventory import (
@@ -89,6 +89,7 @@ __all__ = [
     "vulnerability_report",
     "claims_from_resolver_result",
     "coverage_report",
+    "identity_strength",
     "cves_for_artifact",
     "identify_file",
     "license_report",

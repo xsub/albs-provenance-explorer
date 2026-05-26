@@ -404,8 +404,12 @@ def _component_sha256(component: dict[str, Any]) -> str | None:
 def _apply_sbom_cpe(metadata: dict[str, Any], cpe: str) -> bool:
     """Set the vendor-asserted CPE on a node's security_identity (in place).
 
-    Returns False if the node already carries a CPE (e.g. NVD-verified), so the
-    SBOM never overrides a prior, possibly stronger, verification.
+    The status is ``vendor_asserted`` - distinct from the ``verified`` an NVD
+    dictionary match yields. Both establish a CPE identity (and both count toward
+    the identity axis), but they are different evidence strengths, so the label
+    stays honest: this is AlmaLinux asserting its own artifact's CPE, not a match
+    confirmed against an external dictionary. Returns False if the node already
+    carries a CPE (e.g. an NVD verification), so the SBOM never downgrades it.
     """
 
     identity = metadata.get("security_identity")
@@ -415,7 +419,7 @@ def _apply_sbom_cpe(metadata: dict[str, Any], cpe: str) -> bool:
     if identity.get("cpe"):
         return False
     identity["cpe"] = cpe
-    identity["cpe_status"] = "verified"
+    identity["cpe_status"] = "vendor_asserted"
     identity["cpe_source"] = "almalinux_sbom"
     candidates = identity.get("cpe_candidates")
     if isinstance(candidates, list):

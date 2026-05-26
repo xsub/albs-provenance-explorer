@@ -48,6 +48,35 @@ def test_report_combines_cve_identity_and_linkage() -> None:
     assert "zlib" in by_package  # included when not filtering
 
 
+def test_vendor_asserted_cpe_is_distinct_from_nvd_verified() -> None:
+    # A vendor (alma-sbom) CPE establishes identity but is NOT NVD-verified; the
+    # report must keep the two evidence strengths distinct, not blur them.
+    graph = ProvenanceGraph()
+    graph.add_node(
+        Node(
+            "rpm:bootupd",
+            NodeType.BINARY_RPM,
+            "bootupd",
+            {
+                "name": "bootupd",
+                "arch": "x86_64",
+                "security_identity": {
+                    "cpe": "cpe:2.3:a:almalinux:bootupd:0.2.32:*:*:*:*:*:*:*",
+                    "cpe_status": "vendor_asserted",
+                    "cpe_source": "almalinux_sbom",
+                    "cpe_candidates": [],
+                },
+            },
+        )
+    )
+
+    pkg = {p.package: p for p in vulnerability_report(graph).packages}["bootupd"]
+
+    assert pkg.cpe == "cpe:2.3:a:almalinux:bootupd:0.2.32:*:*:*:*:*:*:*"  # usable for triage
+    assert pkg.cpe_status == "vendor_asserted"
+    assert pkg.identity_verified is False  # established by the vendor, not NVD-verified
+
+
 def test_only_with_cves_filters() -> None:
     report = vulnerability_report(_graph(), only_with_cves=True)
     assert {pkg.package for pkg in report.packages} == {"nginx-core"}

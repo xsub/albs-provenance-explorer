@@ -48,7 +48,7 @@ from albs_graph.adapters.sbom import (
 )
 from albs_graph.fixtures import build_synthetic_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
-from albs_graph.provenance.coverage import coverage_report
+from albs_graph.provenance.coverage import coverage_report, identity_strength
 from albs_graph.provenance.identify import identify_file
 from albs_graph.provenance.license import RpmLicenseRollup, license_report
 from albs_graph.dependency import Ecosystem, ResolverRequest, resolver_for
@@ -594,6 +594,9 @@ def coverage_command(
             payload["sbom"] = sbom_result.to_dict()
         if build_sbom_result is not None:
             payload["build_sbom"] = build_sbom_result.to_dict()
+        identity_breakdown = identity_strength(graph)
+        if identity_breakdown:
+            payload["identity_strength"] = identity_breakdown
         if cas_report is not None:
             payload["cas"] = cas_report.to_dict()
         if signature_report is not None:
@@ -674,6 +677,14 @@ def coverage_command(
             f"Build SBOM (alma-sbom): matched {build_sbom_result.matched} RPMs, "
             f"set {build_sbom_result.cpes_set} vendor CPEs from {build_sbom_result.components} components"
         )
+    strength = identity_strength(graph)
+    if strength:
+        parts = []
+        if strength.get("verified"):
+            parts.append(f"{strength['verified']} NVD-verified")
+        if strength.get("vendor_asserted"):
+            parts.append(f"{strength['vendor_asserted']} vendor-asserted (alma-sbom)")
+        console.print(f"Identity strength: {', '.join(parts)}")
     if enrichment is not None:
         console.print(
             f"RPM header enrichment: {enrichment.headers_fetched}/{enrichment.artifacts_seen} "

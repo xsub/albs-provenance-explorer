@@ -13,6 +13,7 @@ yet (today: linkage, identity/CPE, resolution) while provenance stays high.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
@@ -135,11 +136,14 @@ def _security_context_axis(graph: ProvenanceGraph) -> AxisCoverage:
 
 
 def _has_verified_cpe(metadata: dict[str, Any]) -> bool:
-    """A binary counts toward identity coverage only with a *verified* CPE.
+    """A binary counts toward identity coverage with an *established* CPE.
 
-    Unverified ``cpe_candidates`` deliberately do not count -- asserting an
-    official CPE without a verification adapter is the exact failure mode the
-    security-identity layer forbids.
+    Established means an NVD-dictionary match (``cpe_status="verified"``) or a
+    vendor assertion from AlmaLinux's own SBOM (``cpe_status="vendor_asserted"``)
+    - both set ``cpe``. Unverified ``cpe_candidates`` (a bare name/version guess,
+    ``candidate_only``) deliberately do not count: asserting an official CPE
+    without evidence is the exact failure mode the security-identity layer
+    forbids. ``identity_strength`` reports the NVD-vs-vendor split.
     """
 
     identity = metadata.get("security_identity")
@@ -151,3 +155,21 @@ def _has_verified_cpe(metadata: dict[str, Any]) -> bool:
             for candidate in identity.get("cpe_candidates", [])
         )
     return bool(metadata.get("cpe"))
+
+
+def identity_strength(graph: ProvenanceGraph) -> dict[str, int]:
+    """Break the identity axis down by CPE evidence strength, per binary RPM.
+
+    Keys are ``cpe_status`` values that establish identity (``verified`` for an
+    NVD dictionary match, ``vendor_asserted`` for an AlmaLinux SBOM CPE). Lets a
+    1.00 identity axis stay honest about *how* it was reached rather than reading
+    as all-NVD-verified.
+    """
+
+    counts: Counter[str] = Counter()
+    for node in graph.find_by_type(NodeType.BINARY_RPM):
+        identity = node.metadata.get("security_identity")
+        status = identity.get("cpe_status") if isinstance(identity, dict) else None
+        if status in ("verified", "vendor_asserted"):
+            counts[str(status)] += 1
+    return dict(counts)

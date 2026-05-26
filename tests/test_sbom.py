@@ -4,7 +4,7 @@ from pathlib import Path
 from albs_graph.adapters.sbom import attach_sbom, enrich_graph_with_build_sbom, import_sbom
 from albs_graph.fixtures import build_synthetic_fixture_graph
 from albs_graph.model import Node, NodeType, ProvenanceGraph
-from albs_graph.provenance.coverage import coverage_report
+from albs_graph.provenance.coverage import coverage_report, identity_strength
 
 
 def test_import_cyclonedx_sbom_components(tmp_path: Path) -> None:
@@ -107,7 +107,8 @@ def _build_sbom_file(tmp_path: Path) -> Path:
 
 def test_build_sbom_sets_vendor_cpe_and_moves_identity_axis(tmp_path: Path) -> None:
     # A build SBOM's vendor CPE is matched to the build's own RPM by (name, arch);
-    # it sets a verified CPE (source=almalinux_sbom), which the identity axis counts.
+    # it sets a vendor-asserted CPE (distinct from an NVD-verified one) that still
+    # counts toward the identity axis.
     graph = ProvenanceGraph()
     graph.add_node(_binary_rpm("rpm:nginx-core:x86_64", "nginx-core", "x86_64"))
 
@@ -119,9 +120,12 @@ def test_build_sbom_sets_vendor_cpe_and_moves_identity_axis(tmp_path: Path) -> N
     identity = node.metadata["security_identity"]
     assert identity["cpe"] == "cpe:2.3:a:almalinux:nginx-core:1.26.3-6.el10:*:*:*:*:*:*:*"
     assert identity["cpe_source"] == "almalinux_sbom"
+    # Vendor-asserted, NOT "verified" - the two evidence strengths stay distinct.
+    assert identity["cpe_status"] == "vendor_asserted"
     assert node.metadata["sbom_sha256"] == "deadbeef"
-    # The identity axis (verified CPE) now counts this binary.
+    # The identity axis counts this binary; the strength breakdown attributes it.
     assert coverage_report(graph).identity.covered == 1
+    assert identity_strength(graph) == {"vendor_asserted": 1}
     # A described_by edge links the RPM to the SBOM node.
     assert any(e.target.startswith("sbom:") for e in graph.outgoing("rpm:nginx-core:x86_64"))
 

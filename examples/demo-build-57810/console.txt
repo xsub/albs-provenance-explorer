@@ -105,6 +105,7 @@ step Reconciling dependency claims
 dnf repoquery: 6 runtime + 1 weak resolved claims across 2 packages
 soname resolution: 6/6 sonames mapped to packages, 5 provider claims added
 Build SBOM (alma-sbom): matched 456 RPMs, set 456 vendor CPEs from 457 components
+Identity strength: 456 vendor-asserted (alma-sbom)
 RPM header enrichment: 1/1 headers fetched, 8 dynamic-linkage claims added
 RPM license (from header): nginx-core=BSD-2-Clause
 RPM payload analysis: 1/1 payloads, 1 ELF objects, 6 NEEDED claims, 0 static objects, 0 Go module claims
@@ -128,13 +129,13 @@ Reconciled dependencies: 14; conflicts: 0
     rpm:openssl-libs -> insufficient_evidence [rpm_header_requires]
 
 ========== 4. Vulnerability-applicability report ==========
-                                 Vulnerability applicability                                 
-┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
-┃ Package              ┃ Arch   ┃ Identity ┃ Addressed CVEs ┃ Potential CVEs ┃ Reachability ┃
-┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━┩
-│ nginx-core           │ x86_64 │ verified │ -              │ -              │ dynamic      │
-│ nginx-core-debuginfo │ x86_64 │ verified │ -              │ -              │ dynamic      │
-└──────────────────────┴────────┴──────────┴────────────────┴────────────────┴──────────────┘
+                                    Vulnerability applicability                                     
+┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Package              ┃ Arch   ┃ Identity        ┃ Addressed CVEs ┃ Potential CVEs ┃ Reachability ┃
+┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━┩
+│ nginx-core           │ x86_64 │ vendor_asserted │ -              │ -              │ dynamic      │
+│ nginx-core-debuginfo │ x86_64 │ vendor_asserted │ -              │ -              │ dynamic      │
+└──────────────────────┴────────┴─────────────────┴────────────────┴────────────────┴──────────────┘
 2 packages; 0 addressed, 0 potentially-affected distinct CVEs
 
 ========== 5. License rollup (real RPM licenses: subject from header in step 3, deps via dnf) ==========

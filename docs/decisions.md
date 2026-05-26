@@ -953,10 +953,11 @@ selector) because the `identity` axis is measured across all binaries.
 
 Effect on build 57810: `identity` moves **0.00 -> 1.00** (456/456 vendor CPEs
 from 457 components), the trust path's `has_sbom` flips **missing -> ok**, and
-the `vuln` report's identities go **candidate_only -> verified**. This is honest:
-the CPE comes from AlmaLinux's own published SBOM, labelled as vendor-asserted
-and kept distinct from an NVD dictionary verification. `security_context` stays
-0.00 because it still requires errata in addition to the SBOM.
+the `vuln` report's identities go **candidate_only -> vendor_asserted** (a status
+distinct from NVD `verified`; see D46). This is honest: the CPE comes from
+AlmaLinux's own published SBOM, labelled vendor-asserted and kept distinct from
+an NVD dictionary verification. `security_context` stays 0.00 because it still
+requires errata in addition to the SBOM.
 
 On the strict PURL/CPE stance: asserting a CPE from the *vendor's own* SBOM is
 not the forbidden case (guessing an official match without evidence) - the
@@ -1041,6 +1042,36 @@ Tests +4 (F2 x2, F1 multi-source attribution, F7 shared-repo); F5 verified via
 the demo. Suite now 185. Still planned: split vendor-asserted vs NVD-verified
 CPE (F4), NEVRA/PURL-exact SBOM + dnf/rpmgraph matching (F3, F8), per-source
 checkout/evidence selector (F6).
+
+---
+
+## D46 - Vendor-asserted vs NVD-verified CPE (F4)
+
+D42 set the SBOM's vendor CPE to `cpe_status="verified"`, which coverage and the
+`vuln` report then treated identically to an NVD dictionary match - blurring two
+different evidence strengths. They are now distinct:
+
+- The SBOM path sets `cpe_status="vendor_asserted"` (AlmaLinux asserting its own
+  artifact's CPE), not `verified` (a match confirmed against an external NVD
+  dictionary). Both set `cpe` and both count toward the identity axis (an
+  artifact *is* identified either way), so the axis number is unchanged.
+- `vuln` derives `identity_verified` from `cpe_status == "verified"`, so a
+  vendor-asserted CPE now shows as `vendor_asserted` in the Identity column, not
+  `verified` - while staying usable for CVE-feed matching (it carries a real
+  `cpe`).
+- `coverage` gains `identity_strength(graph)`: the identity axis is broken down
+  by status (`N NVD-verified, M vendor-asserted`), so a 1.00 axis no longer reads
+  as all-NVD-grade.
+- NVD still wins: `verify_security_identity` upgrades a candidate to `verified`
+  on a dictionary match, and `--build-sbom` never overwrites an existing `cpe`,
+  so a real NVD verification takes precedence over the vendor assertion.
+
+Tests +2 (vendor CPE -> vendor_asserted + identity_strength; vuln distinguishes
+the two). Suite now 186.
+
+---
+
+## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
   (`provenance` imports no adapters), so the header adapter may emit claims
