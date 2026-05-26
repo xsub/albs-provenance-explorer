@@ -243,12 +243,16 @@ Focused source-to-artifact trust path for `nginx-core` (correctly rooted at the 
 
 ![nginx-core trust path, build 57810](examples/demo-build-57810/nginx-core-57810-trust.svg)
 
+One level out, the whole **nginx** source package's build fan-out (`trust-path --whole-source`): a single shared backbone - source -> git commit -> CAS -> build task -> SRPM - producing all of nginx's `x86_64` RPMs, each signed and released (72 nodes, the readable slice of the 1613-node full build):
+
+![nginx source build fan-out, build 57810](examples/demo-build-57810/nginx-core-source-build-57810.svg)
+
 `nginx-core`'s dependency neighbourhood in the AppStream universe:
 
 ![nginx-core dependency neighbourhood](examples/demo-build-57810/universe-nginx-core-deps-57810.svg)
 
 <details>
-<summary>Full build provenance graph for 57810 - 456 binary RPMs across 13 source packages (large)</summary>
+<summary>Full build provenance graph for all of 57810 - 456 binary RPMs across 13 source packages, 3.2 MB (large; the nginx fan-out above is the readable slice of it)</summary>
 
 ![full build 57810 provenance graph](examples/demo-build-57810/build-57810.svg)
 

@@ -966,6 +966,24 @@ axis; wrong-arch / pre-existing-CPE skip); suite now 180.
 
 ---
 
+## D43 - A readable middle-zoom build graph (`trust-path --whole-source`)
+
+The full build graph for a 13-source batch is 1613 nodes / 3.2 MB - real, but
+unreadable when embedded and too heavy to show inline; collapsing it in
+`<details>` hid it. The gap was a zoom level between one RPM's trust path (~13
+nodes) and the whole build (1613).
+
+`source_build_subgraph` (`provenance/trust.py`) fills it: it unions the
+`focused_trust_graph` of every binary RPM a source produced (optionally one
+arch), so the shared backbone (source -> commit -> CAS -> build task -> SRPM)
+appears once and fans out to all of that source's signed, released RPMs. Exposed
+as `trust-path --whole-source`. For nginx at `x86_64` that is 72 nodes / 157 KB
+(vs 1613 / 3.2 MB) - readable, and embedded inline in the README while the full
+graph stays linked in `<details>`. The demo renders all three (trust path,
+source fan-out, full build). Tests +1; suite now 181.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

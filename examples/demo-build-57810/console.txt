@@ -169,6 +169,7 @@ step dnf: 6 resolved runtime providers for nginx-core
 ========== 8. Render graphs to SVG ==========
    wrote examples/demo-build-57810/build-57810.svg (full build graph)
    wrote examples/demo-build-57810/nginx-core-57810-trust.svg (trust path)
+   wrote examples/demo-build-57810/nginx-core-source-build-57810.svg (source build fan-out: one source -> all its RPMs)
 
 ========== 9. Dependency universe via 'dnf repograph appstream' (build, persist, traverse) ==========
 Saved universe to examples/live-build-57810/universe-appstream.db: 4244 nodes, 11401 edges

@@ -73,6 +73,7 @@ from albs_graph.provenance.trust import (
     focused_trust_graph,
     make_binary_rpm_selector,
     select_default_binary_rpm,
+    source_build_subgraph,
     trust_path,
 )
 from albs_graph.render import SvgRenderError, graph_to_dot, graph_to_json, graph_to_svg
@@ -847,6 +848,12 @@ def trust_path_command(
     include_tests: bool = typer.Option(
         False, "--include-tests", help="Include test task nodes in rendered graph output."
     ),
+    whole_source: bool = typer.Option(
+        False,
+        "--whole-source",
+        help="Render the selected RPM's whole source package fan-out (all its RPMs at this arch), "
+        "not just one trust path - a readable middle ground between one RPM and the full build.",
+    ),
     base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
     cache: Optional[Path] = typer.Option(
         None, "--cache", help="Read/write raw ALBS API metadata cache JSON when using --build-id."
@@ -904,8 +911,14 @@ def trust_path_command(
     report = trust_path(graph, rpm_node.id)
 
     if output_format.lower() != "summary" or output:
-        _log_step(verbose, "Building focused trust graph")
-        focused = focused_trust_graph(graph, rpm_node.id, include_tests=include_tests)
+        if whole_source:
+            source_node_id = graph.source_to_artifact_path(rpm_node.id)[0]
+            source_name = graph.nodes[source_node_id].label
+            _log_step(verbose, f"Building whole-source build graph for {source_name} (arch {arch})")
+            focused = source_build_subgraph(graph, source_name, arch=arch)
+        else:
+            _log_step(verbose, "Building focused trust graph")
+            focused = focused_trust_graph(graph, rpm_node.id, include_tests=include_tests)
         _log_graph_stats(verbose, focused, label="Focused graph")
         _emit_graph(focused, output_format, output, verbose=verbose)
         return

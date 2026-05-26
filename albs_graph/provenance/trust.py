@@ -177,3 +177,31 @@ def focused_trust_graph(
             selected.update(edge.target for edge in graph.outgoing(node_id, Relation.FIXES))
 
     return graph.subgraph(selected)
+
+
+def source_build_subgraph(
+    graph: ProvenanceGraph,
+    source_package: str,
+    *,
+    arch: str | None = None,
+) -> ProvenanceGraph:
+    """One source package's whole build fan-out, as a single readable subgraph.
+
+    A middle zoom level between a single RPM's trust path and the full build
+    graph: it unions the focused trust path of every binary RPM the source
+    produced (optionally restricted to one ``arch``), so the shared backbone
+    (source -> commit -> CAS -> build task -> SRPM) appears once and fans out to
+    all of that source's shipped RPMs with their signatures and release.
+    """
+
+    from albs_graph.provenance.lineage import artifacts_from_source
+
+    selected: set[str] = set()
+    for node_id in artifacts_from_source(graph, source_package):
+        node = graph.nodes[node_id]
+        if node.type != NodeType.BINARY_RPM:
+            continue
+        if arch is not None and node.metadata.get("arch") not in (arch, "noarch"):
+            continue
+        selected.update(focused_trust_graph(graph, node_id).nodes)
+    return graph.subgraph(selected)

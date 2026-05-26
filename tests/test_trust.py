@@ -9,6 +9,7 @@ from albs_graph.provenance.trust import (
     find_binary_rpm,
     focused_trust_graph,
     select_default_binary_rpm,
+    source_build_subgraph,
     trust_path,
 )
 
@@ -55,6 +56,28 @@ def test_focused_trust_graph_for_live_build_artifact_is_small() -> None:
         for node in focused.nodes.values()
     )
     assert len(focused.nodes) < 20
+
+
+def test_source_build_subgraph_unions_a_sources_rpms() -> None:
+    # A middle zoom: the nginx source fans out to all its x86_64 RPMs over one
+    # shared backbone - lighter than the full build, heavier than one RPM's path.
+    data = json.loads(
+        Path("examples/live-build-17812/build-17812.json").read_text(encoding="utf-8")
+    )
+    graph = _graph_from_export(data)
+
+    whole = source_build_subgraph(graph, "nginx", arch="x86_64")
+    rpm_names = {
+        node.metadata.get("name")
+        for node in whole.nodes.values()
+        if str(node.type) == "binary_rpm"
+    }
+
+    assert "src:nginx" in set(whole.nodes)  # shared backbone present once
+    assert {"nginx-core", "nginx"} <= rpm_names  # multiple subpackages, not just one
+    assert len(rpm_names) >= 3
+    one = focused_trust_graph(graph, find_binary_rpm(graph, "nginx-core", arch="x86_64").id)
+    assert len(one.nodes) < len(whole.nodes) < len(graph.nodes)
 
 
 def test_default_binary_rpm_selection_comes_from_graph_metadata() -> None:

@@ -3,8 +3,9 @@
 # Fullest single-command demo for one build/package. Exercises (almost) every
 # feature end to end and writes README-ready artifacts into OUT_DIR:
 #   - console.txt                  : everything printed below (the demo log)
-#   - build-<id>.svg               : full build provenance graph (Graphviz)
+#   - build-<id>.svg               : full build provenance graph (Graphviz, large)
 #   - <pkg>-<id>-trust.svg         : focused source-to-artifact trust path
+#   - <pkg>-source-build-<id>.svg  : one source package's whole RPM fan-out (readable)
 #   - universe-<pkg>-deps-<id>.svg : <pkg>'s dependency neighbourhood (best effort)
 #   - <pkg>.intoto.json            : SLSA / in-toto provenance attestation
 #
@@ -119,6 +120,10 @@ main() {
     opt run trust-path --source "$CACHE" --rpm "$PACKAGE" --arch "$ARCH" \
       --format svg -o "$OUT_DIR/$PACKAGE-$BUILD_ID-trust.svg"
     printf '   wrote %s (trust path)\n' "$OUT_DIR/$PACKAGE-$BUILD_ID-trust.svg"
+    opt run trust-path --source "$CACHE" --rpm "$PACKAGE" --arch "$ARCH" --whole-source \
+      --format svg -o "$OUT_DIR/$PACKAGE-source-build-$BUILD_ID.svg"
+    printf '   wrote %s (source build fan-out: one source -> all its RPMs)\n' \
+      "$OUT_DIR/$PACKAGE-source-build-$BUILD_ID.svg"
   else
     printf '   (skipped: Graphviz "dot" not on PATH)\n'
   fi
