@@ -1071,6 +1071,23 @@ the two). Suite now 186.
 
 ---
 
+## D47 - Remaining scope-boundary fixes (F3, F6, F8)
+
+### F3 - NEVRA-exact build-SBOM matching
+
+`enrich_graph_with_build_sbom` indexed components by `(name, arch)` with
+first-wins, ignoring version/release - so a merged graph or a duplicate component
+set (two builds of one package at one arch, different versions) attached the
+*first* same-name component's CPE/hash/PURL to every matching node. It now keys
+by `(name, version-release, arch)` (version-release parsed symmetrically from the
+PURL `@` part for both component and node). An unambiguous `(name, arch)` fallback
+still matches when a node or component lacks a parseable version-release (minimal
+nodes), but an ambiguous fallback is skipped rather than guessing. The
+single-build demo is unchanged (one NEVRA per name+arch). Tests +1 (two versions
+at one arch attach their own evidence).
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

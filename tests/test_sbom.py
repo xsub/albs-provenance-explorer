@@ -130,6 +130,52 @@ def test_build_sbom_sets_vendor_cpe_and_moves_identity_axis(tmp_path: Path) -> N
     assert any(e.target.startswith("sbom:") for e in graph.outgoing("rpm:nginx-core:x86_64"))
 
 
+def test_build_sbom_matches_by_nevra_not_just_name_arch(tmp_path: Path) -> None:
+    # A merged graph with two versions of one package at the same arch: each node
+    # must get ITS version's CPE/hash, not the first same-name component (the
+    # (name, arch) first-wins bug would attach v1.26.3's evidence to both).
+    graph = ProvenanceGraph()
+    for ver, rel in [("1.26.3", "6.el10"), ("1.26.4", "1.el10")]:
+        node = _binary_rpm(f"rpm:nginx-core:{ver}:x86_64", "nginx-core", "x86_64")
+        node.metadata["version"] = ver
+        node.metadata["release"] = rel
+        graph.add_node(node)
+    sbom = tmp_path / "merged.cdx.json"
+    sbom.write_text(
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.6",
+                "components": [
+                    {
+                        "name": "nginx-core",
+                        "purl": "pkg:rpm/almalinux/nginx-core@1.26.3-6.el10?arch=x86_64",
+                        "cpe": "cpe:2.3:a:almalinux:nginx-core:1.26.3-6.el10:*:*:*:*:*:*:*",
+                        "hashes": [{"alg": "SHA-256", "content": "aaa"}],
+                    },
+                    {
+                        "name": "nginx-core",
+                        "purl": "pkg:rpm/almalinux/nginx-core@1.26.4-1.el10?arch=x86_64",
+                        "cpe": "cpe:2.3:a:almalinux:nginx-core:1.26.4-1.el10:*:*:*:*:*:*:*",
+                        "hashes": [{"alg": "SHA-256", "content": "bbb"}],
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = enrich_graph_with_build_sbom(graph, sbom)
+
+    assert result.matched == 2
+    n3 = graph.nodes["rpm:nginx-core:1.26.3:x86_64"].metadata
+    n4 = graph.nodes["rpm:nginx-core:1.26.4:x86_64"].metadata
+    assert n3["sbom_sha256"] == "aaa"
+    assert n4["sbom_sha256"] == "bbb"
+    assert "1.26.3-6.el10" in n3["security_identity"]["cpe"]
+    assert "1.26.4-1.el10" in n4["security_identity"]["cpe"]
+
+
 def test_build_sbom_skips_wrong_arch_and_preexisting_cpe(tmp_path: Path) -> None:
     graph = ProvenanceGraph()
     graph.add_node(_binary_rpm("rpm:nginx-core:aarch64", "nginx-core", "aarch64"))  # arch mismatch

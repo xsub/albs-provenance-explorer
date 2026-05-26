@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import unquote
 
 from albs_graph.dependency import (
     DependencyScope,
@@ -350,11 +351,23 @@ def enrich_graph_with_build_sbom(
         )
     )
 
-    index: dict[tuple[str, str | None], dict[str, Any]] = {}
+    # Match by (name, version-release, arch) so a merged graph or a duplicate
+    # component set (two builds, same name, different versions) attaches the right
+    # CPE/hash/PURL - not the first same-name component. An unambiguous (name,
+    # arch) fallback still matches when a node or component lacks a parseable
+    # version-release (e.g. minimal test nodes); an ambiguous fallback is skipped
+    # rather than guessing.
+    exact: dict[tuple[str, str, str | None], dict[str, Any]] = {}
+    by_name_arch: dict[tuple[str, str | None], list[dict[str, Any]]] = {}
     for component in data.get("components", []):
         name = component.get("name")
-        if name:
-            index.setdefault((str(name), _component_arch(component)), component)
+        if not name:
+            continue
+        arch = _component_arch(component)
+        vr = _component_version_release(component)
+        if vr:
+            exact.setdefault((str(name), vr, arch), component)
+        by_name_arch.setdefault((str(name), arch), []).append(component)
 
     matched = 0
     cpes_set = 0
@@ -365,9 +378,15 @@ def enrich_graph_with_build_sbom(
         if not name:
             continue
         arch = node.metadata.get("arch") or node.metadata.get("build_arch")
-        component = index.get((str(name), str(arch) if arch else None)) or index.get(
-            (str(name), None)
-        )
+        arch_str = str(arch) if arch else None
+        node_vr = _node_version_release(node.metadata)
+        component = exact.get((str(name), node_vr, arch_str)) if node_vr else None
+        if component is None:
+            candidates = by_name_arch.get((str(name), arch_str)) or by_name_arch.get(
+                (str(name), None)
+            )
+            if candidates and len(candidates) == 1:
+                component = candidates[0]  # unambiguous name+arch fallback
         if component is None:
             continue
         matched += 1
@@ -391,6 +410,31 @@ def enrich_graph_with_build_sbom(
 def _component_arch(component: dict[str, Any]) -> str | None:
     match = re.search(r"[?&]arch=([^&]+)", str(component.get("purl") or ""))
     return match.group(1) if match else None
+
+
+def _purl_version_release(purl: str) -> str | None:
+    """The ``version-release`` (the part after ``@``, before qualifiers) of a PURL."""
+
+    match = re.search(r"@([^?#]+)", purl)
+    return unquote(match.group(1)) if match else None
+
+
+def _component_version_release(component: dict[str, Any]) -> str | None:
+    vr = _purl_version_release(str(component.get("purl") or ""))
+    if vr:
+        return vr
+    # CycloneDX `version` may carry an epoch ("2:1.26.3-6.el10"); the RPM NEVRA
+    # has no epoch in the version-release, so strip it for a symmetric key.
+    version = str(component.get("version") or "")
+    return version.split(":", 1)[-1] or None
+
+
+def _node_version_release(metadata: dict[str, Any]) -> str | None:
+    version = metadata.get("version")
+    if version:
+        release = metadata.get("release")
+        return f"{version}-{release}" if release else str(version)
+    return _purl_version_release(str(metadata.get("purl") or ""))
 
 
 def _component_sha256(component: dict[str, Any]) -> str | None:
