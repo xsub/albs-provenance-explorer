@@ -54,9 +54,14 @@ def fetch_build_metadata(
         else:
             cached = json.loads(cache.read_text(encoding="utf-8"))
             # Guard against a reused cache path: only trust the cache when its
-            # build id matches the requested one. An absent id means a non-API
-            # fixture (the HTML fallback / synthetic), which we still accept.
+            # build id matches the requested one. parse_build_metadata reads
+            # either "build_id" or "id", so the guard must consider both - a
+            # cache carrying {"build_id": 999} and no "id" was previously seen as
+            # "absent id" and reused for any build. Only a cache with neither key
+            # (a synthetic / HTML-fallback fixture) is accepted without a match.
             cached_id = cached.get("id")
+            if cached_id is None:
+                cached_id = cached.get("build_id")
             if cached_id is None or str(cached_id) == str(build_id):
                 if progress:
                     progress(f"Loading ALBS build metadata from fresh cache {cache}")
@@ -354,12 +359,16 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
             graph.add_node(
                 Node(t_repo_id, NodeType.GIT_REPOSITORY, task_repo, {"system": "ALBS"})
             )
-            graph.add_edge(t_src_id, t_repo_id, Relation.STORED_IN)
+        # Ensure the provenance edges independently of whether the node was just
+        # created: a repo/commit shared across source nodes (e.g. two packages in
+        # one git repo) would otherwise leave the second source without its
+        # STORED_IN/POINTS_TO edge. _ensure_edge is idempotent (add_edge is not).
+        _ensure_edge(graph, t_src_id, t_repo_id, Relation.STORED_IN)
         if t_commit_id not in graph.nodes:
             graph.add_node(
                 Node(t_commit_id, NodeType.GIT_COMMIT, task_commit, {"package": task_pkg})
             )
-            graph.add_edge(t_repo_id, t_commit_id, Relation.POINTS_TO)
+        _ensure_edge(graph, t_repo_id, t_commit_id, Relation.POINTS_TO)
 
         task_cas = task.get("alma_commit_cas_hash") or build.source_cas_hash
         task_cas_id = f"cas:source:{task_pkg}:{task_cas or task_commit}"
@@ -384,9 +393,9 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
                     task_cas_metadata,
                 )
             )
-            graph.add_edge(t_commit_id, task_cas_id, Relation.AUTHENTICATED_BY)
         else:
             _merge_node_metadata(graph, task_cas_id, task_cas_metadata)
+        _ensure_edge(graph, t_commit_id, task_cas_id, Relation.AUTHENTICATED_BY)
 
         graph.add_node(
             Node(
@@ -702,6 +711,20 @@ def _merge_node_metadata(
     graph.nodes[node_id].metadata.update(
         {key: value for key, value in metadata.items() if value is not None}
     )
+
+
+def _ensure_edge(
+    graph: ProvenanceGraph,
+    source: str,
+    target: str,
+    relation: Relation,
+) -> None:
+    """Add an edge only if it does not already exist (``add_edge`` appends)."""
+
+    for edge in graph.outgoing(source, relation):
+        if edge.target == target:
+            return
+    graph.add_edge(source, target, relation)
 
 
 def _rpm_artifact_metadata(

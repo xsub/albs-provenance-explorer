@@ -1273,11 +1273,14 @@ def _rpm_license_rollup(
     output_format: str,
     verbose: bool,
 ) -> None:
-    """Real license rollup for a subject RPM + its resolved runtime deps via dnf.
+    """Real license rollup for a subject RPM + its resolved runtime deps.
 
-    Every license here is observed (the RPM ``License:`` tag, via ``dnf
-    repoquery %{license}``); the subject's tag is corroborated by the header
-    read when present (``rpm_license`` node metadata). Nothing is fabricated.
+    The subject's license is read straight from its RPM ``License:`` header tag
+    (rung 3, a single Range read); its runtime deps' licenses come from ``dnf
+    repoquery %{license}``. Every value is observed, nothing fabricated. The
+    rollup's ``source`` records which evidence was actually used so the label
+    never overstates (if the header read is unavailable, the subject falls back
+    to dnf and the label says so).
     """
 
     subject = (
@@ -1286,6 +1289,19 @@ def _rpm_license_rollup(
         else select_default_binary_rpm(graph, arch=arch)
     )
     name = str(subject.metadata.get("name") or parse_nevra(subject.label)[0])
+
+    # Read the subject's License from its RPM header (rung 3) so the "RPM header"
+    # claim is true, not aspirational. Best-effort: a network/header failure just
+    # falls back to dnf for the subject too.
+    try:
+        enrich_graph_with_rpm_headers(
+            graph,
+            node_selector=lambda node: node.id == subject.id,
+            limit=1,
+            on_progress=_progress(verbose),
+        )
+    except Exception as exc:  # noqa: BLE001 - header read is best-effort, dnf is the fallback
+        _log_step(verbose, f"header read for {name} unavailable ({exc}); using dnf only")
 
     provider_names: set[str] = set()
     licenses: dict[str, str] = {}
@@ -1306,13 +1322,18 @@ def _rpm_license_rollup(
     if isinstance(header_license, str) and header_license:
         packages[name] = header_license  # header tag is authoritative for the subject
 
-    rollup = RpmLicenseRollup(packages=packages, source="rpm header + dnf repoquery")
+    source = (
+        "RPM header (subject) + dnf repoquery %{license} (deps)"
+        if isinstance(header_license, str) and header_license
+        else "dnf repoquery %{license}"
+    )
+    rollup = RpmLicenseRollup(packages=packages, source=source)
 
     if output_format.lower() == "json":
         sys.stdout.write(json.dumps(rollup.to_dict(), indent=2) + "\n")
         return
 
-    table = Table(title=f"License rollup ({rollup.components} packages, from RPM header + dnf)")
+    table = Table(title=f"License rollup ({rollup.components} packages, {rollup.source})")
     table.add_column("License")
     table.add_column("Packages", justify="right")
     for license_id, count in rollup.licenses.items():

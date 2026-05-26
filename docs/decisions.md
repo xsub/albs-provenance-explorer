@@ -1006,7 +1006,41 @@ only committed fixtures, never a locally-generated cache.
 
 ---
 
-## Cross-cutting decisions
+## D45 - Scope-boundary fixes from an external review (Phase 0 + F1)
+
+A second-agent review flagged correctness risks at three scope boundaries
+(batch-build vs source-package, vendor-assertion vs dictionary-verification,
+name vs artifact identity). This batch lands the cheap correctness fixes plus
+the one genuine silent-wrong-result bug; the rest are sequenced (see `plan.md`).
+
+- **F1 - batch source over-attribution (the silent bug).** `artifacts_from_source`
+  used unrestricted `graph.reachable`, so the build's representative source
+  (`build.package`, e.g. `nghttp2` on 57810) reached *every* task's artifacts
+  through the build-level aggregate node - making `trust-path --whole-source`
+  wrong for that source. Reimplemented to attribute each artifact via its own
+  `source_to_artifact_path` (the per-task chain, already correct since D36),
+  never global reachability. The graph structure is untouched (safer than
+  removing the aggregate edge); only the over-reaching consumer changed.
+- **F2 - cache guard.** `fetch_build_metadata` trusted only `cached.get("id")`,
+  but `parse_build_metadata` accepts `build_id` too, so a cache holding
+  `{"build_id": 999}` with no `id` was treated as "idless fixture" and reused
+  for any build. Now it checks `id` then `build_id`; only a cache with neither
+  (a real synthetic/HTML fixture) is accepted without a match.
+- **F7 - source edges independent of nodes.** In the per-task loop the
+  `STORED_IN`/`POINTS_TO`/`AUTHENTICATED_BY` edges were added only inside the
+  `if node not in graph.nodes` blocks, so a repo/commit shared across source
+  nodes left the second source without its edge. New idempotent `_ensure_edge`
+  (`add_edge` does not dedup) ensures each edge regardless of node creation.
+- **F5 - honest license label.** `license --rpm-licenses` advertised "RPM header
+  + dnf" but never fetched a header. It now range-reads the subject's header
+  (rung 3, best-effort), so the subject license is genuinely from the header and
+  the rollup's `source` reflects what was actually used (falls back to dnf, and
+  says so, if the header read is unavailable).
+
+Tests +4 (F2 x2, F1 multi-source attribution, F7 shared-repo); F5 verified via
+the demo. Suite now 185. Still planned: split vendor-asserted vs NVD-verified
+CPE (F4), NEVRA/PURL-exact SBOM + dnf/rpmgraph matching (F3, F8), per-source
+checkout/evidence selector (F6).
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
   (`provenance` imports no adapters), so the header adapter may emit claims

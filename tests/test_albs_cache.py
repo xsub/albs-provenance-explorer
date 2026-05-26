@@ -93,6 +93,40 @@ def test_fetch_build_metadata_ignores_cache_for_a_different_build(
     assert len(fake_requests.calls) == 1  # did not reuse the id=999 cache
 
 
+def test_fetch_build_metadata_rejects_cache_with_build_id_but_no_id(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    # parse_build_metadata accepts "build_id" or "id"; the guard must too. A
+    # fresh cache holding {"build_id": 999} with no "id" was previously treated
+    # as "absent id" and reused for any requested build - it must refetch.
+    payload = {"id": 17812, "package": "nginx", "tasks": []}
+    fake_requests = FakeRequests(payload)
+    monkeypatch.setitem(__import__("sys").modules, "requests", fake_requests)
+    cache = tmp_path / "shared.albs.json"
+    cache.write_text('{"build_id": 999, "package": "other-build", "tasks": []}\n', encoding="utf-8")
+
+    metadata = fetch_build_metadata(17812, cache_path=cache)
+
+    assert metadata.package == "nginx"  # refetched, did not reuse the build_id=999 cache
+    assert len(fake_requests.calls) == 1
+
+
+def test_fetch_build_metadata_accepts_idless_fixture_cache(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    # A cache with neither "id" nor "build_id" is a synthetic / HTML-fallback
+    # fixture and is still accepted without a build-id match (no refetch).
+    fake_requests = FakeRequests({"id": 17812, "package": "nginx", "tasks": []})
+    monkeypatch.setitem(__import__("sys").modules, "requests", fake_requests)
+    cache = tmp_path / "fixture.albs.json"
+    cache.write_text('{"package": "synthetic", "tasks": []}\n', encoding="utf-8")
+
+    metadata = fetch_build_metadata(17812, cache_path=cache)
+
+    assert metadata.package == "synthetic"  # reused the idless fixture
+    assert len(fake_requests.calls) == 0  # no refetch
+
+
 def test_fetch_build_metadata_refreshes_stale_local_cache(tmp_path: Path, monkeypatch: Any) -> None:
     payload = {
         "id": 17812,

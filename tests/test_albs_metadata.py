@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from albs_graph.adapters.albs import graph_from_build_metadata, parse_build_metadata
-from albs_graph.model import NodeType
+from albs_graph.model import NodeType, Relation
 
 
 def test_multi_source_build_attributes_each_binary_to_its_own_source() -> None:
@@ -45,6 +45,51 @@ def test_multi_source_build_attributes_each_binary_to_its_own_source() -> None:
     assert source_of("libnghttp2") == "nghttp2"
     assert "src:nginx" in graph.nodes
     assert "src:nghttp2" in graph.nodes
+
+
+def test_shared_repo_across_sources_still_gets_each_stored_in_edge() -> None:
+    # Two source packages sharing one git repo: the second source must still get
+    # its STORED_IN edge even though the repo node already exists. Edges are
+    # ensured independently of node creation (add_edge does not dedup).
+    repo = "https://git.almalinux.org/rpms/shared.git"
+    metadata = parse_build_metadata(
+        {
+            "id": 77,
+            "tasks": [
+                {
+                    "id": 1,
+                    "arch": "x86_64",
+                    "ref": {"url": repo, "git_commit_hash": "aaa"},
+                    "artifacts": [
+                        {"id": 10, "type": "rpm", "name": "pkga-1.0-1.el10.src.rpm"},
+                        {"id": 11, "type": "rpm", "name": "pkga-1.0-1.el10.x86_64.rpm"},
+                    ],
+                },
+                {
+                    "id": 2,
+                    "arch": "x86_64",
+                    "ref": {"url": repo, "git_commit_hash": "bbb"},
+                    "artifacts": [
+                        {"id": 20, "type": "rpm", "name": "pkgb-1.0-1.el10.src.rpm"},
+                        {"id": 21, "type": "rpm", "name": "pkgb-1.0-1.el10.x86_64.rpm"},
+                    ],
+                },
+            ],
+        }
+    )
+    graph = graph_from_build_metadata(metadata)
+    repo_id = f"git:{repo}"
+
+    def stored_in(src_id: str) -> int:
+        return sum(
+            1
+            for edge in graph.outgoing(src_id)
+            if edge.target == repo_id and edge.relation == Relation.STORED_IN
+        )
+
+    assert "src:pkgb" in graph.nodes
+    assert stored_in("src:pkgb") == 1  # previously missing (node already existed)
+    assert stored_in("src:pkga") == 1  # not duplicated by build-level + per-task
 
 
 def test_parse_build_metadata_extracts_package_from_srpm_artifact() -> None:
