@@ -9,7 +9,7 @@ from .build_analysis import (
 )
 from .coverage import AxisCoverage, CoverageReport, coverage_report
 from .identify import IdentifiedElement, IdentifyReport, identify_file
-from .license import LicenseReport, license_report
+from .license import LicenseReport, RpmLicenseRollup, license_report
 from .inventory import (
     ArtifactArchSummary,
     ArtifactInventoryItem,
@@ -62,6 +62,7 @@ __all__ = [
     "IdentifiedElement",
     "IdentifyReport",
     "LicenseReport",
+    "RpmLicenseRollup",
     "PackageVulnAssessment",
     "VulnReport",
     "ReconciliationReport",

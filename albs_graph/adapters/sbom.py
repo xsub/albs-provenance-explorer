@@ -72,6 +72,8 @@ def attach_cyclonedx_sbom(
             raw={"component": component},
         )
         component_id = _component_id("cyclonedx", name, version, purl)
+        if component_id in graph.nodes:
+            continue  # same NEVRA.arch already present (e.g. a noarch built per arch task)
         graph.add_node(
             Node(
                 component_id,
@@ -122,6 +124,8 @@ def attach_spdx_sbom(
             raw={"package": package},
         )
         component_id = _component_id("spdx", name, version, purl)
+        if component_id in graph.nodes:
+            continue  # same NEVRA.arch already present
         graph.add_node(
             Node(
                 component_id,
@@ -146,7 +150,15 @@ def _component_id(source: str, name: str, version: str, purl: str | None) -> str
     if purl:
         try:
             identity = package_identity_from_purl(purl, fallback_version=version)
-            return f"pkg:{identity.ecosystem}:{identity.namespace or '_'}:{identity.name}:{identity.version or version}"
+            # Include arch: a real multi-arch build SBOM lists the same NEVR per
+            # architecture, and an arch-variant RPM is a distinct artifact, so the
+            # node id must keep them apart (otherwise import collapses/conflicts).
+            arch = identity.qualifiers.get("arch")
+            suffix = f":{arch}" if arch else ""
+            return (
+                f"pkg:{identity.ecosystem}:{identity.namespace or '_'}:"
+                f"{identity.name}:{identity.version or version}{suffix}"
+            )
         except ImportError:
             return purl
     return f"sbom-component:{source}:{name}:{version}"

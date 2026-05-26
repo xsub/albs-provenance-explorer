@@ -16,15 +16,19 @@ evidence that would raise them.
 ### `security_context` axis = 0.00 even with an SBOM attached
 Two distinct facts here:
 
-- **No ledger auto-fetch.** AlmaLinux SBOMs live in Codenotary's immudb and are
-  retrieved with the `alma-sbom`/`cas` tooling, which require an API key and
-  login. There is no documented anonymous read path, so nothing fetches an SBOM
-  automatically. `coverage --sbom FILE` ingests a *provided* CycloneDX file (the
-  artifact `alma-sbom` produces) - that path is implemented; the credentialed
-  fetch is not. The demo (`example--full.sh`) therefore does **not** run a
-  license rollup: it ships no SBOM and never fabricates one. Supply a real
-  CycloneDX file (e.g. `alma-sbom --file-format cyclonedx-json build --build-id
-  57810`) to `coverage --sbom` / `license --sbom` to drive those steps.
+- **SBOMs carry provenance, not licenses.** AlmaLinux's own
+  [`alma-sbom`](https://github.com/AlmaLinux/alma-sbom) *does* generate a real
+  CycloneDX build SBOM **anonymously** (immudb_wrapper's default read
+  credentials; verified on an el10 host -- `alma-sbom --file-format
+  cyclonedx-json build --build-id 57810` produced a 457-component SBOM with real
+  PURLs, CPEs, SHA-256 hashes and ALBS build properties). But those components
+  carry **no per-component license field**, so an SBOM license rollup is empty.
+  The real license therefore comes from the RPM `License:` header tag (rung 3,
+  already range-read) and `dnf repoquery %{license}`: `license --rpm-licenses`
+  rolls up the subject + its resolved runtime deps, and `coverage` surfaces the
+  subject's header license. `coverage --sbom FILE` / `license --sbom FILE` still
+  consume a *provided* CycloneDX file when one carries licenses; `import-sbom`
+  ingests the real `alma-sbom` SBOM for its PURL/CPE/provenance.
 - **The axis is binary-complete and needs errata too.** `security_context_complete`
   requires *both* an attached SBOM **and** an errata/CVE link. `coverage --errata
   FILE` now attaches errata, so SBOM + errata on the same subject completes the

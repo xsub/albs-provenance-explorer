@@ -31,7 +31,7 @@ source package
 # retarget: BUILD_ID=<id> PACKAGE=<rpm> FILE=<path> OWNER=<rpm> ./example--full.sh
 ```
 
-It exercises the provenance trust path, `identify` (a binary file -> its full creation/install lineage), five-axis coverage up the cost ladder (RPM headers, payload ELF, `dnf repoquery`, soname -> providing package, GPG signatures, CAS), the `vuln` and `slsa` reports, and the dependency `universe`. Every console line is saved to [`console.txt`](examples/demo-build-57810/console.txt) and all graphs are rendered to SVG.
+It exercises the provenance trust path, `identify` (a binary file -> its full creation/install lineage), five-axis coverage up the cost ladder (RPM headers, payload ELF, `dnf repoquery`, soname -> providing package, GPG signatures, CAS), the `vuln` report, a real **license rollup** (the RPM `License:` header tag plus `dnf repoquery %{license}`), ingest of a real AlmaLinux `alma-sbom` CycloneDX SBOM, the `slsa` attestation, and the dependency `universe`. Every console line is saved to [`console.txt`](examples/demo-build-57810/console.txt) and all graphs are rendered to SVG.
 
 On an AlmaLinux 10 host the providers resolve to matching `.el10` versions and the RPM signature verifies:
 
@@ -39,11 +39,14 @@ On an AlmaLinux 10 host the providers resolve to matching `.el10` versions and t
 resolution        3 / 14   0.21    dnf repoquery: 6 runtime + 1 weak claims
 linkage           1 / 456  0.00    header 1/1 (8 sonames), payload 1/1 (6 NEEDED)
 provenance      456 / 456  1.00    soname resolution: 6/6 -> providing packages
+RPM license (from header): nginx-core=BSD-2-Clause
 Reconciled dependencies: 14; conflicts: 3
 Signatures: 1 verified, 0 nokey, 0 failed of 1 RPMs
 ```
 
-The 3 conflicts are real, not contrived: the el10 repos carry two builds each of `glibc`, `openssl-libs` and `zlib-ng-compat`, so `dnf` and soname resolution legitimately disagree on the exact release, and the reconciler records every version behind a typed `version_drift` rather than picking one. There is no license rollup in this run: AlmaLinux's SBOMs need credentialed immudb access (no anonymous fetch path), so the demo ships no SBOM and never fabricates one. Supply a real CycloneDX file - e.g. from AlmaLinux's own [`alma-sbom`](https://github.com/AlmaLinux/alma-sbom) (`alma-sbom --file-format cyclonedx-json build --build-id 57810`) - to `coverage --sbom` / `license --sbom` to drive those steps.
+The 3 conflicts are real, not contrived: the el10 repos carry two builds each of `glibc`, `openssl-libs` and `zlib-ng-compat`, so `dnf` and soname resolution legitimately disagree on the exact release, and the reconciler records every version behind a typed `version_drift` rather than picking one.
+
+The licenses are real too. `nginx-core`'s `License:` tag (`BSD-2-Clause`) is read straight from the range-fetched RPM header, and `license --rpm-licenses` rolls up the subject plus its 6 resolved runtime deps into 6 distinct licenses via `dnf repoquery %{license}` - no SBOM needed. AlmaLinux's own [`alma-sbom`](https://github.com/AlmaLinux/alma-sbom) *does* generate a real CycloneDX build SBOM anonymously (`alma-sbom --file-format cyclonedx-json build --build-id 57810` -> 457 components with real PURLs, CPEs and hashes), but its components carry no license field, so the demo ingests that SBOM ([`import-sbom`](examples/build-57810.cyclonedx.json), 433 package nodes) for its provenance data and reads licenses from the RPM evidence instead. Nothing here is fabricated.
 
 Focused source-to-artifact trust path for `nginx-core` (correctly rooted at the **nginx** source, not the batch's first package):
 
@@ -79,8 +82,9 @@ Status is tracked in three honest buckets. "Couldn't resolve" is a deliverable h
 - Python language evidence: `requirements.txt` plus import scanning produce PyPI claims (pinned versions count toward resolution)
 - dependency **universe**: repo-wide graph build, traversal (`dependents_of` / `dependencies_of` / `dependency_paths`), cross-repo merge, and focused-subgraph visualization
 - low-footprint SQLite persistence: build once, query later; one-hop queries run in SQL without loading the whole graph (stdlib only, no graph DB)
-- SPDX/CycloneDX SBOM import, errata/CVE attachment, CPE verification against a supplied dictionary (with the AlmaLinux distro-backport flag), GPG signature verification (`rpmkeys --checksig`), and optional CAS verification (`--use-cas`)
-- consumer reports: `vuln` applicability (with `--cve-feed` rpmvercmp range matching), `license` rollup, and `slsa` in-toto / SLSA provenance export
+- SPDX/CycloneDX SBOM import (incl. real multi-arch AlmaLinux `alma-sbom` build SBOMs - arch variants kept distinct), errata/CVE attachment, CPE verification against a supplied dictionary (with the AlmaLinux distro-backport flag), GPG signature verification (`rpmkeys --checksig`), and optional CAS verification (`--use-cas`)
+- real license rollup with no SBOM required: the RPM `License:` header tag (rung 3) plus `dnf repoquery %{license}` over a package and its resolved runtime deps (`license --rpm-licenses`); an SBOM-based rollup (`license --sbom`) remains for CycloneDX files that carry licenses
+- consumer reports: `vuln` applicability (with `--cve-feed` rpmvercmp range matching), the `license` rollup, and `slsa` in-toto / SLSA provenance export
 - PURL / CPE / CAS identities kept strictly separate; JSON, DOT and SVG rendering; a CLI covering all of the above
 
 ### Partial
@@ -112,6 +116,8 @@ Graphviz is required for SVG rendering:
 ```bash
 dot -V
 ```
+
+Optional native tools unlock higher rungs and degrade gracefully when absent (every one is a no-op, never fatal): `dnf` / `rpmgraph` (rung 5 resolution, soname->package, `%{license}`), `rpmkeys` (GPG signature verification), `dot` (SVG), and AlmaLinux's [`alma-sbom`](https://github.com/AlmaLinux/alma-sbom) (`pipx install --system-site-packages git+https://github.com/AlmaLinux/alma-sbom.git`) to generate a real CycloneDX SBOM for a build. `alma-sbom` reads AlmaLinux's immudb anonymously (its wrapper ships default read credentials); the SBOMs it returns carry provenance (PURL/CPE/hash) but no per-component licenses, which is why licenses are read from the RPM evidence instead.
 
 ## CLI
 
@@ -575,10 +581,10 @@ Inspect local RPM metadata:
 albs-graph inspect-rpm ./bash.rpm --format json
 ```
 
-Import an SBOM (SPDX or CycloneDX JSON, e.g. the output of `alma-sbom`):
+Import an SBOM - the repo ships a real `alma-sbom` build SBOM for 57810 (SPDX or CycloneDX JSON):
 
 ```bash
-albs-graph import-sbom sbom.json --format dot
+albs-graph import-sbom examples/build-57810.cyclonedx.json --format dot
 ```
 
 Show a focused trust graph for one RPM artifact from a live ALBS build:
@@ -655,7 +661,8 @@ Consumer reports projected from the same graph: vulnerability applicability, lic
 
 ```bash
 albs-graph vuln --source CACHE --errata errata.json --verify-cpe cpe-dict.json --cve-feed cve-feed.json
-albs-graph license --source CACHE --sbom sbom.json --sbom-subject nginx-core
+albs-graph license --source CACHE --rpm-licenses --package nginx-core --arch x86_64   # real licenses (header + dnf), no SBOM
+albs-graph license --source CACHE --sbom sbom.json --sbom-subject nginx-core          # or roll up a CycloneDX SBOM that carries licenses
 albs-graph slsa nginx-core --source CACHE -o nginx-core.intoto.json
 ```
 

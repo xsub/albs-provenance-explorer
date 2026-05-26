@@ -124,7 +124,7 @@ RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed
 - ✅ Semantic version comparison in the reconciler (`VERSION_DRIFT` /
   `RANGE_VIOLATION` via rpmvercmp) and **GPG signature verification**
   (`coverage --verify-signatures`, real provenance verification now CAS is gone).
-- ✅ Offline tests for all of the above (173 tests; ruff + mypy --strict clean),
+- ✅ Offline tests for all of the above (178 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not specific to any
   single build.
 
@@ -135,8 +135,12 @@ host `dnf repoquery` resolved 6 runtime + 1 weak dep, soname resolution mapped
 payload ELF confirmed 6 `DT_NEEDED`, and the RPM GPG signature verified. The
 reconciler recorded 3 real `version_drift` conflicts where the el10 repos carry
 two builds each of `glibc` / `openssl-libs` / `zlib-ng-compat` - every claim
-kept, none discarded. No SBOM is fetched (AlmaLinux's live in credentialed
-immudb), so the demo runs no license rollup and fabricates nothing.
+kept, none discarded. Licenses are real too: `nginx-core`'s `BSD-2-Clause` comes
+from the RPM `License:` header tag, and `license --rpm-licenses` rolls up the
+subject + 6 runtime deps into 6 distinct licenses via `dnf repoquery %{license}`.
+AlmaLinux's `alma-sbom` generates a real CycloneDX build SBOM anonymously (457
+components, real PURL/CPE/hash, no licenses); the demo ingests it via
+`import-sbom` (433 package nodes). Nothing is fabricated.
 
 ---
 

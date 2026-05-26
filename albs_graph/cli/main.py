@@ -22,9 +22,13 @@ from albs_graph.adapters import (
 from albs_graph.adapters.albs import graph_from_build_metadata, load_synthetic_build_fixture
 from albs_graph.adapters.cas import verify_graph_cas
 from albs_graph.adapters.dnf import (
+    DnfUnavailable,
     build_soname_index,
     collect_soname_names,
     enrich_graph_with_dnf,
+    package_licenses,
+    parse_nevra,
+    repoquery,
     resolve_soname_claims,
 )
 from albs_graph.adapters.errata import attach_errata_file
@@ -42,7 +46,7 @@ from albs_graph.fixtures import build_synthetic_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
 from albs_graph.provenance.coverage import coverage_report
 from albs_graph.provenance.identify import identify_file
-from albs_graph.provenance.license import license_report
+from albs_graph.provenance.license import RpmLicenseRollup, license_report
 from albs_graph.dependency import Ecosystem, ResolverRequest, resolver_for
 from albs_graph.provenance.reconcile import (
     add_resolver_result,
@@ -648,6 +652,9 @@ def coverage_command(
             f"RPM header enrichment: {enrichment.headers_fetched}/{enrichment.artifacts_seen} "
             f"headers fetched, {enrichment.claims_added} dynamic-linkage claims added"
         )
+        if enrichment.licenses:
+            shown = ", ".join(f"{n}={lic}" for n, lic in sorted(enrichment.licenses.items())[:5])
+            console.print(f"RPM license (from header): {shown}")
         if verbose and enrichment.failures:
             for name in enrichment.failures[:20]:
                 console.print(f"  header fetch failed: {name}", markup=False)
@@ -1120,13 +1127,26 @@ def vuln_command(
     no_args_is_help=True,
 )
 def license_command(
-    sbom: Path = typer.Option(..., "--sbom", help="CycloneDX JSON SBOM to roll up."),
+    sbom: Optional[Path] = typer.Option(
+        None, "--sbom", help="CycloneDX JSON SBOM to roll up (license view from an SBOM)."
+    ),
+    rpm_licenses: bool = typer.Option(
+        False,
+        "--rpm-licenses",
+        help="Roll up real licenses from the RPM header + dnf (no SBOM; AlmaLinux host).",
+    ),
     build_id: Optional[int] = typer.Option(None, "--build-id", "-b", help="Fetch a live ALBS build."),
     source: Optional[Path] = typer.Option(None, "--source", "-s", help="Cached ALBS metadata JSON."),
     sbom_subject: Optional[str] = typer.Option(
         None, "--sbom-subject", help="Binary RPM the SBOM describes."
     ),
+    package: Optional[str] = typer.Option(
+        None, "--package", help="Binary RPM whose licenses + runtime deps to roll up (--rpm-licenses)."
+    ),
     arch: Optional[str] = typer.Option(None, "--arch"),
+    repo: Optional[str] = typer.Option(
+        None, "--repo", help="Restrict dnf license lookups to this repo (--rpm-licenses)."
+    ),
     output_format: str = typer.Option("summary", "--format", "-f", help="summary or json."),
     base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
     cache: Optional[Path] = typer.Option(None, "--cache"),
@@ -1149,6 +1169,16 @@ def license_command(
     else:
         raise ValueError("license requires --build-id or --source")
 
+    if rpm_licenses:
+        _rpm_license_rollup(
+            graph, package or sbom_subject, arch=arch, repo=repo,
+            output_format=output_format, verbose=verbose,
+        )
+        return
+
+    if sbom is None:
+        raise typer.BadParameter("license needs --sbom FILE (SBOM rollup) or --rpm-licenses")
+
     subject = (
         find_binary_rpm(graph, sbom_subject, arch=arch)
         if sbom_subject
@@ -1170,6 +1200,68 @@ def license_command(
         table.add_row("(no license)", str(len(report.unlicensed)))
     console.print(table)
     console.print(f"{report.distinct_licenses} distinct licenses; {len(report.unlicensed)} unlicensed")
+
+
+def _rpm_license_rollup(
+    graph: ProvenanceGraph,
+    subject_name: Optional[str],
+    *,
+    arch: Optional[str],
+    repo: Optional[str],
+    output_format: str,
+    verbose: bool,
+) -> None:
+    """Real license rollup for a subject RPM + its resolved runtime deps via dnf.
+
+    Every license here is observed (the RPM ``License:`` tag, via ``dnf
+    repoquery %{license}``); the subject's tag is corroborated by the header
+    read when present (``rpm_license`` node metadata). Nothing is fabricated.
+    """
+
+    subject = (
+        find_binary_rpm(graph, subject_name, arch=arch)
+        if subject_name
+        else select_default_binary_rpm(graph, arch=arch)
+    )
+    name = str(subject.metadata.get("name") or parse_nevra(subject.label)[0])
+
+    provider_names: set[str] = set()
+    licenses: dict[str, str] = {}
+    try:
+        for nevra in repoquery(name, relation="requires", resolve=True, repo=repo):
+            dep_name, _ = parse_nevra(nevra)
+            if dep_name:
+                provider_names.add(dep_name)
+        _log_step(verbose, f"dnf: {len(provider_names)} resolved runtime providers for {name}")
+        licenses = package_licenses(sorted({name} | provider_names), repo=repo)
+    except DnfUnavailable as exc:
+        console.print(f"[yellow]dnf unavailable:[/yellow] {exc}")
+
+    header_license = subject.metadata.get("rpm_license")
+    packages: dict[str, str] = {}
+    for pkg in sorted({name} | provider_names):
+        packages[pkg] = licenses.get(pkg, "")
+    if isinstance(header_license, str) and header_license:
+        packages[name] = header_license  # header tag is authoritative for the subject
+
+    rollup = RpmLicenseRollup(packages=packages, source="rpm header + dnf repoquery")
+
+    if output_format.lower() == "json":
+        sys.stdout.write(json.dumps(rollup.to_dict(), indent=2) + "\n")
+        return
+
+    table = Table(title=f"License rollup ({rollup.components} packages, from RPM header + dnf)")
+    table.add_column("License")
+    table.add_column("Packages", justify="right")
+    for license_id, count in rollup.licenses.items():
+        table.add_row(license_id, str(count))
+    if rollup.unlicensed:
+        table.add_row("(unknown)", str(len(rollup.unlicensed)))
+    console.print(table)
+    console.print(
+        f"{rollup.distinct_licenses} distinct licenses across {rollup.components} packages; "
+        f"{len(rollup.unlicensed)} unknown ({name} + {len(provider_names)} runtime deps)"
+    )
 
 
 @app.command(

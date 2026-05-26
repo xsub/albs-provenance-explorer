@@ -25,6 +25,7 @@ from dataclasses import dataclass
 _TAG_NAME = 1000
 _TAG_VERSION = 1001
 _TAG_RELEASE = 1002
+_TAG_LICENSE = 1014
 _TAG_ARCH = 1022
 _TAG_SOURCERPM = 1044
 _TAG_PROVIDENAME = 1047
@@ -75,6 +76,7 @@ class RpmHeader:
     header_bytes: int  # total lead+signature+main header size consumed
     payload_format: str | None = None  # e.g. "cpio"
     payload_compressor: str | None = None  # e.g. "zstd", "gzip", "xz"
+    license: str | None = None  # RPMTAG_LICENSE (1014), e.g. "BSD-2-Clause"
 
     @property
     def soname_requires(self) -> tuple[RpmDependency, ...]:
@@ -156,6 +158,7 @@ def parse_rpm_header(data: bytes) -> RpmHeader:
         header_bytes=end,
         payload_format=_as_string(tags.get(_TAG_PAYLOADFORMAT)),
         payload_compressor=_as_string(tags.get(_TAG_PAYLOADCOMPRESSOR)),
+        license=_as_string(tags.get(_TAG_LICENSE)),
     )
 
 

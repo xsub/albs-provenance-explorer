@@ -3,6 +3,7 @@ from typing import Any
 from albs_graph.adapters import dnf
 from albs_graph.adapters.dnf import (
     enrich_graph_with_dnf,
+    package_licenses,
     parse_nevra,
     repoquery,
     whatprovides,
@@ -91,3 +92,30 @@ def test_enrich_unavailable_does_not_break(monkeypatch: Any) -> None:
     assert result.available is False
     assert result.resolved_claims == 0
     assert graph.find_by_type(NodeType.DEPENDENCY_CLAIM) == []
+
+
+def test_package_licenses_maps_names_to_real_licenses() -> None:
+    # `dnf repoquery --qf '%{name}\t%{license}'`: license strings carry spaces
+    # but never tabs; multiple repo builds of one name dedupe to the first seen.
+    def runner(args: list[str]) -> tuple[int, str]:
+        assert "--qf" in args and "%{name}\t%{license}" in args
+        return 0, (
+            "nginx-core\tBSD-2-Clause\n"
+            "glibc\tLGPL-2.1-or-later AND LGPL-2.1-only\n"
+            "openssl-libs\tApache-2.0\n"
+            "glibc\tLGPL-2.1-or-later AND LGPL-2.1-only\n"  # duplicate build, ignored
+        )
+
+    licenses = package_licenses(["nginx-core", "glibc", "openssl-libs"], runner=runner)
+    assert licenses == {
+        "nginx-core": "BSD-2-Clause",
+        "glibc": "LGPL-2.1-or-later AND LGPL-2.1-only",
+        "openssl-libs": "Apache-2.0",
+    }
+
+
+def test_package_licenses_empty_names_skips_dnf() -> None:
+    def runner(_args: list[str]) -> tuple[int, str]:  # pragma: no cover - must not run
+        raise AssertionError("dnf should not be invoked for an empty name list")
+
+    assert package_licenses([], runner=runner) == {}

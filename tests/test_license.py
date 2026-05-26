@@ -1,6 +1,6 @@
 from albs_graph.adapters.sbom import cyclonedx_dependency_claims
 from albs_graph.model import Node, NodeType, ProvenanceGraph
-from albs_graph.provenance import add_dependency_claim, license_report
+from albs_graph.provenance import RpmLicenseRollup, add_dependency_claim, license_report
 
 SUBJECT = "rpm:app:x86_64"
 
@@ -54,3 +54,30 @@ def test_license_report_to_dict() -> None:
     assert data["components"] == 3
     assert data["licenses"]["Zlib"] == 1
     assert data["unlicensed"] == ["mystery"]
+
+
+def test_rpm_license_rollup_counts_and_unknowns() -> None:
+    # Real licenses from RPM headers + dnf, with one package whose license could
+    # not be determined (kept honest as "unknown", never guessed).
+    rollup = RpmLicenseRollup(
+        packages={
+            "nginx-core": "BSD-2-Clause",
+            "openssl-libs": "Apache-2.0",
+            "glibc": "LGPL-2.1-or-later",
+            "libxcrypt": "LGPL-2.1-or-later",
+            "mystery": "",
+        }
+    )
+    assert rollup.components == 5
+    assert rollup.licenses == {
+        "Apache-2.0": 1,
+        "BSD-2-Clause": 1,
+        "LGPL-2.1-or-later": 2,
+    }
+    assert rollup.distinct_licenses == 3
+    assert rollup.unlicensed == ["mystery"]
+    data = rollup.to_dict()
+    assert data["components"] == 5
+    assert data["licenses"]["LGPL-2.1-or-later"] == 2
+    assert data["unlicensed"] == ["mystery"]
+    assert data["packages"]["nginx-core"] == "BSD-2-Clause"

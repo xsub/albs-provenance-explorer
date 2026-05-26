@@ -16,7 +16,7 @@ and is intentionally out of scope here.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 
 from albs_graph.dependency import (
@@ -91,6 +91,9 @@ class HeaderEnrichmentResult:
     headers_fetched: int
     claims_added: int
     failures: tuple[str, ...]
+    # Real per-package licenses read from RPMTAG_LICENSE (1014) in the headers we
+    # fetched -- no extra cost, the header is already on the wire for the sonames.
+    licenses: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -98,6 +101,7 @@ class HeaderEnrichmentResult:
             "headers_fetched": self.headers_fetched,
             "claims_added": self.claims_added,
             "failures": list(self.failures),
+            "licenses": dict(self.licenses),
         }
 
 
@@ -192,6 +196,7 @@ def enrich_graph_with_rpm_headers(
     fetched = 0
     claims_added = 0
     failures: list[str] = []
+    licenses: dict[str, str] = {}
 
     for node in graph.find_by_type(NodeType.BINARY_RPM):
         filename = _artifact_filename(graph, node.id)
@@ -210,10 +215,14 @@ def enrich_graph_with_rpm_headers(
         fetched += 1
         if on_progress:
             on_progress(f"parsed header for {filename} from {used_url}")
+        if header.license:
+            # The header carries the real license; record it as a fact (rung 3).
+            node.metadata["rpm_license"] = header.license
+            licenses[header.name or filename] = header.license
         for claim in header_dependency_claims(node.id, header, include_packages=True):
             add_dependency_claim(graph, claim)
             claims_added += 1
-    return HeaderEnrichmentResult(artifacts, fetched, claims_added, tuple(failures))
+    return HeaderEnrichmentResult(artifacts, fetched, claims_added, tuple(failures), licenses)
 
 
 def vault_candidate_urls(

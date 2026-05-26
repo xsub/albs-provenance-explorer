@@ -103,6 +103,37 @@ def whatprovides(capability: str, *, runner: Runner | None = None) -> list[str]:
     return _lines(_run(["dnf", "repoquery", "--quiet", "--whatprovides", capability], runner))
 
 
+def package_licenses(
+    names: list[str],
+    *,
+    repo: str | None = None,
+    runner: Runner | None = None,
+) -> dict[str, str]:
+    """Map package names to their license string via ``dnf repoquery``.
+
+    Uses ``--qf '%{name}\\t%{license}'`` -- license strings carry spaces (e.g.
+    ``LGPL-2.1-or-later AND ...``) but never tabs, so a tab separator is safe.
+    Repos may carry several builds of one name; the first license seen wins
+    (license rarely changes across rebuilds of the same NEVR family).
+    """
+
+    if not names:
+        return {}
+    args = ["dnf", "repoquery", "--quiet", "--qf", "%{name}\t%{license}"]
+    if repo:
+        args += ["--repo", repo]
+    args += names
+    licenses: dict[str, str] = {}
+    for line in _lines(_run(args, runner)):
+        if "\t" not in line:
+            continue
+        name, lic = line.split("\t", 1)
+        name, lic = name.strip(), lic.strip()
+        if name and lic and name not in licenses:
+            licenses[name] = lic
+    return licenses
+
+
 def parse_nevra(token: str) -> tuple[str, str | None]:
     """Split a NEVRA / capability token into (name, version|None)."""
 

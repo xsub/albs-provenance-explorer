@@ -68,6 +68,7 @@ def _build_rpm(
     version: str = "1.20.1",
     release: str = "16.el9_4.1",
     arch: str = "x86_64",
+    license: str = "BSD-2-Clause",
     requires: list[tuple[str, int, str]] | None = None,
 ) -> bytes:
     reqs = requires if requires is not None else _REQUIRES
@@ -83,6 +84,7 @@ def _build_rpm(
             (1000, _STRING, name),
             (1001, _STRING, version),
             (1002, _STRING, release),
+            (1014, _STRING, license),  # RPMTAG_LICENSE
             (1022, _STRING, arch),
             (1049, _STRING_ARRAY, names),
             (1048, _INT32, flags),
@@ -115,6 +117,7 @@ def test_parse_rpm_header_extracts_nevra_and_requires() -> None:
     assert header.name == "nginx-core"
     assert header.version == "1.20.1"
     assert header.arch == "x86_64"
+    assert header.license == "BSD-2-Clause"  # RPMTAG_LICENSE (1014)
     sonames = {dep.soname for dep in header.soname_requires}
     assert sonames == {"libc.so.6", "libssl.so.3"}
     # rpmlib/file/rich capabilities are present but not classified as sonames.
@@ -223,6 +226,28 @@ def test_enrich_graph_adds_dynamic_linkage_claims() -> None:
     soname_nodes = [n for n in claim_nodes if n.metadata.get("evidence") == "rpm_header_soname"]
     assert len(soname_nodes) == 2
     assert all(n.metadata.get("linkage") == "dynamic" for n in soname_nodes)
+
+
+def test_enrich_graph_captures_header_license() -> None:
+    # The header carries the real license (RPMTAG_LICENSE); reading it costs
+    # nothing extra because the header is already on the wire for the sonames.
+    graph = ProvenanceGraph()
+    graph.add_node(
+        Node(
+            "rpm:nginx-core",
+            NodeType.BINARY_RPM,
+            "nginx-core-1.20.1-16.el9_4.1.x86_64.rpm",
+            {"name": "nginx-core", "filename": "nginx-core-1.20.1-16.el9_4.1.x86_64.rpm"},
+        )
+    )
+    result = enrich_graph_with_rpm_headers(
+        graph,
+        fetch=_range_fetcher(_build_rpm(license="MIT AND BSD-2-Clause")),
+        url_resolver=lambda _filename: ["http://example/nginx-core.rpm"],
+    )
+
+    assert result.licenses == {"nginx-core": "MIT AND BSD-2-Clause"}
+    assert graph.nodes["rpm:nginx-core"].metadata.get("rpm_license") == "MIT AND BSD-2-Clause"
 
 
 def test_vault_candidate_urls_reconstructs_point_release_path() -> None:

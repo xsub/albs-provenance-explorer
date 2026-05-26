@@ -34,6 +34,48 @@ class LicenseReport:
         }
 
 
+@dataclass(frozen=True)
+class RpmLicenseRollup:
+    """License rollup built from real RPM evidence rather than an SBOM.
+
+    ``packages`` maps a package name to its license string (the ``License:`` RPM
+    header tag, read from a range-fetched header or ``dnf repoquery``); an empty
+    string means the license could not be determined. This is the rollup the
+    tool can produce with no SBOM at all - everything here is observed, not
+    fabricated.
+    """
+
+    packages: dict[str, str]
+    source: str = "rpm header + dnf"
+
+    @property
+    def components(self) -> int:
+        return len(self.packages)
+
+    @property
+    def licenses(self) -> dict[str, int]:
+        counts: Counter[str] = Counter(lic for lic in self.packages.values() if lic)
+        return dict(sorted(counts.items()))
+
+    @property
+    def distinct_licenses(self) -> int:
+        return len(self.licenses)
+
+    @property
+    def unlicensed(self) -> list[str]:
+        return sorted(name for name, lic in self.packages.items() if not lic)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "source": self.source,
+            "components": self.components,
+            "distinct_licenses": self.distinct_licenses,
+            "licenses": self.licenses,
+            "packages": dict(sorted(self.packages.items())),
+            "unlicensed": self.unlicensed,
+        }
+
+
 def license_report(graph: ProvenanceGraph) -> LicenseReport:
     """Roll up component licenses from SBOM dependency claims in the graph."""
 

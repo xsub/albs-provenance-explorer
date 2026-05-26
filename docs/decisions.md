@@ -895,6 +895,46 @@ code change; test count unchanged.
 
 ---
 
+## D41 - Real licenses from the RPM header + dnf; real `alma-sbom` SBOM
+
+D40 dropped the fabricated SBOM. The follow-up question was whether a *real*
+license rollup is reachable. Findings (verified on an el10 host):
+
+- AlmaLinux's [`alma-sbom`](https://github.com/AlmaLinux/alma-sbom) installs
+  (`pipx --system-site-packages`) and generates a real CycloneDX **build** SBOM
+  **anonymously** - immudb_wrapper ships default read credentials, no API key
+  needed. This corrects D40's assumption (and the limitations note) that there is
+  "no anonymous read path". The SBOM has 457 components with real PURLs, CPEs,
+  SHA-256 hashes and ALBS build properties.
+- But those components carry **no license field** (build SBOM: 0 licensed;
+  `package` SBOM: 0 components), so an SBOM license rollup is empty. The license
+  that *is* determinable lives in the RPM `License:` header tag.
+
+So licenses now come from RPM evidence, not the SBOM:
+
+- `rpm_header.py` parses `RPMTAG_LICENSE` (1014); `enrich_graph_with_rpm_headers`
+  records it on the binary-RPM node (`rpm_license`) and in its result, at no
+  extra cost (the header is already range-read for the sonames). `coverage`
+  prints `RPM license (from header): nginx-core=BSD-2-Clause`.
+- `dnf.package_licenses` runs `dnf repoquery --qf '%{name}\t%{license}'`;
+  `license --rpm-licenses` rolls up a subject + its resolved runtime deps into a
+  real multi-package rollup (nginx-core: 7 packages, 6 distinct licenses) - no
+  SBOM required. `RpmLicenseRollup` (pure data, in `provenance/license.py`) keeps
+  the layering rule (provenance imports no adapters; the CLI orchestrates).
+- The real `alma-sbom` build SBOM is committed at
+  `examples/build-57810.cyclonedx.json` and ingested by the demo via
+  `import-sbom` (433 package nodes) for its provenance data. Importing a real
+  multi-arch SBOM exposed a latent bug: the component node id dropped the arch,
+  so arch variants of one NEVR collided. `sbom.py` now keeps the arch in the id
+  (arch-variant RPMs are distinct artifacts) and dedupes exact repeats (a noarch
+  built per arch task), so multi-arch SBOMs import cleanly.
+
+`alma-sbom` is documented as an optional tool. Tests +5 (header license, header
+enrichment license capture, `package_licenses` x2, `RpmLicenseRollup`, multi-arch
+import); suite now 178.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
