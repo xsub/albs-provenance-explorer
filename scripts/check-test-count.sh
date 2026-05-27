@@ -6,8 +6,11 @@
 # Used as a pre-commit hook (see CLAUDE.md) and runnable standalone:
 #   bash scripts/check-test-count.sh
 #
-# Convention: a bare "N tests" figure in the docs always means the FULL suite.
-# Mention a subset some other way (e.g. "N test cases for X").
+# Convention: a bare "N tests" figure in the docs always means the FULL suite
+# (a current-state claim) and is cross-checked here. Mention a subset some other
+# way (e.g. "N test cases for X"). decisions.md's "Suite now N" lines are
+# point-in-time records of the count when each decision landed, so they are
+# deliberately NOT cross-checked (they are history, not a current-state claim).
 #
 # Degrades gracefully: if pytest cannot collect (dev env not active), it skips
 # rather than blocking. Bypass once with:  SKIP_TESTCOUNT=1 git commit ...

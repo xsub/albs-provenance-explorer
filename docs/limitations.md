@@ -103,10 +103,11 @@ adapters are tested offline with injected runners).
   `DependencyScope.OPTIONAL` (the precise relation is kept in the claim's raw).
   RPM also has `supplements`/`enhances` (reverse weak deps) which are not yet
   emitted as claims.
-- **`--whatprovides` is not auto-wired into reconciliation.** The function
-  exists (and resolves a soname to its providing package), but header/ELF soname
-  claims are not yet rewritten to the providing package, so the soname↔package
-  cross-validation remains manual. That is the next step (see `plan.md`).
+- **`--whatprovides` resolves sonames to providers.** `coverage
+  --resolve-sonames` runs it (and `--provides-map FILE` is the offline
+  equivalent), so a header/ELF soname gains a `soname_provider` package claim
+  that corroborates the SBOM/dnf claims (see "Soname → package resolution" below).
+  Remaining: the *first* provider wins when several supply a soname.
 
 ### `dnf repograph` / `rpmgraph` caveats
 - **Host tools, ingested via dot.** The tested path is `--repograph-dot FILE`
@@ -292,13 +293,3 @@ by serving a hand-built RPM byte structure through a fake range fetcher, so the
 parser, incremental fetch loop, and claim generation are covered - but **live
 vault/mirror behavior** (redirects, `Accept-Ranges` quirks, 404s, throttling) is
 only validated manually, not in CI.
-
----
-
-## Process note: branch history
-
-All work is on branch `max`. A concurrent Claude Desktop session (from an earlier
-`/desktop` transfer) interleaved unrelated README/demo commits between the two
-feature commits (`1339b8e`, `f5b6bdd`). History was intentionally **not** rebased
-to avoid clobbering that concurrent work; the feature commits remain intact and
-`main` is untouched.

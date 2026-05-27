@@ -1337,6 +1337,36 @@ Suite now 218.
 
 ---
 
+## D54 - Docs pruning: current gaps only, point-in-time vs current-state counts
+
+From the review's last item: some docs still read as partially historical after
+the F1-F8 fixes and the architecture refactors. Pruned to match reality:
+
+- **plan.md roadmap.** Item 1's "remaining follow-up: extract CPE into identity
+  candidates" is done (a build SBOM's vendor CPE and NVD `--verify-cpe` both move
+  the `identity` axis off 0.00), and item 6's "CPE verification adapter" is
+  implemented (NVD dictionary match flips `verified`; ambiguous vendors stay
+  uncounted; the AlmaLinux backport case is a `RANGE_VIOLATION`). Both are now
+  marked done, with only the genuine residue (the dictionary is supplied, not
+  fetched) left as remaining.
+- **limitations.md is current gaps only.** The "`--whatprovides` is not auto-wired
+  into reconciliation" caveat contradicted the "Soname → package resolution
+  (implemented)" section three paragraphs below it -- `coverage --resolve-sonames`
+  wires exactly that -- so it is corrected. The "Process note: branch history"
+  section (a one-time note about an old two-commit history) was removed: it is not
+  a current gap.
+- **Test-count convention made explicit.** `scripts/check-test-count.sh` now
+  documents that a bare "N tests" figure is a current-state claim (cross-checked
+  against `pytest --collect-only`), whereas decisions.md's "Suite now N" lines are
+  point-in-time records of the count when each decision landed and are
+  deliberately *not* cross-checked. A general automated check for stale prose
+  "done/remaining" claims is not cleanly feasible; the most drift-prone figure
+  (the current-state test count) is hook-guarded, the rest is review.
+
+Docs/comment only; no code or test change (suite unchanged at 218).
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

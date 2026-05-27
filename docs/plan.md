@@ -160,8 +160,9 @@ Ordered by value-per-effort and tractability under public access.
 1. ✅ **CycloneDX-from-file SBOM claims** and ✅ **soname → providing-package
    resolution** (`coverage --resolve-sonames` / `--provides-map`): header/ELF
    sonames (`libz.so.1`) now resolve to package claims (`zlib`) that corroborate
-   SBOM/dnf/repograph claims. Remaining follow-up: extract the root component's
-   CPE into the subject's identity candidates (to move the `identity` axis).
+   SBOM/dnf/repograph claims. The identity-axis follow-up is also done: a build
+   SBOM's vendor CPE and NVD `--verify-cpe` both populate the subject's identity
+   (item 6).
 2. ✅ **CAS verification recorder.** Done as opt-in `--use-cas`
    (`adapters/cas.py`): wraps `cas authenticate --signerID
    cloud-infra@almalinux.org --hash <cas_hash>` when present and flips
@@ -187,11 +188,14 @@ Ordered by value-per-effort and tractability under public access.
    **pip/uv**, **Maven/Gradle**, **npm** the same way; feed repograph results
    through `ResolverResult` rather than direct dot ingest; sandbox + cache on
    `(ecosystem, manifest, lockfile, context)`.
-6. **CPE verification adapter.** Match `cpe_candidates` against the NVD CPE
-   dictionary; populate `cpe` / flip `verified` only on confirmed match. Moves
-   `identity` off 0.00. Handle the AlmaLinux backport case explicitly (shipped
-   version below the upstream range but patched → `RANGE_VIOLATION`, not
-   "vulnerable").
+6. ✅ **CPE verification adapter.** `coverage --verify-cpe FILE` matches
+   `cpe_candidates` against a supplied NVD cpe:2.3 dictionary and populates `cpe`
+   / flips `verified` only on a confirmed match (a product mapping to several
+   vendors stays `ambiguous_vendor`, uncounted); a vendor build SBOM sets
+   `vendor_asserted` CPEs. Either lifts `identity` off 0.00, and the AlmaLinux
+   backport case is handled (shipped version below the upstream range but patched
+   → `RANGE_VIOLATION`, not "vulnerable"). Remaining: the dictionary is supplied,
+   not fetched live from NVD.
 
 ### Scale
 7. **Thousands-of-apps scale.** The dependency **universe** is built,
