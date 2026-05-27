@@ -26,25 +26,17 @@ from albs_graph.adapters.albs import (
     load_synthetic_build_fixture,
     source_ref_for_package,
 )
-from albs_graph.adapters.cas import verify_graph_cas
 from albs_graph.adapters.dnf import (
     DnfUnavailable,
-    build_soname_index,
-    collect_soname_names,
-    enrich_graph_with_dnf,
     package_licenses,
     parse_nevra,
     repoquery,
-    resolve_soname_claims,
 )
 from albs_graph.adapters.errata import attach_errata_file
-from albs_graph.adapters.pylang import attach_python_imports, attach_python_requirements
 from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
-from albs_graph.adapters.rpmsig import verify_graph_signatures
 from albs_graph.adapters.rpmgraph import (
     RpmgraphUnavailable,
-    enrich_graph_with_rpmgraph,
     run_repograph,
 )
 from albs_graph.adapters.sbom import (
@@ -54,6 +46,7 @@ from albs_graph.adapters.sbom import (
 )
 from albs_graph.fixtures import build_synthetic_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
+from albs_graph.pipeline import AnalysisPipeline, RunSpec
 from albs_graph.provenance.coverage import coverage_report, identity_strength
 from albs_graph.provenance.identify import identify_file
 from albs_graph.provenance.license import RpmLicenseRollup, license_report
@@ -503,19 +496,10 @@ def coverage_command(
     else:
         raise ValueError("coverage requires --build-id or --source")
     _log_graph_stats(verbose, graph)
-    selector = make_binary_rpm_selector(package=package, arch=arch, all_archs=all_archs)
     _ = all_packages  # default behavior; flag documents intent and pairs with --all-archs
 
-    build_sbom_result = None
-    if build_sbom is not None:
-        _log_step(verbose, f"Enriching the build's RPMs from build SBOM {build_sbom}")
-        # No selector: a build SBOM describes every RPM, so enrich the whole build
-        # (the identity axis is measured across all binaries, not just the subject).
-        build_sbom_result = enrich_graph_with_build_sbom(
-            graph, build_sbom, on_progress=_progress(verbose)
-        )
-
-    rpmgraph_result = None
+    # The repograph dot is resolved here (file read / live run + its warning are
+    # I/O and presentation); the rest of the enrichment flow is the pipeline's job.
     dot_text: str | None = None
     if repograph_dot is not None:
         _log_step(verbose, f"Ingesting dnf repograph/rpmgraph dot from {repograph_dot}")
@@ -526,105 +510,50 @@ def coverage_command(
             dot_text = run_repograph(repograph)
         except RpmgraphUnavailable as exc:
             console.print(f"[yellow]repograph unavailable:[/yellow] {exc}")
-    if dot_text is not None:
-        rpmgraph_result = enrich_graph_with_rpmgraph(
-            graph, dot_text, evidence="repograph", node_selector=selector
-        )
 
-    dnf_result = None
-    if use_dnf:
-        _log_step(verbose, "Resolving dependencies per package with dnf repoquery")
-        dnf_result = enrich_graph_with_dnf(
-            graph, node_selector=selector, limit=limit, on_progress=_progress(verbose)
-        )
+    spec = RunSpec(
+        package=package,
+        arch=arch,
+        all_archs=all_archs,
+        limit=limit,
+        build_sbom=build_sbom,
+        repograph_dot_text=dot_text,
+        use_dnf=use_dnf,
+        sbom=sbom,
+        sbom_subject=sbom_subject,
+        requirements=requirements,
+        requirements_subject=requirements_subject,
+        imports=imports,
+        imports_subject=imports_subject,
+        module_map=module_map,
+        errata=errata,
+        errata_subject=errata_subject,
+        verify_cpe=verify_cpe,
+        with_rpm_headers=with_rpm_headers,
+        with_rpm_payloads=with_rpm_payloads,
+        resolve_sonames=resolve_sonames,
+        provides_map=provides_map,
+        use_cas=use_cas,
+        verify_signatures=verify_signatures,
+    )
+    result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
 
-    sbom_result = None
-    if sbom is not None:
-        subject_node = (
-            find_binary_rpm(graph, sbom_subject, arch=arch)
-            if sbom_subject
-            else select_default_binary_rpm(graph, arch=arch)
-        )
-        _log_step(verbose, f"Attaching CycloneDX SBOM {sbom} to {subject_node.id}")
-        sbom_result = attach_cyclonedx_sbom_claims(graph, subject_node.id, sbom)
-
-    python_result = None
-    if requirements is not None:
-        req_subject = (
-            find_binary_rpm(graph, requirements_subject, arch=arch)
-            if requirements_subject
-            else select_default_binary_rpm(graph, arch=arch)
-        )
-        _log_step(verbose, f"Attaching Python requirements {requirements} to {req_subject.id}")
-        python_result = attach_python_requirements(graph, req_subject.id, requirements)
-
-    import_result = None
-    if imports is not None:
-        imports_node = (
-            find_binary_rpm(graph, imports_subject, arch=arch)
-            if imports_subject
-            else select_default_binary_rpm(graph, arch=arch)
-        )
-        mapping = json.loads(module_map.read_text(encoding="utf-8")) if module_map else None
-        _log_step(verbose, f"Scanning Python imports in {imports} for {imports_node.id}")
-        import_result = attach_python_imports(graph, imports_node.id, imports, mapping=mapping)
-
-    errata_id = None
-    if errata is not None:
-        errata_node_subject = (
-            find_binary_rpm(graph, errata_subject, arch=arch)
-            if errata_subject
-            else select_default_binary_rpm(graph, arch=arch)
-        )
-        _log_step(verbose, f"Attaching errata {errata} to {errata_node_subject.id}")
-        errata_id = attach_errata_file(graph, errata_node_subject.id, errata)
-
-    cpe_result = None
-    if verify_cpe is not None:
-        _log_step(verbose, f"Verifying CPE candidates against {verify_cpe}")
-        cpe_result = verify_graph_cpe(
-            graph, CpeDictionary.from_file(verify_cpe), node_selector=selector
-        )
-
-    enrichment = None
-    if with_rpm_headers:
-        _log_step(verbose, "Range-reading RPM headers for dynamic-linkage claims")
-        enrichment = enrich_graph_with_rpm_headers(
-            graph, limit=limit, on_progress=_progress(verbose), node_selector=selector
-        )
-
-    payload_result = None
-    if with_rpm_payloads:
-        _log_step(verbose, "Downloading RPM payloads and parsing ELF objects (rung 4)")
-        payload_result = enrich_graph_with_rpm_payloads(
-            graph, limit=limit, on_progress=_progress(verbose), node_selector=selector
-        )
-
-    soname_result = None
-    if provides_map is not None or resolve_sonames:
-        if provides_map is not None:
-            _log_step(verbose, f"Resolving sonames from provides map {provides_map}")
-            index = json.loads(provides_map.read_text(encoding="utf-8"))
-        else:
-            _log_step(verbose, "Resolving sonames to packages via dnf --whatprovides")
-            index = build_soname_index(collect_soname_names(graph))
-        soname_result = resolve_soname_claims(graph, index)
-
-    cas_report = None
-    if use_cas:
-        _log_step(verbose, "Verifying CAS attestation hashes (opt-in)")
-        cas_report = verify_graph_cas(graph, use_cas=True)
-
-    signature_report = None
-    if verify_signatures:
-        _log_step(verbose, "Verifying RPM GPG signatures (download + rpmkeys --checksig)")
-        signature_report = verify_graph_signatures(
-            graph, node_selector=selector, limit=limit
-        )
-
-    _log_step(verbose, "Reconciling dependency claims")
-    reconciliation = reconcile_dependency_claims(graph)
+    graph = result.graph
+    reconciliation = result.reconciliation
     report = coverage_report(graph)
+    build_sbom_result = result.result("build_sbom")
+    rpmgraph_result = result.result("repograph")
+    dnf_result = result.result("dnf")
+    sbom_result = result.result("sbom")
+    python_result = result.result("python")
+    import_result = result.result("python_imports")
+    errata_id = result.result("errata")
+    cpe_result = result.result("verify_cpe")
+    enrichment = result.result("rpm_headers")
+    payload_result = result.result("rpm_payloads")
+    soname_result = result.result("soname")
+    cas_report = result.result("cas")
+    signature_report = result.result("signatures")
 
     if output_format.lower() == "json":
         payload: dict[str, object] = {

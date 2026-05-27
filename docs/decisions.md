@@ -1433,6 +1433,44 @@ through `reconcile_dependency_claims`). Suite now 227.
 
 ---
 
+## D57 - Analysis pipeline extraction (architecture hardening; coverage first)
+
+From the review's top item: `coverage` / `identify` / `trust-path` / `vuln` /
+`license` each re-encoded the same flow inline -- load a graph, run a chosen
+subset of enrichments in a fixed order, reconcile, render. Long, and (since the
+CLI commands have almost no test coverage -- only `test_cli_help`) the *wiring*
+was untested.
+
+Decision: factor the orchestration into `albs_graph/pipeline.py`:
+
+- `RunSpec` -- the resolved inputs for one run (which enrichments + options).
+- `EnrichmentStep` (Protocol) + 13 step objects, each a thin wrapper over one
+  `enrich_graph_with_*` / `attach_*` adapter call plus its guard. `DEFAULT_STEPS`
+  is the registry in the **exact historical coverage order** (build_sbom before
+  verify_cpe; everything else only adds claims the final reconcile groups), so
+  behaviour is preserved; a caller can pass a custom subset.
+- `AnalysisPipeline.run(spec, graph, *, on_progress=, dry_run=)` runs the
+  applicable steps against a `RecordingGraph`, reconciles, and returns a
+  `PipelineResult` (enriched graph, each step's result by name, the
+  reconciliation, and the cumulative `EvidencePatch`). `dry_run=True` runs against
+  `graph.copy()`, so the source graph is untouched -- a "what would this change?"
+  run, the synthesis with D55.
+
+Coverage migrated: `coverage_command` builds a `RunSpec`, runs the pipeline, and
+aliases `result.result(name)` back to the existing render variables, so the
+(unchanged) rendering block keeps working. The repograph dot resolution and its
+console warning stay in the command (I/O + presentation, not enrichment).
+
+Verification, given the thin CLI tests: a **golden-output check** -- `coverage`
+on the synthetic fixture runs fully offline, and its `summary` and `json` output
+is byte-for-byte identical before and after the migration. New pipeline unit
+tests (5) cover the orchestration the CLI lacked: applicable-step running +
+record + reconcile, dry-run isolation, non-applicable skipping, `DEFAULT_STEPS`
+order, and per-step gating. `identify` / `trust-path` / `vuln` / `license` migrate
+in follow-ups. Tests +5. Suite now 232.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
