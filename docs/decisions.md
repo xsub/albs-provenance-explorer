@@ -1308,6 +1308,35 @@ out-edges only). Suite now 216.
 
 ---
 
+## D53 - First-class build/task model (`BuildTaskRef` / `BuildSourceRef`)
+
+From the review: parsed ALBS metadata leaned on a *representative* source
+(`AlbsBuildMetadata.source_repository` / `commit`) plus targeted re-derivation.
+The per-task source attribution -- SRPM filename > git ref > repo url > build
+package -- was re-implemented in two places: `source_ref_for_package` (the F6
+per-source selector) and the graph builder's task loop, each re-parsing
+`build.raw["tasks"]` on its own.
+
+Decision: parse it once into typed collections. `BuildTaskRef` is the per-task
+view (task id, arch, resolved `source_package` / `source_repo` / `source_commit`
+/ `source_cas_hash`, distro, plus `raw` / `ref` for the long tail);
+`build_task_refs(build)` produces them. `BuildSourceRef` aggregates a source
+package's tasks (repo/commit from the first task, accumulated arches + task ids);
+`build_source_refs(build)` produces the by-package map. `source_ref_for_package`
+is now a one-line lookup in that map, and the graph builder iterates
+`build_task_refs` and reads `task.source_package` / `.source_repo` / `.source_commit`
+-- its node-building body is unchanged (the loop locals are sourced from the typed
+ref, with `raw` / `ref` covering the remaining fields), so the graph is
+byte-for-byte identical. The fixture tests (trust path, artifact inventory, build
+analysis, metadata) are the guard.
+
+Node ids stay ALBS-structural (artifact id / filename), not derived from the typed
+ref. Tests +2 (`build_task_refs` exposes typed per-task source incl. distro;
+`build_source_refs` groups tasks by package with accumulated arches/task ids).
+Suite now 218.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

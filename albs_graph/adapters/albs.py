@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import urlparse
 from typing import Any, Callable
@@ -26,6 +26,119 @@ class AlbsBuildMetadata:
     release_repository: str | None
     arch: str | None
     raw: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class BuildTaskRef:
+    """One ALBS build task, with its source attribution resolved once.
+
+    A batch build has many tasks, each building one source package on one arch.
+    The top-level ``AlbsBuildMetadata`` describes only a representative source;
+    this is the typed per-task view that the graph builder and
+    ``source_ref_for_package`` both consume, so the source-attribution parsing
+    (SRPM name > git ref > repo url > build package) lives in exactly one place
+    instead of being re-derived (and drifting) at each call site. ``raw`` / ``ref``
+    keep the original dicts for the long tail of fields.
+    """
+
+    task_id: Any
+    arch: str
+    source_package: str
+    source_repo: str
+    source_commit: str
+    source_cas_hash: str | None
+    git_ref: Any
+    srpm_name: str | None
+    platform: dict[str, Any]
+    platform_name: str
+    distro: str | None
+    ref: dict[str, Any]
+    artifacts: tuple[dict[str, Any], ...]
+    raw: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class BuildSourceRef:
+    """One source package in a (possibly multi-source) build, with its tasks."""
+
+    source_package: str
+    source_repo: str
+    source_commit: str
+    source_cas_hash: str | None
+    arches: tuple[str, ...]
+    task_ids: tuple[Any, ...]
+
+
+def build_task_refs(build: AlbsBuildMetadata) -> list[BuildTaskRef]:
+    """Typed view of every build task, with source attribution resolved once.
+
+    The SRPM filename is authoritative for the package name (a git ref/url can be
+    a non-authoritative mirror); a ref-less task falls back to the build-level
+    source, so single-package builds are unchanged. (decisions.md D36, D53)
+    """
+
+    refs: list[BuildTaskRef] = []
+    for task in build.raw.get("tasks", []):
+        ref = task.get("ref") or {}
+        platform = task.get("platform") or {}
+        platform_name = str(platform.get("name") or "")
+        srpm_name = _task_srpm_name(task)
+        source_repo = str(ref.get("url") or build.source_repository or "")
+        source_commit = str(ref.get("git_commit_hash") or build.commit or "")
+        source_package = (
+            (_source_name_from_rpm_filename(srpm_name) if srpm_name else None)
+            or _source_name_from_git_ref(str(ref.get("git_ref") or ""))
+            or (_source_package_name(source_repo) if source_repo else None)
+            or build.package
+        )
+        refs.append(
+            BuildTaskRef(
+                task_id=task.get("id"),
+                arch=str(task.get("arch") or "unknown"),
+                source_package=source_package,
+                source_repo=source_repo,
+                source_commit=source_commit,
+                source_cas_hash=task.get("alma_commit_cas_hash") or build.source_cas_hash,
+                git_ref=ref.get("git_ref"),
+                srpm_name=srpm_name,
+                platform=platform,
+                platform_name=platform_name,
+                distro=_distro_from_platform(platform_name),
+                ref=ref,
+                artifacts=tuple(a for a in task.get("artifacts", []) if isinstance(a, dict)),
+                raw=task,
+            )
+        )
+    return refs
+
+
+def build_source_refs(build: AlbsBuildMetadata) -> dict[str, BuildSourceRef]:
+    """Typed view of each source package in the build, keyed by package name.
+
+    The first task seen for a package fixes its repo/commit/cas (matching the
+    historical "first matching task wins" behaviour); later tasks for the same
+    package only extend the arch / task-id lists.
+    """
+
+    by_package: dict[str, BuildSourceRef] = {}
+    for task in build_task_refs(build):
+        existing = by_package.get(task.source_package)
+        if existing is None:
+            by_package[task.source_package] = BuildSourceRef(
+                source_package=task.source_package,
+                source_repo=task.source_repo,
+                source_commit=task.source_commit,
+                source_cas_hash=task.source_cas_hash,
+                arches=(task.arch,),
+                task_ids=(task.task_id,),
+            )
+        else:
+            by_package[task.source_package] = replace(
+                existing,
+                arches=existing.arches + (task.arch,),
+                task_ids=existing.task_ids + (task.task_id,),
+            )
+    return by_package
 
 
 def load_synthetic_build_fixture(path: str | Path) -> ProvenanceGraph:
@@ -167,30 +280,20 @@ def parse_build_page(build_id: str, html: str, url: str) -> AlbsBuildMetadata:
 
 
 def source_ref_for_package(build: AlbsBuildMetadata, package: str) -> tuple[str, str] | None:
-    """``(repo, commit)`` of the task whose source package matches ``package``.
+    """``(repo, commit)`` of the source package ``package`` in the build.
 
     A batch build has many sources; the top-level
     ``AlbsBuildMetadata.source_repository``/``commit`` describe only the
-    representative one. This resolves a chosen package's own source ref from the
-    per-task ``ref`` (same attribution as the graph builder), so checkout and
-    source-evidence can target any source in the batch. Returns ``None`` when no
-    task builds that package.
+    representative one. This looks the chosen package up in the typed
+    ``build_source_refs`` view (the same attribution the graph builder uses), so
+    checkout and source-evidence can target any source in the batch. Returns
+    ``None`` when no task builds that package.
     """
 
-    for task in build.raw.get("tasks", []):
-        ref = task.get("ref") or {}
-        srpm = _task_srpm_name(task)
-        task_pkg = (
-            (_source_name_from_rpm_filename(srpm) if srpm else None)
-            or _source_name_from_git_ref(str(ref.get("git_ref") or ""))
-            or (_source_package_name(str(ref.get("url") or "")) if ref.get("url") else None)
-        )
-        if task_pkg == package:
-            return (
-                str(ref.get("url") or build.source_repository),
-                str(ref.get("git_commit_hash") or build.commit),
-            )
-    return None
+    source = build_source_refs(build).get(package)
+    if source is None:
+        return None
+    return (source.source_repo, source.source_commit)
 
 
 def graph_from_build_metadata(build: AlbsBuildMetadata) -> ProvenanceGraph:
@@ -349,28 +452,21 @@ def _graph_from_albs_api_build(build: AlbsBuildMetadata) -> ProvenanceGraph:
         )
 
     signature_nodes = _add_signature_nodes(graph, build.raw)
-    for task in build.raw.get("tasks", []):
-        task_id = f"build:albs-task:{task['id']}"
-        arch = str(task.get("arch") or "unknown")
-        platform = task.get("platform") or {}
-        ref = task.get("ref") or {}
-        platform_name = str(platform.get("name") or "")
-        distro = _distro_from_platform(platform_name)
-        # Each ALBS task builds one source package; attribute the source per task
-        # from its own ref so a multi-source (batch) build is not collapsed into a
-        # single source_package node. A ref-less task falls back to the build-level
-        # source, so single-package builds are unchanged. (decisions.md D36)
-        task_repo = str(ref.get("url") or build.source_repository or "")
-        task_commit = str(ref.get("git_commit_hash") or build.commit or "")
-        srpm_name = _task_srpm_name(task)
-        # The SRPM filename is authoritative for the package name (the git ref/url
-        # can be a non-authoritative mirror), matching _package_from_build_metadata.
-        task_pkg = (
-            (_source_name_from_rpm_filename(srpm_name) if srpm_name else None)
-            or _source_name_from_git_ref(str(ref.get("git_ref") or ""))
-            or (_source_package_name(task_repo) if task_repo else None)
-            or build.package
-        )
+    # Source attribution is resolved once into typed BuildTaskRefs (shared with
+    # source_ref_for_package); the loop reads task.source_package / repo / commit
+    # rather than re-deriving them here. raw / ref keep the remaining per-task
+    # fields the node building below still reads. (decisions.md D36, D53)
+    for task_ref in build_task_refs(build):
+        task = task_ref.raw
+        ref = task_ref.ref
+        task_id = f"build:albs-task:{task_ref.task_id}"
+        arch = task_ref.arch
+        platform = task_ref.platform
+        distro = task_ref.distro
+        task_repo = task_ref.source_repo
+        task_commit = task_ref.source_commit
+        srpm_name = task_ref.srpm_name
+        task_pkg = task_ref.source_package
         t_src_id = f"src:{task_pkg}"
         t_repo_id = f"git:{task_repo}" if task_repo else repo_id
         t_commit_id = f"commit:{task_pkg}:{task_commit}"

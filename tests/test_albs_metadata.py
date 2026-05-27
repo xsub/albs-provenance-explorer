@@ -1,11 +1,42 @@
 from __future__ import annotations
 
 from albs_graph.adapters.albs import (
+    build_source_refs,
+    build_task_refs,
     graph_from_build_metadata,
     parse_build_metadata,
     source_ref_for_package,
 )
 from albs_graph.model import NodeType, Relation
+
+
+def _two_source_multiarch_build() -> dict:
+    # nginx built for two arches + nghttp2 for one, in one batch build.
+    return {
+        "id": 99,
+        "tasks": [
+            {
+                "id": 1,
+                "arch": "x86_64",
+                "platform": {"name": "AlmaLinux-10"},
+                "ref": {"url": "https://git.almalinux.org/rpms/nginx.git", "git_commit_hash": "aaa"},
+                "artifacts": [{"id": 10, "type": "rpm", "name": "nginx-1.26.3-6.el10.src.rpm"}],
+            },
+            {
+                "id": 2,
+                "arch": "aarch64",
+                "platform": {"name": "AlmaLinux-10"},
+                "ref": {"url": "https://git.almalinux.org/rpms/nginx.git", "git_commit_hash": "aaa"},
+                "artifacts": [{"id": 11, "type": "rpm", "name": "nginx-1.26.3-6.el10.src.rpm"}],
+            },
+            {
+                "id": 3,
+                "arch": "x86_64",
+                "ref": {"url": "https://git.almalinux.org/rpms/nghttp2.git", "git_commit_hash": "bbb"},
+                "artifacts": [{"id": 20, "type": "rpm", "name": "nghttp2-1.68.0-3.el10.src.rpm"}],
+            },
+        ],
+    }
 
 
 def test_multi_source_build_attributes_each_binary_to_its_own_source() -> None:
@@ -83,6 +114,37 @@ def test_source_ref_for_package_resolves_each_batch_source() -> None:
         "bbb",
     )
     assert source_ref_for_package(metadata, "does-not-exist") is None
+
+
+def test_build_task_refs_expose_typed_per_task_source() -> None:
+    # The per-task source attribution is parsed once into typed refs (the graph
+    # builder and source_ref_for_package both consume these).
+    refs = build_task_refs(parse_build_metadata(_two_source_multiarch_build()))
+
+    assert [r.source_package for r in refs] == ["nginx", "nginx", "nghttp2"]
+    assert [r.arch for r in refs] == ["x86_64", "aarch64", "x86_64"]
+    first = refs[0]
+    assert first.source_repo == "https://git.almalinux.org/rpms/nginx.git"
+    assert first.source_commit == "aaa"
+    assert first.srpm_name == "nginx-1.26.3-6.el10.src.rpm"
+    assert first.distro == "almalinux-10"  # from the platform name
+    assert refs[2].distro is None  # task 3 has no platform
+
+
+def test_build_source_refs_group_tasks_by_source_package() -> None:
+    # The sources collection aggregates a package's tasks: first task fixes the
+    # repo/commit, every arch and task id is accumulated.
+    sources = build_source_refs(parse_build_metadata(_two_source_multiarch_build()))
+
+    assert set(sources) == {"nginx", "nghttp2"}
+    nginx = sources["nginx"]
+    assert (nginx.source_repo, nginx.source_commit) == (
+        "https://git.almalinux.org/rpms/nginx.git",
+        "aaa",
+    )
+    assert nginx.arches == ("x86_64", "aarch64")
+    assert nginx.task_ids == (1, 2)
+    assert sources["nghttp2"].arches == ("x86_64",)
 
 
 def test_shared_repo_across_sources_still_gets_each_stored_in_edge() -> None:
