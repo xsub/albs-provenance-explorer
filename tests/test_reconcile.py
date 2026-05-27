@@ -365,3 +365,25 @@ def test_distro_minor_difference_is_not_a_context_issue() -> None:
     assert resolution.metadata["agreement"] == str(Agreement.CONSENSUS)
     assert resolution.metadata["context_issue"] is None
     assert report.cross_distro_count == 0
+
+
+def test_identity_mismatch_when_sources_agree_on_version_but_not_purl() -> None:
+    # Two resolved claims agree zlib is 1.2.11 (so not version drift) but assert
+    # different PURL coordinates -- a genuine identity disagreement, not consensus.
+    graph = _graph_with_subject()
+    for arch, evidence in (("x86_64", "sbom"), ("aarch64", "resolver:dnf")):
+        spec = DependencySpec(
+            identity=PackageIdentity(
+                Ecosystem.RPM, "zlib", version="1.2.11",
+                purl=f"pkg:rpm/almalinux/zlib@1.2.11?arch={arch}",
+            ),
+            resolution_state=ResolutionState.RESOLVED,
+        )
+        add_dependency_claim(graph, DependencyClaim(SUBJECT, spec, evidence=evidence))
+
+    report = reconcile_dependency_claims(graph)
+    resolution = _resolution_for(graph, "zlib")
+
+    assert resolution.metadata["agreement"] == str(Agreement.CONFLICT)
+    assert str(ConflictKind.IDENTITY_MISMATCH) in resolution.metadata["conflict_kinds"]
+    assert any(c.kind == ConflictKind.IDENTITY_MISMATCH for c in report.conflicts)

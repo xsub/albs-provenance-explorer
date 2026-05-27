@@ -1405,6 +1405,34 @@ now 224.
 
 ---
 
+## D56 - Identity-mismatch reconciliation rule (extending D51)
+
+`ConflictKind.IDENTITY_MISMATCH` existed but nothing emitted it (a documented gap
+in limitations.md: "the enum exists ... but nothing emits it yet"). The rule
+engine from D51 makes adding a sound detector a small, isolated change rather
+than another branch in a monolith -- which is the point of having made
+reconciliation rule-based.
+
+Decision: add `IdentityMismatchRule` to `DEFAULT_RULES` (right after
+`VersionDriftRule`, since both are "what/which" conflicts). It fires when two or
+more claims in a group assert the **same concrete version** with **different PURL
+coordinates** -- two sources agreeing on the version but disagreeing on what the
+dependency actually is. It is deliberately conservative: it groups PURLs by
+version (so a genuine version disagreement is left to `VersionDriftRule`, not
+double-reported) and only fires when at least two claims carry a PURL, so the
+common single-PURL group is never flagged. Verified against the whole suite: the
+rule did not fire on any existing fixture (the only change was updating the
+rule-list assertion), so no contrived conflicts -- it lights up only on a real
+cross-source identity disagreement.
+
+Caveat (recorded in limitations.md): PURLs are compared as raw strings, so a
+purely cosmetic difference (qualifier ordering / encoding) is not normalized
+away. Tests +3 (rule fires on same-version/different-PURL; stays silent without
+two PURLs, on identical PURLs, and on a version drift; an integration case
+through `reconcile_dependency_claims`). Suite now 227.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

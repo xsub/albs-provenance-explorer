@@ -4,6 +4,7 @@ from albs_graph.provenance.reconcile_rules import (
     ConflictKind,
     ContextIssue,
     CrossDistroRule,
+    IdentityMismatchRule,
     LinkageMismatchRule,
     PresenceUndeclaredRule,
     RangeViolationRule,
@@ -11,6 +12,7 @@ from albs_graph.provenance.reconcile_rules import (
     VersionDriftRule,
     evaluate_group,
 )
+from albs_graph.model import Node, NodeType
 
 
 def _group(**overrides: object) -> ResolutionGroup:
@@ -62,14 +64,55 @@ def test_each_rule_fires_only_on_its_own_condition() -> None:
     ).context_issues == ()
 
 
-def test_default_rules_are_the_five_named_policies() -> None:
+def test_default_rules_are_the_named_policies() -> None:
     assert [rule.name for rule in DEFAULT_RULES] == [
         "version_drift",
+        "identity_mismatch",
         "range_violation",
         "linkage_mismatch",
         "presence_undeclared",
         "cross_distro",
     ]
+
+
+def _claim_node(node_id: str, name: str, version: str | None, purl: str | None) -> Node:
+    metadata: dict[str, object] = {"name": name}
+    if version is not None:
+        metadata["asserted_version"] = version
+    if purl is not None:
+        metadata["purl"] = purl
+    return Node(node_id, NodeType.DEPENDENCY_CLAIM, name, metadata)
+
+
+def test_identity_mismatch_fires_on_same_version_different_purl() -> None:
+    # Two sources agree zlib is 1.2.11 but disagree on the PURL coordinate.
+    members = (
+        _claim_node("c1", "zlib", "1.2.11", "pkg:rpm/almalinux/zlib@1.2.11?arch=x86_64"),
+        _claim_node("c2", "zlib", "1.2.11", "pkg:rpm/almalinux/zlib@1.2.11?arch=aarch64"),
+    )
+    finding = IdentityMismatchRule().check(_group(members=members, version_classes=("1.2.11",)))
+    assert finding.conflict_kinds == (ConflictKind.IDENTITY_MISMATCH,)
+
+
+def test_identity_mismatch_silent_without_two_purls_or_on_drift() -> None:
+    same_purl = (
+        _claim_node("c1", "zlib", "1.2.11", "pkg:rpm/almalinux/zlib@1.2.11?arch=x86_64"),
+        _claim_node("c2", "zlib", "1.2.11", "pkg:rpm/almalinux/zlib@1.2.11?arch=x86_64"),
+    )
+    assert IdentityMismatchRule().check(_group(members=same_purl)).conflict_kinds == ()
+
+    one_purl = (
+        _claim_node("c1", "zlib", "1.2.11", "pkg:rpm/almalinux/zlib@1.2.11"),
+        _claim_node("c2", "zlib", "1.2.11", None),  # soname/header claim, no PURL
+    )
+    assert IdentityMismatchRule().check(_group(members=one_purl)).conflict_kinds == ()
+
+    # Different versions are VERSION_DRIFT's job, not identity mismatch.
+    drift = (
+        _claim_node("c1", "zlib", "1.2.11", "pkg:rpm/almalinux/zlib@1.2.11"),
+        _claim_node("c2", "zlib", "1.2.13", "pkg:rpm/almalinux/zlib@1.2.13"),
+    )
+    assert IdentityMismatchRule().check(_group(members=drift)).conflict_kinds == ()
 
 
 def test_conflict_wins_and_keeps_rule_order() -> None:

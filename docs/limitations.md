@@ -154,8 +154,12 @@ The reconciler (see `decisions.md` D7, D26):
   operators are evaluated (`=` provides/config skipped), **epochs are stripped**
   before comparison, and only simple `name OP version` constraints are parsed
   (Maven brackets / compound pip ranges are not).
-- does **not** auto-detect `IDENTITY_MISMATCH` (the enum exists for resolver/CPE
-  adapters to populate, but nothing emits it yet).
+- auto-detects `IDENTITY_MISMATCH` when two claims assert the **same version**
+  with **different PURL coordinates** (a real cross-source identity disagreement,
+  distinct from version drift). It only fires when at least two claims carry a
+  PURL, so the common single-PURL group is never flagged. Caveat: PURLs are
+  compared as raw strings, so a purely cosmetic difference (qualifier ordering or
+  encoding) is not normalized away.
 - treats `context` as part of the grouping key via a string serialization; two
   contexts that differ only in field ordering are normalized, but exotic context
   values are compared as strings.

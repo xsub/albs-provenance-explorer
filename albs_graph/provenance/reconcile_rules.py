@@ -24,6 +24,7 @@ into a single :class:`EvaluationResult`. Coverage policy lives elsewhere again
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
@@ -122,6 +123,28 @@ class VersionDriftRule:
 
 
 @dataclass(frozen=True)
+class IdentityMismatchRule:
+    name: str = "identity_mismatch"
+
+    def check(self, group: ResolutionGroup) -> RuleFinding:
+        # Two sources assert the *same concrete version* with *different* PURL
+        # coordinates: they disagree on what the dependency is, not merely its
+        # version (that is VERSION_DRIFT). This only fires when at least two
+        # claims actually carry a PURL, so single-PURL groups (the common case)
+        # are never flagged. Grouped by version so a genuine drift is left to the
+        # version rule rather than doubly reported here.
+        purls_by_version: dict[str, set[str]] = defaultdict(set)
+        for node in group.members:
+            version = version_of(node)
+            purl = node.metadata.get("purl")
+            if version and purl:
+                purls_by_version[version].add(str(purl))
+        if any(len(purls) > 1 for purls in purls_by_version.values()):
+            return RuleFinding(conflict_kinds=(ConflictKind.IDENTITY_MISMATCH,))
+        return RuleFinding()
+
+
+@dataclass(frozen=True)
 class RangeViolationRule:
     name: str = "range_violation"
 
@@ -182,9 +205,11 @@ class CrossDistroRule:
 
 # Order matters: the first conflict kind becomes the reported DependencyConflict
 # kind, so this preserves the historical version -> range -> linkage -> presence
-# precedence. Cross-distro is last and emits a context issue, not a conflict.
+# precedence (identity sits next to version, both being "what/which" conflicts).
+# Cross-distro is last and emits a context issue, not a conflict.
 DEFAULT_RULES: tuple[ReconciliationRule, ...] = (
     VersionDriftRule(),
+    IdentityMismatchRule(),
     RangeViolationRule(),
     LinkageMismatchRule(),
     PresenceUndeclaredRule(),

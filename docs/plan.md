@@ -124,7 +124,7 @@ RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed
 - ✅ Semantic version comparison in the reconciler (`VERSION_DRIFT` /
   `RANGE_VIOLATION` via rpmvercmp) and **GPG signature verification**
   (`coverage --verify-signatures`, real provenance verification now CAS is gone).
-- ✅ Offline tests for all of the above (224 tests; ruff + mypy --strict clean),
+- ✅ Offline tests for all of the above (227 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not specific to any
   single build.
 
