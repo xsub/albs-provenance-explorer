@@ -15,7 +15,6 @@ and is intentionally out of scope here.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -28,6 +27,7 @@ from albs_graph.dependency import (
     ResolutionState,
 )
 from albs_graph.model import Node, NodeType, ProvenanceGraph
+from albs_graph.nevra import RpmNevra
 from albs_graph.provenance.reconcile import DependencyClaim, add_dependency_claim
 
 from .rpm_header import (
@@ -247,17 +247,15 @@ def vault_candidate_urls(
     right one in a couple of range reads whether the build is current or EOL.
     """
 
-    parsed = _parse_nevra(filename)
-    arch = parsed.get("arch")
-    release = parsed.get("release")
-    if not arch or not release:
+    nevra = RpmNevra.from_filename(filename)
+    if nevra is None or not nevra.arch or not nevra.release:
         return []
-    version = _distro_version_from_release(release)
+    version = nevra.distro_version
     if not version:
         return []
     urls: list[str] = []
     for repo in repos:
-        path = f"{repo}/{arch}/os/Packages/{filename}"
+        path = f"{repo}/{nevra.arch}/os/Packages/{filename}"
         urls.append(f"{live_base}/{version}/{path}")
         urls.append(f"{base}/{version}/{path}")
     return urls
@@ -312,27 +310,6 @@ def _artifact_filename(graph: ProvenanceGraph, node_id: str) -> str | None:
 
 def _is_debug_artifact(filename: str) -> bool:
     return "-debuginfo" in filename or "-debugsource" in filename
-
-
-def _parse_nevra(filename: str) -> dict[str, str]:
-    stem = filename.removesuffix(".rpm")
-    parts = stem.rsplit(".", 1)
-    if len(parts) != 2:
-        return {}
-    nevr, arch = parts
-    name_version_release = nevr.rsplit("-", 2)
-    if len(name_version_release) != 3:
-        return {}
-    name, version, release = name_version_release
-    return {"name": name, "version": version, "release": release, "arch": arch}
-
-
-def _distro_version_from_release(release: str) -> str | None:
-    match = re.search(r"el(\d+)(?:_(\d+))?", release)
-    if not match:
-        return None
-    major, minor = match.group(1), match.group(2)
-    return f"{major}.{minor}" if minor else major
 
 
 def _requests_range_fetch(url: str, start: int, end: int) -> bytes:

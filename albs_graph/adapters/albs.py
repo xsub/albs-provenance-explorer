@@ -9,6 +9,7 @@ from typing import Any, Callable
 
 from albs_graph.dependency import Ecosystem, PackageIdentity
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
+from albs_graph.nevra import rpm_metadata_from_filename
 from albs_graph.security import cpe_security_identity
 
 
@@ -907,16 +908,6 @@ def _metadata_text(value: Any) -> str | None:
 
 
 def _rpm_metadata_from_filename(filename: str) -> dict[str, Any]:
-    stem = filename.removesuffix(".rpm")
-    parts = stem.rsplit(".", 1)
-    arch = parts[1] if len(parts) == 2 else None
-    nevra = parts[0] if len(parts) == 2 else stem
-    name_version_release = nevra.rsplit("-", 2)
-    metadata: dict[str, Any] = {"filename": filename, "arch": arch}
-    if len(name_version_release) == 3:
-        metadata |= {
-            "name": name_version_release[0],
-            "version": name_version_release[1],
-            "release": name_version_release[2],
-        }
-    return metadata
+    # Canonical NEVRA parsing lives in albs_graph.nevra; this preserves the
+    # dict[str, Any] contract the ALBS call sites expect.
+    return rpm_metadata_from_filename(filename)

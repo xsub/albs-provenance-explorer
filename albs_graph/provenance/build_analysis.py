@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Iterable
 
+from albs_graph.nevra import rpm_metadata_from_filename
+
 
 _ARCH_PREFERENCE = ("x86_64", "aarch64", "ppc64le", "s390x", "i686", "src", "noarch")
 
@@ -350,19 +352,9 @@ def _delta_seconds(value: Any) -> float | None:
 
 
 def _rpm_metadata_from_filename(filename: str) -> dict[str, str | None]:
-    stem = filename.removesuffix(".rpm")
-    parts = stem.rsplit(".", 1)
-    arch = parts[1] if len(parts) == 2 else None
-    nevra = parts[0] if len(parts) == 2 else stem
-    name_version_release = nevra.rsplit("-", 2)
-    metadata: dict[str, str | None] = {"filename": filename, "arch": arch}
-    if len(name_version_release) == 3:
-        metadata |= {
-            "name": name_version_release[0],
-            "version": name_version_release[1],
-            "release": name_version_release[2],
-        }
-    return metadata
+    # Canonical NEVRA parsing now lives in albs_graph.nevra (shared with the ALBS
+    # adapter, which had a byte-identical copy of this).
+    return rpm_metadata_from_filename(filename)
 
 
 def _arch_sort_key(value: str) -> tuple[int, str]:

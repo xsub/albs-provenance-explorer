@@ -29,12 +29,12 @@ from albs_graph.dependency import (
     ResolutionState,
 )
 from albs_graph.model import Node, NodeType, ProvenanceGraph
+from albs_graph.nevra import RpmNevra
 from albs_graph.provenance.reconcile import DependencyClaim, add_dependency_claim
 
 Runner = Callable[[list[str]], tuple[int, str]]
 NodeSelector = Callable[[Node], bool]
 
-_ARCH_SUFFIXES = ("x86_64", "aarch64", "ppc64le", "s390x", "i686", "noarch", "src")
 # A dot node: quoted ("foo bar") or a bare token that never starts with a brace.
 _NODE = r'(?:"([^"]+)"|([A-Za-z0-9_./+][^\s{}\[\];,]*))'
 # Block form (dnf repograph): `SRC -> { "A" "B" ... }`, possibly spanning lines.
@@ -168,15 +168,8 @@ def enrich_graph_with_rpmgraph(
 def _parse_node_token(token: str) -> tuple[str, str | None]:
     """Split an RPM node label into (name, version) - handles NEVRA or bare name."""
 
-    base = token
-    for arch in _ARCH_SUFFIXES:
-        if base.endswith("." + arch):
-            base = base[: -(len(arch) + 1)]
-            break
-    parts = base.rsplit("-", 2)
-    if len(parts) == 3 and any(char.isdigit() for char in parts[1]):
-        return parts[0], f"{parts[1]}-{parts[2]}"
-    return token, None
+    nevra = RpmNevra.from_token(token)
+    return nevra.name, nevra.evr
 
 
 def _run(args: list[str], runner: Runner | None) -> str:

@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from albs_graph.nevra import distro_generation
 from albs_graph.vercmp import version_compare
 from albs_graph.dependency.model import (
     DependencySpec,
@@ -287,7 +288,7 @@ def reconcile_dependency_claims(graph: ProvenanceGraph) -> ReconciliationReport:
         # resolved-for-this-build.
         subject_distro = _subject_distro(graph, subject_id)
         dependency_distros = sorted(
-            {tag for node in members if (v := _version_of(node)) and (tag := _distro_tag(v))}
+            {tag for node in members if (v := _version_of(node)) and (tag := distro_generation(v))}
         )
         distro_mismatch = bool(subject_distro and dependency_distros) and (
             subject_distro not in dependency_distros
@@ -447,25 +448,6 @@ def _version_of(node: Node) -> str | None:
     return str(value) if value else None
 
 
-# RPM dist tag, e.g. "...-27.el9" -> "el9", "...-121.el10_2" -> "el10". The dot
-# separator avoids matching a stray "elNN" inside an unrelated version token.
-_DISTRO_TAG = re.compile(r"\.(el\d+)")
-
-
-def _distro_tag(text: str | None) -> str | None:
-    """The RPM dist *generation* (``el9``, ``el10``) from a version/release.
-
-    Only the major generation is taken, so ``el9_2`` and ``el9_4`` (one distro,
-    different minor) compare equal -- only a true generation gap (``el9`` vs
-    ``el10``) is treated as a mismatch.
-    """
-
-    if not text:
-        return None
-    match = _DISTRO_TAG.search(text)
-    return match.group(1) if match else None
-
-
 def _subject_distro(graph: ProvenanceGraph, subject_id: str) -> str | None:
     """The build's distro generation, read from the subject RPM's release/EVR."""
 
@@ -473,7 +455,7 @@ def _subject_distro(graph: ProvenanceGraph, subject_id: str) -> str | None:
     if node is None:
         return None
     for value in (node.metadata.get("release"), node.metadata.get("version"), node.label):
-        tag = _distro_tag(str(value) if value is not None else None)
+        tag = distro_generation(str(value) if value is not None else None)
         if tag:
             return tag
     return None

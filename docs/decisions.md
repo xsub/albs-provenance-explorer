@@ -1172,6 +1172,47 @@ difference is not flagged). Suite now 194.
 
 ---
 
+## D49 - Central `RpmNevra` value object (architecture hardening, identity step 1)
+
+From an external architecture review: NEVRA / name-version-release-arch-epoch and
+dist-tag parsing was re-implemented in every module that touched an RPM
+coordinate, and the copies had drifted. Concretely, before this change:
+
+- **filename -> dict** was byte-identical in `adapters/albs.py` and
+  `provenance/build_analysis.py`, and near-identical in `adapters/rpm_remote.py`;
+- **NEVRA/capability token -> (name, version)** was duplicated in `adapters/dnf.py`
+  (`parse_nevra`) and `adapters/rpmgraph.py` (`_parse_node_token`);
+- **dist-tag extraction** existed three ways: `rpm_remote._distro_version_from_release`
+  (major.minor), `reconcile._distro_tag` (generation only, added in D48), and a
+  platform-name normaliser in `albs.py`.
+
+Decision: a single leaf module `albs_graph/nevra.py` (stdlib-only, like
+`vercmp.py`, so adapters and provenance can both import it without cycles) owns
+RPM identity parsing:
+
+- `RpmNevra` (frozen dataclass: name, epoch, version, release, arch) with
+  `from_filename` (strict canonical NVRA, no epoch) and `from_token` (dnf/rpmgraph
+  label or capability string -- drops `>=` tails, splits an embedded epoch), plus
+  derived `version_release` / `evr` / `distro` / `distro_version`.
+- module helpers `distro_generation` (`el9`/`el10`) and `distro_version`
+  (`9`/`9.4`), and `rpm_metadata_from_filename` (the lenient legacy dict that
+  reports arch even when the n-v-r split fails).
+
+`dnf.parse_nevra`, `rpmgraph._parse_node_token`, `rpm_remote` (filename + distro),
+`albs._rpm_metadata_from_filename` and `build_analysis._rpm_metadata_from_filename`
+now delegate; the local copies, their `_ARCH_SUFFIXES` / `_DISTRO_TAG` regexes and
+a now-unused `re` import are gone. Behaviour is byte-for-byte preserved (the
+existing dnf / rpmgraph / build-analysis / artifact-inventory / metadata tests are
+the guard), so the only observable change is less drift surface.
+
+`SecurityIdentity` (`security/identity.py`) and the generic `PackageIdentity`
+(`dependency/model.py`) already existed, so this step adds only the missing
+`RpmNevra`. A composing `ArtifactIdentity` (NEVRA + PURL + node id, replacing the
+hand-rolled construction in `albs._rpm_package_identity`) is the next identity
+step. Tests +9 (`test_nevra.py`). Suite now 203.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -31,12 +31,12 @@ from albs_graph.dependency import (
     ResolutionState,
 )
 from albs_graph.model import Node, NodeType, ProvenanceGraph
+from albs_graph.nevra import RpmNevra
 from albs_graph.provenance.reconcile import DependencyClaim, add_dependency_claim
 
 Runner = Callable[[list[str]], tuple[int, str]]
 NodeSelector = Callable[[Node], bool]
 
-_ARCH_SUFFIXES = ("x86_64", "aarch64", "ppc64le", "s390x", "i686", "noarch", "src")
 # repoquery relations that we resolve to versioned provider packages.
 _RESOLVE_RELATIONS: tuple[tuple[str, DependencyScope], ...] = (
     ("requires", DependencyScope.RUNTIME),
@@ -144,16 +144,8 @@ def package_licenses(
 def parse_nevra(token: str) -> tuple[str, str | None]:
     """Split a NEVRA / capability token into (name, version|None)."""
 
-    head = token.split()[0] if token.split() else token  # drop "op version" tails
-    base = head
-    for arch in _ARCH_SUFFIXES:
-        if base.endswith("." + arch):
-            base = base[: -(len(arch) + 1)]
-            break
-    parts = base.rsplit("-", 2)
-    if len(parts) == 3 and any(char.isdigit() for char in parts[1]):
-        return parts[0], f"{parts[1]}-{parts[2]}"
-    return head, None
+    nevra = RpmNevra.from_token(token)
+    return nevra.name, nevra.evr
 
 
 def enrich_graph_with_dnf(
