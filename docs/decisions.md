@@ -1213,6 +1213,35 @@ step. Tests +9 (`test_nevra.py`). Suite now 203.
 
 ---
 
+## D50 - `ArtifactIdentity`: compose `RpmNevra` into the RPM PURL (identity step 2)
+
+The ALBS adapter hand-rolled an RPM artifact's PURL (`quote` / `urlencode`), its
+PURL qualifiers, its `version-release`, and the `PackageIdentity` in four inline
+helpers (`_rpm_artifact_purl`, `_rpm_package_identity`, `_rpm_purl_version`,
+`_rpm_purl_qualifiers`). The NEVRA (now an `RpmNevra`), the PURL and the
+dependency coordinate could drift apart because nothing tied them together.
+
+Decision: an `ArtifactIdentity` (in `dependency/model.py`, beside
+`PackageIdentity`) composes an `RpmNevra` with its repo `namespace`, `distro` and
+an `is_srpm` flag, and is the single place that renders the RPM PURL and the
+`PackageIdentity`. It encodes the RPM conventions once: the epoch rides as a PURL
+`epoch=` qualifier rather than in the version; a `.src.rpm` advertises `arch=src`;
+qualifiers are sorted. `albs._rpm_artifact_purl` / `_rpm_package_identity` now
+delegate through a single `_artifact_identity` bridge from the ALBS metadata dict,
+and the four inline helpers plus the now-unused `quote` / `urlencode` / `Ecosystem`
+imports are gone. The PURL strings are byte-identical (the `test_albs_metadata`
+and `test_artifact_inventory` PURL assertions are the guard), so the only change
+is that NEVRA/PURL/coordinate can no longer diverge.
+
+The graph *node id* is deliberately left out of `ArtifactIdentity`: node ids are
+ALBS-structural (built from the artifact id and filename, e.g.
+`rpm:<artifact_id>:<filename>`), not a property of the packaging identity, so
+forcing them through the value object would couple it to ALBS internals for no
+gain. Tests +3 (binary PURL + `PackageIdentity`; src arch; epoch-as-qualifier).
+Suite now 206.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -1,5 +1,6 @@
 from .analyzer import DependencyCoverageSummary, summarize_dependency_coverage
 from .model import (
+    ArtifactIdentity,
     DependencyContext,
     DependencyScope,
     DependencySpec,
@@ -22,6 +23,7 @@ from .resolver import (
 )
 
 __all__ = [
+    "ArtifactIdentity",
     "CargoResolver",
     "DependencyContext",
     "DependencyCoverageSummary",

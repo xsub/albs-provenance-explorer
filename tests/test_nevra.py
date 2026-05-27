@@ -1,3 +1,4 @@
+from albs_graph.dependency import ArtifactIdentity, Ecosystem
 from albs_graph.nevra import (
     RpmNevra,
     distro_generation,
@@ -92,3 +93,46 @@ def test_rpm_metadata_from_filename_is_lenient() -> None:
     assert partial == {"filename": "foo.x86_64.rpm", "arch": "x86_64"}
     # No final dot segment -> arch is None, no name/version/release.
     assert rpm_metadata_from_filename("bare") == {"filename": "bare", "arch": None}
+
+
+def _nevra(filename: str) -> RpmNevra:
+    nevra = RpmNevra.from_filename(filename)
+    assert nevra is not None
+    return nevra
+
+
+def test_artifact_identity_renders_binary_purl_and_package_identity() -> None:
+    identity = ArtifactIdentity(
+        nevra=_nevra("nginx-core-1.20.1-16.el9_4.1.x86_64.rpm"), distro="almalinux-9"
+    )
+    assert identity.purl() == (
+        "pkg:rpm/almalinux/nginx-core@1.20.1-16.el9_4.1?arch=x86_64&distro=almalinux-9"
+    )
+    pkg = identity.package_identity()
+    assert pkg.ecosystem == Ecosystem.RPM
+    assert pkg.namespace == "almalinux"
+    assert pkg.version == "1.20.1-16.el9_4.1"  # version-release, no epoch
+    assert pkg.purl == identity.purl()
+    assert pkg.qualifiers == {"arch": "x86_64", "distro": "almalinux-9"}
+
+
+def test_artifact_identity_marks_source_rpm_arch_src() -> None:
+    identity = ArtifactIdentity(
+        nevra=_nevra("nginx-1.20.1-16.el9_4.1.src.rpm"), distro="almalinux-9", is_srpm=True
+    )
+    assert identity.purl_arch == "src"
+    assert identity.purl() == (
+        "pkg:rpm/almalinux/nginx@1.20.1-16.el9_4.1?arch=src&distro=almalinux-9"
+    )
+
+
+def test_artifact_identity_carries_epoch_as_a_qualifier_not_in_version() -> None:
+    # RPM convention: the epoch rides as a PURL qualifier, never in the version.
+    identity = ArtifactIdentity(
+        nevra=RpmNevra(name="openssl-libs", epoch="1", version="3.0.7", release="27.el9", arch="x86_64"),
+        distro="almalinux-9",
+    )
+    assert identity.purl() == (
+        "pkg:rpm/almalinux/openssl-libs@3.0.7-27.el9?arch=x86_64&distro=almalinux-9&epoch=1"
+    )
+    assert identity.package_identity().version == "3.0.7-27.el9"

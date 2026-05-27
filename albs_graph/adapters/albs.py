@@ -4,12 +4,12 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import quote, urlencode, urlparse
+from urllib.parse import urlparse
 from typing import Any, Callable
 
-from albs_graph.dependency import Ecosystem, PackageIdentity
+from albs_graph.dependency import ArtifactIdentity, PackageIdentity
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
-from albs_graph.nevra import rpm_metadata_from_filename
+from albs_graph.nevra import RpmNevra, rpm_metadata_from_filename
 from albs_graph.security import cpe_security_identity
 
 
@@ -792,25 +792,40 @@ def _rpm_artifact_metadata(
     return data
 
 
+def _artifact_identity(
+    metadata: dict[str, Any],
+    *,
+    distro: str | None,
+    node_type: NodeType,
+) -> ArtifactIdentity:
+    """Build the canonical RPM ``ArtifactIdentity`` from a metadata dict.
+
+    The single bridge from the ALBS metadata shape to ``RpmNevra`` + PURL +
+    ``PackageIdentity``, so the three can no longer drift apart.
+    """
+
+    nevra = RpmNevra(
+        name=_metadata_text(metadata.get("name")) or "unknown",
+        epoch=_metadata_text(metadata.get("epoch")),
+        version=_metadata_text(metadata.get("version")),
+        release=_metadata_text(metadata.get("release")),
+        arch=_metadata_text(metadata.get("arch")),
+    )
+    return ArtifactIdentity(
+        nevra=nevra,
+        namespace="almalinux",
+        distro=distro,
+        is_srpm=node_type == NodeType.SRPM,
+    )
+
+
 def _rpm_artifact_purl(
     metadata: dict[str, Any],
     *,
     distro: str | None,
     node_type: NodeType,
 ) -> str:
-    name = _metadata_text(metadata.get("name")) or "unknown"
-    version = _rpm_purl_version(metadata)
-    qualifiers = _rpm_purl_qualifiers(metadata, distro=distro)
-    if node_type == NodeType.SRPM:
-        qualifiers["arch"] = "src"
-    encoded_name = quote(name, safe="")
-    encoded_version = quote(version, safe="") if version else ""
-    purl = f"pkg:rpm/almalinux/{encoded_name}"
-    if encoded_version:
-        purl += f"@{encoded_version}"
-    if qualifiers:
-        purl += f"?{urlencode(sorted(qualifiers.items()))}"
-    return purl
+    return _artifact_identity(metadata, distro=distro, node_type=node_type).purl()
 
 
 def _rpm_package_identity(
@@ -819,39 +834,7 @@ def _rpm_package_identity(
     distro: str | None,
     node_type: NodeType,
 ) -> PackageIdentity:
-    name = _metadata_text(metadata.get("name")) or "unknown"
-    qualifiers = _rpm_purl_qualifiers(metadata, distro=distro)
-    if node_type == NodeType.SRPM:
-        qualifiers["arch"] = "src"
-    return PackageIdentity(
-        Ecosystem.RPM,
-        name,
-        namespace="almalinux",
-        version=_rpm_purl_version(metadata),
-        purl=_rpm_artifact_purl(metadata, distro=distro, node_type=node_type),
-        qualifiers=qualifiers,
-    )
-
-
-def _rpm_purl_version(metadata: dict[str, Any]) -> str | None:
-    version = _metadata_text(metadata.get("version"))
-    release = _metadata_text(metadata.get("release"))
-    if version and release:
-        return f"{version}-{release}"
-    return version or release
-
-
-def _rpm_purl_qualifiers(metadata: dict[str, Any], *, distro: str | None) -> dict[str, str]:
-    qualifiers: dict[str, str] = {}
-    arch = _metadata_text(metadata.get("arch"))
-    if arch:
-        qualifiers["arch"] = arch
-    epoch = _metadata_text(metadata.get("epoch"))
-    if epoch:
-        qualifiers["epoch"] = epoch
-    if distro:
-        qualifiers["distro"] = distro
-    return qualifiers
+    return _artifact_identity(metadata, distro=distro, node_type=node_type).package_identity()
 
 
 def _rpm_header_cas_attrs(filename: str, *, source_rpm: str | None) -> dict[str, Any]:

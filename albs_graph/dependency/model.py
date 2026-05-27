@@ -3,6 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
+from urllib.parse import quote, urlencode
+
+from albs_graph.nevra import RpmNevra
 
 
 class Ecosystem(StrEnum):
@@ -108,6 +111,60 @@ class PackageIdentity:
         if self.qualifiers:
             data["qualifiers"] = self.qualifiers
         return data
+
+
+@dataclass(frozen=True)
+class ArtifactIdentity:
+    """The packaging identity of a built RPM artifact.
+
+    Composes an :class:`RpmNevra` with its repo namespace and distro and renders
+    the canonical PURL and :class:`PackageIdentity`. This is the single place RPM
+    PURLs are built, so the NEVRA, the PURL and the dependency coordinate cannot
+    drift apart (the ALBS adapter used to hand-roll all three inline). The graph
+    *node id* is intentionally not derived here: it is ALBS-structural (built
+    from the artifact id / filename), not a property of the packaging identity.
+    """
+
+    nevra: RpmNevra
+    namespace: str = "almalinux"
+    distro: str | None = None
+    is_srpm: bool = False  # a .src.rpm advertises arch "src" in its PURL
+
+    @property
+    def purl_arch(self) -> str | None:
+        return "src" if self.is_srpm else self.nevra.arch
+
+    def qualifiers(self) -> dict[str, str]:
+        data: dict[str, str] = {}
+        if self.purl_arch:
+            data["arch"] = self.purl_arch
+        if self.nevra.epoch:
+            data["epoch"] = self.nevra.epoch
+        if self.distro:
+            data["distro"] = self.distro
+        return data
+
+    def purl(self) -> str:
+        # Epoch rides as a qualifier, not in the PURL version (RPM convention).
+        name = self.nevra.name or "unknown"
+        version = self.nevra.version_release
+        purl = f"pkg:rpm/{self.namespace}/{quote(name, safe='')}"
+        if version:
+            purl += f"@{quote(version, safe='')}"
+        qualifiers = self.qualifiers()
+        if qualifiers:
+            purl += f"?{urlencode(sorted(qualifiers.items()))}"
+        return purl
+
+    def package_identity(self) -> PackageIdentity:
+        return PackageIdentity(
+            ecosystem=Ecosystem.RPM,
+            name=self.nevra.name or "unknown",
+            namespace=self.namespace,
+            version=self.nevra.version_release,
+            purl=self.purl(),
+            qualifiers=self.qualifiers(),
+        )
 
 
 @dataclass(frozen=True)
