@@ -203,10 +203,9 @@ def enrich_graph_with_rpm_payloads(
         elf_total += len(elfs)
         summary = elf_analysis_summary(elfs)
         static_total += len(summary["static"]) if isinstance(summary["static"], list) else 0
-        graph.nodes[node.id].metadata["elf_analysis"] = summary
         # Full file list (not just ELF), so `identify` can resolve any owned path
         # (configs, docs) offline from graph data.
-        graph.nodes[node.id].metadata["files"] = sorted(files)
+        graph.update_metadata(node.id, {"elf_analysis": summary, "files": sorted(files)})
         for claim in payload_dependency_claims(node.id, elfs):
             add_dependency_claim(graph, claim)
             claims_added += 1

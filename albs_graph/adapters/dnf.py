@@ -335,10 +335,8 @@ def _record_relations(
             recorded += len(values)
     if relations:
         existing = node.metadata.get("dnf_relations")
-        if isinstance(existing, dict):
-            existing.update(relations)
-        else:
-            node.metadata["dnf_relations"] = relations
+        merged = {**existing, **relations} if isinstance(existing, dict) else relations
+        graph.update_metadata(node.id, {"dnf_relations": merged})
     return recorded
 
 

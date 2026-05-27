@@ -124,11 +124,12 @@ def verify_graph_cas(
         result = verify_hash(str(node.metadata["cas_hash"]), signer_id=signer_id, runner=runner)
         results.append(result)
         if result.status == "verified":
-            node.metadata["externally_verified"] = True
-            node.metadata["cas_verification"] = result.to_dict()
+            graph.update_metadata(
+                node.id, {"externally_verified": True, "cas_verification": result.to_dict()}
+            )
             verified += 1
         elif result.status == "failed":
-            node.metadata["cas_verification"] = result.to_dict()
+            graph.update_metadata(node.id, {"cas_verification": result.to_dict()})
             failed += 1
         else:
             unavailable += 1

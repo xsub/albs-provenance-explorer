@@ -217,7 +217,7 @@ def enrich_graph_with_rpm_headers(
             on_progress(f"parsed header for {filename} from {used_url}")
         if header.license:
             # The header carries the real license; record it as a fact (rung 3).
-            node.metadata["rpm_license"] = header.license
+            graph.update_metadata(node.id, {"rpm_license": header.license})
             licenses[header.name or filename] = header.license
         for claim in header_dependency_claims(node.id, header, include_packages=True):
             add_dependency_claim(graph, claim)

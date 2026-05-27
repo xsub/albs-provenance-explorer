@@ -296,13 +296,14 @@ def _annotate_manifest_node(
     manifest_kind: str,
     state: ResolutionState,
 ) -> None:
-    graph.nodes[file_id].metadata.update(
+    graph.update_metadata(
+        file_id,
         {
             "ecosystem": str(ecosystem),
             "manifest_kind": manifest_kind,
             "resolution_state": str(state),
             "dependency_evidence": "manifest_detected",
-        }
+        },
     )
 
 
@@ -345,7 +346,8 @@ def _merge_source_tree_summary(
     patch_refs: int,
     ecosystems: set[str],
 ) -> None:
-    graph.nodes[source_tree_id].metadata.update(
+    graph.update_metadata(
+        source_tree_id,
         {
             "files": files,
             "manifests": manifests,
@@ -354,7 +356,7 @@ def _merge_source_tree_summary(
             "source_refs": source_refs,
             "patch_refs": patch_refs,
             "ecosystems_detected": sorted(ecosystems),
-        }
+        },
     )
 
 

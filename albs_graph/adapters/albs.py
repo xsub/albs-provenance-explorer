@@ -832,8 +832,8 @@ def _merge_node_metadata(
     node_id: str,
     metadata: dict[str, Any],
 ) -> None:
-    graph.nodes[node_id].metadata.update(
-        {key: value for key, value in metadata.items() if value is not None}
+    graph.update_metadata(
+        node_id, {key: value for key, value in metadata.items() if value is not None}
     )
 
 

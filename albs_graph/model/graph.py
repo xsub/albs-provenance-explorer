@@ -81,6 +81,20 @@ class ProvenanceGraph:
         self._outgoing[source].append(edge)
         self._incoming[target].append(edge)
 
+    def update_metadata(self, node_id: str, updates: dict[str, Any]) -> None:
+        """Merge ``updates`` into an existing node's metadata, in place.
+
+        The one method for post-hoc metadata enrichment (adapters used to poke
+        ``graph.nodes[id].metadata`` directly). Routing it through a method lets a
+        ``RecordingGraph`` intercept the change into an ``EvidencePatch``. The
+        node id / type are unchanged, so the type index stays valid.
+        """
+
+        node = self.nodes.get(node_id)
+        if node is None:
+            raise ValueError(f"Unknown node: {node_id}")
+        node.metadata.update(updates)
+
     def outgoing(self, node_id: str, relation: Relation | str | None = None) -> list[Edge]:
         edges = self._outgoing.get(node_id, ())
         if relation is None:
@@ -220,6 +234,17 @@ class ProvenanceGraph:
             selected.update(next_frontier)
             frontier = next_frontier
         return self.subgraph(selected)
+
+    def copy(self) -> "ProvenanceGraph":
+        """A deep-enough copy: fresh node/edge metadata dicts, so mutating the
+        copy (e.g. a dry-run enrichment) never leaks back into this graph."""
+
+        clone = ProvenanceGraph()
+        for node in self.nodes.values():
+            clone.add_node(Node(node.id, node.type, node.label, dict(node.metadata)))
+        for edge in self.edges:
+            clone.add_edge(edge.source, edge.target, edge.relation, **edge.metadata)
+        return clone
 
     def subgraph(self, node_ids: Iterable[str]) -> "ProvenanceGraph":
         selected = set(node_ids)

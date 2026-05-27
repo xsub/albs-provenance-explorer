@@ -391,15 +391,21 @@ def enrich_graph_with_build_sbom(
             continue
         matched += 1
         graph.add_edge(node.id, sbom_id, Relation.DESCRIBED_BY)
+        updates: dict[str, Any] = {}
         purl = component.get("purl")
         if purl:
-            node.metadata["sbom_purl"] = purl
+            updates["sbom_purl"] = purl
         sha256 = _component_sha256(component)
         if sha256:
-            node.metadata["sbom_sha256"] = sha256
+            updates["sbom_sha256"] = sha256
         cpe = component.get("cpe")
-        if cpe and _apply_sbom_cpe(node.metadata, str(cpe)):
-            cpes_set += 1
+        if cpe:
+            identity = _sbom_cpe_identity(node.metadata.get("security_identity"), str(cpe))
+            if identity is not None:
+                updates["security_identity"] = identity
+                cpes_set += 1
+        if updates:
+            graph.update_metadata(node.id, updates)
     if on_progress:
         on_progress(
             f"build SBOM matched {matched} RPMs, set {cpes_set} vendor CPEs from {path.name}"
@@ -445,27 +451,31 @@ def _component_sha256(component: dict[str, Any]) -> str | None:
     return None
 
 
-def _apply_sbom_cpe(metadata: dict[str, Any], cpe: str) -> bool:
-    """Set the vendor-asserted CPE on a node's security_identity (in place).
+def _sbom_cpe_identity(current: Any, cpe: str) -> dict[str, Any] | None:
+    """The ``security_identity`` with the vendor-asserted CPE set, or ``None``.
 
-    The status is ``vendor_asserted`` - distinct from the ``verified`` an NVD
-    dictionary match yields. Both establish a CPE identity (and both count toward
-    the identity axis), but they are different evidence strengths, so the label
-    stays honest: this is AlmaLinux asserting its own artifact's CPE, not a match
-    confirmed against an external dictionary. Returns False if the node already
-    carries a CPE (e.g. an NVD verification), so the SBOM never downgrades it.
+    Returns a **fresh** dict (rather than mutating in place) so the enrichment can
+    be recorded in an ``EvidencePatch`` via ``graph.update_metadata``. The status
+    is ``vendor_asserted`` - distinct from the ``verified`` an NVD dictionary match
+    yields. Both establish a CPE identity (and both count toward the identity
+    axis), but they are different evidence strengths, so the label stays honest:
+    this is AlmaLinux asserting its own artifact's CPE, not a match confirmed
+    against an external dictionary. Returns ``None`` (no change) when the node
+    already carries a CPE (e.g. an NVD verification), so the SBOM never downgrades
+    it.
     """
 
-    identity = metadata.get("security_identity")
-    if not isinstance(identity, dict):
-        identity = {"cpe": None, "cpe_candidates": [], "cpe_status": "unresolved"}
-        metadata["security_identity"] = identity
+    identity: dict[str, Any] = (
+        dict(current)
+        if isinstance(current, dict)
+        else {"cpe": None, "cpe_candidates": [], "cpe_status": "unresolved"}
+    )
     if identity.get("cpe"):
-        return False
+        return None
     identity["cpe"] = cpe
     identity["cpe_status"] = "vendor_asserted"
     identity["cpe_source"] = "almalinux_sbom"
-    candidates = identity.get("cpe_candidates")
-    if isinstance(candidates, list):
-        candidates.append({"cpe23": cpe, "source": "almalinux_sbom", "verified": True})
-    return True
+    candidates = list(identity.get("cpe_candidates") or [])
+    candidates.append({"cpe23": cpe, "source": "almalinux_sbom", "verified": True})
+    identity["cpe_candidates"] = candidates
+    return identity

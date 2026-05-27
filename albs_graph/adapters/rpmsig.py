@@ -153,14 +153,14 @@ def verify_graph_signatures(
         results.append(result)
         if result.status == "verified":
             verified += 1
-            node.metadata["signature_verified"] = True
+            graph.update_metadata(node.id, {"signature_verified": True})
             _mark_signature_nodes(graph, node.id, result)
         elif result.status == "nokey":
             nokey += 1
-            node.metadata["signature_verified"] = False
+            graph.update_metadata(node.id, {"signature_verified": False})
         elif result.status == "failed":
             failed += 1
-            node.metadata["signature_verified"] = False
+            graph.update_metadata(node.id, {"signature_verified": False})
         else:
             unavailable += 1
     return SignatureReport(True, True, binaries, verified, nokey, failed, unavailable, results)
@@ -187,8 +187,10 @@ def _mark_signature_nodes(
     for edge in graph.outgoing(rpm_id, Relation.SIGNED_AS):
         node = graph.nodes[edge.target]
         if node.type == NodeType.SIGNATURE:
-            node.metadata["externally_verified"] = True
-            node.metadata["signature_verification"] = result.to_dict()
+            graph.update_metadata(
+                node.id,
+                {"externally_verified": True, "signature_verification": result.to_dict()},
+            )
 
 
 def _filename(graph: ProvenanceGraph, node_id: str) -> str | None:

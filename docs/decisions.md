@@ -1367,6 +1367,44 @@ Docs/comment only; no code or test change (suite unchanged at 218).
 
 ---
 
+## D55 - Evidence patches via a recording graph (architecture hardening)
+
+From the review: adapters mutate the graph in place, so there is no first-class
+"what this adapter would add" object -- hard to test, cache, diff, dry-run, or
+answer "why did the graph change?". Introduce `EvidencePatch(nodes, edges,
+metadata_updates, warnings)` (`model/patch.py`) with `apply` / `merge` /
+`summary` / `is_empty`.
+
+Approach: a **recorder**, chosen over "every adapter returns a patch" after a
+code audit showed the writes are entangled -- a shared `add_dependency_claim`
+helper (6 adapters), direct `add_node`/`add_edge` (5 adapters), and in-place
+`node.metadata` mutation (8 adapters). Rewriting every adapter + the shared
+helper + all call sites would be large and risky; the recorder delivers the same
+capability for *all* adapters with no adapter-signature changes:
+
+- `RecordingGraph` subclasses `ProvenanceGraph` and **shares** the wrapped
+  graph's state (nodes, edges, indexes are the same objects), so reads see the
+  live graph and writes mutate it exactly as before, while each write path also
+  appends to `patch`. `capture_patch(graph, fn, apply=...)` runs an adapter
+  against a recorder: `apply=True` records while mutating, `apply=False` is a dry
+  run against `graph.copy()` (a deep-enough copy with fresh metadata dicts), so
+  the original is untouched and you get just the patch.
+- `ProvenanceGraph.update_metadata(node_id, updates)` is now the one in-place
+  metadata-merge method; the 8 adapters that poked `node.metadata` directly route
+  through it (so the recorder captures metadata enrichment too). `sbom`'s nested
+  CPE mutator became `_sbom_cpe_identity` (returns a fresh `security_identity`
+  dict) so vendor-CPE enrichment is recordable. Behaviour is byte-for-byte
+  preserved (the adapter tests guard each conversion).
+
+Adapters still default to mutating a real graph -- the recorder is opt-in. Residue:
+no adapter emits warnings yet (the `warnings` field + `RecordingGraph.warn` exist
+for future use). Tests +6 (`test_patch`: record + apply; dry run leaves the
+original untouched; apply mutates + records; merge/is_empty; `update_metadata`
+rejects unknown nodes; a real dnf adapter patch captured via a dry run). Suite
+now 224.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
