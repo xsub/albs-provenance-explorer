@@ -39,12 +39,30 @@ from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
 
 
 class Agreement(StrEnum):
-    """The verdict for a reconciled logical dependency."""
+    """The verdict for a reconciled logical dependency.
+
+    Agreement answers *only* "do the evidence sources agree on a version?" It is
+    deliberately orthogonal to whether the dependency is valid for the subject's
+    build context: a version-consistent CONSENSUS can still be the wrong distro
+    generation. That second axis is a :class:`ContextIssue`, not an agreement
+    verdict, so coverage policy can weigh the two independently.
+    """
 
     CONSENSUS = "consensus"  # >=2 independent evidence sources agree on one version
     COMPATIBLE = "compatible"  # exactly one concrete version, nothing contradicts it
     CONFLICT = "conflict"  # sources disagree (see ConflictKind)
     INSUFFICIENT_EVIDENCE = "insufficient_evidence"  # no concrete version anywhere
+
+
+class ContextIssue(StrEnum):
+    """A dependency that is internally consistent yet invalid for the subject.
+
+    Orthogonal to :class:`Agreement`: the sources can fully agree (CONSENSUS)
+    while the resolved package is still wrong for the build's context. A
+    resolution carrying a context issue is treated as unresolved by coverage.
+    """
+
+    CROSS_DISTRO = "cross_distro"  # resolved against a different distro generation than the build
 
 
 class ConflictKind(StrEnum):
@@ -107,16 +125,29 @@ class ReconciliationReport:
     resolutions: int
     agreements: dict[str, int]
     conflicts: list[DependencyConflict] = field(default_factory=list)
+    context_issues: dict[str, int] = field(default_factory=dict)
 
     @property
     def conflict_count(self) -> int:
         return len(self.conflicts)
+
+    @property
+    def cross_distro_count(self) -> int:
+        """Resolutions whose deps were resolved against a different distro.
+
+        Counted as a *context issue*, independent of the agreement verdict: such
+        a resolution can still be CONSENSUS on its (foreign-distro) version.
+        """
+
+        return self.context_issues.get(str(ContextIssue.CROSS_DISTRO), 0)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "resolutions": self.resolutions,
             "agreements": self.agreements,
             "conflict_count": self.conflict_count,
+            "context_issues": self.context_issues,
+            "cross_distro_count": self.cross_distro_count,
             "conflicts": [conflict.to_dict() for conflict in self.conflicts],
         }
 
@@ -130,6 +161,10 @@ class ResolutionDetail:
     agreement: str
     versions: tuple[str, ...]
     evidence: tuple[str, ...]
+    context_issue: str | None = None
+    distro_mismatch: bool = False
+    subject_distro: str | None = None
+    dependency_distros: tuple[str, ...] = ()
 
 
 def resolution_details(graph: ProvenanceGraph) -> list[ResolutionDetail]:
@@ -149,6 +184,10 @@ def resolution_details(graph: ProvenanceGraph) -> list[ResolutionDetail]:
                 agreement=str(md.get("agreement", "")),
                 versions=tuple(str(v) for v in (md.get("versions") or [])),
                 evidence=tuple(str(e) for e in (md.get("evidence") or [])),
+                context_issue=(str(ci) if (ci := md.get("context_issue")) else None),
+                distro_mismatch=bool(md.get("distro_mismatch")),
+                subject_distro=(str(sd) if (sd := md.get("subject_distro")) else None),
+                dependency_distros=tuple(str(d) for d in (md.get("dependency_distros") or [])),
             )
         )
     return sorted(details, key=lambda d: (d.subject_id, d.coordinate))
@@ -227,6 +266,7 @@ def reconcile_dependency_claims(graph: ProvenanceGraph) -> ReconciliationReport:
     }
 
     agreements: Counter[str] = Counter()
+    context_issue_counts: Counter[str] = Counter()
     conflicts: list[DependencyConflict] = []
     resolution_count = 0
 
@@ -236,7 +276,27 @@ def reconcile_dependency_claims(graph: ProvenanceGraph) -> ReconciliationReport:
         verdict, kinds, chosen = _evaluate_group(
             members, subject_has_declarations=subject_id in subjects_with_declarations
         )
+
+        # Build-context validity, orthogonal to the agreement verdict above:
+        # dependencies resolved on a host whose distro generation differs from
+        # the build's (e.g. an el9 build resolved against el10 host repos)
+        # describe the host's packages, not the build's actual deps. The sources
+        # still agree -- so this is neither a cross-source conflict nor a weaker
+        # agreement -- it is a separate CROSS_DISTRO context issue. The verdict
+        # stays (CONSENSUS/COMPATIBLE); coverage decides such a group is not
+        # resolved-for-this-build.
+        subject_distro = _subject_distro(graph, subject_id)
+        dependency_distros = sorted(
+            {tag for node in members if (v := _version_of(node)) and (tag := _distro_tag(v))}
+        )
+        distro_mismatch = bool(subject_distro and dependency_distros) and (
+            subject_distro not in dependency_distros
+        )
+        context_issue = str(ContextIssue.CROSS_DISTRO) if distro_mismatch else None
+
         agreements[str(verdict)] += 1
+        if context_issue is not None:
+            context_issue_counts[context_issue] += 1
         resolution_count += 1
 
         coordinate = _coordinate_of(members[0])
@@ -254,11 +314,15 @@ def reconcile_dependency_claims(graph: ProvenanceGraph) -> ReconciliationReport:
                     "subject": subject_id,
                     "coordinate": coordinate,
                     "agreement": str(verdict),
+                    "context_issue": context_issue,
                     "chosen_version": chosen,
                     "conflict_kinds": [str(kind) for kind in kinds],
                     "evidence": evidence_sources,
                     "versions": versions,
                     "claim_count": len(members),
+                    "distro_mismatch": distro_mismatch,
+                    "subject_distro": subject_distro,
+                    "dependency_distros": dependency_distros,
                 },
             )
         )
@@ -282,6 +346,7 @@ def reconcile_dependency_claims(graph: ProvenanceGraph) -> ReconciliationReport:
         resolutions=resolution_count,
         agreements=dict(agreements),
         conflicts=conflicts,
+        context_issues=dict(context_issue_counts),
     )
 
 
@@ -380,6 +445,38 @@ def _link_claims(graph: ProvenanceGraph, members: list[Node]) -> None:
 def _version_of(node: Node) -> str | None:
     value = node.metadata.get("asserted_version")
     return str(value) if value else None
+
+
+# RPM dist tag, e.g. "...-27.el9" -> "el9", "...-121.el10_2" -> "el10". The dot
+# separator avoids matching a stray "elNN" inside an unrelated version token.
+_DISTRO_TAG = re.compile(r"\.(el\d+)")
+
+
+def _distro_tag(text: str | None) -> str | None:
+    """The RPM dist *generation* (``el9``, ``el10``) from a version/release.
+
+    Only the major generation is taken, so ``el9_2`` and ``el9_4`` (one distro,
+    different minor) compare equal -- only a true generation gap (``el9`` vs
+    ``el10``) is treated as a mismatch.
+    """
+
+    if not text:
+        return None
+    match = _DISTRO_TAG.search(text)
+    return match.group(1) if match else None
+
+
+def _subject_distro(graph: ProvenanceGraph, subject_id: str) -> str | None:
+    """The build's distro generation, read from the subject RPM's release/EVR."""
+
+    node = graph.nodes.get(subject_id)
+    if node is None:
+        return None
+    for value in (node.metadata.get("release"), node.metadata.get("version"), node.label):
+        tag = _distro_tag(str(value) if value is not None else None)
+        if tag:
+            return tag
+    return None
 
 
 def _distinct_versions(versions: list[str]) -> list[str]:

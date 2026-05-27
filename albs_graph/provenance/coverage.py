@@ -77,10 +77,15 @@ def coverage_report(graph: ProvenanceGraph) -> CoverageReport:
 def _resolution_axis(graph: ProvenanceGraph) -> AxisCoverage:
     resolutions = graph.find_by_type(NodeType.DEPENDENCY_RESOLUTION)
     if resolutions:
+        # Coverage policy: a positive agreement counts only when the dependency
+        # is also valid for the subject's build context. A context issue (today:
+        # cross_distro) means the resolved package is the wrong distro generation,
+        # so it is not "resolved for this build" however much the sources agree.
         covered = sum(
             1
             for node in resolutions
             if str(node.metadata.get("agreement", "")) in _RESOLVED_AGREEMENTS
+            and not node.metadata.get("context_issue")
         )
         return AxisCoverage("resolution", covered, len(resolutions))
 

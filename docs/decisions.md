@@ -1121,6 +1121,57 @@ Suite now 190. This completes the external review's scope-boundary findings
 
 ---
 
+## D48 - Distro-aware reconciliation + retarget the tour to el10 (57810)
+
+The grand tour (`example--tour.sh`) still defaulted to `BUILD_ID=17812`
+(AlmaLinux 9). Run on the el10 host, that resolves an el9 build's dependencies
+against the host's el10 repos: `dnf` and soname resolution agree on el10
+releases (glibc 2.39 el10, openssl-libs 3.5 el10, ...) and the reconciler
+reported them as `consensus` *for an el9 build* - presenting host packages as
+the build's own deps. Two changes:
+
+- **Retarget (a).** `example--tour.sh` now defaults to `BUILD_ID=57810`
+  (AlmaLinux 10), matching the el10 host so the tour resolves the build's own
+  deps. `example--full.sh` already pinned 57810; only the tour had drifted.
+- **Cross-distro honesty (b).** `reconcile_dependency_claims` now compares the
+  subject build's distro generation (from the RPM release, e.g. `el9`) against
+  each resolved dependency's (`el10`). Only the *generation* is compared, so
+  `el9_2` vs `el9_4` (same distro, different minor) is not flagged. Agreement and
+  build-context validity are kept on **separate axes** (see below): the verdict
+  stays whatever the sources support (a cross-distro group is still honest
+  `consensus`), and the mismatch is recorded as an orthogonal `ContextIssue`
+  (`cross_distro`), alongside `distro_mismatch` / `subject_distro` /
+  `dependency_distros` on the resolution node. It is deliberately *neither* a
+  `ConflictKind` (the sources agree -- it must not inflate the conflict count)
+  *nor* an `Agreement` value (it is not a weaker form of agreement). Coverage
+  policy decides what it costs: `_resolution_axis` counts a `consensus`/
+  `compatible` only when it carries no context issue, so an el9-on-el10 run
+  reports those deps as unresolved rather than falsely resolved. The CLI surfaces
+  it: a `cross-distro: N` suffix on the non-verbose "Reconciled dependencies"
+  line, and a `(cross_distro: build elX, deps elY)` note per verbose claim.
+
+The 57810 demo (el10 build, el10 host) has no mismatch, so its output - and the
+committed README text-screenshot - is unchanged. But the el10 BaseOS/AppStream
+repos have since consolidated to a single build per package, so the run now
+shows 6 `consensus` + 8 `insufficient_evidence` and **0 conflicts** (was 3
+`version_drift` when two builds each of glibc/openssl-libs/zlib-ng-compat
+co-existed). The README and plan prose that explained "3 real conflicts" are
+rewritten to match the screenshot and to introduce the cross-distro guard.
+
+Why a separate axis, not a `CROSS_DISTRO` agreement verdict (the structural call):
+`Agreement` answers only *do the sources agree on a version?* A dependency can be
+perfectly version-consistent and still invalid for the subject's build context.
+Folding context validity into the agreement enum conflates the two and forces
+every consumer to special-case one value; modelling it as an orthogonal
+`ContextIssue` keeps `Agreement` a clean four-value verdict and lets coverage (and
+future policies) weigh the two axes independently.
+
+Tests +4 (cross_distro recorded as a context issue, not a weaker agreement;
+excluded from coverage; same-distro consensus carries no issue; a minor-version
+difference is not flagged). Suite now 194.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

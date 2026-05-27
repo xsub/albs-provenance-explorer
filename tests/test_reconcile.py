@@ -9,8 +9,10 @@ from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
 from albs_graph.provenance import (
     Agreement,
     ConflictKind,
+    ContextIssue,
     DependencyClaim,
     add_dependency_claim,
+    coverage_report,
     reconcile_dependency_claims,
     resolution_details,
 )
@@ -21,6 +23,21 @@ SUBJECT = "rpm:app:1.0:x86_64"
 def _graph_with_subject() -> ProvenanceGraph:
     graph = ProvenanceGraph()
     graph.add_node(Node(SUBJECT, NodeType.BINARY_RPM, "app", {"name": "app", "arch": "x86_64"}))
+    return graph
+
+
+def _graph_with_subject_release(release: str) -> ProvenanceGraph:
+    """A subject whose release carries a dist tag, e.g. ``16.el9_4.1`` (el9) or el10."""
+
+    graph = ProvenanceGraph()
+    graph.add_node(
+        Node(
+            SUBJECT,
+            NodeType.BINARY_RPM,
+            "app",
+            {"name": "app", "arch": "x86_64", "version": "1.0", "release": release},
+        )
+    )
     return graph
 
 
@@ -257,3 +274,94 @@ def test_resolver_asserted_range_violation_surfaces_as_conflict() -> None:
 
     assert resolution.metadata["agreement"] == str(Agreement.CONFLICT)
     assert str(ConflictKind.RANGE_VIOLATION) in resolution.metadata["conflict_kinds"]
+
+
+def test_cross_distro_is_a_context_issue_not_a_weaker_agreement() -> None:
+    # An el9 build whose deps resolved against el10 host repos: both sources
+    # agree on the el10 glibc, so the agreement is honest CONSENSUS. But that is
+    # the host's package, not the el9 build's dep -- an orthogonal CROSS_DISTRO
+    # context issue, not a downgraded verdict.
+    graph = _graph_with_subject_release("16.el9_4.1")
+    add_dependency_claim(
+        graph, _claim("glibc", "2.39-121.el10_2", "resolver:dnf", state=ResolutionState.RESOLVED)
+    )
+    add_dependency_claim(
+        graph,
+        _claim("glibc", "2.39-121.el10_2", "soname_provider", state=ResolutionState.PROVIDED),
+    )
+
+    report = reconcile_dependency_claims(graph)
+    resolution = _resolution_for(graph, "glibc")
+
+    # Agreement is unchanged -- the sources do agree on a version.
+    assert resolution.metadata["agreement"] == str(Agreement.CONSENSUS)
+    # The build-context problem is recorded on a separate axis.
+    assert resolution.metadata["context_issue"] == str(ContextIssue.CROSS_DISTRO)
+    assert resolution.metadata["distro_mismatch"] is True
+    assert resolution.metadata["subject_distro"] == "el9"
+    assert resolution.metadata["dependency_distros"] == ["el10"]
+    # It is neither a cross-source conflict nor an agreement verdict of its own.
+    assert report.conflict_count == 0
+    assert report.agreements.get(str(Agreement.CONSENSUS)) == 1
+    assert report.cross_distro_count == 1
+
+
+def test_cross_distro_resolution_excluded_from_coverage() -> None:
+    # Coverage policy: a CONSENSUS carrying a context issue is not "resolved for
+    # this build", so an el9-build-on-el10-host honestly reports deps unresolved.
+    graph = _graph_with_subject_release("16.el9_4.1")
+    add_dependency_claim(
+        graph, _claim("glibc", "2.39-121.el10_2", "resolver:dnf", state=ResolutionState.RESOLVED)
+    )
+    add_dependency_claim(
+        graph,
+        _claim("glibc", "2.39-121.el10_2", "soname_provider", state=ResolutionState.PROVIDED),
+    )
+    reconcile_dependency_claims(graph)
+
+    report = coverage_report(graph)
+
+    assert report.resolution.total == 1
+    assert report.resolution.covered == 0  # context issue excludes the consensus
+    assert report.resolution.fraction == 0.0
+
+
+def test_same_distro_consensus_has_no_context_issue() -> None:
+    # el10 build, el10 deps: the host matches the build, so consensus counts.
+    graph = _graph_with_subject_release("16.el10_2.1")
+    add_dependency_claim(
+        graph, _claim("glibc", "2.39-121.el10_2", "resolver:dnf", state=ResolutionState.RESOLVED)
+    )
+    add_dependency_claim(
+        graph,
+        _claim("glibc", "2.39-121.el10_2", "soname_provider", state=ResolutionState.PROVIDED),
+    )
+
+    report = reconcile_dependency_claims(graph)
+    resolution = _resolution_for(graph, "glibc")
+
+    assert resolution.metadata["agreement"] == str(Agreement.CONSENSUS)
+    assert resolution.metadata["context_issue"] is None
+    assert resolution.metadata["distro_mismatch"] is False
+    assert report.cross_distro_count == 0
+    assert coverage_report(graph).resolution.covered == 1
+
+
+def test_distro_minor_difference_is_not_a_context_issue() -> None:
+    # el9_2 build, el9_4 dep: same generation (el9), only the minor differs.
+    # That is normal within a release, so it must not be flagged cross-distro.
+    graph = _graph_with_subject_release("16.el9_2.1")
+    add_dependency_claim(
+        graph, _claim("glibc", "2.34-100.el9_4.2", "resolver:dnf", state=ResolutionState.RESOLVED)
+    )
+    add_dependency_claim(
+        graph,
+        _claim("glibc", "2.34-100.el9_4.2", "soname_provider", state=ResolutionState.PROVIDED),
+    )
+
+    report = reconcile_dependency_claims(graph)
+    resolution = _resolution_for(graph, "glibc")
+
+    assert resolution.metadata["agreement"] == str(Agreement.CONSENSUS)
+    assert resolution.metadata["context_issue"] is None
+    assert report.cross_distro_count == 0

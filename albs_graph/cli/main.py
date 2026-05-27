@@ -774,10 +774,13 @@ def coverage_command(
                 f"Signatures: {signature_report.verified} verified, {signature_report.nokey} nokey, "
                 f"{signature_report.failed} failed of {signature_report.binaries} RPMs"
             )
-    console.print(
+    reconciled_line = (
         f"Reconciled dependencies: {reconciliation.resolutions}; "
         f"conflicts: {reconciliation.conflict_count}"
     )
+    if reconciliation.cross_distro_count:
+        reconciled_line += f"; cross-distro: {reconciliation.cross_distro_count}"
+    console.print(reconciled_line)
     if verbose:
         if reconciliation.agreements:
             breakdown = ", ".join(
@@ -796,8 +799,12 @@ def coverage_command(
             evidence = ", ".join(detail.evidence) or "n/a"
             versions = ", ".join(detail.versions)
             version_part = f" @ {versions}" if versions else ""
+            note = ""
+            if detail.context_issue:
+                deps = ", ".join(detail.dependency_distros) or "?"
+                note = f"  ({detail.context_issue}: build {detail.subject_distro or '?'}, deps {deps})"
             console.print(
-                f"    {detail.coordinate}{version_part} -> {detail.agreement} [{evidence}]",
+                f"    {detail.coordinate}{version_part} -> {detail.agreement} [{evidence}]{note}",
                 markup=False,
             )
         if len(details) > 40:

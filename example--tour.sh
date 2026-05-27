@@ -14,7 +14,7 @@
 # network just skip, they never hard-fail the tour.
 #
 # Env:
-#   BUILD_ID (default 17812)   PACKAGE (default nginx-core)   ARCH (default x86_64)
+#   BUILD_ID (default 57810)   PACKAGE (default nginx-core)   ARCH (default x86_64)
 #   FILE  (default /usr/sbin/nginx)   OWNER (default $PACKAGE)  -- for `identify`
 #   REPO  (default appstream)  whole-repo universe via `dnf repograph` (AlmaLinux)
 #   VERBOSE (default 1) per-claim reconciliation detail; VERBOSE=0 for summaries
@@ -25,7 +25,7 @@
 #
 set -uo pipefail
 
-BUILD_ID="${BUILD_ID:-17812}"
+BUILD_ID="${BUILD_ID:-57810}"
 PACKAGE="${PACKAGE:-nginx-core}"
 ARCH="${ARCH:-x86_64}"
 FILE="${FILE:-/usr/sbin/nginx}"

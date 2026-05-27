@@ -124,7 +124,7 @@ RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed
 - ✅ Semantic version comparison in the reconciler (`VERSION_DRIFT` /
   `RANGE_VIOLATION` via rpmvercmp) and **GPG signature verification**
   (`coverage --verify-signatures`, real provenance verification now CAS is gone).
-- ✅ Offline tests for all of the above (190 tests; ruff + mypy --strict clean),
+- ✅ Offline tests for all of the above (194 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not specific to any
   single build.
 
@@ -133,9 +133,15 @@ batch), focused on `nginx-core`: 456 binary RPMs, provenance 1.00. On an `el10`
 host `dnf repoquery` resolved 6 runtime + 1 weak dep, soname resolution mapped
 6/6 sonames to providers, a live header read added 8 dynamic-linkage claims, the
 payload ELF confirmed 6 `DT_NEEDED`, and the RPM GPG signature verified. The
-reconciler recorded 3 real `version_drift` conflicts where the el10 repos carry
-two builds each of `glibc` / `openssl-libs` / `zlib-ng-compat` - every claim
-kept, none discarded. Licenses are real too: `nginx-core`'s `BSD-2-Clause` comes
+reconciler reached `consensus` on 6 runtime packages (two sources agreeing on
+one el10 release) and left 8 bare sonames / header requires as
+`insufficient_evidence`, with no conflicts - and because the deps were resolved
+on the build's own distro, that consensus is the build's actual dependency set.
+Agreement and build-context validity are separate axes: an el9 build resolved on
+the same el10 host still reaches honest `consensus`, but the resolution carries a
+`cross_distro` context issue and is dropped from resolution coverage, so host
+packages are never passed off as the build's deps. Licenses are real too: `nginx-core`'s
+`BSD-2-Clause` comes
 from the RPM `License:` header tag, and `license --rpm-licenses` rolls up the
 subject + 6 runtime deps into 6 distinct licenses via `dnf repoquery %{license}`.
 AlmaLinux's `alma-sbom` generates a real CycloneDX build SBOM anonymously (457

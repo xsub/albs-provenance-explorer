@@ -20,6 +20,7 @@ from .lineage import artifacts_from_source, cves_for_artifact
 from .reconcile import (
     Agreement,
     ConflictKind,
+    ContextIssue,
     DependencyClaim,
     DependencyConflict,
     ReconciliationReport,
@@ -55,6 +56,7 @@ __all__ = [
     "AxisCoverage",
     "BuildAnalysis",
     "ConflictKind",
+    "ContextIssue",
     "CoverageReport",
     "DependencyClaim",
     "DependencyConflict",
