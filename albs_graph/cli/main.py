@@ -868,6 +868,17 @@ def trust_path_command(
         "--build-sbom",
         help="CycloneDX build SBOM (alma-sbom) to attach, so the trust path's has_sbom check passes.",
     ),
+    errata: Optional[Path] = typer.Option(
+        None,
+        "--errata",
+        help="Errata JSON (id, type, severity, cves) to attach, so the trust path's "
+        "has_errata_link check passes.",
+    ),
+    errata_subject: Optional[str] = typer.Option(
+        None,
+        "--errata-subject",
+        help="Binary RPM the errata applies to (defaults to the selected RPM).",
+    ),
 ) -> None:
     if build_id is not None:
         metadata = fetch_build_metadata(
@@ -899,6 +910,12 @@ def trust_path_command(
         _log_step(verbose, f"Resolving binary RPM selector: {rpm_selector}")
         rpm_node = find_binary_rpm(graph, rpm_selector, arch=arch)
     _log_step(verbose, f"Selected RPM node: {rpm_node.id}")
+    if errata is not None:
+        errata_node = (
+            find_binary_rpm(graph, errata_subject, arch=arch) if errata_subject else rpm_node
+        )
+        _log_step(verbose, f"Attaching errata {errata} to {errata_node.id}")
+        attach_errata_file(graph, errata_node.id, errata)
     _log_step(verbose, "Analyzing source-to-artifact trust path")
     report = trust_path(graph, rpm_node.id)
 

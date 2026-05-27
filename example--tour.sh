@@ -18,6 +18,13 @@
 #   FILE  (default /usr/sbin/nginx)   OWNER (default $PACKAGE)  -- for `identify`
 #   REPO  (default appstream)  whole-repo universe via `dnf repograph` (AlmaLinux)
 #   VERBOSE (default 1) per-claim reconciliation detail; VERBOSE=0 for summaries
+#   SBOM_FILE (default examples/build-<id>.cyclonedx.json) real alma-sbom CycloneDX;
+#             attached to trust-path/coverage/vuln when present -> closes the trust
+#             path's has_sbom and lifts the identity axis to 1.00. Regenerate with:
+#             alma-sbom --file-format cyclonedx-json build --build-id <id> -o SBOM_FILE
+#   ERRATA_FILE (optional, no default) real errata JSON {id,type,severity,cves};
+#             attached to trust-path/coverage/vuln when set -> closes has_errata_link.
+#             Nothing is fabricated, so without a real file the errata link stays open.
 #
 # Retarget examples:
 #   VERBOSE=0 ./example--tour.sh
@@ -34,11 +41,21 @@ REPO="${REPO:-appstream}"
 VERBOSE="${VERBOSE:-1}"
 LIVE_DIR="${LIVE_DIR:-examples/live-build-$BUILD_ID}"
 CACHE="${CACHE:-$LIVE_DIR/build-$BUILD_ID.albs.json}"
+SBOM_FILE="${SBOM_FILE:-examples/build-$BUILD_ID.cyclonedx.json}"
+ERRATA_FILE="${ERRATA_FILE:-}"
 
 mkdir -p "$LIVE_DIR"
 
 verbose_flag=""
 [ "$VERBOSE" = "1" ] && verbose_flag="--verbose"
+
+# Security-context inputs: a real build SBOM (closes has_sbom + lifts identity) and
+# an optional real errata file (closes has_errata_link). Both degrade to no-ops when
+# absent -- nothing is fabricated.
+sbom_args=()
+[ -f "$SBOM_FILE" ] && sbom_args=(--build-sbom "$SBOM_FILE")
+errata_args=()
+[ -n "$ERRATA_FILE" ] && [ -f "$ERRATA_FILE" ] && errata_args=(--errata "$ERRATA_FILE")
 
 if command -v python3 >/dev/null 2>&1; then PYTHON_BIN=python3; else PYTHON_BIN=python; fi
 run() {
@@ -60,7 +77,8 @@ if [[ ! -f "$CACHE" ]]; then
 fi
 
 step "1. Provenance: source-to-artifact trust path for ${PACKAGE}"
-optional run trust-path --source "$CACHE" --rpm "$PACKAGE" --arch "$ARCH" $verbose_flag
+optional run trust-path --source "$CACHE" --rpm "$PACKAGE" --arch "$ARCH" \
+  ${sbom_args[@]+"${sbom_args[@]}"} ${errata_args[@]+"${errata_args[@]}"} $verbose_flag
 
 step "2. Point at a binary file: full creation + installation lineage of ${FILE}"
 optional run identify "$FILE" --source "$CACHE" --owner "$OWNER" --arch "$ARCH"
@@ -73,6 +91,7 @@ fi
 if have dnf; then
   cover+=(--use-dnf --resolve-sonames)
 fi
+cover+=(${sbom_args[@]+"${sbom_args[@]}"} ${errata_args[@]+"${errata_args[@]}"})
 optional run coverage "${cover[@]}" $verbose_flag
 
 step "4. SLSA / in-toto provenance attestation for ${PACKAGE}"
@@ -80,7 +99,8 @@ optional run slsa "$PACKAGE" --source "$CACHE" --arch "$ARCH" -o "$LIVE_DIR/$PAC
 [[ -f "$LIVE_DIR/$PACKAGE.intoto.json" ]] && printf '   wrote %s\n' "$LIVE_DIR/$PACKAGE.intoto.json"
 
 step "5. Vulnerability-applicability report for ${PACKAGE}"
-optional run vuln --source "$CACHE" --package "$PACKAGE" --arch "$ARCH" $verbose_flag
+optional run vuln --source "$CACHE" --package "$PACKAGE" --arch "$ARCH" \
+  ${sbom_args[@]+"${sbom_args[@]}"} ${errata_args[@]+"${errata_args[@]}"} $verbose_flag
 
 if have dnf && [[ -n "$REPO" ]]; then
   step "6. Dependency universe via 'dnf repograph ${REPO}' (build, persist, traverse)"

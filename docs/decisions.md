@@ -1471,6 +1471,40 @@ in follow-ups. Tests +5. Suite now 232.
 
 ---
 
+## D58 - Close the tour's security-context axis (SBOM wired; trust-path --errata)
+
+`example--tour.sh` ran `trust-path` / `coverage` / `vuln` with **no SBOM or errata
+flag**, so the trust path reported `has_sbom` *and* `has_errata_link` missing --
+which looked like a regression vs `example--full.sh`. It is not: the live ALBS
+builder (`graph_from_build_metadata`) creates **no SBOM node** (it only records
+`alma_commit_sbom_hash`/`sbom_api_ver` as CAS metadata), and `has_sbom` requires a
+`DESCRIBED_BY` edge that only `--build-sbom` / `--sbom` / `import-sbom` (or the
+synthetic fixture) create. `git show main:example--tour.sh` is identical here
+(only `BUILD_ID` differs), and `main`'s builder has no SBOM node either -- the
+tour reported the same on `main`. The SBOM you see in the README is from
+`example--full.sh`, which passes `--build-sbom examples/build-57810.cyclonedx.json`.
+
+Decision -- let the tour close the axis honestly:
+
+- Wire the real committed build SBOM into the tour: `SBOM_FILE` (default
+  `examples/build-<id>.cyclonedx.json`) is passed as `--build-sbom` to
+  `trust-path` / `coverage` / `vuln` **when the file exists**, closing `has_sbom`
+  and lifting identity to 1.00. Absent file -> no-op.
+- Add `--errata` / `--errata-subject` to the **`trust-path`** command (parity with
+  `vuln` / `coverage`, which already had them) so the trust path's
+  `has_errata_link` can close; wire an optional `ERRATA_FILE` into the tour.
+  **Nothing is fabricated** -- with no real errata file the link stays open (the
+  default tour now shows only `has_errata_link` missing, not `has_sbom`).
+- Portable empty-array idiom `${arr[@]+"${arr[@]}"}` in the tour, so it still runs
+  under bash 3.2 (macOS) when the args are empty (plain `"${arr[@]}"` errors under
+  `set -u` there; verified).
+
+Tests +1 (`trust-path --errata` closes `has_errata_link`; the synthetic source
+carries no SBOM, so `has_sbom` stays missing -- proving the flag closed errata
+specifically). The `coverage` golden output is unchanged. Suite now 233.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
