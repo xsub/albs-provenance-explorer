@@ -1279,6 +1279,35 @@ verdict; rules are pluggable; insufficient-evidence default). Suite now 212.
 
 ---
 
+## D52 - Indexed `ProvenanceGraph` (architecture hardening)
+
+From the review: `graph.py` stored nodes as a dict and edges as a flat list, so
+the hot read paths rescanned everything. `outgoing` / `incoming` filtered the
+whole edge list, `find_by_type` walked every node, and `reachable` /
+`neighborhood` rebuilt an adjacency map on every call -- O(E) or O(N) per query,
+which does not scale past demo graphs.
+
+Decision: maintain three insertion-ordered indexes, updated in `add_node` /
+`add_edge`: `_outgoing` and `_incoming` (`dict[str, list[Edge]]`) and
+`_nodes_by_type` (`dict[str, list[Node]]`). `outgoing` / `incoming` /
+`find_by_type` now read the relevant index (returning a fresh copy so callers
+can't corrupt it), and `reachable` / `neighborhood` traverse via the adjacency
+indexes instead of rebuilding. Because the indexes preserve insertion order, all
+query results are byte-for-byte identical to the old linear scans -- the full
+existing suite (trust paths, reachability, every adapter that iterates
+`find_by_type`) is the guard.
+
+Consistency is safe because every mutation already goes through `add_node` /
+`add_edge` (verified: nothing else assigns `.nodes[...]` or appends to `.edges`),
+and the common in-place `node.metadata.update(...)` keeps the same `Node` object
+the index points at. `add_node` only indexes a genuinely new id, so re-adding an
+equal node (the idempotent path) does not duplicate it. Tests +4
+(`test_graph_model`: ordered + idempotent `find_by_type`; fresh-copy result;
+`outgoing`/`incoming` order + relation filter + copy; `reachable` follows
+out-edges only). Suite now 216.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -42,10 +42,22 @@ class ProvenanceGraph:
     def __init__(self) -> None:
         self.nodes: dict[str, Node] = {}
         self.edges: list[Edge] = []
+        # Indexes maintained on insert so the hot read paths (outgoing / incoming
+        # / find_by_type / reachable) do not rescan the full edge list or node
+        # dict. Each preserves insertion order, so query results are identical to
+        # the old linear scans. They are kept consistent because every mutation
+        # goes through add_node / add_edge (verified: nothing pokes .nodes/.edges
+        # directly), and in-place metadata.update keeps the same Node object.
+        self._outgoing: dict[str, list[Edge]] = defaultdict(list)
+        self._incoming: dict[str, list[Edge]] = defaultdict(list)
+        self._nodes_by_type: dict[str, list[Node]] = defaultdict(list)
 
     def add_node(self, node: Node) -> None:
-        if node.id in self.nodes and self.nodes[node.id] != node:
+        existing = self.nodes.get(node.id)
+        if existing is not None and existing != node:
             raise ValueError(f"Conflicting node definition for {node.id}")
+        if existing is None:
+            self._nodes_by_type[str(node.type)].append(node)
         self.nodes[node.id] = node
 
     def add_edge(
@@ -59,31 +71,30 @@ class ProvenanceGraph:
             raise ValueError(f"Missing source node: {source}")
         if target not in self.nodes:
             raise ValueError(f"Missing target node: {target}")
-        self.edges.append(
-            Edge(
-                source=source,
-                target=target,
-                relation=Relation.canonical(relation),
-                metadata=metadata,
-            )
+        edge = Edge(
+            source=source,
+            target=target,
+            relation=Relation.canonical(relation),
+            metadata=metadata,
         )
+        self.edges.append(edge)
+        self._outgoing[source].append(edge)
+        self._incoming[target].append(edge)
 
     def outgoing(self, node_id: str, relation: Relation | str | None = None) -> list[Edge]:
-        return [
-            edge
-            for edge in self.edges
-            if edge.source == node_id and (relation is None or edge.relation == relation)
-        ]
+        edges = self._outgoing.get(node_id, ())
+        if relation is None:
+            return list(edges)
+        return [edge for edge in edges if edge.relation == relation]
 
     def incoming(self, node_id: str, relation: Relation | str | None = None) -> list[Edge]:
-        return [
-            edge
-            for edge in self.edges
-            if edge.target == node_id and (relation is None or edge.relation == relation)
-        ]
+        edges = self._incoming.get(node_id, ())
+        if relation is None:
+            return list(edges)
+        return [edge for edge in edges if edge.relation == relation]
 
     def find_by_type(self, node_type: NodeType | str) -> list[Node]:
-        return [node for node in self.nodes.values() if str(node.type) == str(node_type)]
+        return list(self._nodes_by_type.get(str(node_type), ()))
 
     def find_by_label(self, label: str) -> list[Node]:
         normalized = label.lower()
@@ -101,9 +112,6 @@ class ProvenanceGraph:
     def reachable(self, start_node_id: str) -> set[str]:
         if start_node_id not in self.nodes:
             raise ValueError(f"Unknown node: {start_node_id}")
-        adjacency: dict[str, list[str]] = defaultdict(list)
-        for edge in self.edges:
-            adjacency[edge.source].append(edge.target)
         seen: set[str] = set()
         queue: deque[str] = deque([start_node_id])
         while queue:
@@ -111,7 +119,7 @@ class ProvenanceGraph:
             if current in seen:
                 continue
             seen.add(current)
-            queue.extend(adjacency[current])
+            queue.extend(edge.target for edge in self._outgoing.get(current, ()))
         return seen
 
     def has_relation_path(self, source: str, target: str) -> bool:
@@ -206,11 +214,9 @@ class ProvenanceGraph:
         frontier = {node_id}
         for _ in range(depth):
             next_frontier: set[str] = set()
-            for edge in self.edges:
-                if edge.source in frontier:
-                    next_frontier.add(edge.target)
-                if edge.target in frontier:
-                    next_frontier.add(edge.source)
+            for current in frontier:
+                next_frontier.update(edge.target for edge in self._outgoing.get(current, ()))
+                next_frontier.update(edge.source for edge in self._incoming.get(current, ()))
             selected.update(next_frontier)
             frontier = next_frontier
         return self.subgraph(selected)
