@@ -1242,6 +1242,43 @@ Suite now 206.
 
 ---
 
+## D51 - Rule-based reconciliation (architecture hardening)
+
+From the same review: `reconcile.py` had become a policy hub. A single
+`_evaluate_group` decided version drift, declared-range violations, linkage
+mismatches and artifact-presence gaps, and the loop bolted cross-distro context
+on top. Every new policy was another branch in a growing monolith.
+
+Decision: factor each policy into an independent `ReconciliationRule` in a new
+`provenance/reconcile_rules.py`. A rule inspects a precomputed `ResolutionGroup`
+(plain fields -- versions, version classes, linkages, evidence flags, distros) and
+emits a `RuleFinding` (conflict kinds and/or context issues). The combiner
+`evaluate_group(group, rules=DEFAULT_RULES)` folds the findings plus the
+version-agreement question (CONSENSUS / COMPATIBLE / INSUFFICIENT_EVIDENCE) into
+one `EvaluationResult`. The five rules are `VersionDrift`, `RangeViolation`,
+`LinkageMismatch`, `PresenceUndeclared` and `CrossDistro`; `DEFAULT_RULES` is the
+ordered registry (order preserves the historical conflict precedence, so the
+reported `DependencyConflict.kind` is unchanged), and a caller can pass a custom
+rule tuple.
+
+The reconciliation vocabulary (`Agreement`, `ConflictKind`, `ContextIssue`) moved
+into `reconcile_rules` because the rules and combiner need it and `reconcile`
+importing them back would cycle; `reconcile` re-exports them (and keeps `__all__`)
+so `from ...reconcile import Agreement` and the package API are unchanged.
+`reconcile.py` keeps orchestration only: grouping claims, a `_build_group`
+fact-gatherer, writing the resolution node, `_link_claims`, and the report. The
+rule API (`ReconciliationRule`, `ResolutionGroup`, `RuleFinding`, `evaluate_group`,
+`DEFAULT_RULES`) is exported from `albs_graph.provenance` so a new policy is a new
+rule object, not a new branch.
+
+Behaviour is preserved -- the existing reconcile/coverage tests (consensus, drift,
+range, linkage, presence, cross-distro) all pass unchanged. Tests +6
+(`test_reconcile_rules.py`: each rule fires only on its condition; the default
+five; conflict wins and keeps rule order; context issue is orthogonal to the
+verdict; rules are pluggable; insufficient-evidence default). Suite now 212.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

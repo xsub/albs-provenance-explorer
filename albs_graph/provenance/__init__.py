@@ -31,6 +31,14 @@ from .reconcile import (
     reconcile_dependency_claims,
     resolution_details,
 )
+from .reconcile_rules import (
+    DEFAULT_RULES,
+    EvaluationResult,
+    ReconciliationRule,
+    ResolutionGroup,
+    RuleFinding,
+    evaluate_group,
+)
 from .slsa import slsa_provenance
 from .trust import make_binary_rpm_selector, trust_path, trust_reports
 from .universe import (
@@ -58,8 +66,10 @@ __all__ = [
     "ConflictKind",
     "ContextIssue",
     "CoverageReport",
+    "DEFAULT_RULES",
     "DependencyClaim",
     "DependencyConflict",
+    "EvaluationResult",
     "GraphSummary",
     "IdentifiedElement",
     "IdentifyReport",
@@ -68,7 +78,10 @@ __all__ = [
     "PackageVulnAssessment",
     "VulnReport",
     "ReconciliationReport",
+    "ReconciliationRule",
     "ResolutionDetail",
+    "ResolutionGroup",
+    "RuleFinding",
     "SignTaskTiming",
     "TaskTiming",
     "TimingStep",
@@ -91,6 +104,7 @@ __all__ = [
     "vulnerability_report",
     "claims_from_resolver_result",
     "coverage_report",
+    "evaluate_group",
     "identity_strength",
     "cves_for_artifact",
     "identify_file",

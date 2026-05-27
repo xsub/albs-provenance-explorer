@@ -20,10 +20,8 @@ resolver *asserts* them via the ``range_satisfied=False`` claim flag.
 
 from __future__ import annotations
 
-import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from enum import StrEnum
 from typing import Any
 
 from albs_graph.nevra import distro_generation
@@ -37,41 +35,32 @@ from albs_graph.dependency.model import (
 )
 from albs_graph.dependency.resolver import ResolverResult
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
+from .reconcile_rules import (
+    Agreement,
+    ConflictKind,
+    ContextIssue,
+    ResolutionGroup,
+    distinct_versions,
+    evaluate_group,
+    version_of,
+)
 
-
-class Agreement(StrEnum):
-    """The verdict for a reconciled logical dependency.
-
-    Agreement answers *only* "do the evidence sources agree on a version?" It is
-    deliberately orthogonal to whether the dependency is valid for the subject's
-    build context: a version-consistent CONSENSUS can still be the wrong distro
-    generation. That second axis is a :class:`ContextIssue`, not an agreement
-    verdict, so coverage policy can weigh the two independently.
-    """
-
-    CONSENSUS = "consensus"  # >=2 independent evidence sources agree on one version
-    COMPATIBLE = "compatible"  # exactly one concrete version, nothing contradicts it
-    CONFLICT = "conflict"  # sources disagree (see ConflictKind)
-    INSUFFICIENT_EVIDENCE = "insufficient_evidence"  # no concrete version anywhere
-
-
-class ContextIssue(StrEnum):
-    """A dependency that is internally consistent yet invalid for the subject.
-
-    Orthogonal to :class:`Agreement`: the sources can fully agree (CONSENSUS)
-    while the resolved package is still wrong for the build's context. A
-    resolution carrying a context issue is treated as unresolved by coverage.
-    """
-
-    CROSS_DISTRO = "cross_distro"  # resolved against a different distro generation than the build
-
-
-class ConflictKind(StrEnum):
-    VERSION_DRIFT = "version_drift"  # sources assert different concrete versions
-    RANGE_VIOLATION = "range_violation"  # resolver flagged version outside declared range
-    PRESENCE_UNDECLARED = "presence_undeclared"  # shipped/observed but never declared/resolved
-    LINKAGE_MISMATCH = "linkage_mismatch"  # sources disagree on static vs dynamic
-    IDENTITY_MISMATCH = "identity_mismatch"  # same coordinate maps to different identities
+# Re-exported for stable import paths (coverage / tests import these from here).
+__all__ = [
+    "Agreement",
+    "ConflictKind",
+    "ContextIssue",
+    "DependencyClaim",
+    "DependencyConflict",
+    "ReconciliationReport",
+    "ResolutionDetail",
+    "add_dependency_claim",
+    "add_resolver_result",
+    "claim_node_id",
+    "claims_from_resolver_result",
+    "reconcile_dependency_claims",
+    "resolution_details",
+]
 
 
 # How a piece of evidence relates to the dependency lifecycle. Used to tell a
@@ -274,28 +263,20 @@ def reconcile_dependency_claims(graph: ProvenanceGraph) -> ReconciliationReport:
     for group_key in sorted(groups):
         members = sorted(groups[group_key], key=lambda node: node.id)
         subject_id = str(members[0].metadata.get("subject", ""))
-        verdict, kinds, chosen = _evaluate_group(
-            members, subject_has_declarations=subject_id in subjects_with_declarations
+        group = _build_group(
+            members,
+            subject_id=subject_id,
+            subject_has_declarations=subject_id in subjects_with_declarations,
+            subject_distro=_subject_distro(graph, subject_id),
         )
+        # All policy lives in the rules now: version drift, declared-range
+        # violations, linkage mismatches, presence gaps and (orthogonally)
+        # cross-distro context. The combiner folds their findings into one verdict.
+        result = evaluate_group(group)
+        kinds = result.conflict_kinds
+        context_issue = str(result.context_issue) if result.context_issue else None
 
-        # Build-context validity, orthogonal to the agreement verdict above:
-        # dependencies resolved on a host whose distro generation differs from
-        # the build's (e.g. an el9 build resolved against el10 host repos)
-        # describe the host's packages, not the build's actual deps. The sources
-        # still agree -- so this is neither a cross-source conflict nor a weaker
-        # agreement -- it is a separate CROSS_DISTRO context issue. The verdict
-        # stays (CONSENSUS/COMPATIBLE); coverage decides such a group is not
-        # resolved-for-this-build.
-        subject_distro = _subject_distro(graph, subject_id)
-        dependency_distros = sorted(
-            {tag for node in members if (v := _version_of(node)) and (tag := distro_generation(v))}
-        )
-        distro_mismatch = bool(subject_distro and dependency_distros) and (
-            subject_distro not in dependency_distros
-        )
-        context_issue = str(ContextIssue.CROSS_DISTRO) if distro_mismatch else None
-
-        agreements[str(verdict)] += 1
+        agreements[str(result.agreement)] += 1
         if context_issue is not None:
             context_issue_counts[context_issue] += 1
         resolution_count += 1
@@ -303,7 +284,7 @@ def reconcile_dependency_claims(graph: ProvenanceGraph) -> ReconciliationReport:
         coordinate = _coordinate_of(members[0])
         resolution_id = f"dep-res:{group_key}"
         evidence_sources = sorted({str(node.metadata.get("evidence", "")) for node in members})
-        versions = sorted({v for node in members if (v := _version_of(node)) is not None})
+        versions = sorted(set(group.version_strings))
 
         graph.add_node(
             Node(
@@ -314,16 +295,16 @@ def reconcile_dependency_claims(graph: ProvenanceGraph) -> ReconciliationReport:
                     "kind": "dependency_resolution",
                     "subject": subject_id,
                     "coordinate": coordinate,
-                    "agreement": str(verdict),
+                    "agreement": str(result.agreement),
                     "context_issue": context_issue,
-                    "chosen_version": chosen,
+                    "chosen_version": result.chosen_version,
                     "conflict_kinds": [str(kind) for kind in kinds],
                     "evidence": evidence_sources,
                     "versions": versions,
                     "claim_count": len(members),
-                    "distro_mismatch": distro_mismatch,
-                    "subject_distro": subject_distro,
-                    "dependency_distros": dependency_distros,
+                    "distro_mismatch": result.context_issue == ContextIssue.CROSS_DISTRO,
+                    "subject_distro": group.subject_distro,
+                    "dependency_distros": list(group.dependency_distros),
                 },
             )
         )
@@ -351,62 +332,50 @@ def reconcile_dependency_claims(graph: ProvenanceGraph) -> ReconciliationReport:
     )
 
 
-def _evaluate_group(
-    members: list[Node], *, subject_has_declarations: bool
-) -> tuple[Agreement, list[ConflictKind], str | None]:
-    version_strings = [v for node in members if (v := _version_of(node)) is not None]
-    # Semantic equivalence classes (rpmvercmp), not raw strings: "1.01" and "1.1"
-    # are the same version, so they do not count as drift.
-    version_classes = _distinct_versions(version_strings)
-    linkages = {
+def _build_group(
+    members: list[Node],
+    *,
+    subject_id: str,
+    subject_has_declarations: bool,
+    subject_distro: str | None,
+) -> ResolutionGroup:
+    """Precompute the per-group facts the reconciliation rules operate on.
+
+    All graph/metadata reading happens here once; the rules then see only plain
+    fields (see :class:`ResolutionGroup`). A soname coordinate (``libz.so.1``)
+    lives in a different space than a package, so it is flagged here and the
+    presence rule skips it.
+    """
+
+    version_strings = tuple(v for node in members if (v := version_of(node)) is not None)
+    linkages = frozenset(
         linkage
         for node in members
         if (linkage := str(node.metadata.get("linkage", Linkage.UNKNOWN))) != str(Linkage.UNKNOWN)
-    }
-    classes = {str(node.metadata.get("evidence_class", "")) for node in members}
-    range_violated = any(node.metadata.get("range_satisfied") is False for node in members) or (
-        _constraint_violated(members, version_strings)
     )
-
-    # A soname capability (libz.so.1) lives in a different coordinate space than
-    # a package/component (zlib); package-level declarations neither declare nor
-    # are contradicted by sonames. Detect sonames by the coordinate *name* (more
-    # robust than the evidence string -- rung-4 "elf_dt_needed" sonames carry no
-    # "soname" token), so attaching an SBOM never falsely flags a dynamically
-    # linked soname as a presence conflict.
+    classes = {str(node.metadata.get("evidence_class", "")) for node in members}
     coordinate_name = str(members[0].metadata.get("name", ""))
-    is_soname_group = ".so" in coordinate_name
-    has_artifact_evidence = _ARTIFACT_CLASS in classes
-
-    kinds: list[ConflictKind] = []
-    if len(version_classes) > 1:
-        kinds.append(ConflictKind.VERSION_DRIFT)
-    if range_violated:
-        kinds.append(ConflictKind.RANGE_VIOLATION)
-    if len(linkages) > 1:
-        kinds.append(ConflictKind.LINKAGE_MISMATCH)
-    if (
-        subject_has_declarations
-        and has_artifact_evidence
-        and not is_soname_group
-        and not (classes & _DECLARED_CLASSES)
-    ):
-        kinds.append(ConflictKind.PRESENCE_UNDECLARED)
-
-    if kinds:
-        return Agreement.CONFLICT, kinds, None
-    if not version_classes:
-        return Agreement.INSUFFICIENT_EVIDENCE, [], None
-
-    chosen = version_classes[0]
-    sources_with_version = {
-        str(node.metadata.get("evidence", ""))
-        for node in members
-        if (current := _version_of(node)) is not None and version_compare(current, chosen) == 0
-    }
-    if len(sources_with_version) >= 2:
-        return Agreement.CONSENSUS, [], chosen
-    return Agreement.COMPATIBLE, [], chosen
+    dependency_distros = tuple(
+        sorted({tag for v in version_strings if (tag := distro_generation(v))})
+    )
+    return ResolutionGroup(
+        members=tuple(members),
+        subject_id=subject_id,
+        subject_has_declarations=subject_has_declarations,
+        subject_distro=subject_distro,
+        version_strings=version_strings,
+        # Semantic equivalence classes (rpmvercmp), not raw strings: "1.01" and
+        # "1.1" are the same version, so they do not count as drift.
+        version_classes=tuple(distinct_versions(list(version_strings))),
+        linkages=linkages,
+        has_artifact_evidence=_ARTIFACT_CLASS in classes,
+        has_declared_class=bool(classes & _DECLARED_CLASSES),
+        is_soname_group=".so" in coordinate_name,
+        dependency_distros=dependency_distros,
+        range_satisfied_false=any(
+            node.metadata.get("range_satisfied") is False for node in members
+        ),
+    )
 
 
 def _link_claims(graph: ProvenanceGraph, members: list[Node]) -> None:
@@ -414,8 +383,8 @@ def _link_claims(graph: ProvenanceGraph, members: list[Node]) -> None:
 
     for i, left in enumerate(members):
         for right in members[i + 1 :]:
-            left_version = _version_of(left)
-            right_version = _version_of(right)
+            left_version = version_of(left)
+            right_version = version_of(right)
             if left_version is not None and right_version is not None:
                 # Use rpmvercmp, not string equality, so 1.01 and 1.1 corroborate
                 # (matching the verdict path) instead of a false VERSION_DRIFT edge.
@@ -443,11 +412,6 @@ def _link_claims(graph: ProvenanceGraph, members: list[Node]) -> None:
                 )
 
 
-def _version_of(node: Node) -> str | None:
-    value = node.metadata.get("asserted_version")
-    return str(value) if value else None
-
-
 def _subject_distro(graph: ProvenanceGraph, subject_id: str) -> str | None:
     """The build's distro generation, read from the subject RPM's release/EVR."""
 
@@ -459,63 +423,6 @@ def _subject_distro(graph: ProvenanceGraph, subject_id: str) -> str | None:
         if tag:
             return tag
     return None
-
-
-def _distinct_versions(versions: list[str]) -> list[str]:
-    """Representatives of the semantic version-equivalence classes (rpmvercmp)."""
-
-    reps: list[str] = []
-    for version in versions:
-        if not any(version_compare(version, rep) == 0 for rep in reps):
-            reps.append(version)
-    return reps
-
-
-# Relational constraint, e.g. "openssl-libs >= 1:3.0.7" -> (">=", "1:3.0.7").
-_CONSTRAINT = re.compile(r"(>=|<=|>|<)\s*([0-9][^\s,)\]]*)")
-
-
-def _constraint_violated(members: list[Node], concrete_versions: list[str]) -> bool:
-    """True if a declared relational constraint is unmet by a concrete version.
-
-    Detects e.g. a manifest requiring ``>= 3.2`` while the shipped/resolved
-    version is ``3.0.7`` (the AlmaLinux-backport range case). Only relational
-    operators are evaluated (``=`` provides/config are skipped to avoid noise),
-    and epochs are stripped before comparison.
-    """
-
-    if not concrete_versions:
-        return False
-    for node in members:
-        match = _CONSTRAINT.search(_requested_of(node))
-        if not match:
-            continue
-        operator, bound = match.group(1), match.group(2)
-        if any(not _satisfies(version, operator, bound) for version in concrete_versions):
-            return True
-    return False
-
-
-def _requested_of(node: Node) -> str:
-    dependency = node.metadata.get("dependency")
-    if isinstance(dependency, dict):
-        return str(dependency.get("requested") or "")
-    return ""
-
-
-def _satisfies(version: str, operator: str, bound: str) -> bool:
-    comparison = version_compare(_strip_epoch(version), _strip_epoch(bound))
-    if operator == ">=":
-        return comparison >= 0
-    if operator == ">":
-        return comparison > 0
-    if operator == "<=":
-        return comparison <= 0
-    return comparison < 0
-
-
-def _strip_epoch(version: str) -> str:
-    return version.split(":", 1)[1] if ":" in version else version
 
 
 def _coordinate_of(node: Node) -> str:
