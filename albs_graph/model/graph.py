@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from .edges import Edge, Relation
 from .nodes import Node, NodeType
@@ -95,6 +95,50 @@ class ProvenanceGraph:
         if node is None:
             raise ValueError(f"Unknown node: {node_id}")
         node.metadata.update(updates)
+
+    def remove_node(self, node_id: str) -> None:
+        """Remove a node and every edge incident to it. No-op if missing.
+
+        Used by re-runnable enrichers (the reconciler purges its prior
+        DEPENDENCY_RESOLUTION nodes before rebuilding) so a saved graph can be
+        re-enriched without `Conflicting node definition` errors.
+        """
+
+        node = self.nodes.pop(node_id, None)
+        if node is None:
+            return
+        by_type = self._nodes_by_type.get(str(node.type))
+        if by_type is not None:
+            self._nodes_by_type[str(node.type)] = [n for n in by_type if n.id != node_id]
+        # Drop incident edges from the adjacency indexes + the flat list.
+        for edge in self._outgoing.pop(node_id, []):
+            others = self._incoming.get(edge.target)
+            if others is not None:
+                self._incoming[edge.target] = [e for e in others if e is not edge]
+        for edge in self._incoming.pop(node_id, []):
+            others = self._outgoing.get(edge.source)
+            if others is not None:
+                self._outgoing[edge.source] = [e for e in others if e is not edge]
+        self.edges = [e for e in self.edges if e.source != node_id and e.target != node_id]
+
+    def remove_edges_where(self, predicate: Callable[[Edge], bool]) -> int:
+        """Remove every edge for which ``predicate`` returns True. Returns count.
+
+        Used by the reconciler to purge prior CORROBORATES / CONFLICTS_WITH
+        edges between claim pairs before rebuilding the verdicts.
+        """
+
+        keep = [edge for edge in self.edges if not predicate(edge)]
+        dropped = len(self.edges) - len(keep)
+        if dropped == 0:
+            return 0
+        self.edges = keep
+        self._outgoing = defaultdict(list)
+        self._incoming = defaultdict(list)
+        for edge in self.edges:
+            self._outgoing[edge.source].append(edge)
+            self._incoming[edge.target].append(edge)
+        return dropped
 
     def outgoing(self, node_id: str, relation: Relation | str | None = None) -> list[Edge]:
         edges = self._outgoing.get(node_id, ())

@@ -1813,6 +1813,38 @@ Suite now 257.
 
 ---
 
+## D67 - Idempotent reconciliation (bug #2)
+
+Review item #2. `reconcile_dependency_claims` was *rebuild-from-claims* but did
+not clear the previous rebuild's output. Two failure modes:
+
+- Two back-to-back runs duplicated every `OBSERVED_AS` / `CORROBORATES` /
+  `CONFLICTS_WITH` edge (the same resolution node existed already, so its
+  `add_node` was a no-op, but the edges from it were appended each time).
+- Run, attach new conflicting evidence (changing the verdict), re-run:
+  ``add_node`` on the resolution node raised ``Conflicting node definition for
+  dep-res:...`` because the stored node now disagreed with the new verdict.
+
+That broke any save-graph -> reload -> re-enrich workflow.
+
+Fix: purge-and-rebuild. Added two minimal removal APIs to ``ProvenanceGraph`` --
+``remove_node`` (drops the node + every incident edge, keeping the type and
+adjacency indexes consistent) and ``remove_edges_where`` (predicate-based bulk
+removal that rebuilds the adjacency from the kept edges). At the top of
+``reconcile_dependency_claims``, ``_purge_prior_reconciliation`` drops every
+``DEPENDENCY_RESOLUTION`` node and every ``CORROBORATES`` / ``CONFLICTS_WITH``
+edge between claim pairs. Claim nodes themselves are preserved -- they are the
+*inputs* to reconciliation, owned by the adapters that emitted them.
+
+Tests +2: a second run leaves edge + resolution-node counts unchanged; a re-run
+after a new conflicting claim flips a CONSENSUS to a CONFLICT/VERSION_DRIFT
+without raising. Coverage golden byte-identical. Suite now 259.
+
+(This is also the D62 pattern, scaled up: D62 made dep-spec node adds
+idempotent; D67 makes the entire reconciler re-runnable.)
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

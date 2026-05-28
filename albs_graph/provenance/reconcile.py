@@ -236,7 +236,17 @@ def add_resolver_result(graph: ProvenanceGraph, result: ResolverResult, subject_
 
 
 def reconcile_dependency_claims(graph: ProvenanceGraph) -> ReconciliationReport:
-    """Group claim nodes and write resolution verdicts + conflict edges in place."""
+    """Group claim nodes and write resolution verdicts + conflict edges in place.
+
+    **Idempotent.** Any prior reconciliation state (``DEPENDENCY_RESOLUTION``
+    nodes + their ``OBSERVED_AS`` edges, plus ``CORROBORATES`` /
+    ``CONFLICTS_WITH`` edges between claims) is purged before rebuilding. So
+    re-running -- on a fresh graph, or on a saved graph after new evidence
+    lands -- never duplicates edges nor raises ``Conflicting node definition
+    for dep-res:...``.
+    """
+
+    _purge_prior_reconciliation(graph)
 
     groups: dict[str, list[Node]] = defaultdict(list)
     for node in graph.find_by_type(NodeType.DEPENDENCY_CLAIM):
@@ -482,3 +492,20 @@ def _context_key(context: dict[str, Any]) -> str:
 
 def _safe(value: str) -> str:
     return value.replace(" ", "_").replace("|", "_")
+
+
+def _purge_prior_reconciliation(graph: ProvenanceGraph) -> None:
+    """Remove DEPENDENCY_RESOLUTION nodes + reconcile-emitted edges in place.
+
+    Reconciliation is rebuild-from-claims; the previous run's output must not
+    leak into the next one (duplicate OBSERVED_AS / CORROBORATES edges, or a
+    stale resolution node whose verdict no longer matches the new evidence).
+    Claim nodes themselves are preserved -- they are the *inputs* to
+    reconciliation, owned by the adapters that emitted them.
+    """
+
+    for node in list(graph.find_by_type(NodeType.DEPENDENCY_RESOLUTION)):
+        graph.remove_node(node.id)
+    graph.remove_edges_where(
+        lambda edge: edge.relation in (Relation.CORROBORATES, Relation.CONFLICTS_WITH)
+    )

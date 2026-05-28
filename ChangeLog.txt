@@ -19,7 +19,19 @@ Conventions:
 2026-05-28
 ----------------------------------------------------------------------
 
-- (this)   fix(adapters): HttpCache cannot store Range-ignoring 200 responses
+- (this)   fix(reconcile): idempotent reconciliation -- safe re-runs on a
+           persisted/re-enriched graph (review bug #2). Added minimal
+           `ProvenanceGraph.remove_node` + `remove_edges_where` (maintain
+           type and adjacency indexes), and a `_purge_prior_reconciliation`
+           helper that drops every DEPENDENCY_RESOLUTION node + every
+           CORROBORATES / CONFLICTS_WITH edge before rebuilding. Claim nodes
+           are preserved (they are reconciliation's inputs). A second run no
+           longer duplicates edges; a re-run after a new conflicting claim
+           no longer raises "Conflicting node definition for dep-res:...".
+           +2 regression tests; coverage golden byte-identical; suite 259.
+           (D67; review bug #2.)
+
+- 87cc18d  fix(adapters): HttpCache cannot store Range-ignoring 200 responses
            (review bug #6). `_requests_range_fetch` now requires 206 or 200
            with `len(body) == end - start + 1`; otherwise raises
            `RpmHeaderFetchError` so `_try_candidates` advances to the next

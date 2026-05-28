@@ -387,3 +387,53 @@ def test_identity_mismatch_when_sources_agree_on_version_but_not_purl() -> None:
     assert resolution.metadata["agreement"] == str(Agreement.CONFLICT)
     assert str(ConflictKind.IDENTITY_MISMATCH) in resolution.metadata["conflict_kinds"]
     assert any(c.kind == ConflictKind.IDENTITY_MISMATCH for c in report.conflicts)
+
+
+def test_reconcile_is_idempotent_no_duplicate_edges_or_resolution_nodes() -> None:
+    # Regression: running reconcile_dependency_claims() twice used to duplicate
+    # OBSERVED_AS / CORROBORATES edges and raise "Conflicting node definition
+    # for dep-res:..." on a second run. The idempotent purge-and-rebuild keeps
+    # edge + resolution-node counts stable across repeated runs.
+    graph = _graph_with_subject()
+    add_dependency_claim(graph, _claim("openssl", "3.0.7", "lockfile", state=ResolutionState.LOCKED))
+    add_dependency_claim(
+        graph, _claim("openssl", "3.0.7", "resolver:uv", state=ResolutionState.RESOLVED)
+    )
+
+    reconcile_dependency_claims(graph)
+    edges_after_first = len(graph.edges)
+    resolutions_after_first = len(graph.find_by_type(NodeType.DEPENDENCY_RESOLUTION))
+
+    # Second run on the same graph -- no exception, no growth.
+    reconcile_dependency_claims(graph)
+
+    assert len(graph.edges) == edges_after_first
+    assert len(graph.find_by_type(NodeType.DEPENDENCY_RESOLUTION)) == resolutions_after_first
+
+
+def test_reconcile_after_new_evidence_reflects_the_updated_verdict() -> None:
+    # The realistic re-enrich case: reconcile -> persist -> reload -> attach
+    # new evidence -> reconcile again. The new verdict must replace the old,
+    # not collide with it. Here a CONSENSUS flips to VERSION_DRIFT after a
+    # conflicting claim is added.
+    graph = _graph_with_subject()
+    add_dependency_claim(graph, _claim("zlib", "1.2.11", "lockfile", state=ResolutionState.LOCKED))
+    add_dependency_claim(
+        graph, _claim("zlib", "1.2.11", "resolver:dnf", state=ResolutionState.RESOLVED)
+    )
+
+    first = reconcile_dependency_claims(graph)
+    assert _resolution_for(graph, "zlib").metadata["agreement"] == str(Agreement.CONSENSUS)
+    assert first.conflict_count == 0
+
+    # New evidence arrives -- different version observed in the wild.
+    add_dependency_claim(
+        graph, _claim("zlib", "1.2.13", "elf_dt_needed", state=ResolutionState.OBSERVED)
+    )
+
+    second = reconcile_dependency_claims(graph)  # must not raise
+
+    resolution = _resolution_for(graph, "zlib")
+    assert resolution.metadata["agreement"] == str(Agreement.CONFLICT)
+    assert str(ConflictKind.VERSION_DRIFT) in resolution.metadata["conflict_kinds"]
+    assert second.conflict_count == 1
