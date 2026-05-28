@@ -211,6 +211,13 @@ The first milestone should be deliberately small:
 This MVP proves the backend/frontend boundary, node selection, focused graph
 rendering, and the investigation workflow.
 
+Current branch status: the first runnable shell exists as
+`albs-graph-workbench` / `python -m albs_graph.gui`. It opens ALBS metadata JSON
+or a live build id, runs `AnalysisService` in a background Qt worker, lists RPM
+artifacts, renders Trust Path / Dependency Evidence / Security Context slices as
+SVG, and shows node metadata plus findings. PyQt5 is installed via the optional
+`gui` extra.
+
 ---
 
 ## 10. Recommended First Implementation Path

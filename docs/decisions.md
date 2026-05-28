@@ -2014,6 +2014,29 @@ projection, and findings. Suite now 269.
 
 ---
 
+## D74 - First runnable PyQt workbench shell
+
+Added the first showable desktop entrypoint:
+
+- ``albs-graph-workbench`` script and ``python -m albs_graph.gui``.
+- Optional ``gui`` extra: ``pip install -e '.[gui]'`` installs PyQt5.
+- A PyQt5 main window that opens ALBS build metadata JSON (or a live
+  ``--build-id``), runs ``AnalysisService`` in a background Qt worker, lists
+  binary RPM artifacts, renders the selected graph slice as SVG, and exposes
+  node metadata/edges plus findings.
+- Three initial modes: Trust Path, Dependency Evidence, and Security Context.
+  Each mode uses ``GraphSlices`` rather than reconstructing graph logic in the
+  UI.
+- A fallback launcher message when PyQt5 is not installed, so the default
+  developer/test environment remains usable without Qt.
+
+This is intentionally still a workbench shell, not the final app. The important
+milestone is that the GUI now exercises the same service API as the CLI and can
+show a real graph slice once PyQt5 is present. Tests +2 cover the GUI parser and
+default source path. Suite now 271.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

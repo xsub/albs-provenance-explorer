@@ -33,6 +33,9 @@ dev = [
   "ruff>=0.5.0",
   "mypy>=1.10.0"
 ]
+gui = [
+  "PyQt5>=5.15"
+]
 # Rung-4 payload analysis of real el9 RPMs (zstd-compressed cpio). gzip/xz/bzip2
 # payloads work with the standard library; only zstd needs this extra.
 payload = [
@@ -41,6 +44,7 @@ payload = [
 
 [project.scripts]
 albs-graph = "albs_graph.cli:main"
+albs-graph-workbench = "albs_graph.gui:main"
 
 [tool.setuptools.packages.find]
 include = ["albs_graph*"]
