@@ -1,0 +1,240 @@
+ChangeLog
+=========
+
+Chronological log of implementation progress and fixes on the `max` branch --
+the *how* of what shipped. Paired with `docs/decisions.md` (the *what* and
+*why* of each architectural / contract decision): every entry here names the
+commit hash and the matching D-entry or F-finding so a reader can follow
+either thread.
+
+Conventions:
+  - Newest at the top.
+  - One bullet per commit; short hash at the start; D-entry / F-finding at end.
+  - Pre-F1 history (D1-D44 and the original `main` branch commits) is not
+    duplicated here; those choices are captured in `docs/decisions.md` and the
+    corresponding code landed before this changelog was instituted. Walk it
+    via `git log main --oneline` if needed.
+
+----------------------------------------------------------------------
+2026-05-28
+----------------------------------------------------------------------
+
+- 331fb44  Docs refresh: `next_goals_options.md` G1 now marked Done with the
+           cache + concurrency story (D63/D64); the Recommendation block was
+           still listing B3/C1/F2/F3/G as "remaining" though each is ✅ a few
+           lines above -- rewritten to reflect what actually shipped vs what
+           is genuinely open (E1 pip/Maven/npm, G2 incremental store, G3
+           sqlite-vec, live feeds, live arch builder). `plan.md` §7 "batch +
+           parallelize header/payload/SBOM fetches" updated: header/payload/
+           sig done, SBOM batching remains. Suite unchanged at 254.
+
+- 6615236  feat(net): wire `rpmsig` through `HttpCache` + max_concurrency.
+           `verify_graph_signatures` joins the shared-by-URL cache used by
+           `rpm_payload`, so a run with both `--with-rpm-payloads` and
+           `--verify-signatures` downloads each RPM once -- payload ELF
+           analysis and `rpmkeys --checksig` read the same bytes from disk.
+           Same worker-pool / main-thread-merge pattern. Behaviour preserved
+           (suite still 254). (D64; #8 follow-up.)
+
+- 3346bf1  feat(net): content-addressed HTTP cache + bounded concurrency.
+           New stdlib-only `albs_graph/adapters/_http_cache.py` (key =
+           sha256(url + ":" + range), bucketed; atomic writes; 4xx/5xx
+           propagate so the mirror cascade still self-heals). Wired into
+           `rpm_remote` (default-on header cache) and `rpm_payload` (opt-in
+           `--cache-payloads`, since payloads are 5-50 MB). Bounded
+           concurrency via `ThreadPoolExecutor(max_workers=4)` in both;
+           workers compute pure results, main thread merges (graph never
+           mutated off-thread). RunSpec + CLI: `--max-concurrency`,
+           `--http-cache/--no-http-cache`, `--cache-payloads`. Coverage
+           golden output byte-identical; VPS verify: cold 1230 ms vs warm
+           740 ms on a single RPM; 254 tests pass on el10. +8 tests. (D63;
+           review item #8.)
+
+- 52c5733  Docs(README): splice the real step-8 output from the post-fix
+           VPS run -- the editorial `[output omitted ...]` note replaced
+           with the real `Checked out nginx source @ <commit>` + Source
+           Evidence table + Source imports lines. No fabrication.
+
+- fe841ad  Docs: regenerate `examples/demo-build-57810/console.txt` on the
+           el10 VPS with the post-fix `full.sh` (step 8 now runs cleanly:
+           35 files / 1 spec / 48 deps parsed; the ALBS source repo is RPM
+           packaging so `source_imports.py` honestly finds 0 .c files --
+           it would scan upstream nginx C source if pointed there).
+           Committed from the Mac after scp from VPS.
+
+- 2305893  fix(source): idempotent dep nodes -- regression from the first
+           real VPS run. A real spec lists the same `Requires:` across many
+           subpackage blocks (nginx-core + every nginx-mod-* each
+           `Requires: nginx(abi) = %{nginx_abiversion}`); the second
+           `add_node` raised "Conflicting node definition for
+           dep:rpm:nginx(abi)_=_%{nginx_abiversion}". Made
+           `_add_dependency_spec` idempotent: the dep is one node; the
+           *edge* from each declaring source file is what multiplies. +1
+           regression test; suite 246. (D62.)
+
+- 85c1520  Docs: cross-check + correct doc-vs-impl drift (B follow-up to
+           the source-imports build A). Adapter list in CLAUDE.md /
+           AGENTS.md went from 6 to all 15 adapters (cas/dnf/elf/pylang/
+           rpm_header/rpm_payload/rpm_remote/rpmgraph/rpmsig were
+           missing), grouped by role. CLI command list from 10 to all 17.
+           `limitations.md` heading "Rungs not yet implemented" renamed
+           to "Rung-by-rung implementation status" (Rung 4 is implemented
+           with caveats, per the body). `plan.md` "What's done" + README
+           "Implemented" gained the multi-language scanner bullet.
+
+- e8b318e  feat(source): multi-language source-tree import/include scanner
+           (`albs_graph/adapters/source_imports.py`). Detection by
+           extension (.py/.go/.rs/.c/.h/.cpp/.js/.ts/.java/.rb + variants)
+           with shebang fallback. Per-language regex extractors anchored
+           at line start so a `//` comment cannot match; stdlib filtered
+           per language; project-internal references excluded
+           (`require_relative`, `./relative` JS imports, `self::`/`super::`/
+           `crate::` in Rust). Walker prunes `.git`/`node_modules`/`vendor`/
+           `target`/`build`/`dist`/... in-place; bounded by `file_limit`
+           (default 5000). Claims dedup per (language, import); each
+           carries the language-appropriate `Ecosystem` and a
+           `<language>_import` evidence tag. Wired into `source-evidence`
+           default-on (`--no-scan-imports` opts out). +12 tests; suite 245.
+           (D61.)
+
+- 8c177fc  fix(demo): correct `example--full.sh` step 8 (real bug surfaced
+           by the first VPS run): `checkout-source` wants the *source*
+           package (nginx, not the binary nginx-core) + a required
+           `--dest`; `source-evidence` takes the checked-out dir as a
+           positional `SOURCE_DIR`. Added `SRC_PACKAGE` env (default
+           nginx). README text-screenshot refreshed to the 14-step run --
+           hostname sanitized, the two giant build-intel tables truncated
+           with pointers to `console.txt`, step 8 shown as an editorial
+           note since the capture predated the fix (nothing fabricated).
+           (D60.)
+
+- 2905cc7  chore(demo): consolidate to one comprehensive script
+           (`example--full.sh`). Removed `example.sh` / `example--tour.sh` /
+           `example--verbose.sh` / `example--almalinux*.sh`; CLAUDE.md /
+           AGENTS.md / README references updated. The single script wraps
+           all 17 commands end to end. (D59.)
+
+- 91dafa4  feat(tour): close the security-context axis -- wired the real
+           committed build SBOM into the tour (closes has_sbom + lifts
+           identity to 1.00); added `--errata`/`--errata-subject` to the
+           `trust-path` command (parity with vuln/coverage) so the trust
+           path's `has_errata_link` can close too; portable empty-array
+           idiom `${arr[@]+"${arr[@]}"}` so the script runs on bash 3.2
+           too. +1 CLI test; suite 233. (D58.)
+
+----------------------------------------------------------------------
+2026-05-27
+----------------------------------------------------------------------
+
+- 59f53f5  refactor(cli): extract `AnalysisPipeline`; migrate `coverage`
+           onto it. New `albs_graph/pipeline.py`: RunSpec, EnrichmentStep
+           Protocol + 13 step objects, DEFAULT_STEPS (exact historical
+           coverage order), `AnalysisPipeline.run(spec, graph, *,
+           dry_run=)` returning PipelineResult (enriched graph + per-step
+           results by name + reconciliation + cumulative EvidencePatch via
+           RecordingGraph). `coverage_command` builds a RunSpec, runs the
+           pipeline, and aliases `result.result(name)` back to the existing
+           render variables -- rendering is unchanged. Verified by
+           byte-identical coverage golden output on the synthetic fixture.
+           +5 pipeline unit tests (mechanics not exercised by golden);
+           suite 232. (D57; review item #1 -- coverage migrated.)
+
+- 6f41e4c  feat(reconcile): IdentityMismatch rule. Fires when 2+ claims in
+           a group assert the same concrete version with different PURL
+           coordinates -- two sources disagree on *what* the dep is, not
+           merely its version. Conservative: only on >=2 PURL-bearing
+           claims (the common single-PURL group never fires); grouped by
+           version so a real version disagreement is left to
+           `VersionDriftRule`. Fills the documented IDENTITY_MISMATCH gap.
+           +3 tests; suite 227. (D56.)
+
+- 11a6455  feat(model): EvidencePatch + RecordingGraph. `RecordingGraph`
+           wraps a `ProvenanceGraph` (shared state) and records writes to
+           a typed `EvidencePatch`; works in apply-and-record mode
+           (default) and dry-run when constructed over a copy. Sets up
+           "what would this run change?" UX + per-step patches for the
+           pipeline. (D55; review item #6.)
+
+- edbea36  Docs: prune stale roadmap / limitations claims (current gaps
+           only). Quality pass over `docs/plan.md` and `docs/limitations.md`
+           so they describe the system as it now is. (D54; review item #10.)
+
+- 841bf7a  refactor(albs): first-class build/task model -- typed
+           BuildTaskRef / BuildSourceRef collections in parsed ALBS
+           metadata. Adapters no longer rely on representative-build +
+           targeted replacements. (D53; review item #9.)
+
+- c597ec2  perf(graph): index ProvenanceGraph adjacency + node-type lookups.
+           `find_by_type`, `incoming`, `outgoing`, `reachable` go from O(n)
+           scans to O(1) hash lookups + maintained adjacency. (D52; review
+           item #3.)
+
+- d2a6694  refactor(reconcile): rule-based reconciliation via
+           `ReconciliationRule` Protocol. `reconcile_rules.py` extracts
+           the policy hub into five independent rules (`VersionDriftRule`,
+           `RangeViolationRule`, `LinkageMismatchRule`,
+           `PresenceUndeclaredRule`, `CrossDistroRule`), a ResolutionGroup
+           combiner, and `DEFAULT_RULES`. Exported from
+           `albs_graph.provenance`. +6 tests. (D51; review item #4.)
+
+- 3d27cce  refactor(identity): ArtifactIdentity composes `RpmNevra` into
+           the RPM PURL builder. (D50; review item #2.)
+
+- d001ef2  refactor(identity): central `RpmNevra` value object. Dedups
+           NEVRA parsing previously scattered across albs / sbom / dnf /
+           rpmgraph / remote / payload. (D49; review item #2.)
+
+- a27fe52  feat(reconcile): cross-distro as orthogonal context issue +
+           el10 tour. Build `.elN` vs dep `.elM` (N!=M) is a `ContextIssue`,
+           not an `Agreement` verdict; coverage policy excludes
+           `cross_distro` from the resolution axis. `example--tour.sh`
+           default BUILD_ID retargeted 17812 -> 57810 (the el9-build-on-
+           el10-host motivating case). +4 tests; suite 194. (D48; review
+           item #5.)
+
+----------------------------------------------------------------------
+2026-05-26
+----------------------------------------------------------------------
+
+- 84f38c5  fix(native): arch-scoped dnf + rpmgraph matching. `dnf
+           repoquery` queries the bare name, so on a multi-arch graph
+           every arch node inherited the host arch's resolution; now
+           scoped to `name.arch`. `rpmgraph` indexed `name -> node` with
+           `setdefault` so only the first arch variant got the claims;
+           now indexes `name -> [nodes]` and attaches to every arch
+           variant. +2 tests. (D47/F8.)
+
+- de440e6  feat(source): per-source `checkout-source` / `source-evidence`
+           selector. Batch builds have many sources; the previous code
+           always used the build's representative source. `--package`
+           resolves the per-task repo+commit (same attribution as the
+           graph builder) and `dataclasses.replace` retargets the
+           metadata. +1 test. (D47/F6.)
+
+- d09d279  fix(sbom): NEVRA-exact build-SBOM matching. `enrich_graph_with_
+           build_sbom` keyed by `(name, arch)` first-wins -- a merged
+           graph with two versions of one package attached the *first*
+           same-name component's CPE to every match. Now keys by
+           `(name, version-release, arch)`. (D47/F3.)
+
+- c8a1488  fix(identity): split vendor-asserted from NVD-verified CPE.
+           Vendor SBOM and NVD dictionary verification both establish
+           identity but `cpe_status` now distinguishes them (`vendor_
+           asserted` vs `verified`); `identity_strength` reports the
+           split so a 1.00 axis stays honest about how it was reached.
+           (D46/F4.)
+
+- ee72d34  fix: external review scope-boundary findings (Phase 0 + F1).
+           F1 = `artifacts_from_source` reimplemented to use per-task
+           attribution (`source_to_artifact_path`) rather than
+           `graph.reachable`, so a batch build's per-task source linkage
+           is precise. (D45/Phase 0 + F1.)
+
+----------------------------------------------------------------------
+Earlier history
+----------------------------------------------------------------------
+
+D1-D44 (and the original `main` branch commits) are not duplicated here;
+their architectural choices are captured in `docs/decisions.md` and the
+corresponding code landed before this changelog was instituted. Use
+`git log main --oneline` to walk them chronologically if needed.
