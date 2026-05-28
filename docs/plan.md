@@ -210,12 +210,16 @@ Ordered by value-per-effort and tractability under public access.
 7. **Thousands-of-apps scale.** The dependency **universe** is built,
    traversable, mergeable across repos, and now **persistable** via a
    low-footprint SQLite store (`--save` / `--db`, one-hop SQL queries without a
-   full load). Still to do: drive it from *live* repos (fetch + repograph every
-   repo of an arch in one command) rather than supplied dots; a heavier backend
-   only if the SQLite store is outgrown (Postgres recursive CTEs / a graph
-   store, or a `sqlite-vec` similarity overlay); batch + parallelize
-   header/payload/SBOM fetches; incremental re-reconciliation; registry-state
-   cache invalidation (yanks/deletions), not age.
+   full load). ✅ **Header/payload/sig fetches now cached + parallelised**
+   (D63/D64): content-addressed disk cache shared by `rpm_remote` /
+   `rpm_payload` / `rpmsig` (one download serves both ELF analysis and
+   `rpmkeys --checksig`), with bounded concurrency via
+   `ThreadPoolExecutor(max_workers=spec.max_concurrency)`. Still to do: drive
+   the universe from *live* repos (fetch + repograph every repo of an arch in
+   one command) rather than supplied dots; a heavier backend only if the
+   SQLite store is outgrown (Postgres recursive CTEs / a graph store, or a
+   `sqlite-vec` similarity overlay); incremental re-reconciliation; SBOM-fetch
+   batching; registry-state cache invalidation (yanks/deletions), not age.
 
 ---
 

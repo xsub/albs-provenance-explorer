@@ -76,9 +76,17 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
 
 ## G. Scale / performance (without the live builder)
 
-- **G1 - Parallelize + cache header/payload fetches.** They are sequential and
-  uncached today - the real "thousands of apps" bottleneck. Thread pool / asyncio
-  + an on-disk header cache.
+- **G1 - Parallelize + cache header/payload fetches.** ✅ Done -
+  `_http_cache.HttpCache` (content-addressed disk cache, atomic writes,
+  4xx/5xx propagate so the mirror cascade still self-heals) wraps both
+  `rpm_remote` (default-on header cache) and `rpm_payload` / `rpmsig`
+  (opt-in `--cache-payloads`, shared cache key by URL so a single download
+  serves both ELF analysis and `rpmkeys --checksig`). Bounded concurrency
+  via `ThreadPoolExecutor(max_workers=spec.max_concurrency)` (default 4)
+  on all three; workers compute pure results, the main thread merges into
+  the graph. CLI: `--max-concurrency`, `--http-cache/--no-http-cache`,
+  `--cache-payloads`. VPS-verified: cold 1230 ms vs warm 740 ms on a single
+  RPM; output byte-identical. *(decisions.md D63, D64)*
 - **G2 - Incremental store updates** instead of replace-on-save in
   `albs_graph/store.py`.
 - **G3 - `sqlite-vec` similarity overlay** ("find packages like this") - optional,
@@ -103,9 +111,18 @@ B1 (full file lists)  ->  A2 (errata)  ->  A1 (CPE + backport)  ->  F1 (vuln rep
 (D1/D27). The flat-zero axes move (`identity`, `security_context`), any file is
 identifiable, drift/range conflicts are version-semantic, RPM signatures are
 verifiable, and the `vuln` command (with `--cve-feed`) is the consumer
-deliverable. Remaining open items above: **B3** (py module→package), **C1**
-(Go/Rust static BOM), **E1** (language resolvers), **F2/F3** (license / SLSA
-export - F2 done), **G** (scale/perf), live CVE/NVD feed fetch, language
-resolvers (E1), and the live arch builder. The remaining items are mostly
-network/host-heavy (live feed, E1 resolver tools, live arch builder) or
-infra-heavy (G), so they need recorded fixtures or an AlmaLinux host to exercise.
+deliverable. Subsequent waves landed everything else flagged here: **B3** (py
+module→package, D28), **C1** (Go static BOM via `.go.buildinfo`, D29), **F2**
+(license rollup, D31), **F3** (SLSA / in-toto export, D30), **E1** for **Go**
+and **Cargo** (D32; pip/Maven/npm still pending the same pattern), and **G1**
+(content-addressed HTTP cache + bounded concurrency on
+`rpm_remote`/`rpm_payload`/`rpmsig`, D63 + D64; VPS-verified).
+
+Remaining genuinely open: **E1** for **pip/Maven/npm** (same `resolver_for`
+contract, awaits sandboxed runners); **G2** (incremental store updates in
+`albs_graph/store.py`); **G3** (`sqlite-vec` similarity overlay, optional);
+**live CVE/NVD feed fetch** (today the dictionary/feed are supplied files);
+and the **live arch builder** tracked in `plan.md` §7. These are mostly
+network-/host-heavy (live feeds, language resolver tools, live arch builder)
+or infra-heavy (G2/G3), so they need recorded fixtures or an AlmaLinux host
+to exercise.
