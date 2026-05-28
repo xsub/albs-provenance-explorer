@@ -6,10 +6,10 @@ from pathlib import Path
 import sys
 from typing import Any
 
-from PyQt5 import QtCore, QtSvg, QtWidgets
+from PyQt5 import QtCore, QtGui, QtSvg, QtWidgets
 
 from albs_graph.pipeline import RunSpec
-from albs_graph.render import graph_to_svg
+from albs_graph.gui.render import workbench_graph_to_svg
 from albs_graph.services import (
     AnalysisResult,
     AnalysisService,
@@ -63,6 +63,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.result: AnalysisResult | None = None
         self.current_slice: GraphSlice | None = None
         self.current_svg = ""
+        self.dark_mode = False
         self.base_url = base_url
 
         self.source_edit = QtWidgets.QLineEdit(str(initial_source or ""))
@@ -84,7 +85,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.svg_widget.setMinimumSize(720, 520)
         self.svg_scroll = QtWidgets.QScrollArea()
         self.svg_scroll.setWidget(self.svg_widget)
-        self.svg_scroll.setWidgetResizable(True)
+        self.svg_scroll.setWidgetResizable(False)
 
         self.inspector = QtWidgets.QPlainTextEdit()
         self.inspector.setReadOnly(True)
@@ -188,18 +189,94 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.slice_nodes.itemSelectionChanged.connect(self._slice_node_changed)
 
     def _apply_style(self) -> None:
+        self.dark_mode = self._is_dark_palette()
+        if self.dark_mode:
+            window = "#20242A"
+            panel = "#262B32"
+            panel_alt = "#303640"
+            border = "#434B56"
+            text = "#EEF2F6"
+            muted = "#AAB5C2"
+            selection = "#2F6FED"
+            selection_text = "#FFFFFF"
+        else:
+            window = "#F6F7F9"
+            panel = "#FFFFFF"
+            panel_alt = "#EEF2F6"
+            border = "#D8DDE6"
+            text = "#263238"
+            muted = "#52616F"
+            selection = "#DCEBFF"
+            selection_text = "#17212B"
         self.setStyleSheet(
-            """
-            QMainWindow { background: #f6f7f9; }
-            QToolBar { spacing: 8px; padding: 6px; background: #ffffff; border-bottom: 1px solid #d8dde6; }
-            QListWidget, QTableWidget, QPlainTextEdit, QScrollArea {
-                background: #ffffff;
-                border: 1px solid #d8dde6;
-            }
-            QLabel { color: #263238; }
-            QHeaderView::section { background: #eef2f6; padding: 5px; border: 0; }
+            f"""
+            QMainWindow, QWidget {{
+                background: {window};
+                color: {text};
+            }}
+            QToolBar {{
+                spacing: 8px;
+                padding: 6px;
+                background: {panel};
+                border-bottom: 1px solid {border};
+            }}
+            QDockWidget {{
+                color: {text};
+                titlebar-close-icon: none;
+                titlebar-normal-icon: none;
+            }}
+            QDockWidget::title {{
+                background: {panel_alt};
+                color: {text};
+                padding: 4px;
+            }}
+            QListWidget, QTableWidget, QPlainTextEdit, QScrollArea, QLineEdit, QComboBox {{
+                background: {panel};
+                color: {text};
+                border: 1px solid {border};
+                selection-background-color: {selection};
+                selection-color: {selection_text};
+            }}
+            QPlainTextEdit {{
+                font-family: Menlo, Monaco, Consolas, monospace;
+                font-size: 12px;
+            }}
+            QLabel {{
+                color: {text};
+            }}
+            QHeaderView::section {{
+                background: {panel_alt};
+                color: {text};
+                padding: 5px;
+                border: 0;
+                border-right: 1px solid {border};
+            }}
+            QTableCornerButton::section {{
+                background: {panel_alt};
+                border: 0;
+            }}
+            QTabWidget::pane {{
+                border: 1px solid {border};
+                background: {panel};
+            }}
+            QTabBar::tab {{
+                background: {panel_alt};
+                color: {muted};
+                padding: 5px 14px;
+                border: 1px solid {border};
+            }}
+            QTabBar::tab:selected {{
+                background: {selection};
+                color: {selection_text};
+            }}
+            QSplitter::handle {{
+                background: {border};
+            }}
             """
         )
+
+    def _is_dark_palette(self) -> bool:
+        return QtWidgets.QApplication.palette().color(QtGui.QPalette.Window).lightness() < 128
 
     def open_source(self) -> None:
         path, _filter = QtWidgets.QFileDialog.getOpenFileName(
@@ -321,10 +398,27 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self._show_error(str(exc))
             return
         self.current_slice = graph_slice
-        self.current_svg = graph_to_svg(graph_slice.graph)
-        self.svg_widget.load(QtCore.QByteArray(self.current_svg.encode("utf-8")))
+        self.current_svg = workbench_graph_to_svg(graph_slice.graph, dark=self.dark_mode)
+        self._load_svg(self.current_svg)
         self._populate_slice_nodes(graph_slice)
         self._show_node(subject_id)
+
+    def _load_svg(self, svg: str) -> None:
+        self.svg_widget.load(QtCore.QByteArray(svg.encode("utf-8")))
+        renderer = self.svg_widget.renderer()
+        size = renderer.defaultSize()
+        if not size.isValid() or size.width() <= 0 or size.height() <= 0:
+            size = QtCore.QSize(900, 560)
+        viewport = self.svg_scroll.viewport().size()
+        # Keep text legible: fit only modestly oversized graphs, otherwise use
+        # the SVG's natural size and let the scroll area do its job.
+        scale = 1.0
+        if size.width() < viewport.width() and size.height() < viewport.height():
+            scale = min(1.35, viewport.width() / max(1, size.width()))
+        elif size.width() <= viewport.width() * 1.4:
+            scale = max(0.8, min(1.0, viewport.width() / max(1, size.width())))
+        target = QtCore.QSize(max(720, int(size.width() * scale)), max(520, int(size.height() * scale)))
+        self.svg_widget.setFixedSize(target)
 
     def _populate_slice_nodes(self, graph_slice: GraphSlice) -> None:
         rows = sorted(

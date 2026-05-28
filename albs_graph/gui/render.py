@@ -1,0 +1,257 @@
+from __future__ import annotations
+
+import subprocess
+import textwrap
+from xml.sax.saxutils import escape
+
+from albs_graph.model import Node, NodeType, ProvenanceGraph
+
+
+LIGHT_NODE_COLORS = {
+    "source_package": "#E8F5E9",
+    "git_repository": "#E3F2FD",
+    "git_commit": "#E3F2FD",
+    "cas_attestation": "#FFF8E1",
+    "build_task": "#F3E5F5",
+    "build_environment": "#F5F5F5",
+    "srpm": "#E0F7FA",
+    "binary_rpm": "#DDF4F8",
+    "signature": "#FFF3E0",
+    "repository_release": "#E8EAF6",
+    "errata": "#FFEBEE",
+    "cve": "#FFCDD2",
+    "sbom": "#F1F8E9",
+    "external_package": "#F5F5F5",
+    "dependency_claim": "#ECEFF1",
+    "dependency_resolution": "#E0F2F1",
+}
+
+DARK_NODE_COLORS = {
+    "source_package": "#173927",
+    "git_repository": "#17334A",
+    "git_commit": "#17334A",
+    "cas_attestation": "#493A18",
+    "build_task": "#3B2743",
+    "build_environment": "#30343A",
+    "srpm": "#183B40",
+    "binary_rpm": "#173E46",
+    "signature": "#463420",
+    "repository_release": "#252D46",
+    "errata": "#4A2428",
+    "cve": "#5A252C",
+    "sbom": "#253A1E",
+    "external_package": "#30343A",
+    "dependency_claim": "#29323A",
+    "dependency_resolution": "#1D3D3A",
+}
+
+
+def workbench_graph_to_svg(graph: ProvenanceGraph, *, dark: bool = False) -> str:
+    dot = workbench_graph_to_dot(graph, dark=dark)
+    try:
+        result = subprocess.run(
+            ["dot", "-Tsvg"],
+            input=dot,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        return _fallback_svg(graph, dark=dark, note=f"Graphviz unavailable: {exc}")
+
+    if result.returncode != 0:
+        note = result.stderr.strip() or "Graphviz failed to render SVG"
+        return _fallback_svg(graph, dark=dark, note=note)
+    return result.stdout
+
+
+def workbench_graph_to_dot(graph: ProvenanceGraph, *, dark: bool = False) -> str:
+    theme = _theme(dark)
+    colors = DARK_NODE_COLORS if dark else LIGHT_NODE_COLORS
+    lines = [
+        "digraph albs_workbench {",
+        (
+            f'  graph [rankdir=LR, bgcolor="{theme["background"]}", '
+            'fontname="Inter", pad="0.35", nodesep="0.65", ranksep="1.05"];'
+        ),
+        (
+            f'  node [shape=box, style="rounded,filled", fontname="Inter", '
+            f'fontsize=12, penwidth=1.4, margin="0.14,0.08", color="{theme["node_border"]}", '
+            f'fontcolor="{theme["text"]}"];'
+        ),
+        (
+            f'  edge [fontname="Inter", fontsize=9, color="{theme["edge"]}", '
+            f'fontcolor="{theme["muted"]}", arrowsize=0.75, penwidth=1.5];'
+        ),
+    ]
+    for node in graph.nodes.values():
+        node_type = str(node.type)
+        fill = colors.get(node_type, theme["node_fill"])
+        label = _escape_label(_node_label(node))
+        tooltip = _escape(f"{node_type}: {node.id}")
+        lines.append(
+            f'  "{_escape(node.id)}" [label="{label}", fillcolor="{fill}", tooltip="{tooltip}"];'
+        )
+    for edge in graph.edges:
+        relation = _edge_label(str(edge.relation))
+        lines.append(
+            f'  "{_escape(edge.source)}" -> "{_escape(edge.target)}" [label="{_escape(relation)}"];'
+        )
+    lines.append("}")
+    return "\n".join(lines) + "\n"
+
+
+def _node_label(node: Node) -> str:
+    node_type = str(node.type)
+    md = node.metadata
+    if node.type == NodeType.BINARY_RPM:
+        name = str(md.get("name") or node.label).removesuffix(".rpm")
+        version = _version_release(md)
+        arch = str(md.get("arch") or md.get("build_arch") or "")
+        lines = [name]
+        if version:
+            lines.append(version)
+        if arch:
+            lines.append(f"[{arch}]")
+        return _label(node_type, lines)
+    if node.type == NodeType.SRPM:
+        return _label(node_type, [str(md.get("name") or node.label).removesuffix(".rpm")])
+    if node.type == NodeType.BUILD_TASK:
+        arch_value = md.get("arch") or md.get("build_arch") or md.get("platform")
+        task = md.get("task_id") or md.get("id") or _tail(node.label)
+        return _label(node_type, [f"ALBS task {task}", str(arch_value) if arch_value else ""])
+    if node.type == NodeType.GIT_COMMIT:
+        commit = str(md.get("commit") or node.label)
+        return _label(node_type, [commit[:12]])
+    if node.type == NodeType.CAS_ATTESTATION:
+        digest = str(md.get("cas_hash") or md.get("hash") or node.label)
+        return _label(node_type, ["CAS", digest[:18]])
+    if node.type == NodeType.SIGNATURE:
+        return _label(node_type, [str(md.get("task_id") or node.label)])
+    if node.type == NodeType.REPOSITORY_RELEASE:
+        return _label(node_type, [str(md.get("repository") or node.label)])
+    if node.type == NodeType.DEPENDENCY_RESOLUTION:
+        return _label(
+            node_type,
+            [
+                str(md.get("coordinate") or node.label),
+                str(md.get("agreement") or ""),
+            ],
+        )
+    if node.type == NodeType.DEPENDENCY_CLAIM:
+        return _label(
+            node_type,
+            [
+                str(md.get("name") or node.label),
+                str(md.get("evidence") or ""),
+            ],
+        )
+    return _label(node_type, [node.label])
+
+
+def _label(node_type: str, lines: list[str]) -> str:
+    compact_type = node_type.replace("_", " ")
+    wrapped = [compact_type]
+    for line in lines:
+        clean = str(line).strip()
+        if not clean:
+            continue
+        wrapped.extend(_wrap(clean, width=26, max_lines=2))
+    return "\\n".join(wrapped[:5])
+
+
+def _wrap(value: str, *, width: int, max_lines: int) -> list[str]:
+    if len(value) <= width:
+        return [value]
+    chunks = textwrap.wrap(value, width=width, break_long_words=False, break_on_hyphens=True)
+    if not chunks:
+        return [value[: width - 1] + "…"]
+    if len(chunks) <= max_lines:
+        return chunks
+    return chunks[: max_lines - 1] + [chunks[max_lines - 1][: width - 1] + "…"]
+
+
+def _version_release(metadata: dict[str, object]) -> str:
+    version = metadata.get("version")
+    release = metadata.get("release")
+    if version and release:
+        return f"{version}-{release}"
+    if version:
+        return str(version)
+    return ""
+
+
+def _tail(value: str) -> str:
+    return value.rsplit(" ", 1)[-1].rsplit(":", 1)[-1]
+
+
+def _edge_label(relation: str) -> str:
+    return relation.replace("_", " ")
+
+
+def _theme(dark: bool) -> dict[str, str]:
+    if dark:
+        return {
+            "background": "#171A1F",
+            "text": "#F0F3F7",
+            "muted": "#A9B5C2",
+            "edge": "#7E94A3",
+            "node_border": "#8EA0AD",
+            "node_fill": "#2A3038",
+        }
+    return {
+        "background": "#FFFFFF",
+        "text": "#18212B",
+        "muted": "#52616F",
+        "edge": "#607D8B",
+        "node_border": "#2F3B45",
+        "node_fill": "#FFFFFF",
+    }
+
+
+def _escape(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', "'")
+
+
+def _escape_label(value: str) -> str:
+    return value.replace('"', "'")
+
+
+def _fallback_svg(graph: ProvenanceGraph, *, dark: bool, note: str) -> str:
+    theme = _theme(dark)
+    width = 1100
+    row_height = 92
+    height = max(260, 110 + row_height * max(1, len(graph.edges)))
+    lines = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
+        (
+            "<style>"
+            f"text{{font-family:Inter,Arial,sans-serif;font-size:13px;fill:{theme['text']}}}"
+            f".meta{{fill:{theme['muted']};font-size:11px}}"
+            f".node{{fill:{theme['node_fill']};stroke:{theme['node_border']};stroke-width:1.2;rx:7}}"
+            f".edge{{stroke:{theme['edge']};stroke-width:1.5;marker-end:url(#arrow)}}"
+            "</style>"
+        ),
+        f'<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="{theme["edge"]}"/></marker></defs>',
+        f'<rect width="100%" height="100%" fill="{theme["background"]}"/>',
+        '<text x="36" y="34" font-size="18" font-weight="700">ALBS provenance graph</text>',
+        f'<text class="meta" x="36" y="58">{escape(note)}</text>',
+    ]
+    for index, edge in enumerate(graph.edges):
+        y = 92 + index * row_height
+        source = graph.nodes[edge.source]
+        target = graph.nodes[edge.target]
+        lines.extend(
+            [
+                f'<rect class="node" x="36" y="{y}" width="285" height="56"/>',
+                f'<text x="50" y="{y + 23}">{escape(source.label[:34])}</text>',
+                f'<text class="meta" x="50" y="{y + 43}">{escape(str(source.type))}</text>',
+                f'<line class="edge" x1="345" y1="{y + 28}" x2="500" y2="{y + 28}"/>',
+                f'<text class="meta" text-anchor="middle" x="425" y="{y + 20}">{escape(_edge_label(str(edge.relation)))}</text>',
+                f'<rect class="node" x="524" y="{y}" width="285" height="56"/>',
+                f'<text x="538" y="{y + 23}">{escape(target.label[:34])}</text>',
+                f'<text class="meta" x="538" y="{y + 43}">{escape(str(target.type))}</text>',
+            ]
+        )
+    lines.append("</svg>")
+    return "\n".join(lines) + "\n"

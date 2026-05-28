@@ -2037,6 +2037,33 @@ default source path. Suite now 271.
 
 ---
 
+## D75 - Workbench dark mode and readable graph renderer
+
+The first PyQt shell worked, but macOS dark mode exposed two presentation
+problems:
+
+- Qt picked up some dark-mode controls while the app stylesheet forced other
+  panels to light colors, producing black inputs beside light tables and
+  low-contrast headers.
+- The workbench reused the CLI DOT renderer, whose long RPM/CAS labels were
+  tuned for exported artifacts rather than an interactive viewport. Worse, the
+  GUI labels were double-escaped, so Graphviz rendered literal ``\n`` instead
+  of line breaks, making nodes wide and unreadable.
+
+Fix: add ``albs_graph.gui.render`` as a GUI-specific renderer. It preserves the
+stable CLI SVG output, but gives the workbench wrapped node labels, shorter RPM
+/ CAS / build-task summaries, less noisy edge labels, larger spacing, and
+separate light/dark color palettes. The PyQt window now detects the active Qt
+palette, applies a coherent dark/light stylesheet to panels, inputs, tables,
+tabs and docks, and renders graph SVG with the matching palette. The SVG scroll
+area no longer resizes every graph to the viewport; it keeps legible natural
+sizes and uses scrolling for larger slices.
+
+Tests +2 cover the dark DOT theme and line-broken workbench labels. Suite now
+273.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

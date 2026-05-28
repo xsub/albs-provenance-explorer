@@ -8,6 +8,7 @@ from typing import Callable, Optional
 
 import click
 import typer
+from typer._click.exceptions import ClickException as TyperClickException
 from rich.console import Console
 from rich.table import Table
 
@@ -1563,6 +1564,9 @@ def inspect_fixture(
 def main(argv: list[str] | None = None) -> int:
     try:
         app(args=argv, standalone_mode=False)
+    except TyperClickException as exc:
+        exc.show()
+        return int(exc.exit_code)
     except click.ClickException as exc:
         exc.show()
         return int(exc.exit_code)
