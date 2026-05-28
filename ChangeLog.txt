@@ -19,7 +19,11 @@ Conventions:
 2026-05-28
 ----------------------------------------------------------------------
 
-- (this)   docs: regenerate examples/demo-build-57810/console.txt on the el10
+- (this)   docs(README): splice the second (step-11 / demo_verbose) trust-path
+           table into the README screenshot so both has_sbom rows read `ok`
+           side by side -- visible confirmation of the D72 consistency fix.
+
+- 4ff2cc6  docs: regenerate examples/demo-build-57810/console.txt on the el10
            VPS with the post-fix full.sh. Both trust-path tables (step 1 and
            step 11's inner demo_verbose) now show `has_sbom ok`, resolving
            the inconsistency the user spotted (961 sbom mentions in the demo

@@ -176,6 +176,22 @@ step Build timing totals: wall=101.8m, aggregate task wall=412.8m, critical task
 │ 45219     │ 29.8m │ 18.5m │     1.8m │   5.2m │ 2.2m │
 └───────────┴───────┴───────┴──────────┴────────┴──────┘
 step Writing artifact inventory + processing analysis json to examples/demo-build-57810/
+step Selected RPM node: rpm:6901620:nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
+step Analyzing source-to-artifact trust path  (build SBOM attached, same as step 1)
+               Trust path:                
+ nginx-core-1.26.3-6.el10_2.3.x86_64.rpm  
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
+┃ Check                        ┃ Result  ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
+│ has_build_task               │ ok      │
+│ has_signature                │ ok      │
+│ has_release                  │ ok      │
+│ has_source_cas_attestation   │ ok      │
+│ has_artifact_cas_attestation │ ok      │
+│ has_sbom                     │ ok      │
+│ has_errata_link              │ missing │
+└──────────────────────────────┴─────────┘
+Missing security context: has_errata_link
 ==> Done
 
 ========== 12. Render graphs to SVG (full build, focused trust path, whole-source fan-out) ==========
