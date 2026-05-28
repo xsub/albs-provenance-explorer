@@ -1710,6 +1710,35 @@ ships once VPS-verified.
 
 Tests +8 (`test_http_cache.py`). Suite now 254.
 
+VPS verification (`vps-ac97e687`, AlmaLinux 10.2, Python 3.12): `pytest` 254
+passed. Cold-cache `coverage --with-rpm-headers` for nginx-core ran in **1230
+ms**; warm run **740 ms** (-40% on a single RPM; the win scales linearly with
+RPM count on multi-RPM / `--all-archs` runs). Output **byte-identical** cold
+vs warm. Cache footprint **24 KB / 3 files** for one header (the cascade's
+tail-probe + header-region range reads).
+
+---
+
+## D64 - rpmsig follow-up: share the cache with rpm_payload
+
+D63 deferred `rpmsig.py` so we could verify the headers/payload caching on the
+real VPS first. With that green, this lands the same pattern for the signature
+adapter: `verify_graph_signatures` takes `cache_payloads` + `max_concurrency`,
+wraps the default fetcher in :class:`HttpCache` when `cache_payloads=True`, and
+parallelises the per-RPM `requests.get` + `rpmkeys --checksig` via the same
+worker-pool / main-thread-merge pattern. `SignatureStep` threads
+`ctx.spec.cache_payloads` + `ctx.spec.max_concurrency` through.
+
+Key win: rpmsig and rpm_payload now **share the cache** (URL is the cache key).
+A run with both `--with-rpm-payloads` and `--verify-signatures` enabled
+downloads each RPM **once** -- the payload step's ELF analysis and the
+signature step's `rpmkeys` invocation read the same bytes from disk.
+
+Behaviour preserved: existing rpmsig tests inject `fetch_full` (cache untouched)
+and use a single-RPM graph (`len(work) <= 1` -> sequential path). Suite stays
+at 254. No CLI surface change (the `--cache-payloads` / `--max-concurrency` /
+`--http-cache` flags from D63 already cover this).
+
 ---
 
 ## Cross-cutting decisions

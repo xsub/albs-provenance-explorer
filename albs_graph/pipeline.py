@@ -321,7 +321,13 @@ class SignatureStep:
 
     def run(self, ctx: EnrichmentContext) -> Any:
         ctx.log("Verifying RPM GPG signatures (download + rpmkeys --checksig)")
-        return verify_graph_signatures(ctx.graph, node_selector=ctx.selector, limit=ctx.spec.limit)
+        return verify_graph_signatures(
+            ctx.graph,
+            node_selector=ctx.selector,
+            limit=ctx.spec.limit,
+            cache_payloads=ctx.spec.cache_payloads,
+            max_concurrency=ctx.spec.max_concurrency,
+        )
 
 
 # The historical coverage order, preserved so behaviour is unchanged. build_sbom

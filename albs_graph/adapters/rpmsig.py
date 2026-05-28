@@ -20,11 +20,13 @@ import os
 import shutil
 import subprocess
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
 
+from ._http_cache import HttpCache, cached_full_fetcher
 from .rpm_remote import vault_candidate_urls
 
 Runner = Callable[[list[str]], tuple[int, str]]
@@ -121,11 +123,18 @@ def verify_graph_signatures(
     runner: Runner | None = None,
     node_selector: NodeSelector | None = None,
     limit: int | None = None,
+    cache_payloads: bool = False,
+    max_concurrency: int = 4,
 ) -> SignatureReport:
-    """Download each selected binary RPM and verify its GPG signature."""
+    """Download each selected binary RPM and verify its GPG signature.
 
-    binaries = verified = nokey = failed = unavailable = 0
-    results: list[SignatureVerification] = []
+    With ``cache_payloads=True`` the fetcher is wrapped in the shared
+    :class:`HttpCache`, so a payload already downloaded by ``rpm_payload`` (same
+    URL key) is reused -- one download serves both ELF analysis and signature
+    verification. ``max_concurrency`` parallelises the per-RPM download +
+    ``rpmkeys`` invocation; graph mutation stays single-threaded in this thread.
+    """
+
     if not use_signatures:
         return SignatureReport(False, False, 0, 0, 0, 0, 0, [])
 
@@ -139,17 +148,41 @@ def verify_graph_signatures(
         return SignatureReport(True, False, seen, 0, 0, 0, seen, [])
 
     resolver = url_resolver or vault_candidate_urls
-    fetcher = fetch_full or _requests_full_get
+    # Default path optionally wraps the real fetcher in a disk cache; injected
+    # fetcher (tests) is honoured verbatim.
+    if fetch_full is None and cache_payloads:
+        cache = HttpCache(enabled=True)
+        fetcher: FullFetcher = cached_full_fetcher(cache, _requests_full_get)
+    elif fetch_full is None:
+        fetcher = _requests_full_get
+    else:
+        fetcher = fetch_full
+
+    work: list[tuple[Node, str]] = []
     for node in graph.find_by_type(NodeType.BINARY_RPM):
         if node_selector and not node_selector(node):
             continue
         filename = _filename(graph, node.id)
         if not filename or _is_debug(filename):
             continue
-        if limit is not None and binaries >= limit:
+        if limit is not None and len(work) >= limit:
             break
-        binaries += 1
-        result = _verify_one(node.id, filename, resolver(filename), fetcher, runner)
+        work.append((node, filename))
+
+    def _process(item: tuple[Node, str]) -> tuple[Node, SignatureVerification]:
+        node, filename = item
+        return node, _verify_one(node.id, filename, resolver(filename), fetcher, runner)
+
+    if max_concurrency > 1 and len(work) > 1:
+        with ThreadPoolExecutor(max_workers=max_concurrency) as pool:
+            outcomes = list(pool.map(_process, work))
+    else:
+        outcomes = [_process(item) for item in work]
+
+    binaries = len(work)
+    verified = nokey = failed = unavailable = 0
+    results: list[SignatureVerification] = []
+    for node, result in outcomes:
         results.append(result)
         if result.status == "verified":
             verified += 1
