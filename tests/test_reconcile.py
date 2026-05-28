@@ -1,4 +1,5 @@
 from albs_graph.dependency import (
+    DependencyContext,
     DependencySpec,
     Ecosystem,
     Linkage,
@@ -437,3 +438,36 @@ def test_reconcile_after_new_evidence_reflects_the_updated_verdict() -> None:
     assert resolution.metadata["agreement"] == str(Agreement.CONFLICT)
     assert str(ConflictKind.VERSION_DRIFT) in resolution.metadata["conflict_kinds"]
     assert second.conflict_count == 1
+
+
+def test_claim_node_id_distinguishes_by_resolver_context_and_purl() -> None:
+    # Regression: two claims for the same subject/name/version/evidence but
+    # different arch/profile/distro context (or different PURL qualifiers) used
+    # to collide on add (the same claim_node_id), even though group_key already
+    # treated them as separate groups. Now the id keys on context + PURL too.
+    graph = _graph_with_subject()
+
+    spec_x = DependencySpec(
+        identity=PackageIdentity(Ecosystem.RPM, "glibc", version="2.39"),
+        context=DependencyContext(arch="x86_64"),
+        resolution_state=ResolutionState.RESOLVED,
+    )
+    spec_a = DependencySpec(
+        identity=PackageIdentity(Ecosystem.RPM, "glibc", version="2.39"),
+        context=DependencyContext(arch="aarch64"),
+        resolution_state=ResolutionState.RESOLVED,
+    )
+
+    # Both adds must succeed -- no "Conflicting node definition for claim:...".
+    id_x = add_dependency_claim(graph, DependencyClaim(SUBJECT, spec_x, evidence="resolver:dnf"))
+    id_a = add_dependency_claim(graph, DependencyClaim(SUBJECT, spec_a, evidence="resolver:dnf"))
+
+    assert id_x != id_a
+    # And the reconciler keeps them as two independent groups (context-keyed).
+    reconcile_dependency_claims(graph)
+    glibc_groups = [
+        node
+        for node in graph.find_by_type(NodeType.DEPENDENCY_RESOLUTION)
+        if "glibc" in str(node.metadata.get("coordinate", ""))
+    ]
+    assert len(glibc_groups) == 2  # one per arch context

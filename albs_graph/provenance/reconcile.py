@@ -184,9 +184,25 @@ def resolution_details(graph: ProvenanceGraph) -> list[ResolutionDetail]:
 
 
 def claim_node_id(claim: DependencyClaim) -> str:
+    """A stable, collision-free id for a single dependency claim.
+
+    Includes the spec's resolver **context** (arch / profile / distro / ...) and
+    any **PURL qualifiers**, both of which can distinguish two otherwise
+    identical claims (same subject + coordinate + version + evidence) -- without
+    them ``add_dependency_claim`` raised ``Conflicting node definition`` on the
+    second claim. The grouping key (`_group_key`) was already context-aware;
+    the claim id now matches.
+    """
+
     coordinate = claim.spec.identity.coordinates()
     version = claim.asserted_version or "any"
-    return f"claim:{_safe(claim.subject_id)}|{_safe(coordinate)}|{_safe(claim.evidence)}|{_safe(version)}"
+    context = _context_key(claim.spec.context.to_dict())
+    purl = claim.spec.identity.purl or ""
+    return (
+        f"claim:{_safe(claim.subject_id)}|{_safe(coordinate)}|"
+        f"{_safe(claim.evidence)}|{_safe(version)}|"
+        f"{_safe(context)}|{_safe(purl)}"
+    )
 
 
 def add_dependency_claim(graph: ProvenanceGraph, claim: DependencyClaim) -> str:

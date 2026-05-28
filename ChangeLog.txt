@@ -19,7 +19,18 @@ Conventions:
 2026-05-28
 ----------------------------------------------------------------------
 
-- (this)   fix(reconcile): idempotent reconciliation -- safe re-runs on a
+- (this)   fix(reconcile): claim node ids key on context + PURL (review bug
+           #3). `claim_node_id` keyed on subject + coordinate + evidence +
+           version, but `_group_key` already keyed on context too -- so two
+           claims for the same subject/name/version/evidence with different
+           DependencyContext (e.g. arch=x86_64 vs arch=aarch64) collided on
+           the *id* even though the reconciler would have put them in
+           separate groups. `add_dependency_claim` raised "Conflicting node
+           definition" for the second. Now the id includes context_key + PURL
+           (when set), matching what grouping distinguishes. +1 regression
+           test; coverage golden byte-identical; suite 260. (D68; bug #3.)
+
+- a2c3a18  fix(reconcile): idempotent reconciliation -- safe re-runs on a
            persisted/re-enriched graph (review bug #2). Added minimal
            `ProvenanceGraph.remove_node` + `remove_edges_where` (maintain
            type and adjacency indexes), and a `_purge_prior_reconciliation`

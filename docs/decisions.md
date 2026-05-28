@@ -1845,6 +1845,28 @@ idempotent; D67 makes the entire reconciler re-runnable.)
 
 ---
 
+## D68 - Claim node ids key on context + PURL too (bug #3)
+
+Review item #3. `claim_node_id` keyed on
+`(subject, coordinate, evidence, version)`, but ``_group_key`` already keyed on
+``context_key`` (arch / profile / distro / language_version / extras /
+profiles / features). The mismatch was real: two claims for the same subject +
+name + version + evidence but different ``DependencyContext`` (e.g.
+``arch=x86_64`` vs ``arch=aarch64``) collided on the *id* even though the
+reconciler would have put them in *separate groups*. ``add_dependency_claim``
+raised ``Conflicting node definition`` for the second.
+
+Fix: include the spec's ``_context_key`` *and* PURL (when set) in
+``claim_node_id``, so the id distinguishes everything the grouping logic
+distinguishes. The existing default-context, no-PURL claims still get unique
+ids; new context-bearing or PURL-bearing claims no longer collide.
+
+Tests +1: two claims with the same subject/name/version/evidence but different
+``context.arch`` both add cleanly, get distinct ids, and remain two independent
+groups after reconciliation. Coverage golden byte-identical. Suite now 260.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
