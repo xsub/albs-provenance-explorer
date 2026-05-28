@@ -126,9 +126,9 @@ bounded concurrency on `rpm_remote`/`rpm_payload`/`rpmsig`, D63 + D64;
 VPS-verified).
 
 Remaining genuinely open: **E1** for **Gradle** only (bigger tooling surface);
-**G3** (`sqlite-vec` similarity overlay, optional); **live CVE/NVD feed fetch**
-(today the dictionary/feed are supplied files); and the **live arch builder**
-tracked in `plan.md` §7. **G2** (D74), **G1** (D63/D64), and most of **E1**
-(D32 + D75) are done. The remaining items are mostly network-/host-heavy
-(live feeds, Gradle's resolver, live arch builder) or infra-heavy (G3), so
-they need recorded fixtures or an AlmaLinux host to exercise.
+**G3** (`sqlite-vec` similarity overlay, optional); and the **live arch
+builder** tracked in `plan.md` §7. **G2** (D74), **G1** (D63/D64), most of
+**E1** (D32 + D75), and **live CVE/NVD feed fetch** (D76; cached + TTL +
+graceful degradation) are all done. The remaining items are
+network-/host-heavy (Gradle's resolver, live arch builder) or infra-heavy
+(G3), so they need recorded fixtures or an AlmaLinux host to exercise.

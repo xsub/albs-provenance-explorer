@@ -53,7 +53,8 @@ from albs_graph.provenance.trust import (
     make_binary_rpm_selector,
     select_default_binary_rpm,
 )
-from albs_graph.security.cpe import CpeDictionary, verify_graph_cpe
+from albs_graph.security.cpe import verify_graph_cpe
+from albs_graph.security.live_feeds import fetch_cpe_dictionary_or_none
 
 Progress = Callable[[str], None] | None
 NodeSelector = Callable[[Node], bool]
@@ -80,6 +81,7 @@ class RunSpec:
     errata: Path | None = None
     errata_subject: str | None = None
     verify_cpe: Path | None = None
+    verify_cpe_url: str | None = None  # live NVD CPE dictionary (D76)
     with_rpm_headers: bool = False
     with_rpm_payloads: bool = False
     resolve_sonames: bool = False
@@ -90,6 +92,9 @@ class RunSpec:
     max_concurrency: int = 4
     http_cache: bool = True       # header cache (tiny); default on
     cache_payloads: bool = False  # payload cache (5-50 MB each); opt-in
+    # Live-feed TTL (D76): how long a cached NVD CPE/CVE feed copy is good
+    # for; 0 forces refetch, None disables the TTL on top of HttpCache.
+    feed_ttl_seconds: float | None = 12 * 3600
 
 
 @dataclass(frozen=True)
@@ -235,14 +240,24 @@ class VerifyCpeStep:
     name: str = "verify_cpe"
 
     def applies(self, spec: RunSpec) -> bool:
-        return spec.verify_cpe is not None
+        return spec.verify_cpe is not None or spec.verify_cpe_url is not None
 
     def run(self, ctx: EnrichmentContext) -> Any:
-        assert ctx.spec.verify_cpe is not None  # guaranteed by applies()
-        ctx.log(f"Verifying CPE candidates against {ctx.spec.verify_cpe}")
-        return verify_graph_cpe(
-            ctx.graph, CpeDictionary.from_file(ctx.spec.verify_cpe), node_selector=ctx.selector
+        # File wins over URL when both are given; URL falls back to None when
+        # the network is unavailable so the run continues (D76's graceful
+        # degradation rule, same shape as cas/dnf/rpmkeys).
+        dictionary = fetch_cpe_dictionary_or_none(
+            source_file=ctx.spec.verify_cpe,
+            url=ctx.spec.verify_cpe_url,
+            ttl_seconds=ctx.spec.feed_ttl_seconds,
+            on_progress=ctx.on_progress,
         )
+        if dictionary is None:
+            ctx.log("CPE verification skipped (no dictionary file and live feed unavailable)")
+            return None
+        source = ctx.spec.verify_cpe or ctx.spec.verify_cpe_url
+        ctx.log(f"Verifying CPE candidates against {source}")
+        return verify_graph_cpe(ctx.graph, dictionary, node_selector=ctx.selector)
 
 
 @dataclass(frozen=True)

@@ -80,7 +80,7 @@ from albs_graph.provenance.trust import (
     trust_path,
 )
 from albs_graph.render import SvgRenderError, graph_to_dot, graph_to_json, graph_to_svg
-from albs_graph.security.cve_feed import CveFeed
+from albs_graph.security.live_feeds import fetch_cve_feed_or_none
 from albs_graph.store import (
     load_graph,
     save_graph,
@@ -490,6 +490,19 @@ def coverage_command(
         help="CPE dictionary JSON (list of official cpe:2.3 strings) to verify "
         "candidates against, moving the identity axis.",
     ),
+    verify_cpe_url: Optional[str] = typer.Option(
+        None,
+        "--verify-cpe-url",
+        help="URL of a live CPE dictionary JSON (e.g. an NVD CPE export). Cached "
+        "on disk via HttpCache and reused while fresh; --verify-cpe FILE wins "
+        "when both are given. Network failure degrades to skipped (never fatal).",
+    ),
+    feed_ttl: float = typer.Option(
+        12 * 3600,
+        "--feed-ttl",
+        help="Seconds a live CPE/CVE feed cached copy stays fresh (default 12h; "
+        "0 forces refetch).",
+    ),
     repograph_dot: Optional[Path] = typer.Option(
         None,
         "--repograph-dot",
@@ -588,6 +601,7 @@ def coverage_command(
         errata=errata,
         errata_subject=errata_subject,
         verify_cpe=verify_cpe,
+        verify_cpe_url=verify_cpe_url,
         with_rpm_headers=with_rpm_headers,
         with_rpm_payloads=with_rpm_payloads,
         resolve_sonames=resolve_sonames,
@@ -597,6 +611,7 @@ def coverage_command(
         max_concurrency=max_concurrency,
         http_cache=http_cache,
         cache_payloads=cache_payloads,
+        feed_ttl_seconds=feed_ttl,
     )
     result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
 
@@ -1174,6 +1189,11 @@ def vuln_command(
     verify_cpe: Optional[Path] = typer.Option(
         None, "--verify-cpe", help="CPE dictionary JSON to verify candidates against."
     ),
+    verify_cpe_url: Optional[str] = typer.Option(
+        None,
+        "--verify-cpe-url",
+        help="URL of a live CPE dictionary JSON (cached on disk; --verify-cpe wins).",
+    ),
     build_sbom: Optional[Path] = typer.Option(
         None,
         "--build-sbom",
@@ -1183,6 +1203,17 @@ def vuln_command(
         None,
         "--cve-feed",
         help="CVE feed JSON (affected vendor/product + version ranges) to match verified CPEs.",
+    ),
+    cve_feed_url: Optional[str] = typer.Option(
+        None,
+        "--cve-feed-url",
+        help="URL of a live CVE feed JSON (cached on disk; --cve-feed wins). "
+        "Network failure degrades to no live feed (never fatal).",
+    ),
+    feed_ttl: float = typer.Option(
+        12 * 3600,
+        "--feed-ttl",
+        help="Seconds a cached CPE/CVE feed copy stays fresh (default 12h; 0 forces refetch).",
     ),
     with_rpm_payloads: bool = typer.Option(
         False, "--with-rpm-payloads", help="Analyze payload ELFs for linkage (dlopen/static)."
@@ -1225,14 +1256,24 @@ def vuln_command(
         arch=arch,
         build_sbom=build_sbom,
         verify_cpe=verify_cpe,
+        verify_cpe_url=verify_cpe_url,
         errata=errata,
         errata_subject=errata_subject or package,
         with_rpm_payloads=with_rpm_payloads,
+        feed_ttl_seconds=feed_ttl,
     )
     result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
     graph = result.graph
 
-    feed = CveFeed.from_file(cve_feed) if cve_feed is not None else None
+    # CVE feed: file wins; URL falls back; offline degrades to no feed (the
+    # report still runs and counts addressed CVEs from errata, just without
+    # potentially-affected matches).
+    feed = fetch_cve_feed_or_none(
+        source_file=cve_feed,
+        url=cve_feed_url,
+        ttl_seconds=feed_ttl,
+        on_progress=_progress(verbose),
+    )
     report = vulnerability_report(
         graph, cve_feed=feed, only_with_cves=only_with_cves, node_selector=selector
     )

@@ -1961,6 +1961,58 @@ Coverage golden byte-identical. Suite stays 263.
 
 ---
 
+## D76 - Live CPE / CVE feed fetch + cache + TTL
+
+D21 (CPE dictionary) and D25 (CVE feed) ship as supplied-file modules:
+``CpeDictionary.from_file`` and ``CveFeed.from_file``. That kept the suite
+offline and is still the right default for tests -- but a real run wants to
+pull NVD's bundled JSON exports on its own, not have an operator stage a
+file. The "every adapter must degrade gracefully when its tool / network is
+absent" rule (CAS / dnf / rpmkeys are the existing examples) sets the design.
+
+Decision: a thin ``albs_graph/security/live_feeds.py`` module that fetches
+both feeds through the existing ``HttpCache`` (D63/D64), with a TTL on top:
+
+- ``fetch_cpe_dictionary(url, ..)`` -> ``CpeDictionary`` (raises on parse
+  failure -- the URL returned bytes but not the expected JSON shape).
+- ``fetch_cve_feed(url, ..)`` -> ``CveFeed`` (same).
+- ``fetch_cpe_dictionary_or_none`` / ``fetch_cve_feed_or_none`` are the
+  CLI-facing helpers: a ``--verify-cpe FILE`` / ``--cve-feed FILE`` wins
+  over the URL; missing both returns ``None``; a live fetch failure logs a
+  graceful-degradation message and returns ``None`` so the run continues
+  without the live feed.
+
+TTL design: HttpCache itself is correctness-first (content-addressed, no
+TTL) -- the same RPM header bytes never change for a given (url, range).
+Feeds *do* change upstream, so this wrapper layers a freshness window on
+top: when the cached entry's mtime is older than ``ttl_seconds`` we delete
+the cached body before delegating to ``get_or_fetch`` (which then writes a
+fresh copy atomically). Default 12h, matching NVD's documented refresh
+cadence; ``ttl_seconds=0`` forces a refetch every call; ``None`` disables
+the TTL entirely (any cached copy is fresh enough).
+
+CLI plumbing: ``coverage --verify-cpe-url URL`` and
+``vuln --verify-cpe-url URL --cve-feed-url URL`` + ``--feed-ttl SECONDS``
+across both. The pipeline's ``VerifyCpeStep`` now takes either a file path
+or a URL through ``RunSpec.verify_cpe_url`` (introduced for the same step);
+``vuln`` resolves the CVE feed itself (it owns the matching, not the
+pipeline) via ``fetch_cve_feed_or_none``. Coverage's golden output is
+byte-identical for the no-flag invocation.
+
+Stdlib-only: ``urllib.request`` for the default GET (lazy-imported so the
+security module stays adapter-free), ``time.time()`` + ``stat`` for TTL.
+``Fetcher`` is injectable so tests run fully offline.
+
++10 test cases for the live-feeds module: parse round-trip for both feeds,
+cache hit within TTL, ``ttl_seconds=0`` forces refetch, stale cache entry
+triggers refetch after mtime-rewind, file-wins-over-URL in the helpers,
+both-absent returns ``None``, live failure is swallowed with the right
+progress log, and an unparseable response raises clearly on the strict path
+while the helper returns ``None``. Suite 283 -> 293. ruff + mypy --strict
+clean; no network.
+
+---
+
 ## D75 - E1 extensions: pip / Maven / npm native resolvers
 
 D32 introduced the ``DependencyResolver`` contract and wired the first two

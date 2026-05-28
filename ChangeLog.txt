@@ -19,7 +19,29 @@ Conventions:
 2026-05-29
 ----------------------------------------------------------------------
 
-- (this)   feat(resolvers): pip / Maven / npm join Go + Cargo behind the
+- (this)   feat(security): live CPE / CVE feed fetch with HttpCache + TTL.
+           New `albs_graph/security/live_feeds.py` fetches NVD's CPE
+           dictionary + CVE feed through the existing HttpCache (D63/D64);
+           a TTL layered on top (default 12h, matching NVD's documented
+           cadence) drops stale cached entries before refetch.
+           `fetch_cpe_dictionary_or_none` / `fetch_cve_feed_or_none` are
+           the CLI helpers: a `--verify-cpe FILE` / `--cve-feed FILE` wins,
+           a URL falls back, missing both returns None; live fetch failure
+           degrades to None with a progress log (matches cas/dnf/rpmkeys).
+           CLI: `coverage --verify-cpe-url URL` + `vuln --verify-cpe-url`
+           / `--cve-feed-url` URL + `--feed-ttl SECONDS`. Pipeline's
+           VerifyCpeStep now applies on file OR URL via the new
+           `RunSpec.verify_cpe_url`; coverage golden output byte-identical.
+           Stdlib-only (urllib lazy-imported). +10 tests covering parse
+           round-trip for both feeds, cache hit within TTL, ttl_seconds=0
+           refetch, stale entry refetched after mtime rewind, helper file-
+           wins-over-URL, both-absent returns None, live failure swallowed
+           with the right progress log, unparseable response raises on the
+           strict path while the helper still returns None. Suite 283 →
+           293. ruff + mypy --strict clean; no network. (D76; closes the
+           "live CVE/NVD feed fetch" remaining-open item.)
+
+- 514aaab  feat(resolvers): pip / Maven / npm join Go + Cargo behind the
            DependencyResolver contract. PypiResolver uses
            `pip install --dry-run --quiet --no-input --report - -r REQS`
            (pip >= 22.2; the dry-run + JSON report is the whole point) and
