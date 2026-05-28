@@ -1603,6 +1603,82 @@ def slsa_command(
 
 
 @app.command(
+    "arch-universe",
+    help="Build a whole-arch dependency universe live (dnf repograph each repo + merge).",
+    short_help="Build one universe per arch from live dnf repograph runs.",
+    no_args_is_help=True,
+)
+def arch_universe_command(
+    arch: Optional[str] = typer.Option(
+        None, "--arch", help="Restrict the universe to this arch (default: keep all)."
+    ),
+    release: Optional[str] = typer.Option(
+        None,
+        "--release",
+        help="AlmaLinux release for the default repo list (e.g. '9' or '10'). "
+        "Ignored if --repo is given.",
+    ),
+    repo: list[str] = typer.Option(
+        [],
+        "--repo",
+        help="Repo names to fetch (repeatable). If omitted, --release picks the well-known set.",
+    ),
+    save: Optional[Path] = typer.Option(
+        None, "--save", help="Persist the merged universe to a SQLite store."
+    ),
+    merge: bool = typer.Option(
+        False,
+        "--merge",
+        help="With --save, upsert (deep-merge metadata) instead of replacing -- so a "
+        "later arch-universe run for the same arch adds to the store rather than wiping it.",
+    ),
+    output_format: str = typer.Option(
+        "summary", "--format", "-f", help="summary, json, dot or svg."
+    ),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    from albs_graph.adapters.arch_builder import build_arch_universe_live
+
+    result = build_arch_universe_live(
+        arch=arch,
+        release=release,
+        repos=tuple(repo) if repo else None,
+        on_progress=_progress(verbose),
+    )
+
+    if save is not None:
+        stats = save_graph(result.universe, save, mode="merge" if merge else "replace")
+        verb = "Merged into" if merge else "Saved arch universe to"
+        console.print(f"{verb} {save}: {stats.nodes} nodes, {stats.edges} edges")
+
+    if output_format.lower() == "json":
+        sys.stdout.write(json.dumps(result.to_dict(), indent=2) + "\n")
+        return
+
+    if output_format.lower() in {"dot", "svg"} or output:
+        _emit_graph(result.universe, output_format, output, verbose=verbose)
+        return
+
+    table = Table(title=f"Arch universe (arch={arch or '*'}, release={release or '?'})")
+    table.add_column("Repo")
+    table.add_column("Edges", justify="right")
+    table.add_column("Status")
+    for fetch in result.repos:
+        status = "ok" if fetch.error is None else f"skipped: {fetch.error}"
+        table.add_row(fetch.repo, str(fetch.edges), status)
+    console.print(table)
+    console.print(
+        f"Universe: {len(result.universe.nodes)} nodes, {len(result.universe.edges)} edges "
+        f"({result.succeeded} repos ok, {result.failed} skipped)"
+    )
+    if not result.repos:
+        console.print(
+            "[yellow]No repos requested.[/yellow] Pass --release 9|10 or --repo NAME (repeatable)."
+        )
+
+
+@app.command(
     "render-fixture",
     help="Render a synthetic package fixture graph as SVG, DOT or JSON.",
     short_help="Render a synthetic fixture graph.",

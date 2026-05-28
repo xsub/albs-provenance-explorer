@@ -1961,6 +1961,61 @@ Coverage golden byte-identical. Suite stays 263.
 
 ---
 
+## D77 - Live arch builder: one command for the whole-arch universe
+
+D32 added ``universe_from_dot`` (parse one repograph dot); D74 added merge
+mode in the store. ``universe --repograph-dot`` already accepted multiple
+``--repograph-dot FILE`` arguments and merged them. What was still missing:
+one command that *fetches* every repo of an arch live, runs ``dnf repograph
+--repo X`` for each, merges into one universe, and (optionally) persists.
+
+Decision: a new ``arch-universe`` CLI command on top of a thin
+``albs_graph/adapters/arch_builder.py`` wrapper.
+
+``arch_builder.build_arch_universe_live(arch=, release=, repos=, runner=,
+on_progress=)``:
+
+- **Repo enumeration**: explicit ``repos`` wins; otherwise
+  ``DEFAULT_REPOS[release]`` (the well-known per-release set:
+  ``("baseos", "appstream", "crb", "extras", "plus")`` for 9,
+  ``("baseos", "appstream", "crb", "extras")`` for 10). Intentionally a
+  small constant rather than ``dnf repolist`` parsing -- the upstream
+  listing is documented and stable, and the constant lets a caller without
+  a live dnf host still target the right enumeration.
+- **Per-repo run**: ``runner(repo) -> dot`` defaults to
+  ``run_repograph(repo)`` from ``rpmgraph``; injectable so tests run
+  offline. Each repo's dot is parsed with ``universe_from_dot`` (which
+  already knows about arch filtering via its ``arch=`` kwarg).
+- **Merge**: ``merge_graphs`` stitches the per-repo components by canonical
+  ``pkg:<name>`` ids, so an appstream package's edge to a baseos library
+  becomes a cross-repo edge in the merged universe.
+- **Per-repo failure handling**: a ``RpmgraphUnavailable`` (dnf missing,
+  one repo not subscribed) records a ``RepoFetch(repo=, edges=0,
+  error=...)`` and the build proceeds with the rest. A truly unexpected
+  exception is caught with the same handling (the "never fatal" rule:
+  one repo's glitch must not crash the whole build). With every repo
+  failing the result still returns -- empty graph + full failure list --
+  so the caller decides.
+
+CLI command ``arch-universe``:
+- ``--arch x86_64``, ``--release 9|10`` (picks default repo set),
+  ``--repo NAME`` repeatable (overrides the release default).
+- ``--save PATH [--merge]`` routes through D74's store (replace vs merge).
+- ``--format`` summary | json | dot | svg with the same emitter the rest of
+  the CLI uses. The summary table shows per-repo edge counts + status
+  (ok / "skipped: REASON"), then the universe totals.
+
+Tests: +12, all using an injectable ``runner``: default-repo lookup, repo
+override, cross-repo merge stitching, one-repo failure, unexpected-error
+swallowing, bare-invocation no-op, arch forwarding, round-trip through
+the SQLite store. No live dnf is invoked. Plus a smoke test of the CLI's
+graceful degradation (``dnf not found in PATH`` -> 4 skips, empty
+universe, no traceback).
+
+Suite 293 -> 305. ruff + mypy --strict clean.
+
+---
+
 ## D76 - Live CPE / CVE feed fetch + cache + TTL
 
 D21 (CPE dictionary) and D25 (CVE feed) ship as supplied-file modules:

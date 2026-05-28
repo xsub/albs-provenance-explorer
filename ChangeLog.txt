@@ -19,7 +19,30 @@ Conventions:
 2026-05-29
 ----------------------------------------------------------------------
 
-- (this)   feat(security): live CPE / CVE feed fetch with HttpCache + TTL.
+- (this)   feat(cli): arch-universe -- one command to fetch + repograph
+           every repo of an arch + merge. New
+           `albs_graph/adapters/arch_builder.py` enumerates the well-known
+           per-release repos (baseos / appstream / crb / extras / plus),
+           runs `dnf repograph --repo X` against each via an injectable
+           runner (tests stay offline), parses each dot with
+           `universe_from_dot`, merges with `merge_graphs` so canonical
+           `pkg:<name>` ids stitch cross-repo edges, and returns an
+           ArchUniverseResult (universe + per-repo edge counts + skip
+           reasons). Per-repo failure is recorded, never fatal -- "every
+           repo failed" still returns an empty graph + the full failure
+           list. CLI command `arch-universe` adds --arch, --release 9|10
+           (default repo set), --repo NAME (repeatable, overrides
+           release), --save PATH [--merge] (routes through D74's store),
+           --format summary|json|dot|svg. Smoke-tested without dnf: all
+           4 repos skip with "dnf not found", empty universe, no
+           traceback. +12 tests covering default lookup, repo override,
+           cross-repo merge stitching, single-repo failure, unexpected-
+           error swallowing, bare-invocation no-op, arch forwarding, and
+           round-trip through the SQLite store. Suite 293 → 305. ruff +
+           mypy --strict clean. (D77; closes the "live arch builder"
+           remaining-open item.)
+
+- eca9943  feat(security): live CPE / CVE feed fetch with HttpCache + TTL.
            New `albs_graph/security/live_feeds.py` fetches NVD's CPE
            dictionary + CVE feed through the existing HttpCache (D63/D64);
            a TTL layered on top (default 12h, matching NVD's documented
