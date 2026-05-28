@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict, deque
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Iterable
 
@@ -236,14 +237,22 @@ class ProvenanceGraph:
         return self.subgraph(selected)
 
     def copy(self) -> "ProvenanceGraph":
-        """A deep-enough copy: fresh node/edge metadata dicts, so mutating the
-        copy (e.g. a dry-run enrichment) never leaks back into this graph."""
+        """Deep copy: fresh node/edge metadata *trees*, so an in-place mutation
+        on a nested value of the copy (e.g. a dry-run enrichment modifying a
+        ``security_identity`` sub-dict, or a candidate dict inside its
+        ``cpe_candidates`` list) never leaks back into this graph.
+
+        Regression: a previous shallow ``dict(node.metadata)`` left nested
+        dict/list values shared between the original and the copy, so
+        ``ProvenanceGraph.copy()`` did NOT actually isolate dry-run writes that
+        went through nested mutation.
+        """
 
         clone = ProvenanceGraph()
         for node in self.nodes.values():
-            clone.add_node(Node(node.id, node.type, node.label, dict(node.metadata)))
+            clone.add_node(Node(node.id, node.type, node.label, deepcopy(node.metadata)))
         for edge in self.edges:
-            clone.add_edge(edge.source, edge.target, edge.relation, **edge.metadata)
+            clone.add_edge(edge.source, edge.target, edge.relation, **deepcopy(edge.metadata))
         return clone
 
     def subgraph(self, node_ids: Iterable[str]) -> "ProvenanceGraph":

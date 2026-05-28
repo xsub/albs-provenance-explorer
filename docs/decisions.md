@@ -1741,6 +1741,50 @@ at 254. No CLI surface change (the `--cache-payloads` / `--max-concurrency` /
 
 ---
 
+## D65 - Dry-run isolation + EvidencePatch capture for CPE verification
+
+Review item #1 (highest-severity). Two coupled correctness bugs:
+
+1. **`ProvenanceGraph.copy()` was shallow** -- `dict(node.metadata)` made fresh
+   top-level dicts but kept all nested values (e.g. `security_identity` and the
+   candidate dicts inside its `cpe_candidates` list) **shared** with the source.
+   So `AnalysisPipeline.run(spec, graph, dry_run=True)`, which runs against a
+   copy, leaked any in-place nested mutation back into the source graph.
+2. **`verify_graph_cpe` mutated `security_identity` (and its nested candidate
+   dicts) in place**, bypassing `update_metadata`. `RecordingGraph` records
+   `add_node` / `add_edge` / `update_metadata` writes -- so CPE verification
+   never showed up in the `EvidencePatch`. A "patch" that misses the change is
+   worse than no patch.
+
+Reproduced (review): `verify_graph_cpe(graph.copy(), dictionary)` flipped the
+original node's `cpe_status` from `candidate_only` to `verified`.
+
+Fixes:
+
+- **`ProvenanceGraph.copy()`** uses `copy.deepcopy(node.metadata)` (and the same
+  for edge metadata). The docstring's "deep-enough copy" promise is now true.
+  Cost: deep-copying small dicts is negligible; `copy()` is only used by
+  `dry_run` paths.
+- **`verify_graph_cpe`** works on a `deepcopy(original)` of the node's
+  `security_identity`, then `graph.update_metadata(node.id, {"security_identity":
+  identity})`. `verify_security_identity`'s contract (in-place mutation +
+  returns status) is preserved -- the per-node copy isolates it. The final
+  state rides through the mutation API so `RecordingGraph` captures it.
+
+Both axes (dry-run safety, patch capture) are now testable in isolation. Tests
++2 (`test_verify_graph_cpe_on_a_copy_does_not_mutate_the_original`,
+`test_verify_graph_cpe_changes_are_captured_in_the_evidence_patch`). Coverage
+golden output on the synthetic fixture is byte-identical (CPE behaviour
+unchanged for callers that don't dry-run / don't use RecordingGraph). Suite now
+256.
+
+Open: the same audit should follow for any other adapter that touches nested
+metadata dicts in place. None known today, but the review's underlying lesson
+is "adapters must mutate the graph only through its mutation API" -- a
+convention worth a CLAUDE.md rule once one more example surfaces.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import re
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -122,10 +123,21 @@ def verify_graph_cpe(
     for node in graph.find_by_type(NodeType.BINARY_RPM):
         if node_selector and not node_selector(node):
             continue
-        identity = node.metadata.get("security_identity")
-        if not isinstance(identity, dict):
+        original = node.metadata.get("security_identity")
+        if not isinstance(original, dict):
             continue
         binaries += 1
+        # Mutate a *deep* copy and route the final state through update_metadata.
+        # Two reasons (both real regressions, reviewed):
+        #   1. dry-run isolation -- a dry_run wrapping ``graph.copy()`` only works
+        #      if every adapter writes through the graph's mutation API; an
+        #      in-place mutation of ``identity`` (or a nested candidate dict) on
+        #      a shallowly-shared object leaks back into the source graph.
+        #   2. EvidencePatch capture -- ``RecordingGraph`` records writes only
+        #      when an adapter calls ``add_node`` / ``add_edge`` / ``update_metadata``;
+        #      in-place dict mutation bypasses all three, so the CPE change went
+        #      missing from the patch.
+        identity = deepcopy(original)
         release = str(node.metadata.get("release") or "")
         if _BACKPORT_RELEASE.search(release):
             identity["distro_backport"] = True
@@ -137,4 +149,5 @@ def verify_graph_cpe(
             ambiguous += 1
         else:
             unmatched += 1
+        graph.update_metadata(node.id, {"security_identity": identity})
     return CpeVerificationResult(binaries, verified, ambiguous, unmatched, backported)

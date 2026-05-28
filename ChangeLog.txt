@@ -19,6 +19,22 @@ Conventions:
 2026-05-28
 ----------------------------------------------------------------------
 
+- (this)   fix(model+security): dry-run isolation + EvidencePatch capture for
+           CPE verification (review bug #1). `ProvenanceGraph.copy()` now
+           deep-copies node/edge metadata trees, so an in-place mutation on a
+           nested value of the copy (`security_identity`, candidate dicts) no
+           longer leaks back into the source. `verify_graph_cpe` works on a
+           `deepcopy(identity)` per node and routes the final state through
+           `graph.update_metadata(...)`, so `RecordingGraph` captures the CPE
+           change in `EvidencePatch.metadata_updates`. +2 regression tests;
+           coverage golden byte-identical; suite 256. (D65; review bug #1.)
+
+- fd53019  chore: institute ChangeLog.txt + document the convention in
+           CLAUDE.md + AGENTS.md (paired with the existing "Keep `docs/` in
+           sync" rule). Seeded with the full max-branch history since the
+           F-series external review. Pre-F1 history referenced through
+           `decisions.md` rather than duplicated.
+
 - 331fb44  Docs refresh: `next_goals_options.md` G1 now marked Done with the
            cache + concurrency story (D63/D64); the Recommendation block was
            still listing B3/C1/F2/F3/G as "remaining" though each is ✅ a few
