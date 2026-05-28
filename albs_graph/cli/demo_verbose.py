@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.table import Table
 
 from albs_graph.adapters.albs import fetch_build_metadata, graph_from_build_metadata
+from albs_graph.adapters.sbom import enrich_graph_with_build_sbom
 from albs_graph.model import Node, ProvenanceGraph
 from albs_graph.provenance.build_analysis import analyze_albs_build
 from albs_graph.provenance.inventory import (
@@ -43,6 +44,7 @@ def main(argv: list[str] | None = None) -> int:
         cache_file=args.cache,
         cache_ttl=args.cache_ttl,
         verify_git=_truthy(args.verify_git),
+        build_sbom=args.build_sbom,
     )
     return 0
 
@@ -57,6 +59,7 @@ def run_demo(
     cache_file: Path,
     cache_ttl: int,
     verify_git: bool,
+    build_sbom: Path | None = None,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     live_dir.mkdir(parents=True, exist_ok=True)
@@ -82,6 +85,13 @@ def run_demo(
     graph = graph_from_build_metadata(metadata)
     cas_count = len(graph.find_by_type("cas_attestation"))
     step(f"Full graph: {len(graph.nodes)} nodes, {len(graph.edges)} edges, {cas_count} CAS attestations")
+    if build_sbom is not None and build_sbom.exists():
+        # Same attach as the top-level `coverage` / `trust-path` flow: lets the
+        # internal trust-path's `has_sbom` check pass, keeping the report
+        # consistent with the rest of the run instead of showing
+        # "missing" while the surrounding script already attached the SBOM.
+        step(f"Attaching build SBOM {build_sbom} to the build's RPMs")
+        enrich_graph_with_build_sbom(graph, build_sbom)
     build_arches = _task_arches(metadata.raw)
     if build_arches:
         step(f"ALBS build task platforms: {', '.join(build_arches)}")
@@ -442,6 +452,13 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--cache", type=Path, required=True)
     parser.add_argument("--cache-ttl", type=int, default=300)
     parser.add_argument("--verify-git", default="0")
+    parser.add_argument(
+        "--build-sbom",
+        type=Path,
+        default=None,
+        help="CycloneDX build SBOM (alma-sbom) to attach so the internal "
+        "trust-path's has_sbom check matches the rest of the run.",
+    )
     return parser.parse_args(argv)
 
 
