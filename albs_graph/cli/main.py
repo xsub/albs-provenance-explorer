@@ -44,6 +44,7 @@ from albs_graph.adapters.sbom import (
     enrich_graph_with_build_sbom,
     import_sbom,
 )
+from albs_graph.adapters.source_imports import attach_source_tree_imports
 from albs_graph.fixtures import build_synthetic_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
 from albs_graph.pipeline import AnalysisPipeline, RunSpec
@@ -283,6 +284,13 @@ def source_evidence(
         "--file-inventory/--no-file-inventory",
         help="Include every source file as a hashed graph node.",
     ),
+    scan_imports: bool = typer.Option(
+        True,
+        "--scan-imports/--no-scan-imports",
+        help="Walk the source tree, detect each file's language, and emit one "
+        "dependency claim per (language, import) -- Python/Go/Rust/C/C++/JS/TS/"
+        "Java/Ruby. Stdlib filtered per language. Attaches to the source package.",
+    ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Print step-by-step progress to stderr."
     ),
@@ -317,8 +325,33 @@ def source_evidence(
             f"{summary.spec_files} spec files, {summary.dependency_specs} dependencies"
         ),
     )
+    import_summary = None
+    if scan_imports:
+        _log_step(verbose, f"Scanning source tree imports under {source_dir}")
+        import_summary = attach_source_tree_imports(
+            graph, f"src:{attach_metadata.package}", source_dir
+        )
+        _log_step(
+            verbose,
+            (
+                "Source imports: "
+                f"{import_summary.files_scanned} files scanned, "
+                f"{import_summary.distinct_imports} distinct imports, "
+                f"{import_summary.claims_added} claims added"
+            ),
+        )
     if output_format.lower() == "summary" and not output:
         _print_source_evidence_summary(summary)
+        if import_summary is not None:
+            by_lang = ", ".join(
+                f"{lang}={count}"
+                for lang, count in sorted(import_summary.files_by_language.items())
+            )
+            console.print(
+                f"Source imports: {import_summary.distinct_imports} distinct across "
+                f"{import_summary.files_scanned} files ({by_lang or 'no languages detected'}); "
+                f"{import_summary.claims_added} dependency claims attached"
+            )
         return
     _emit_graph(graph, output_format, output, verbose=verbose)
 

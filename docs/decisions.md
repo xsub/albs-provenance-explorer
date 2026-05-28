@@ -1579,6 +1579,64 @@ on the VPS (the dev box has no SSH access to it from here). Suite unchanged at 2
 
 ---
 
+## D61 - Source-tree import/include scanning across languages
+
+`source-evidence` already discovered the manifest *files* in a checked-out tree
+(`go.mod`, `Cargo.toml`, `package.json`, `pyproject.toml`, `pom.xml`, Gradle).
+It did not look at the source code itself. The remaining rung -- *what the code
+says it imports* -- existed only for Python (`adapters/pylang.py:parse_imports`,
+scoped to a single file). For Go/Rust/C/C++/JS/TS/Java/Ruby the project had no
+equivalent.
+
+Decision: new adapter `albs_graph/adapters/source_imports.py` -- a generalised
+detector + per-language extractor + tree walker:
+
+- **Detection** by extension (`.py`/`.go`/`.rs`/`.c`/`.h`/`.cpp`/`.js`/`.ts`/
+  `.java`/`.rb` and variants), with a shebang fallback for extensionless
+  scripts (`#!/usr/bin/env python|node|ruby`).
+- **Per-language regex extractors**, each anchored at line start so a `//`
+  comment cannot match:
+  - Python -- reuses `pylang.parse_imports` for consistency (single source of
+    truth for the Python stdlib filter).
+  - Go -- bare `import "pkg"` *and* `import ( ... )` blocks; stdlib heuristic
+    (first path segment carries no dot → stdlib).
+  - Rust -- `use crate::...`/`pub use ...` and the older `extern crate name;`;
+    filters `std`/`core`/`alloc` and the `self`/`super`/`crate` path keywords.
+  - C/C++ -- both `<system>` and `"local"` `#include`s, recorded as
+    `Ecosystem.GENERIC` evidence (C has no single package ecosystem).
+  - JS/TS -- ES `import ... from "pkg"` *and* CommonJS `require("pkg")`; the
+    mandatory `\s+` after `import` excludes the dynamic `import("...")` call
+    form; npm-root reduction handles `@scope/pkg/sub` -> `@scope/pkg`; relative
+    `./local` imports are skipped (project-internal).
+  - Java -- `import [static] foo.bar.Baz;` with the `.*` wildcard stripped;
+    filters `java.*`/`javax.*`/`jdk.*`/`sun.*`/`com.sun.*` JDK roots.
+  - Ruby -- only `require '...'` (the `\s+` after `require` excludes
+    `require_relative`); stdlib filter for the common ones.
+- **Walker** prunes `.git`/`node_modules`/`vendor`/`target`/`build`/`dist`/...
+  and dotted dirs in-place (never descends), and is bounded by `file_limit`
+  (default 5000) so a huge tree cannot run away.
+- **Claim emission** deduplicates per (language, import) so a module imported
+  in every test is one claim, not hundreds. Each claim carries the
+  language-appropriate `Ecosystem` (PYPI/GO/CARGO/NPM/MAVEN/GENERIC),
+  `resolution_state=DECLARED`, and a `<language>_import` evidence tag, so the
+  reconciler groups them alongside other adapters' claims.
+
+CLI: `source-evidence` runs the scanner by default; `--no-scan-imports` opts
+out. The scan attaches to `src:<source_package>` (the natural subject for "what
+the source declares it needs").
+
+Regex-based by design: fast, dependency-free, lossless for the common cases
+(top-level statements at column zero). Deliberately does not chase nested
+conditional imports or dynamic `__import__` -- the reconciler is fed real
+evidence, not best-guess static analysis.
+
+Tests +12 (extension + shebang detection; per-language extractor with stdlib
+and project-internal filters; walker prunes ignored dirs; integration: a
+mixed-language tree adds typed claims; missing-subject is a no-op). Suite now
+245.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
