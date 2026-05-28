@@ -17,6 +17,9 @@
 #
 # Defaults to AlmaLinux 10 build 57810 / nginx-core. Override via env:
 #   BUILD_ID PACKAGE ARCH FILE OWNER REPO OUT_DIR SBOM_FILE FIXTURE_PKG
+#   SRC_PACKAGE  the SOURCE package for checkout-source/source-evidence (step 8);
+#                defaults to nginx (nginx-core's source). Set it to PACKAGE's own
+#                source package name when retargeting.
 # Optional inputs (each step skips cleanly without them, fabricating nothing):
 #   ERRATA_FILE                       real errata JSON {id,type,severity,cves}
 #                                     -> closes the trust path's has_errata_link
@@ -42,6 +45,7 @@ CPE_FILE="${CPE_FILE:-}"
 RESOLVE_ECOSYSTEM="${RESOLVE_ECOSYSTEM:-}"
 RESOLVE_MANIFEST="${RESOLVE_MANIFEST:-}"
 RPM_FILE="${RPM_FILE:-}"
+SRC_PACKAGE="${SRC_PACKAGE:-nginx}"   # SOURCE package for checkout (nginx-core's source is nginx)
 FIXTURE_PKG="${FIXTURE_PKG:-demo-pkg}"
 LIVE_DIR="${LIVE_DIR:-examples/live-build-$BUILD_ID}"
 OUT_DIR="${OUT_DIR:-examples/demo-build-$BUILD_ID}"
@@ -131,11 +135,14 @@ main() {
   fi
 
   step "8. Checkout the exact ALBS git source commit, then analyze source evidence"
+  # checkout-source / source-evidence work on the SOURCE package (nginx-core's is
+  # nginx); source-evidence takes the checked-out dir as a positional argument.
   if have git; then
-    opt run checkout-source --build-id "$BUILD_ID" --package "$PACKAGE" \
-      --dest "$LIVE_DIR/src-$PACKAGE" --cache "$CACHE"
-    opt run source-evidence --build-id "$BUILD_ID" --package "$PACKAGE" \
-      --cache "$CACHE" --cache-ttl 86400 --verbose
+    local src_dir="$LIVE_DIR/src-$SRC_PACKAGE"
+    opt run checkout-source --build-id "$BUILD_ID" --package "$SRC_PACKAGE" \
+      --dest "$src_dir" --cache "$CACHE" --cache-ttl 86400
+    [[ -d "$src_dir" ]] && opt run source-evidence "$src_dir" --build-id "$BUILD_ID" \
+      --package "$SRC_PACKAGE" --cache "$CACHE" --cache-ttl 86400 --verbose
   else
     printf '   (skipped: needs git + network to checkout the ALBS source commit)\n'
   fi

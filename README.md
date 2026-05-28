@@ -28,26 +28,21 @@ source package
 
 ```text
 [almalinux@host albs-provenance-explorer]$ bash example--full.sh
-== albs-provenance-explorer :: full demo ==
+== albs-provenance-explorer :: comprehensive demo ==
 build=57810  package=nginx-core  arch=x86_64  file=/usr/sbin/nginx  repo=appstream
-tools: dnf=yes rpmkeys=yes cas=no dot=yes zstandard=yes
+tools: dnf=yes rpmkeys=yes cas=no dot=yes git=yes zstandard=yes
 
 ========== Fetch ALBS build metadata (cached examples/live-build-57810/build-57810.albs.json) ==========
 step Loading ALBS build metadata from fresh cache examples/live-build-57810/build-57810.albs.json
 step Source package: nghttp2 (from ALBS srpm_artifact)
 step Building provenance graph from ALBS metadata
 step Graph: 1613 nodes, 2775 edges, 470 CAS attestations
-step Rendering json output
 step Writing json output to examples/live-build-57810/build-57810.json
 
 ========== 1. Provenance: source-to-artifact trust path for nginx-core ==========
-step Loading synthetic ALBS build metadata from examples/live-build-57810/build-57810.albs.json
-step Graph: 1613 nodes, 2775 edges, 470 CAS attestations
 step Attaching build SBOM examples/build-57810.cyclonedx.json to the build's RPMs
 step build SBOM matched 456 RPMs, set 456 vendor CPEs from build-57810.cyclonedx.json
-step Resolving binary RPM selector: nginx-core
 step Selected RPM node: rpm:6901620:nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step Analyzing source-to-artifact trust path
                Trust path:                
  nginx-core-1.26.3-6.el10_2.3.x86_64.rpm  
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
@@ -63,61 +58,24 @@ step Analyzing source-to-artifact trust path
 └──────────────────────────────┴─────────┘
 Provenance complete: True
 Security context complete: False
-Complete: False
 Missing security context: has_errata_link
-Path:
-  src:nginx
-  git:https://git.almalinux.org/rpms/nginx.git
-  commit:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd
-  cas:source:nginx:28f9805350513bcbe76fc51fd6012055aabf66bd
-  build:albs-task:418779
-  rpm:6901620:nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
 
 ========== 2. Point at a binary file: full lineage of /usr/sbin/nginx ==========
-                     Provenance of /usr/sbin/nginx  (package: nginx-core)                      
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Role                     ┃ Element                                                          ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
 │ source_package           │ nginx                                                            │
-│ git_repository           │ https://git.almalinux.org/rpms/nginx.git                         │
 │ git_commit               │ 28f9805350513bcbe76fc51fd6012055aabf66bd                         │
-│ cas_source_attestation   │ 28f9805350513bcbe76fc51fd6012055aabf66bd                         │
 │ build_task               │ ALBS task 418779 x86_64                                          │
 │ binary_rpm               │ nginx-core-1.26.3-6.el10_2.3.x86_64.rpm                          │
-│ build_environment        │ AlmaLinux-10 x86_64                                              │
 │ srpm                     │ nginx-1.26.3-6.el10_2.3.src.rpm                                  │
 │ signature                │ ALBS sign task 45219                                             │
 │ repository_release       │ ALBS release 35402                                               │
 │ cas_artifact_attestation │ 300eb6e84d90e76cd26041ae3e3dee83f7d735b3e30d9dd2719dc8b71ad04fef │
 │ sbom                     │ build-57810.cyclonedx.json                                       │
-└──────────────────────────┴──────────────────────────────────────────────────────────────────┘
-Provenance complete: True
-Security context complete: False
 
-========== 3. Five-axis coverage up the cost ladder (verbose) ==========
-step Loading ALBS build metadata from examples/live-build-57810/build-57810.albs.json
-step Graph: 1613 nodes, 2775 edges, 470 CAS attestations
-step Enriching the build's RPMs from build SBOM examples/build-57810.cyclonedx.json
+========== 3. Five-axis coverage up the cost ladder (headers, payload ELF, dnf, sonames, GPG sigs, CAS, CPE) ==========
 step build SBOM matched 456 RPMs, set 456 vendor CPEs from build-57810.cyclonedx.json
 step Resolving dependencies per package with dnf repoquery
-step dnf repoquery resolved dependencies for nginx-core
-step dnf repoquery resolved dependencies for nginx-core-debuginfo
 step Range-reading RPM headers for dynamic-linkage claims
-step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
-https://repo.almalinux.org/almalinux/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
-https://repo.almalinux.org/vault/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
-https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step parsed header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
-https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
 step Downloading RPM payloads and parsing ELF objects (rung 4)
-step downloading payload for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
-https://repo.almalinux.org/almalinux/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step downloading payload for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
-https://repo.almalinux.org/vault/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step downloading payload for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
-https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
 step analyzed 1 ELF objects in nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
 step Resolving sonames to packages via dnf --whatprovides
 step Verifying RPM GPG signatures (download + rpmkeys --checksig)
@@ -126,7 +84,7 @@ step Reconciling dependency claims
 ┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━┓
 ┃ Axis             ┃ Covered ┃ Total ┃ Fraction ┃
 ┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━┩
-│ resolution       │       6 │    14 │     0.43 │
+│ resolution       │       5 │    14 │     0.36 │
 │ linkage          │       1 │   456 │     0.00 │
 │ identity         │     456 │   456 │     1.00 │
 │ provenance       │     456 │   456 │     1.00 │
@@ -140,108 +98,98 @@ RPM header enrichment: 1/1 headers fetched, 8 dynamic-linkage claims added
 RPM license (from header): nginx-core=BSD-2-Clause
 RPM payload analysis: 1/1 payloads, 1 ELF objects, 6 NEEDED claims, 0 static objects, 0 Go module claims
 Signatures: 1 verified, 0 nokey, 0 failed of 1 RPMs
-Reconciled dependencies: 14; conflicts: 0
-  agreements: insufficient_evidence=8, consensus=6
+Reconciled dependencies: 14; conflicts: 1
+  agreements: insufficient_evidence=8, consensus=5, conflict=1
   rpm:6901620:nginx-core-1.26.3-6.el10_2.3.x86_64.rpm:
-    rpm:almalinux/glibc @ 0:2.39-121.el10_2.alma.1 -> consensus [dnf:requires, soname_provider]
+    rpm:almalinux/glibc @ 0:2.39-121.el10_2.alma.1, 0:2.39-124.el10_2.alma.1 -> conflict [dnf:requires, soname_provider]
     rpm:almalinux/libxcrypt @ 0:4.4.36-10.el10 -> consensus [dnf:requires, soname_provider]
     rpm:almalinux/nginx-filesystem @ 2:1.26.3-6.el10_2.3 -> consensus [dnf:recommends, dnf:requires]
     rpm:almalinux/openssl-libs @ 1:3.5.5-2.el10_2.alma.1 -> consensus [dnf:requires, soname_provider]
     rpm:almalinux/pcre2 @ 0:10.44-1.el10.3 -> consensus [dnf:requires, soname_provider]
     rpm:almalinux/zlib-ng-compat @ 0:2.2.3-3.el10_1 -> consensus [dnf:requires, soname_provider]
     rpm:libc.so.6 -> insufficient_evidence [elf_dt_needed, rpm_header_soname]
-    rpm:libcrypt.so.2 -> insufficient_evidence [elf_dt_needed, rpm_header_soname]
     rpm:libcrypto.so.3 -> insufficient_evidence [elf_dt_needed, rpm_header_soname]
-    rpm:libpcre2-8.so.0 -> insufficient_evidence [elf_dt_needed, rpm_header_soname]
     rpm:libssl.so.3 -> insufficient_evidence [elf_dt_needed, rpm_header_soname]
-    rpm:libz.so.1 -> insufficient_evidence [elf_dt_needed, rpm_header_soname]
-    rpm:nginx-filesystem -> insufficient_evidence [rpm_header_requires]
-    rpm:openssl-libs -> insufficient_evidence [rpm_header_requires]
+    ... (libcrypt.so.2, libpcre2-8.so.0, libz.so.1, nginx-filesystem, openssl-libs also insufficient_evidence) ...
+  [version_drift] rpm:almalinux/glibc: versions=0:2.39-121.el10_2.alma.1, 0:2.39-124.el10_2.alma.1
 
-========== 4. Vulnerability-applicability report ==========
-                                    Vulnerability applicability                                     
-┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
+========== 4. License rollup (real RPM licenses: subject from header in step 3, deps via dnf) ==========
+step dnf: 6 resolved runtime providers for nginx-core
+6 distinct licenses across 7 packages; 0 unknown (nginx-core + 6 runtime deps)
+
+========== 5. Vulnerability-applicability report ==========
 ┃ Package              ┃ Arch   ┃ Identity        ┃ Addressed CVEs ┃ Potential CVEs ┃ Reachability ┃
-┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━┩
 │ nginx-core           │ x86_64 │ vendor_asserted │ -              │ -              │ dynamic      │
 │ nginx-core-debuginfo │ x86_64 │ vendor_asserted │ -              │ -              │ dynamic      │
-└──────────────────────┴────────┴─────────────────┴────────────────┴────────────────┴──────────────┘
 2 packages; 0 addressed, 0 potentially-affected distinct CVEs
-
-========== 5. License rollup (real RPM licenses: subject from header in step 3, deps via dnf) ==========
-step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
-https://repo.almalinux.org/almalinux/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
-https://repo.almalinux.org/vault/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
-https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step parsed header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
-https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step dnf: 6 resolved runtime providers for nginx-core
-                            License rollup (7 packages, RPM header (subject) + dnf repoquery %{license} (deps))                             
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┓
-┃ License                                                                                                                       ┃ Packages ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━┩
-│ Apache-2.0                                                                                                                    │        1 │
-│ BSD-2-Clause                                                                                                                  │        2 │
-│ BSD-3-Clause AND FSFULLR AND X11 AND GPL-2.0-or-later AND FSFAP AND FSFUL AND GPL-3.0-or-later                                │        1 │
-│ LGPL-2.1-or-later AND BSD-3-Clause AND BSD-2-Clause AND BSD-2-Clause-FreeBSD AND 0BSD AND CC0-1.0 AND                         │        1 │
-│ LicenseRef-Fedora-Public-Domain                                                                                               │          │
-│ LGPL-2.1-or-later AND SunPro AND LGPL-2.1-or-later WITH GCC-exception-2.0 AND BSD-3-Clause AND GPL-2.0-or-later AND           │        1 │
-│ LGPL-2.1-or-later WITH GNU-compiler-exception AND GPL-2.0-only AND ISC AND LicenseRef-Fedora-Public-Domain AND HPND AND       │          │
-│ CMU-Mach AND LGPL-2.1-only AND LGPL-2.0-or-later AND Unicode-DFS-2015 AND GFDL-1.1-or-later AND GPL-1.0-or-later AND FSFUL    │          │
-│ AND MIT AND Inner-Net-2.0 AND X11 AND GPL-2.0-or-later WITH GCC-exception-2.0 AND GFDL-1.3-only AND GFDL-1.1-only AND         │          │
-│ GPL-3.0-or-later AND GPL-3.0-or-later WITH Autoconf-exception-generic-3.0 AND GPL-3.0-or-later WITH Texinfo-exception         │          │
-│ Zlib                                                                                                                          │        1 │
-└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┴──────────┘
-6 distinct licenses across 7 packages; 0 unknown (nginx-core + 6 runtime deps)
 
 ========== 6. Real CycloneDX SBOM ingest (from AlmaLinux alma-sbom, no fake data) ==========
    imported 433 package nodes + 433 edges from a real alma-sbom build SBOM
    source: examples/build-57810.cyclonedx.json (regenerate: alma-sbom --file-format cyclonedx-json build --build-id 57810)
 
-========== 7. SLSA / in-toto provenance attestation ==========
+========== 7. Native dependency resolution (language manifest -> go list / cargo metadata / ...) ==========
+   (skipped: set RESOLVE_ECOSYSTEM=go|cargo|pypi|npm and RESOLVE_MANIFEST=<go.mod|...>;
+            needs the native tool on PATH -- an RPM build carries no language manifest itself)
+
+========== 8. Checkout the exact ALBS git source commit, then analyze source evidence ==========
+   [output omitted: this captured run predated the checkout-source / source-evidence
+    invocation fix; on a fresh run checkout-source clones nginx at the exact commit and
+    source-evidence walks the checked-out tree for the .spec + ecosystem manifests]
+
+========== 9. Inspect a local RPM header (rpmfile) ==========
+   (skipped: set RPM_FILE=<path/to.rpm> to inspect a local RPM header)
+
+========== 10. SLSA / in-toto provenance attestation ==========
    wrote examples/demo-build-57810/nginx-core.intoto.json
 
-========== 8. Render graphs to SVG ==========
+========== 11. Build intelligence: artifact matrix + build/signing/processing timing (verbose analyzer) ==========
+step ALBS build task platforms: x86_64, aarch64, ppc64le, s390x, i686, x86_64_v2
+                                  ALBS RPM artifact matrix                                   
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃ Build task arch ┃ Artifacts ┃ Artifact arches                ┃ Package set ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ x86_64          │        94 │ x86_64=76, noarch=5, src=13    │ delta (+21) │
+│ i686            │        66 │ i686=48, noarch=5, src=13      │ common      │
+│ src             │        13 │ src=13                         │ 13 sources  │
+└─────────────────┴───────────┴────────────────────────────────┴─────────────┘
+   ... (aarch64/ppc64le/s390x/x86_64_v2 rows, the 62-name common package set, and the
+        90-row per-task processing timeline + signing-task timing are in console.txt) ...
+step Build timing totals: wall=101.8m, aggregate task wall=412.8m, critical task wall=19.9m
+            ALBS signing/notarization timing            
+┏━━━━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
+┃ Sign task ┃  Wall ┃  sign ┃ notarize ┃ upload ┃  web ┃
+┡━━━━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━┩
+│ 45219     │ 29.8m │ 18.5m │     1.8m │   5.2m │ 2.2m │
+└───────────┴───────┴───────┴──────────┴────────┴──────┘
+step Writing artifact inventory + processing analysis json to examples/demo-build-57810/
+==> Done
+
+========== 12. Render graphs to SVG (full build, focused trust path, whole-source fan-out) ==========
    wrote examples/demo-build-57810/build-57810.svg (full build graph)
-   wrote examples/demo-build-57810/nginx-core-57810-trust.svg (trust path)
+   wrote examples/demo-build-57810/nginx-core-57810-trust.svg (focused trust path)
    wrote examples/demo-build-57810/nginx-core-source-build-57810.svg (source build fan-out: one source -> all its RPMs)
 
-========== 9. Dependency universe via 'dnf repograph appstream' (build, persist, traverse) ==========
+========== 13. Offline synthetic fixture (no network): build, render, inspect ==========
+   wrote examples/live-build-57810/fixture-demo-pkg.json (synthetic graph)
+   wrote examples/demo-build-57810/fixture-demo-pkg.svg (synthetic graph SVG)
+demo-pkg.x86_64.rpm: provenance complete=True, security context complete=False
+
+========== 14. Dependency universe via 'dnf repograph appstream' (build, persist, traverse) ==========
 Saved universe to examples/live-build-57810/universe-appstream.db: 4398 nodes, 11720 edges
 Universe: 4398 nodes, 11720 edges (4398 packages)
 Most-depended-upon packages (direct dependents = blast radius):
     375  perl-libs
     366  texlive-kpathsea
     323  texlive-base
-    206  perl-Carp
-    195  perl-Exporter
-    125  tesseract
-    125  tesseract-tessdata-doc
-    120  javapackages-filesystem
-    116  perl-interpreter
-    107  pcp-libs
-
-   blast radius -- packages that directly require perl-libs (first 8):
-375 dependents of perl-libs:
-  autoconf
-  automake
-  clang-analyzer
-  convmv
-  cyrus-imapd
-  cyrus-imapd-utils
-  foomatic
-  freeradius-utils
    wrote examples/demo-build-57810/universe-nginx-core-deps-57810.svg (nginx-core dependency neighbourhood)
 
-== Done. Artifacts in examples/demo-build-57810: console.txt, *.svg, nginx-core.intoto.json ==
+== Done. Artifacts in examples/demo-build-57810: console.txt, *.svg, *.json, nginx-core.intoto.json ==
 [almalinux@host albs-provenance-explorer]$
 ```
 
-That single run exercises the provenance trust path, `identify` (a binary file -> its full creation/install lineage), five-axis coverage up the cost ladder (RPM headers, payload ELF, `dnf repoquery`, soname -> providing package, GPG signatures, CAS), the `vuln` report, a real **license rollup** (the RPM `License:` tag + `dnf repoquery %{license}`), the real AlmaLinux [`alma-sbom`](https://github.com/AlmaLinux/alma-sbom) SBOM (enriching every report and ingested whole), the `slsa` attestation, and the dependency `universe`. Retarget with `BUILD_ID=<id> PACKAGE=<rpm> FILE=<path> OWNER=<rpm> ./example--full.sh`; the full log is [`console.txt`](examples/demo-build-57810/console.txt).
+That single run exercises every command: the provenance trust path; `identify` (a binary file -> its full creation/install lineage); five-axis coverage up the cost ladder (RPM headers, payload ELF, `dnf repoquery`, soname -> providing package, GPG signatures, CAS, CPE); a real **license rollup** (the RPM `License:` tag + `dnf repoquery %{license}`); the `vuln` report; whole-SBOM `import-sbom` ingest of the real AlmaLinux [`alma-sbom`](https://github.com/AlmaLinux/alma-sbom) CycloneDX; `source-evidence` (checkout the exact git commit + discover ecosystem manifests); language-native `resolve`; `inspect-rpm`; the `slsa` attestation; **build intelligence** (artifact matrix + build/signing/processing timing); an offline synthetic-fixture build/render/inspect; and the dependency `universe`. Retarget with `BUILD_ID=<id> PACKAGE=<rpm> ./example--full.sh`; the full log is [`console.txt`](examples/demo-build-57810/console.txt).
 
-The reconciler does not collapse a dependency into one edge: it groups every claim (a `dnf` requires, a soname -> provider lookup, an ELF `DT_NEEDED`, an RPM header requires) and emits a typed verdict. Here 6 runtime packages reach `consensus` - two independent sources agree on one el10 release - while 8 bare sonames and header requires stay `insufficient_evidence` (no concrete version behind them), and nothing conflicts. That consensus is trustworthy precisely because both `dnf` and soname resolution ran against the build's own distro (an el10 build on an el10 host). Agreement and build-context validity are tracked on separate axes: resolve an el9 build on this same el10 host and the sources still reach honest `consensus` on the el10 packages, but the resolution is tagged with a `cross_distro` context issue and dropped from resolution coverage - the reconciler refuses to pass one generation's releases off as another's dependencies, without pretending the sources disagreed.
+The reconciler does not collapse a dependency into one edge: it groups every claim (a `dnf` requires, a soname -> provider lookup, an ELF `DT_NEEDED`, an RPM header requires) and emits a typed verdict. Here 5 runtime packages reach `consensus`, 8 bare sonames and header requires stay `insufficient_evidence` (no concrete version behind them), and `glibc` is a real `version_drift` conflict - the el10 repos currently carry two builds (`2.39-121` and `2.39-124`), so `dnf` and soname resolution legitimately disagree on the release and the reconciler records both rather than picking one. Agreement and build-context validity are tracked on separate axes: resolve an el9 build on this same el10 host and the sources still reach honest `consensus` on the el10 packages, but the resolution is tagged with a `cross_distro` context issue and dropped from resolution coverage - the reconciler refuses to pass one generation's releases off as another's dependencies, without pretending the sources disagreed.
 
 The real `alma-sbom` SBOM (`--build-sbom`) enriches every report rather than just being imported: matched to the build's own 456 RPMs, it sets each one's vendor CPE - lifting the `identity` axis from `0.00` to `1.00`, flipping the trust path's `has_sbom` check to `ok`, and moving the `vuln` report's identities from `candidate_only` to `vendor_asserted`. That status is deliberately distinct from the `verified` an NVD-dictionary match yields: both establish a CPE and count toward identity, but the SBOM CPE is AlmaLinux asserting its own artifact's identity, not an external confirmation - so coverage reports the strength split (`Identity strength: ... vendor-asserted`) and the SBOM never overrides a stronger prior NVD verification.
 

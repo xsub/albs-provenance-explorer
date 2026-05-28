@@ -1541,6 +1541,44 @@ suite stays 233.
 
 ---
 
+## D60 - First comprehensive VPS run: step-8 fix, repos re-drifted, screenshot refresh
+
+The first full run of the consolidated `example--full.sh` on the el10 VPS exposed
+two things.
+
+1. **`example--full.sh` step 8 was wired wrong.** `checkout-source` takes the
+   **source** package (`nginx`, not the binary `nginx-core`) plus a required
+   `--dest`, and `source-evidence` takes the checked-out tree as a **positional
+   `SOURCE_DIR`** (not `--build-id`). The run showed both erroring then skipping
+   gracefully. Fixed: a `SRC_PACKAGE` env (default `nginx`), `checkout-source
+   --package "$SRC_PACKAGE" --dest <dir>`, then `source-evidence <dir>
+   --build-id ... --package "$SRC_PACKAGE"`. (Future: `checkout-source` could
+   accept a binary name and resolve its source, removing the `SRC_PACKAGE` knob.)
+
+2. **The el10 repos re-drifted to two `glibc` builds** (`2.39-121.el10_2.alma.1`
+   and `2.39-124.el10_2.alma.1`). So the run now reports resolution **5/14**,
+   **5 consensus + 1 `version_drift` conflict** (glibc) + 8 `insufficient_evidence`
+   - not the single-build `0 conflicts` of the prior capture. This is the
+   reconciler working correctly (it records both releases rather than picking
+   one); the repos oscillate between one and two builds per package over time. The
+   README prose is updated to match.
+
+Everything else in the comprehensive run worked: trust path (has_sbom ok via the
+build SBOM; has_errata_link still missing, no errata file), identify, coverage
+(identity 1.00, signatures 1 verified), license rollup, vuln, whole-SBOM ingest
+(433 nodes), SLSA, build-intelligence (artifact matrix + 90-row processing/signing
+timing), SVG renders, the offline fixture trio, and the 4398-node/11720-edge
+universe.
+
+README text-screenshot refreshed to this 14-step run (hostname sanitized; the two
+giant build-intelligence tables truncated with pointers to `console.txt`; step 8
+shown as an editorial `[output omitted ...]` note since the capture predated the
+fix - **nothing fabricated**). Still pending (need the el10 host): regenerate
+`examples/demo-build-57810/console.txt` from a fresh post-fix run, and run `pytest`
+on the VPS (the dev box has no SSH access to it from here). Suite unchanged at 233.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
