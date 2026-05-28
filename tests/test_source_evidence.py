@@ -88,3 +88,44 @@ def test_source_evidence_can_skip_full_file_inventory(tmp_path: Path) -> None:
     assert summary.files == 1
     assert "source-file:988:implementation.c" not in graph.nodes
     assert summary.dependency_specs == 1
+
+
+def test_source_evidence_handles_duplicate_requires_in_spec(tmp_path: Path) -> None:
+    # Regression: a real spec lists the same `Requires:` across many subpackage
+    # blocks (e.g. nginx-core + every nginx-mod-* `Requires: nginx(abi) =
+    # %{nginx_abiversion}`). That used to raise "Conflicting node definition" on
+    # the second add. The dep is one node; each declaring source file gets its
+    # own edge. The unexpanded `%{macro}` is preserved verbatim in the node ID
+    # (the spec parser sees the raw text), so the regression also covers the
+    # macro-text-id case.
+    metadata = parse_build_metadata(
+        {
+            "id": 989,
+            "package": "nginx",
+            "source_repository": "https://git.example.invalid/rpms/nginx.git",
+            "commit": "abc123",
+            "binary_rpms": [],
+        }
+    )
+    graph = graph_from_build_metadata(metadata)
+    source_dir = tmp_path / "source"
+    source_dir.mkdir()
+    (source_dir / "nginx.spec").write_text(
+        "Name: nginx\n"
+        "Requires: nginx(abi) = %{nginx_abiversion}\n"
+        "Requires: nginx(abi) = %{nginx_abiversion}\n"  # duplicate -- used to crash
+        "Requires: bash\n"
+        "Requires: bash\n",                              # another duplicate
+        encoding="utf-8",
+    )
+
+    # Must not raise (this is the regression).
+    attach_source_evidence(graph, metadata, source_dir)
+
+    # Each duplicate dep becomes a single node, edges multiply (idempotent node).
+    abi_nodes = [
+        node
+        for node in graph.find_by_type(NodeType.DEPENDENCY_SPEC)
+        if node.metadata.get("name") == "nginx(abi)"
+    ]
+    assert len(abi_nodes) == 1

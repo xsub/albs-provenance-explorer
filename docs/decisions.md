@@ -1637,6 +1637,29 @@ mixed-language tree adds typed claims; missing-subject is a no-op). Suite now
 
 ---
 
+## D62 - Idempotent spec dep nodes (regression from the first real VPS run)
+
+The first comprehensive `example--full.sh` run on the el10 VPS (after gaining
+SSH access) ran step 8 against a real nginx `.spec`. `source-evidence` raised:
+
+> `error: Conflicting node definition for dep:rpm:nginx(abi):runtime:nginx(abi)_=_%{nginx_abiversion}`
+
+A real spec lists the same `Requires:` line across every subpackage block (in
+the nginx case, `nginx-core` + every `nginx-mod-*` each declare
+`Requires: nginx(abi) = %{nginx_abiversion}`). `_add_dependency_spec` was
+unconditionally calling `graph.add_node`, which raises on a duplicate id.
+
+Fix: make the dep-node add idempotent (`if node_id not in graph.nodes`). The dep
+is one node; what multiplies is the *edge* from each declaring source file -
+which is exactly the call's intent. The unexpanded `%{macro}` in the node id is
+preserved verbatim (the spec parser sees raw text, no rpmbuild macro context);
+that is a known caveat, not the regression.
+
+Tests +1 (a spec listing the same `Requires:` twice + another duplicate must
+not raise; the dep collapses to a single node). Suite now 246.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -254,14 +254,20 @@ def _rpm_requirement_name(expression: str) -> str:
 
 def _add_dependency_spec(graph: ProvenanceGraph, source_file_id: str, spec: DependencySpec) -> None:
     node_id = dependency_spec_node_id(spec)
-    graph.add_node(
-        Node(
-            node_id,
-            NodeType.DEPENDENCY_SPEC,
-            spec.requested or spec.identity.name,
-            dependency_node_metadata(spec) | {"kind": "source_spec_requirement"},
+    # Idempotent on the node: a real spec lists the same dep across many
+    # subpackages and `Requires(post):` / `Requires:` blocks (e.g. nginx-core,
+    # nginx-mod-* all `Requires: nginx(abi) = %{nginx_abiversion}`). The dep is
+    # one node; what multiplies is the *edge* from each declaring source file.
+    # Re-adding the node would raise "Conflicting node definition".
+    if node_id not in graph.nodes:
+        graph.add_node(
+            Node(
+                node_id,
+                NodeType.DEPENDENCY_SPEC,
+                spec.requested or spec.identity.name,
+                dependency_node_metadata(spec) | {"kind": "source_spec_requirement"},
+            )
         )
-    )
     edge_metadata = dependency_edge_metadata(spec)
     graph.add_edge(source_file_id, node_id, Relation.DECLARES_DEPENDENCY, **edge_metadata)
     if spec.scope == DependencyScope.BUILDTIME:
