@@ -1,3 +1,20 @@
+# PyQt investigation workbench
+
+![PyQt investigation workbench showing dependency evidence for build 57810](examples/demo-build-57810/pyqt-investigation-workbench.png)
+
+The `InvestigationWorkbenchApp` branch exposes the same provenance backend
+through a desktop investigation workbench. It opens cached ALBS metadata or a
+live build id, runs the shared `AnalysisService`, lists RPM artifacts, renders
+focused graph slices, and lets you inspect node metadata, incoming/outgoing
+evidence and findings without leaving the graph.
+
+```bash
+pip install -e '.[dev,gui]'
+albs-graph-workbench
+```
+
+---
+
 # albs-provenance-explorer
 
 `albs-provenance-explorer` is a read-only Python PoC that builds a provenance-aware graph over AlmaLinux Build System (ALBS), RPM, SBOM, CAS and errata data.
@@ -20,24 +37,6 @@ source package
   -> SBOM
   -> errata / CVE
 ```
-
-## PyQt investigation workbench
-
-The `InvestigationWorkbenchApp` branch also exposes the same backend through a
-desktop workbench:
-
-```bash
-pip install -e '.[dev,gui]'
-albs-graph-workbench
-```
-
-It opens cached ALBS metadata or a live build id, runs the shared
-`AnalysisService`, lists RPM artifacts, renders focused graph slices, and lets
-you inspect node metadata, incoming/outgoing evidence and findings without
-leaving the graph.
-
-![PyQt investigation workbench showing dependency evidence for build 57810](examples/demo-build-57810/pyqt-investigation-workbench.png)
-
 
 ## Demo: full feature run on build 57810 (AlmaLinux 10)
 
