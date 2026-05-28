@@ -132,9 +132,23 @@ step dnf: 6 resolved runtime providers for nginx-core
             needs the native tool on PATH -- an RPM build carries no language manifest itself)
 
 ========== 8. Checkout the exact ALBS git source commit, then analyze source evidence ==========
-   [output omitted: this captured run predated the checkout-source / source-evidence
-    invocation fix; on a fresh run checkout-source clones nginx at the exact commit and
-    source-evidence walks the checked-out tree for the .spec + ecosystem manifests]
+Checked out nginx source at 28f9805350513bcbe76fc51fd6012055aabf66bd to examples/live-build-57810/src-nginx
+step Source evidence: 35 files, 0 manifests, 1 spec files, 48 dependencies
+step Source imports: 0 files scanned, 0 distinct imports, 0 claims added
+      Source Evidence       
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━┓
+┃ Metric           ┃ Value ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━┩
+│ files            │    35 │
+│ manifests        │     0 │
+│ spec_files       │     1 │
+│ dependency_specs │    48 │
+│ source_refs      │    22 │
+│ patch_refs       │    12 │
+│ ecosystems       │  none │
+└──────────────────┴───────┘
+Source imports: 0 distinct across 0 files (no languages detected); 0 dependency claims attached
+   (the ALBS source repo is the RPM packaging: .spec + patches; upstream nginx C source lives in a separate repo - source_imports.py would scan that)
 
 ========== 9. Inspect a local RPM header (rpmfile) ==========
    (skipped: set RPM_FILE=<path/to.rpm> to inspect a local RPM header)
