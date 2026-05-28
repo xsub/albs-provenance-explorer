@@ -19,7 +19,26 @@ Conventions:
 2026-05-28
 ----------------------------------------------------------------------
 
-- (this)   fix(vuln): split identity_verified into identity_established +
+- (this)   docs: regenerate examples/demo-build-57810/console.txt on the el10
+           VPS with the post-fix full.sh. Both trust-path tables (step 1 and
+           step 11's inner demo_verbose) now show `has_sbom ok`, resolving
+           the inconsistency the user spotted (961 sbom mentions in the demo
+           dir alongside a `has_sbom missing` row in the same file). Plus
+           ChangeLog placeholder backfill for the bug #8 commit and the
+           c6a5e7d demo_verbose fix.
+
+- c6a5e7d  fix(demo_verbose): attach build SBOM so step 11's internal
+           trust-path is consistent with the rest of the run. User noticed
+           the inconsistency: 961 sbom mentions in
+           examples/demo-build-57810/ alongside `has_sbom missing` in the
+           same console.txt -- because demo_verbose re-runs trust_path on a
+           freshly-built graph and never attached the SBOM. Added
+           `--build-sbom PATH` to demo_verbose (calls
+           enrich_graph_with_build_sbom after graph_from_build_metadata,
+           before the internal trust_path); example--full.sh step 11 now
+           passes the existing ${sbom_args[@]}. Suite stays 263. (D72.)
+
+- 4d01655  fix(vuln): split identity_verified into identity_established +
            identity_externally_verified (review bug #8). The single bool was
            true only for NVD-verified CPEs, but CVE matching ran against any
            set CPE including vendor_asserted ones -- the name implied a

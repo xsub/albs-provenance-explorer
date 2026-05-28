@@ -203,6 +203,7 @@ step Loading ALBS build metadata from fresh cache examples/live-build-57810/buil
 step Source package: nghttp2 (from ALBS srpm_artifact)
 step Building full provenance graph from ALBS metadata
 step Full graph: 1613 nodes, 2775 edges, 470 CAS attestations
+step Attaching build SBOM examples/build-57810.cyclonedx.json to the build's RPMs
 step ALBS build task platforms: x86_64, aarch64, ppc64le, s390x, i686, x86_64_v2
 step ALBS source build task: src
 step Common RPM package set applies to build task platforms: x86_64, aarch64, ppc64le, s390x, i686, x86_64_v2
@@ -526,13 +527,13 @@ step Analyzing source-to-artifact trust path
 │ has_release                  │ ok      │
 │ has_source_cas_attestation   │ ok      │
 │ has_artifact_cas_attestation │ ok      │
-│ has_sbom                     │ missing │
+│ has_sbom                     │ ok      │
 │ has_errata_link              │ missing │
 └──────────────────────────────┴─────────┘
 Provenance complete: True
 Security context complete: False
 Complete: False
-Missing security context: has_sbom, has_errata_link
+Missing security context: has_errata_link
 Path:
   src:nginx
   git:https://git.almalinux.org/rpms/nginx.git
@@ -541,7 +542,7 @@ Path:
   build:albs-task:418779
   rpm:6901620:nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
 step Building focused trust graph
-step Focused graph: 13 nodes, 12 edges, 3 CAS attestations
+step Focused graph: 14 nodes, 13 edges, 3 CAS attestations
 step Rendering focused trust graph as JSON/DOT/SVG
 step Writing focused graph json output to examples/demo-build-57810/nginx-core-x86_64-trust.json
 step Writing focused graph dot output to examples/demo-build-57810/nginx-core-x86_64-trust.dot

@@ -1961,6 +1961,28 @@ Coverage golden byte-identical. Suite stays 263.
 
 ---
 
+## D72 - demo_verbose attaches the build SBOM (consistency with the rest of the run)
+
+User-spotted on a VPS run: ``grep -R sbom examples/demo-build-57810/`` returns
+~960 matches across the demo's artifacts, **and yet** one line says
+``has_sbom missing``. Tracked down to step 11 in ``example--full.sh``:
+``python -m albs_graph.cli.demo_verbose`` re-runs ``trust_path()`` internally
+against a freshly-built graph but did not attach the SBOM, so its trust-path
+table reported ``has_sbom missing`` while step 1 (and the rest of the run,
+which passes ``--build-sbom`` to ``coverage`` / ``vuln`` / ``trust-path``)
+reported ``has_sbom ok``. The same console.txt thus simultaneously asserted
+the SBOM was present and missing -- confusing.
+
+Fix: ``demo_verbose`` now takes ``--build-sbom PATH``; when supplied, it calls
+``enrich_graph_with_build_sbom`` right after ``graph_from_build_metadata`` and
+before the internal ``trust_path``. ``example--full.sh`` step 11 passes
+``${sbom_args[@]}`` (already populated from ``SBOM_FILE``), so the inner
+trust-path's ``has_sbom`` check now matches the outer one whenever the SBOM
+file exists. Regenerated console.txt confirms: ``has_sbom`` now reads ``ok``
+on both trust-path tables (lines 31 and 530). Suite unchanged at 263.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
