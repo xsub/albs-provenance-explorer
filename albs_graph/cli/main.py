@@ -81,7 +81,13 @@ from albs_graph.provenance.trust import (
 )
 from albs_graph.render import SvgRenderError, graph_to_dot, graph_to_json, graph_to_svg
 from albs_graph.security.cve_feed import CveFeed
-from albs_graph.store import load_graph, save_graph, sql_dependencies, sql_dependents
+from albs_graph.store import (
+    load_graph,
+    save_graph,
+    sql_dependencies,
+    sql_dependency_paths,
+    sql_dependents,
+)
 
 app = typer.Typer(
     name="albs-graph",
@@ -1044,6 +1050,13 @@ def universe_command(
     save: Optional[Path] = typer.Option(
         None, "--save", help="Persist the built universe to a SQLite store (low-footprint)."
     ),
+    merge: bool = typer.Option(
+        False,
+        "--merge",
+        help="With --save, upsert into the existing store instead of replacing it. "
+        "Edge metadata is deep-merged so multi-build / multi-arch accumulation "
+        "preserves claims.",
+    ),
     output_format: str = typer.Option("summary", "--format", "-f", help="summary, json, dot, svg."),
     output: Optional[Path] = typer.Option(None, "--output", "-o"),
 ) -> None:
@@ -1051,8 +1064,10 @@ def universe_command(
     # query result is printed as text.
     render = output_format.lower() in {"json", "dot", "svg"}
 
-    # SQL fast path: one-hop text queries run directly against the store without
-    # loading the whole universe into memory.
+    # SQL fast path: text queries run directly against the store without loading
+    # the whole universe into memory. The recursive-CTE path query also lives
+    # here (D74), so --path-from/--path-to are answerable from a persisted
+    # store too.
     if db is not None and not render:
         if dependents_of_cap:
             names = sql_dependents(db, dependents_of_cap)
@@ -1066,6 +1081,12 @@ def universe_command(
             for name in names:
                 console.print(f"  {name}")
             return
+        if path_from and path_to:
+            paths = sql_dependency_paths(db, path_from, path_to)
+            console.print(f"{len(paths)} path(s) from {path_from} to {path_to}:")
+            for chain in paths:
+                console.print("  " + " -> ".join(chain))
+            return
 
     if db is not None:
         graph = load_graph(db)
@@ -1076,8 +1097,9 @@ def universe_command(
             arch=arch,
         )
         if save is not None:
-            stats = save_graph(graph, save)
-            console.print(f"Saved universe to {save}: {stats.nodes} nodes, {stats.edges} edges")
+            stats = save_graph(graph, save, mode="merge" if merge else "replace")
+            verb = "Merged into" if merge else "Saved universe to"
+            console.print(f"{verb} {save}: {stats.nodes} nodes, {stats.edges} edges")
     else:
         raise ValueError("universe requires --repograph-dot, --source, or --db")
 

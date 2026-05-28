@@ -87,8 +87,14 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
   the graph. CLI: `--max-concurrency`, `--http-cache/--no-http-cache`,
   `--cache-payloads`. VPS-verified: cold 1230 ms vs warm 740 ms on a single
   RPM; output byte-identical. *(decisions.md D63, D64)*
-- **G2 - Incremental store updates** instead of replace-on-save in
-  `albs_graph/store.py`.
+- **G2 - Incremental store updates.** ✅ Done -- `save_graph(.., mode="merge")`
+  upserts and deep-merges node + edge metadata; multi-build / multi-arch
+  accumulation no longer wipes prior claims. Versioned schema + in-place
+  migrations land alongside; multi-hop SQL queries (recursive CTE) come for
+  free (`sql_reachable_dependencies`, `sql_dependency_paths`). Plus
+  materialized analysis snapshots (`save_analysis_snapshot` /
+  `load_analysis_snapshot`) so a coverage / vuln / license run can be cached
+  per `(kind, subject_id)`. *(decisions.md D74)*
 - **G3 - `sqlite-vec` similarity overlay** ("find packages like this") - optional,
   adds a loadable-extension dependency, so deliberately deferred.
 
@@ -119,10 +125,9 @@ and **Cargo** (D32; pip/Maven/npm still pending the same pattern), and **G1**
 `rpm_remote`/`rpm_payload`/`rpmsig`, D63 + D64; VPS-verified).
 
 Remaining genuinely open: **E1** for **pip/Maven/npm** (same `resolver_for`
-contract, awaits sandboxed runners); **G2** (incremental store updates in
-`albs_graph/store.py`); **G3** (`sqlite-vec` similarity overlay, optional);
-**live CVE/NVD feed fetch** (today the dictionary/feed are supplied files);
-and the **live arch builder** tracked in `plan.md` §7. These are mostly
-network-/host-heavy (live feeds, language resolver tools, live arch builder)
-or infra-heavy (G2/G3), so they need recorded fixtures or an AlmaLinux host
-to exercise.
+contract, awaits sandboxed runners); **G3** (`sqlite-vec` similarity overlay,
+optional); **live CVE/NVD feed fetch** (today the dictionary/feed are supplied
+files); and the **live arch builder** tracked in `plan.md` §7. **G2** (D74) +
+**G1** (D63/D64) are done. The remaining items are mostly network-/host-heavy
+(live feeds, language resolver tools, live arch builder) or infra-heavy (G3),
+so they need recorded fixtures or an AlmaLinux host to exercise.

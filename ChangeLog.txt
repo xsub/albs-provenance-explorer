@@ -19,7 +19,28 @@ Conventions:
 2026-05-29
 ----------------------------------------------------------------------
 
-- (this)   refactor(cli): finish D57 -- migrate identify / trust-path / vuln /
+- (this)   feat(store): real SQLite query backend -- closes G2. Four
+           additions to albs_graph/store.py (stdlib-only, no external deps):
+           (1) versioned schema with in-place migrations
+           (`schema_version` table + ordered MIGRATIONS tuple), so older
+           stores upgrade idempotently on open; (2) `save_graph(.., mode=
+           "merge")` upserts nodes + edges with deep metadata merge (dicts
+           merge key-by-key, lists union with order preserved), so multi-
+           build / multi-arch accumulation no longer wipes prior evidence;
+           (3) recursive-CTE multi-hop queries (`sql_reachable_dependencies`
+           / `sql_dependency_paths`) so a repo-wide universe is walkable
+           without `load_graph`, with cycle detection + max_depth + max_paths
+           bounds; wired into `universe --db --path-from/--path-to` so the
+           SQL fast path covers chains too. (4) Materialized analysis
+           snapshots (`save_analysis_snapshot` / `load_analysis_snapshot`)
+           persist coverage / vuln / license reports keyed on
+           `(kind, subject_id)`, older rows stay as an audit trail. All
+           original 5 store tests pass unchanged; +9 new tests covering
+           versioning idempotency, both save modes, deep-merge of edge +
+           node metadata, recursive walk against in-memory BFS, bounds, and
+           snapshot most-recent-wins. Suite 263 → 272. (D74; closes G2.)
+
+- 3c96c1b  refactor(cli): finish D57 -- migrate identify / trust-path / vuln /
            license onto AnalysisPipeline. Each command builds a RunSpec and
            delegates load -> enrich -> reconcile to the pipeline; rendering
            stays in the command. Same byte-identical output on the synthetic

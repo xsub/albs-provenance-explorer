@@ -1961,6 +1961,60 @@ Coverage golden byte-identical. Suite stays 263.
 
 ---
 
+## D74 - Real SQLite query backend (versioning, merge mode, recursive CTEs, snapshots)
+
+D-entry G2 from the review's open list. ``albs_graph/store.py`` was the
+"persist a built universe and reload it later" minimum -- replace-on-save,
+one-hop SQL only, no schema versioning. Multi-build / multi-arch accumulation
+silently lost evidence (the second ``save_graph`` wiped the first); multi-hop
+queries required a full ``load_graph``; there was no way to evolve the schema
+without a follow-up migration burden on every caller.
+
+Decision: turn ``store.py`` into a small but real query backend. Four
+additions, all stdlib-only:
+
+1. **Versioned schema with in-place migrations.** A ``schema_version`` table
+   plus an ordered ``MIGRATIONS`` tuple (``_migration_v1_*`` ...
+   ``_migration_v3_*`` today). Every public entry point now calls
+   ``_ensure_schema(connection)``; a fresh DB walks every migration, an
+   existing one applies just the missing ones, and rolling back a release
+   leaves the store at a newer version that the older code still reads
+   (the base tables are forward-compatible).
+2. **Merge mode (closes G2).** ``save_graph(.., mode="merge")`` upserts node
+   and edge rows and deep-merges the JSON metadata: dicts merge key-by-key
+   (incoming wins on scalar conflicts), lists union with order preserved
+   (no duplicates), other types take incoming. This is the shape edge
+   metadata naturally has (``evidence: list``, ``note: str``, ``claim: str``)
+   so the union is what callers want -- multi-build accumulation no longer
+   silently overwrites. The default stays ``"replace"`` so existing callers
+   are unchanged; ``--merge`` on ``universe --save`` opts in.
+3. **Recursive-CTE multi-hop queries.** ``sql_reachable_dependencies`` and
+   ``sql_dependency_paths`` walk in SQLite via ``WITH RECURSIVE``, with
+   cycle detection (UNION dedupes the closure; the path query carries a
+   ``|id|id|`` string and uses ``instr`` to skip revisits). ``max_depth`` and
+   ``max_paths`` bound runtime; the queries are wired into
+   ``universe --db --path-from/--path-to`` so the SQL fast path now covers
+   chains too, not just one-hop lookups.
+4. **Materialized analysis snapshots.** ``save_analysis_snapshot`` /
+   ``load_analysis_snapshot`` persist a coverage / vuln / license report
+   payload keyed on ``(kind, subject_id)``; older snapshots stay as an audit
+   trail, ``load`` returns the most recent. The table is the foundation for
+   future "what changed since the last run?" diffs without re-deriving the
+   report.
+
+Backward compatibility: every original public function
+(``save_graph`` / ``load_graph`` / ``sql_dependents`` / ``sql_dependencies``)
+keeps its old signature and default semantics. All 5 original tests pass
+unchanged. 9 new tests cover the additions (schema versioning idempotency,
+both save modes, deep-merge of edge metadata + node metadata accumulation,
+recursive-CTE walks against the in-memory BFS, ``max_depth`` / ``max_paths``
+bounds, snapshot most-recent-wins). Suite 263 → 272.
+
+Out of scope: still no concurrency control (single-writer), still no
+``sqlite-vec`` similarity overlay (G3; deliberately optional).
+
+---
+
 ## D73 - Finish D57: identify / trust-path / vuln / license on the pipeline
 
 D57 introduced ``AnalysisPipeline`` and migrated ``coverage`` first, deferring

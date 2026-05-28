@@ -267,16 +267,27 @@ but:
   on PATH; `dot`/`json` are dependency-free.
 
 ## SQLite store
-The `albs_graph/store.py` persistence is intentionally minimal:
-- **One-hop SQL only.** `sql_dependents` / `sql_dependencies` run without loading
-  the graph, but multi-hop paths and rendering still `load_graph` the whole
-  store into memory.
+The `albs_graph/store.py` persistence is intentionally minimal -- but grew (D74):
+- **One- and multi-hop SQL.** `sql_dependents` / `sql_dependencies` (one hop)
+  plus `sql_reachable_dependencies` / `sql_dependency_paths` (recursive CTE)
+  run without loading the graph -- so a repo-wide universe is walkable from
+  the persisted store. Rendering still `load_graph`s the whole store into
+  memory (focused-subgraph emission needs the in-memory model).
 - **Substring/exact name matching** (label / `pkg:<name>` / `cap:%<name>`), same
   trade-off as the in-memory traversal.
-- **Single-writer, replace-on-save.** `save_graph` rewrites the file; there is no
-  incremental update, concurrency control, or migration story.
+- **Replace and merge modes.** `save_graph(.., mode="replace")` is the original
+  behaviour; `mode="merge"` upserts and deep-merges node + edge metadata so
+  multi-build / multi-arch accumulation does not lose claims (lists union, dict
+  keys merge, scalar conflicts let incoming win). Closes G2.
+- **Versioned schema with in-place migrations.** A `schema_version` table +
+  ordered `MIGRATIONS` list (`_migration_v1_*` ... `_migration_v3_*` today)
+  lifts older stores to the latest schema idempotently. No concurrency
+  control: still single-writer.
+- **Materialized analysis snapshots.** `save_analysis_snapshot` /
+  `load_analysis_snapshot` persist coverage / vuln / license reports as JSON
+  payloads keyed on `(kind, subject_id)`; older rows stay as an audit trail.
 - **No vector/similarity.** A `sqlite-vec` overlay is noted in the plan but not
-  implemented.
+  implemented (still G3).
 
 ## Scale and performance
 
