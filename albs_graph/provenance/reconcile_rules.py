@@ -122,6 +122,31 @@ class VersionDriftRule:
         return RuleFinding()
 
 
+def canonical_purl(purl: str) -> str:
+    """Return a PURL with its qualifiers sorted alphabetically by key.
+
+    The PURL spec says qualifier *order* is not semantically meaningful: two
+    PURLs that differ only in qualifier order represent the same identity. A
+    raw-string compare would treat them as different and trip
+    :class:`IdentityMismatchRule` on equivalent inputs (reviewed regression:
+    ``...?arch=x86_64&distro=el10`` vs ``...?distro=el10&arch=x86_64``).
+    Canonicalising before comparison fixes that without inventing an opinion
+    on harder cases (URL-encoded values, scheme case) the spec leaves to a
+    full parser.
+    """
+
+    base_and_rest = purl.split("?", 1)
+    if len(base_and_rest) == 1:
+        return purl  # no qualifiers, no normalisation needed
+    base, rest = base_and_rest
+    fragment = ""
+    if "#" in rest:
+        rest, suffix = rest.split("#", 1)
+        fragment = "#" + suffix
+    qualifiers = [q for q in rest.split("&") if q]
+    return f"{base}?{'&'.join(sorted(qualifiers))}{fragment}"
+
+
 @dataclass(frozen=True)
 class IdentityMismatchRule:
     name: str = "identity_mismatch"
@@ -133,12 +158,16 @@ class IdentityMismatchRule:
         # claims actually carry a PURL, so single-PURL groups (the common case)
         # are never flagged. Grouped by version so a genuine drift is left to the
         # version rule rather than doubly reported here.
+        #
+        # PURLs are canonicalised (qualifier order sorted) before comparison so
+        # `...?arch=x86_64&distro=el10` and `...?distro=el10&arch=x86_64` are
+        # recognised as the same identity, not a false IDENTITY_MISMATCH.
         purls_by_version: dict[str, set[str]] = defaultdict(set)
         for node in group.members:
             version = version_of(node)
             purl = node.metadata.get("purl")
             if version and purl:
-                purls_by_version[version].add(str(purl))
+                purls_by_version[version].add(canonical_purl(str(purl)))
         if any(len(purls) > 1 for purls in purls_by_version.values()):
             return RuleFinding(conflict_kinds=(ConflictKind.IDENTITY_MISMATCH,))
         return RuleFinding()

@@ -151,3 +151,40 @@ def test_rules_are_pluggable() -> None:
 
 def test_insufficient_evidence_when_no_concrete_version() -> None:
     assert evaluate_group(_group()).agreement == Agreement.INSUFFICIENT_EVIDENCE
+
+
+def test_identity_mismatch_canonicalises_purl_qualifier_order() -> None:
+    # Regression: PURL qualifier order is not semantically meaningful (per the
+    # PURL spec), so `...?arch=x86_64&distro=el10` and `...?distro=el10&arch=x86_64`
+    # represent the same identity. The old raw-string compare tripped a false
+    # IDENTITY_MISMATCH; canonicalisation (sort qualifiers) fixes it.
+    same_id_different_order = (
+        _claim_node("c1", "zlib", "1.2.11", "pkg:rpm/almalinux/zlib@1.2.11?arch=x86_64&distro=el10"),
+        _claim_node("c2", "zlib", "1.2.11", "pkg:rpm/almalinux/zlib@1.2.11?distro=el10&arch=x86_64"),
+    )
+    assert IdentityMismatchRule().check(_group(members=same_id_different_order)).conflict_kinds == ()
+
+    # And a real qualifier *value* difference (e.g. distro) still trips.
+    real_difference = (
+        _claim_node("c1", "zlib", "1.2.11", "pkg:rpm/almalinux/zlib@1.2.11?arch=x86_64&distro=el10"),
+        _claim_node("c2", "zlib", "1.2.11", "pkg:rpm/almalinux/zlib@1.2.11?arch=x86_64&distro=el9"),
+    )
+    finding = IdentityMismatchRule().check(_group(members=real_difference))
+    assert finding.conflict_kinds == (ConflictKind.IDENTITY_MISMATCH,)
+
+
+def test_canonical_purl_is_well_behaved_on_edge_cases() -> None:
+    from albs_graph.provenance.reconcile_rules import canonical_purl
+
+    # No qualifiers -> unchanged.
+    assert canonical_purl("pkg:rpm/almalinux/zlib@1.2.11") == "pkg:rpm/almalinux/zlib@1.2.11"
+    # Already sorted -> unchanged.
+    assert (
+        canonical_purl("pkg:rpm/almalinux/zlib@1.2.11?arch=x86_64&distro=el10")
+        == "pkg:rpm/almalinux/zlib@1.2.11?arch=x86_64&distro=el10"
+    )
+    # Out-of-order -> sorted; subpath (#) preserved.
+    assert (
+        canonical_purl("pkg:rpm/almalinux/zlib@1.2.11?distro=el10&arch=x86_64#sub/path")
+        == "pkg:rpm/almalinux/zlib@1.2.11?arch=x86_64&distro=el10#sub/path"
+    )

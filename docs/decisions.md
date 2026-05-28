@@ -1867,6 +1867,33 @@ groups after reconciliation. Coverage golden byte-identical. Suite now 260.
 
 ---
 
+## D69 - Canonicalise PURL qualifier order in IdentityMismatchRule (bug #4)
+
+Review item #4. ``IdentityMismatchRule`` (D56) compared the PURLs in each
+version-group via a raw set: two PURLs that differed only in qualifier *order*
+(``...?arch=x86_64&distro=el10`` vs ``...?distro=el10&arch=x86_64``) were
+counted as different and tripped a false ``IDENTITY_MISMATCH`` -- already
+flagged as a documented caveat (limitations.md), now a real footgun as
+reconciliation has become more central.
+
+Fix: a small ``canonical_purl`` helper in ``reconcile_rules.py`` that splits a
+PURL on ``?`` and ``#``, sorts the qualifier ``k=v`` items alphabetically, and
+re-emits. ``IdentityMismatchRule.check`` canonicalises each PURL before adding
+it to the per-version set. Per the PURL spec, qualifier order is not
+semantically meaningful, so this is a value-preserving normalisation.
+
+Scope: qualifier-order only. URL-encoded values (``%2F`` vs ``/``) and scheme
+case are still raw-compared; both spec-compliant variants would compare unequal
+until a full PURL parser is wired in. Recorded as a remaining caveat in
+``limitations.md`` (replacing the now-fixed string-compare note).
+
+Tests +2: same-PURL/different-order does not trip; a real qualifier *value*
+difference (different distro) still trips; plus edge-case unit tests for
+``canonical_purl`` (no qualifiers, already-sorted, subpath preserved).
+Coverage golden byte-identical. Suite now 262.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

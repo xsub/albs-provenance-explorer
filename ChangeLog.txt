@@ -19,7 +19,19 @@ Conventions:
 2026-05-28
 ----------------------------------------------------------------------
 
-- (this)   fix(reconcile): claim node ids key on context + PURL (review bug
+- (this)   fix(reconcile): canonicalise PURL qualifier order in
+           IdentityMismatchRule (review bug #4). The rule compared PURLs as
+           raw strings, so `...?arch=x&distro=el10` and `...?distro=el10&arch=x`
+           tripped a false IDENTITY_MISMATCH even though they are the same
+           identity per the PURL spec. New `canonical_purl` helper splits
+           on `?`/`#`, sorts qualifiers, re-emits; the rule canonicalises
+           before comparison. Scope: qualifier order only (URL-encoding +
+           scheme case still raw-compared until a full PURL parser is
+           wired in; documented in limitations.md). +2 regression tests
+           (order-equivalent does not trip; real value difference still
+           does; canonical_purl edge cases). Suite 262. (D69; bug #4.)
+
+- 6f1d6ce  fix(reconcile): claim node ids key on context + PURL (review bug
            #3). `claim_node_id` keyed on subject + coordinate + evidence +
            version, but `_group_key` already keyed on context too -- so two
            claims for the same subject/name/version/evidence with different
