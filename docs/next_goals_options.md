@@ -120,14 +120,15 @@ verifiable, and the `vuln` command (with `--cve-feed`) is the consumer
 deliverable. Subsequent waves landed everything else flagged here: **B3** (py
 module→package, D28), **C1** (Go static BOM via `.go.buildinfo`, D29), **F2**
 (license rollup, D31), **F3** (SLSA / in-toto export, D30), **E1** for **Go**
-and **Cargo** (D32; pip/Maven/npm still pending the same pattern), and **G1**
-(content-addressed HTTP cache + bounded concurrency on
-`rpm_remote`/`rpm_payload`/`rpmsig`, D63 + D64; VPS-verified).
+and **Cargo** (D32), **E1** for **pip / Maven / npm** (D75; only Gradle
+remains on `NullResolver`), and **G1** (content-addressed HTTP cache +
+bounded concurrency on `rpm_remote`/`rpm_payload`/`rpmsig`, D63 + D64;
+VPS-verified).
 
-Remaining genuinely open: **E1** for **pip/Maven/npm** (same `resolver_for`
-contract, awaits sandboxed runners); **G3** (`sqlite-vec` similarity overlay,
-optional); **live CVE/NVD feed fetch** (today the dictionary/feed are supplied
-files); and the **live arch builder** tracked in `plan.md` §7. **G2** (D74) +
-**G1** (D63/D64) are done. The remaining items are mostly network-/host-heavy
-(live feeds, language resolver tools, live arch builder) or infra-heavy (G3),
-so they need recorded fixtures or an AlmaLinux host to exercise.
+Remaining genuinely open: **E1** for **Gradle** only (bigger tooling surface);
+**G3** (`sqlite-vec` similarity overlay, optional); **live CVE/NVD feed fetch**
+(today the dictionary/feed are supplied files); and the **live arch builder**
+tracked in `plan.md` §7. **G2** (D74), **G1** (D63/D64), and most of **E1**
+(D32 + D75) are done. The remaining items are mostly network-/host-heavy
+(live feeds, Gradle's resolver, live arch builder) or infra-heavy (G3), so
+they need recorded fixtures or an AlmaLinux host to exercise.

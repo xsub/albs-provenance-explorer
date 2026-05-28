@@ -19,7 +19,28 @@ Conventions:
 2026-05-29
 ----------------------------------------------------------------------
 
-- (this)   feat(store): real SQLite query backend -- closes G2. Four
+- (this)   feat(resolvers): pip / Maven / npm join Go + Cargo behind the
+           DependencyResolver contract. PypiResolver uses
+           `pip install --dry-run --quiet --no-input --report - -r REQS`
+           (pip >= 22.2; the dry-run + JSON report is the whole point) and
+           reads each install entry's metadata.name/version. MavenResolver
+           uses `mvn -B -q dependency:list -DincludeScope=runtime` and
+           parses each `[INFO] groupId:artifactId:packaging:[classifier:]
+           version:scope` line; coord = groupId:artifactId (packaging is
+           type, not identity). NpmResolver uses `npm ls --json --all` and
+           recursively walks `dependencies`, dedup'ing on (name, version)
+           so diamond deps collapse; tolerates npm's non-zero exit on
+           peer-dep warnings when the tree is still present. All three
+           follow the existing GoResolver / CargoResolver pattern exactly:
+           injectable Runner, FileNotFoundError -> tool-missing, non-zero
+           exit -> UNRESOLVABLE preserving requested specs. resolver_for
+           factory routes the three new ecosystems; only Gradle stays on
+           NullResolver (deferred -- bigger tooling surface). +12 tests,
+           each mocking the native tool's stdout. Suite 272 -> 283. ruff +
+           mypy --strict clean; no network. (D75; closes E1 for pip /
+           Maven / npm, leaving Gradle as the only remaining ecosystem.)
+
+- 48d8d6b  feat(store): real SQLite query backend -- closes G2. Four
            additions to albs_graph/store.py (stdlib-only, no external deps):
            (1) versioned schema with in-place migrations
            (`schema_version` table + ordered MIGRATIONS tuple), so older

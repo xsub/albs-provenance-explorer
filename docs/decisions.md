@@ -1961,6 +1961,50 @@ Coverage golden byte-identical. Suite stays 263.
 
 ---
 
+## D75 - E1 extensions: pip / Maven / npm native resolvers
+
+D32 introduced the ``DependencyResolver`` contract and wired the first two
+ecosystems (Go via ``go list -m all``; Cargo via ``cargo metadata``). pip,
+Maven and npm were always part of the same plan -- their package managers are
+the authoritative sources of truth for their respective ecosystems -- but
+were deferred for sandboxed-runner work. They now ship behind the same
+contract, matching the existing pattern exactly:
+
+- ``PypiResolver`` -> ``pip install --dry-run --quiet --no-input --report -
+  -r REQS``. The ``--dry-run`` + ``--report -`` combination (pip >= 22.2)
+  produces a stable JSON document describing what pip *would* install,
+  without touching any environment. Every entry's ``metadata.{name,version}``
+  becomes a ``RESOLVED`` spec; tool absence / non-zero exit / unparseable
+  JSON all degrade to ``UNRESOLVABLE`` so a missing pip never crashes.
+- ``MavenResolver`` -> ``mvn -B -q dependency:list -DincludeScope=runtime``.
+  Maven prints one ``[INFO] groupId:artifactId:packaging:[classifier:]version:scope``
+  line per resolved dependency (transitive too). The regex tolerates the
+  optional classifier token and keeps ``groupId:artifactId`` as the package
+  identity (jar/war/pom is type, not identity); version + scope ride along.
+- ``NpmResolver`` -> ``npm ls --json --all``. The tree's ``dependencies`` map
+  is walked recursively, ``(name, version)`` pairs deduped on the way so a
+  diamond dep does not produce two specs. npm's non-zero exit on peer-dep
+  warnings is tolerated when the JSON tree still has packages (npm prints
+  the valid tree alongside the warnings); a truly empty / unparseable
+  output is the only real failure.
+
+Each is identical to ``GoResolver`` / ``CargoResolver`` in shape: ecosystem
+attribute, injectable ``Runner``, ``FileNotFoundError`` -> tool-missing
+diagnostic, non-zero exit -> ``UNRESOLVABLE``, all requested specs preserved
+in the unresolved tuple on failure. The factory ``resolver_for`` routes the
+three new ecosystems to their resolvers; Gradle is the only remaining
+ecosystem still on ``NullResolver`` (Gradle's tooling surface is bigger and
+not in this rev).
+
+Tests: +12, each mocking the native tool's stdout against a hand-crafted
+output that matches what the real tool prints. The pypi factory test moved
+from ``isinstance(NullResolver)`` to ``isinstance(PypiResolver)`` (the wired
+one), matching the same change Go/Cargo got in D32. Suite 272 -> 283. ruff
++ mypy --strict clean. Tests stay offline per the repo rule (no real pip /
+mvn / npm execution).
+
+---
+
 ## D74 - Real SQLite query backend (versioning, merge mode, recursive CTEs, snapshots)
 
 D-entry G2 from the review's open list. ``albs_graph/store.py`` was the
