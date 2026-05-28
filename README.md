@@ -21,6 +21,23 @@ source package
   -> errata / CVE
 ```
 
+## PyQt investigation workbench
+
+The `InvestigationWorkbenchApp` branch also exposes the same backend through a
+desktop workbench:
+
+```bash
+pip install -e '.[dev,gui]'
+albs-graph-workbench
+```
+
+It opens cached ALBS metadata or a live build id, runs the shared
+`AnalysisService`, lists RPM artifacts, renders focused graph slices, and lets
+you inspect node metadata, incoming/outgoing evidence and findings without
+leaving the graph.
+
+![PyQt investigation workbench showing dependency evidence for build 57810](examples/demo-build-57810/pyqt-investigation-workbench.png)
+
 
 ## Demo: full feature run on build 57810 (AlmaLinux 10)
 
