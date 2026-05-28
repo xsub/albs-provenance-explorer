@@ -1931,6 +1931,36 @@ golden byte-identical. Suite now 263.
 
 ---
 
+## D71 - Split identity_verified into established + externally_verified (bug #8)
+
+Review item #8 (naming clarity, with a real semantic split underneath).
+``PackageVulnAssessment.identity_verified`` was true only when
+``cpe_status == "verified"`` (an NVD-dictionary match), but **CVE matching
+ran against any set CPE** including ``vendor_asserted`` ones (AlmaLinux's own
+SBOM). The field name suggested a stronger guarantee than the matching
+behaviour delivered: a reader could believe a "not identity_verified" package
+was *not* being matched, when it actually was.
+
+Fix: replace the single bool with the two flags it was always covering:
+
+- ``identity_established: bool`` -- a CPE is set, so CVE matching can run.
+  True for both ``verified`` (NVD) and ``vendor_asserted`` (vendor SBOM).
+- ``identity_externally_verified: bool`` -- true only for ``verified``. This
+  is the narrower NVD-dictionary case.
+
+Both ride in ``to_dict()`` (and so in the ``vuln --format json`` output);
+``identity_verified`` is removed (no consumer relies on the old name now that
+the two callers -- CLI render, test_vuln -- are updated). The CLI render
+``identity = "verified" if pkg.identity_verified else pkg.cpe_status`` was
+redundant (when verified, ``cpe_status`` already equals ``"verified"``), so it
+simplifies to ``identity = pkg.cpe_status``.
+
+Tests +0 net (existing test assertions updated to the two new fields,
+documenting the established/verified split they were always silently testing).
+Coverage golden byte-identical. Suite stays 263.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

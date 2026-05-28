@@ -19,7 +19,18 @@ Conventions:
 2026-05-28
 ----------------------------------------------------------------------
 
-- (this)   fix(source_imports): filter Node stdlib + tag coordinate_kind
+- (this)   fix(vuln): split identity_verified into identity_established +
+           identity_externally_verified (review bug #8). The single bool was
+           true only for NVD-verified CPEs, but CVE matching ran against any
+           set CPE including vendor_asserted ones -- the name implied a
+           stronger guarantee than the matching behaviour delivered.
+           `identity_established` = any CPE set (vendor SBOM or NVD); CVE
+           matching can run. `identity_externally_verified` = NVD only.
+           CLI render line simplified to `pkg.cpe_status` (the previous
+           branch was redundant). Tests updated to the two-field split;
+           suite stays 263. Coverage golden byte-identical. (D71; bug #8.)
+
+- 5841c18  fix(source_imports): filter Node stdlib + tag coordinate_kind
            (review bug #7). JS / TS: `require("fs")` / `import "path"` is the
            Node runtime's stdlib, not an npm package -- now filtered (Node 20+
            canonical set; submodules like `fs/promises` collapse via npm_root

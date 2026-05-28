@@ -33,7 +33,15 @@ class PackageVulnAssessment:
     arch: str | None
     cpe: str | None
     cpe_status: str
-    identity_verified: bool
+    # ``identity_established`` is true whenever a CPE is set (cpe_status is
+    # either "verified" -- NVD dictionary match -- or "vendor_asserted" --
+    # AlmaLinux's own SBOM). ``identity_externally_verified`` narrows to the
+    # NVD case. The old single ``identity_verified`` field conflated the two
+    # (was true only for NVD) while CVE matching still ran against vendor-
+    # asserted CPEs -- the field name implied a stronger guarantee than the
+    # CVE-matching behaviour actually delivered.
+    identity_established: bool
+    identity_externally_verified: bool
     distro_backport: bool
     errata: list[str]
     addressed_cves: list[str]
@@ -53,7 +61,8 @@ class PackageVulnAssessment:
             "arch": self.arch,
             "cpe": self.cpe,
             "cpe_status": self.cpe_status,
-            "identity_verified": self.identity_verified,
+            "identity_established": self.identity_established,
+            "identity_externally_verified": self.identity_externally_verified,
             "distro_backport": self.distro_backport,
             "version_match_reliable": self.version_match_reliable,
             "errata": self.errata,
@@ -119,7 +128,10 @@ def vulnerability_report(
                 arch=_optional_str(node.metadata.get("arch")),
                 cpe=_optional_str(identity.get("cpe")),
                 cpe_status=str(identity.get("cpe_status", "unknown")),
-                identity_verified=identity.get("cpe_status") == "verified",
+                # Two CPE sources establish identity (vendor SBOM + NVD); only
+                # NVD's dictionary match counts as externally verified.
+                identity_established=bool(identity.get("cpe")),
+                identity_externally_verified=identity.get("cpe_status") == "verified",
                 distro_backport=bool(identity.get("distro_backport")),
                 errata=errata,
                 addressed_cves=cves,

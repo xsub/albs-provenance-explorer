@@ -40,7 +40,10 @@ def test_report_combines_cve_identity_and_linkage() -> None:
     nginx = by_package["nginx-core"]
     assert nginx.addressed_cves == ["CVE-2026-1"]
     assert nginx.errata == ["ALSA-2026-1"]
-    assert nginx.identity_verified is True
+    # NVD-verified identity satisfies *both* axes (established AND externally
+    # verified). The old single ``identity_verified`` flag conflated them.
+    assert nginx.identity_established is True
+    assert nginx.identity_externally_verified is True
     assert nginx.distro_backport is True
     assert nginx.version_match_reliable is False  # backported -> version match unreliable
     assert nginx.dlopen is True
@@ -74,7 +77,10 @@ def test_vendor_asserted_cpe_is_distinct_from_nvd_verified() -> None:
 
     assert pkg.cpe == "cpe:2.3:a:almalinux:bootupd:0.2.32:*:*:*:*:*:*:*"  # usable for triage
     assert pkg.cpe_status == "vendor_asserted"
-    assert pkg.identity_verified is False  # established by the vendor, not NVD-verified
+    # Identity IS established (a CPE is set, usable for CVE matching) but is
+    # NOT externally verified -- the asserter is the vendor, not NVD.
+    assert pkg.identity_established is True
+    assert pkg.identity_externally_verified is False
 
 
 def test_only_with_cves_filters() -> None:

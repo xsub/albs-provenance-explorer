@@ -1219,7 +1219,9 @@ def vuln_command(
     table.add_column("Potential CVEs")
     table.add_column("Reachability")
     for pkg in report.packages:
-        identity = "verified" if pkg.identity_verified else pkg.cpe_status
+        # cpe_status already carries the right label ("verified" /
+        # "vendor_asserted" / "candidate_only" / ...), so render it directly.
+        identity = pkg.cpe_status
         if pkg.distro_backport:
             identity += " (backported)"
         reach = []
