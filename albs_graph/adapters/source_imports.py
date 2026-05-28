@@ -240,19 +240,41 @@ def _npm_root(specifier: str) -> str:
     return specifier.split("/", 1)[0]
 
 
+# Node.js built-in modules: `require("fs")` / `import "fs"` is the runtime's own
+# stdlib, not an npm package. They are filtered so downstream consumers cannot
+# mistake them for missing or vulnerable npm dependencies. The list is the
+# canonical set (Node 20+); `fs/promises`-style submodules collapse to their
+# root via _npm_root, so the root-only set is sufficient.
+_NODE_STDLIB = frozenset({
+    "assert", "async_hooks", "buffer", "child_process", "cluster", "console",
+    "constants", "crypto", "dgram", "diagnostics_channel", "dns", "domain",
+    "events", "fs", "http", "http2", "https", "inspector", "module", "net",
+    "os", "path", "perf_hooks", "process", "punycode", "querystring", "readline",
+    "repl", "stream", "string_decoder", "sys", "test", "timers", "tls", "trace_events",
+    "tty", "url", "util", "v8", "vm", "wasi", "worker_threads", "zlib",
+})
+
+
+def _maybe_add_npm(out: set[str], specifier: str) -> None:
+    """Filter then add: skip relative/absolute paths (project-internal) and
+    Node stdlib (`fs` / `path` / `crypto` / ... are the runtime, not deps)."""
+
+    if specifier.startswith((".", "/")):
+        return
+    root = _npm_root(specifier)
+    if root not in _NODE_STDLIB:
+        out.add(root)
+
+
 def _extract_javascript(text: str) -> list[str]:
     out: set[str] = set()
     for line in text.splitlines():
         match = _JS_IMPORT.match(line)
         if match:
-            specifier = match.group(1)
-            if not specifier.startswith((".", "/")):
-                out.add(_npm_root(specifier))
+            _maybe_add_npm(out, match.group(1))
             continue
         for match in _JS_REQUIRE.finditer(line):
-            specifier = match.group(1)
-            if not specifier.startswith((".", "/")):
-                out.add(_npm_root(specifier))
+            _maybe_add_npm(out, match.group(1))
     return sorted(out)
 
 
@@ -309,6 +331,24 @@ _ECOSYSTEM_FOR: dict[Language, Ecosystem] = {
     Language.RUBY: Ecosystem.GENERIC,
     Language.C: Ecosystem.GENERIC,
     Language.CPP: Ecosystem.GENERIC,
+}
+
+# What *shape* of identifier the extractor recovered for each language. This
+# rides on each claim's ``raw`` so a downstream consumer cannot mistake a Java
+# class path (`com.google.common.collect.ImmutableList`) for a Maven artifact
+# coordinate (`com.google.guava:guava`), or a C `#include` path
+# (`openssl/ssl.h`) for a system package name. The other languages' extracted
+# names *are* package coordinates in their ecosystem and are tagged accordingly.
+_COORDINATE_KIND: dict[Language, str] = {
+    Language.PYTHON: "module",        # mapped to PyPI via module_to_package
+    Language.GO: "module_path",       # also the canonical Go import path
+    Language.RUST: "crate",
+    Language.JAVASCRIPT: "npm_package",
+    Language.TYPESCRIPT: "npm_package",
+    Language.RUBY: "require_name",    # best-effort; may not match gem name
+    Language.JAVA: "class_path",      # NOT a Maven groupId:artifactId
+    Language.C: "header_path",        # `#include` path; not a package
+    Language.CPP: "header_path",
 }
 
 
@@ -381,13 +421,24 @@ def attach_source_tree_imports(
         for language, modules in imports_by_language.items():
             ecosystem = _ECOSYSTEM_FOR[language]
             evidence = f"{language}_import"
+            coordinate_kind = _COORDINATE_KIND.get(language, "module")
             for module in sorted(modules):
                 spec = DependencySpec(
                     identity=PackageIdentity(ecosystem, module),
                     scope=DependencyScope.RUNTIME,
                     resolution_state=ResolutionState.DECLARED,
                     source=evidence,
-                    raw={"module": module, "language": str(language)},
+                    # coordinate_kind tells consumers what shape ``module`` is
+                    # in. Critically: a Java entry is a class_path (e.g.
+                    # `com.google.common.collect.ImmutableList`) NOT a Maven
+                    # groupId:artifactId, and a C/C++ entry is a header_path
+                    # (`openssl/ssl.h`) NOT a system package -- so a CVE matcher
+                    # or resolver must not treat them as artifact coordinates.
+                    raw={
+                        "module": module,
+                        "language": str(language),
+                        "coordinate_kind": coordinate_kind,
+                    },
                 )
                 add_dependency_claim(
                     graph, DependencyClaim(subject_id, spec, evidence=evidence)

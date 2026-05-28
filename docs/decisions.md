@@ -1894,6 +1894,43 @@ Coverage golden byte-identical. Suite now 262.
 
 ---
 
+## D70 - Source-import scanner: filter Node stdlib + tag coordinate_kind (bug #7)
+
+Review item #7. Two overstatements in the multi-language source-import scanner
+(D61) that could mislead a downstream CVE matcher or resolver:
+
+1. **JavaScript:** ``require("fs")`` / ``import "path"`` is the Node runtime's
+   own stdlib, not an npm package, yet they were emitted as ``Ecosystem.NPM``
+   claims -- a fake dependency on the standard library, indistinguishable from
+   a real missing/vulnerable npm dep.
+2. **Java / C / C++:** the extractor recovers a class path
+   (``com.google.common.collect.ImmutableList``) or a header path
+   (``openssl/ssl.h``), **not** a package coordinate. A consumer that read the
+   claim's name as a Maven ``groupId:artifactId`` or a system-package name
+   would be wrong every time.
+
+Fix:
+
+- Added a ``_NODE_STDLIB`` set (Node 20+, canonical) and a small
+  ``_maybe_add_npm`` helper that filters both project-internal paths
+  (``./`` / ``/``) and Node built-ins. Submodule specifiers (``fs/promises``)
+  collapse via ``_npm_root`` to their root and are filtered.
+- Added a ``_COORDINATE_KIND`` map: each language is tagged with what shape its
+  extracted name actually is -- ``module``, ``module_path``, ``crate``,
+  ``npm_package``, ``require_name``, ``class_path``, ``header_path``. The tag
+  rides on every claim's ``raw["coordinate_kind"]``, so a consumer can refuse
+  to treat a ``class_path`` or ``header_path`` as an artifact coordinate. The
+  per-language ``Ecosystem`` is unchanged (a Java class import is still
+  ``Ecosystem.MAVEN`` evidence -- but it now self-describes as a class path).
+
+Tests +1 (the existing JS test is tightened to also assert ``fs`` / ``crypto`` /
+``fs/promises`` are filtered; a new integration test verifies that a mixed-tree
+scan tags the Java claim ``class_path``, the C claim ``header_path``, and the
+Python / JavaScript claims with their package-coordinate kinds). Coverage
+golden byte-identical. Suite now 263.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

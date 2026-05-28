@@ -89,16 +89,22 @@ def test_c_include_extractor_keeps_system_and_local() -> None:
     assert EXTRACTORS[Language.C](text) == ["myheader.h", "openssl/ssl.h", "stdio.h"]
 
 
-def test_javascript_extractor_npm_root_skips_relatives_and_scoped() -> None:
+def test_javascript_extractor_npm_root_skips_relatives_scoped_and_node_stdlib() -> None:
+    # Node built-ins (fs, path, crypto, fs/promises) are the runtime's stdlib,
+    # not npm packages -- previously they came through as fake npm deps. Plus
+    # the existing handling: relative paths skipped; @scope/pkg/sub -> @scope/pkg;
+    # require() mid-line picked up; dynamic import() not matched.
     text = (
         'import React from "react";\n'              # bare -> root "react"
         'import { x } from "@scope/pkg/sub";\n'     # scoped -> "@scope/pkg"
         'import "./local";\n'                       # relative -> skipped
-        'const fs = require("fs");\n'               # CommonJS bare
+        'const fs = require("fs");\n'               # Node stdlib -> filtered
+        'const crypto = require("crypto");\n'       # Node stdlib -> filtered
+        'import { readFile } from "fs/promises";\n' # Node stdlib submodule -> filtered
         'const u = require("./util");\n'            # relative -> skipped
         'import("lodash/get");\n'                   # dynamic import -- no match (not ES static)
     )
-    assert EXTRACTORS[Language.JAVASCRIPT](text) == ["@scope/pkg", "fs", "react"]
+    assert EXTRACTORS[Language.JAVASCRIPT](text) == ["@scope/pkg", "react"]
 
 
 def test_java_extractor_filters_stdlib_prefixes_and_wildcards() -> None:
@@ -175,3 +181,36 @@ def test_attach_source_tree_imports_is_noop_for_unknown_subject(tmp_path: Path) 
     assert summary.distinct_imports == 1
     assert summary.claims_added == 0
     assert graph.find_by_type(NodeType.DEPENDENCY_CLAIM) == []
+
+
+def test_claims_tag_coordinate_kind_so_java_class_paths_are_not_maven_artifacts(
+    tmp_path: Path,
+) -> None:
+    # Each extracted name's *shape* rides on the claim's raw under
+    # `coordinate_kind`, so downstream consumers (CVE matcher, resolver) cannot
+    # mistake a Java class path for a Maven groupId:artifactId or a C #include
+    # path for a system-package name. Package-ecosystem languages keep their
+    # natural kind too.
+    (tmp_path / "main.py").write_text("import requests\n")
+    (tmp_path / "App.java").write_text(
+        "package com.example;\n"
+        "import com.google.common.collect.ImmutableList;\n"
+    )
+    (tmp_path / "main.c").write_text('#include <openssl/ssl.h>\n')
+    (tmp_path / "app.js").write_text('import x from "react";\n')
+
+    graph = ProvenanceGraph()
+    graph.add_node(Node("src:demo", NodeType.SOURCE_PACKAGE, "demo", {"name": "demo"}))
+
+    attach_source_tree_imports(graph, "src:demo", tmp_path)
+
+    raw_by_lang = {
+        node.metadata.get("dependency", {}).get("raw", {}).get("language"): node.metadata.get(
+            "dependency", {}
+        ).get("raw", {}).get("coordinate_kind")
+        for node in graph.find_by_type(NodeType.DEPENDENCY_CLAIM)
+    }
+    assert raw_by_lang["java"] == "class_path", "Java import is a class path, not a Maven coord"
+    assert raw_by_lang["c"] == "header_path", "C #include is a header path, not a system package"
+    assert raw_by_lang["python"] == "module"
+    assert raw_by_lang["javascript"] == "npm_package"

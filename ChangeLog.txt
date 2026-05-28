@@ -19,7 +19,19 @@ Conventions:
 2026-05-28
 ----------------------------------------------------------------------
 
-- (this)   fix(reconcile): canonicalise PURL qualifier order in
+- (this)   fix(source_imports): filter Node stdlib + tag coordinate_kind
+           (review bug #7). JS / TS: `require("fs")` / `import "path"` is the
+           Node runtime's stdlib, not an npm package -- now filtered (Node 20+
+           canonical set; submodules like `fs/promises` collapse via npm_root
+           and are filtered too). Java / C / C++: the extractor recovers a
+           class path / header path, not a package coordinate -- claims now
+           carry `raw["coordinate_kind"]` so a CVE matcher / resolver cannot
+           mistake them for Maven groupId:artifactId / system package names.
+           Per-language Ecosystem unchanged. +1 net test (tightened JS test
+           + new mixed-tree integration verifying coordinate_kind per lang).
+           Suite 263. (D70; bug #7.)
+
+- 3e5d36a  fix(reconcile): canonicalise PURL qualifier order in
            IdentityMismatchRule (review bug #4). The rule compared PURLs as
            raw strings, so `...?arch=x&distro=el10` and `...?distro=el10&arch=x`
            tripped a false IDENTITY_MISMATCH even though they are the same
