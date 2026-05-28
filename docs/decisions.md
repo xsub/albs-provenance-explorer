@@ -1961,6 +1961,54 @@ Coverage golden byte-identical. Suite stays 263.
 
 ---
 
+## D73 - Finish D57: identify / trust-path / vuln / license on the pipeline
+
+D57 introduced ``AnalysisPipeline`` and migrated ``coverage`` first, deferring
+the other four commands to follow-ups. This decision closes that loop: each
+remaining command builds a ``RunSpec`` from its CLI args and delegates the
+load -> enrich -> reconcile portion to ``AnalysisPipeline().run()``, then keeps
+its own rendering as before.
+
+What moved per command:
+
+- ``identify``: ``BuildSbomStep`` (when ``--build-sbom`` is given). The CPE,
+  errata, payload + dnf steps don't apply to identify's surface today, but the
+  pipeline transparently picks them up if they're added later (no change to
+  ``identify_command`` needed).
+- ``trust-path``: ``BuildSbomStep`` + ``ErrataStep``. To preserve the prior
+  "errata defaults to the selected RPM" behaviour, the CLI promotes the
+  ``rpm`` / ``package`` selector to ``RunSpec.errata_subject`` when
+  ``--errata-subject`` is not given; the pipeline's subject-resolution then
+  picks the same RPM the inline code did.
+- ``vuln``: ``BuildSbomStep`` + ``VerifyCpeStep`` + ``ErrataStep`` +
+  ``PayloadStep``. **Latent bug fixed by the migration**: ``vuln`` ran
+  ``verify_cpe`` *before* ``build_sbom``, so a vendor CPE from the SBOM
+  overwrote an NVD-verified one. The pipeline's documented order (D57:
+  "build_sbom runs before verify_cpe") is the design intent; vuln now uses it.
+- ``license``: ``SbomStep`` (the CycloneDX attach). The ``--rpm-licenses`` path
+  stays inline; it isn't an enrichment pipeline (it queries dnf for license tags
+  and rolls them up, not adding claims).
+
+Verification: byte-identical JSON output for each command on the synthetic
+fixture (``--source albs_graph/examples/synthetic_build.json``) before and
+after, captured the same way coverage was in D57. No new tests are needed --
+the existing pipeline tests already cover the orchestration, the existing
+provenance tests cover the analyses, and ``test_cli_help`` already exercises
+that ``trust-path --errata`` closes ``has_errata_link`` (the only behaviour
+sensitive to subject resolution). Cleanup: 6 now-unused imports removed from
+``cli/main.py``; the file shrinks by 23 lines net.
+
+Drive-by fix in the same commit: modern Typer (0.13+) vendors its own
+``click`` fork, so ``NoArgsIsHelpError`` raised by ``no_args_is_help=True`` is
+*not* a ``click.ClickException`` -- it bypassed ``main()``'s ``except``,
+broke ``test_fetch_without_args_shows_help`` and
+``test_trust_path_without_args_shows_help``, and would have leaked tracebacks
+to users. ``main()`` now catches both ``click.ClickException`` and
+``typer._click.exceptions.ClickException`` (with a fallback alias for older
+typers). Suite unchanged at 263.
+
+---
+
 ## D72 - demo_verbose attaches the build SBOM (consistency with the rest of the run)
 
 User-spotted on a VPS run: ``grep -R sbom examples/demo-build-57810/`` returns

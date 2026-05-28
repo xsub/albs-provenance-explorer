@@ -16,10 +16,27 @@ Conventions:
     via `git log main --oneline` if needed.
 
 ----------------------------------------------------------------------
+2026-05-29
+----------------------------------------------------------------------
+
+- (this)   refactor(cli): finish D57 -- migrate identify / trust-path / vuln /
+           license onto AnalysisPipeline. Each command builds a RunSpec and
+           delegates load -> enrich -> reconcile to the pipeline; rendering
+           stays in the command. Same byte-identical output on the synthetic
+           fixture; 23 lines net shrinkage in cli/main.py, 6 now-unused
+           imports removed. Drive-by: main() catches typer._click's
+           ClickException too, so Typer 0.13+'s NoArgsIsHelpError no longer
+           leaks tracebacks (fixes test_fetch_without_args_shows_help +
+           test_trust_path_without_args). Latent bug fixed: vuln ran
+           verify_cpe before build_sbom, overwriting NVD-verified CPEs with
+           vendor-asserted ones; pipeline order is the design intent. Closes
+           the loop opened by D57. (D73)
+
+----------------------------------------------------------------------
 2026-05-28
 ----------------------------------------------------------------------
 
-- (this)   docs(README): splice the second (step-11 / demo_verbose) trust-path
+- fc5b647  docs(README): splice the second (step-11 / demo_verbose) trust-path
            table into the README screenshot so both has_sbom rows read `ok`
            side by side -- visible confirmation of the D72 consistency fix.
 

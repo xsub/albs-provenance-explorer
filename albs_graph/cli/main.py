@@ -8,6 +8,13 @@ from typing import Callable, Optional
 
 import click
 import typer
+
+try:
+    # Typer 0.13+ vendors its own click fork; its NoArgsIsHelpError is not a
+    # click.ClickException, so we have to catch it independently.
+    from typer._click.exceptions import ClickException as _TyperClickException
+except ImportError:  # older typers re-use upstream click
+    _TyperClickException = click.ClickException  # type: ignore[assignment, misc]
 from rich.console import Console
 from rich.table import Table
 
@@ -32,16 +39,12 @@ from albs_graph.adapters.dnf import (
     parse_nevra,
     repoquery,
 )
-from albs_graph.adapters.errata import attach_errata_file
-from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
 from albs_graph.adapters.rpmgraph import (
     RpmgraphUnavailable,
     run_repograph,
 )
 from albs_graph.adapters.sbom import (
-    attach_cyclonedx_sbom_claims,
-    enrich_graph_with_build_sbom,
     import_sbom,
 )
 from albs_graph.adapters.source_imports import attach_source_tree_imports
@@ -77,7 +80,6 @@ from albs_graph.provenance.trust import (
     trust_path,
 )
 from albs_graph.render import SvgRenderError, graph_to_dot, graph_to_json, graph_to_svg
-from albs_graph.security.cpe import CpeDictionary, verify_graph_cpe
 from albs_graph.security.cve_feed import CveFeed
 from albs_graph.store import load_graph, save_graph, sql_dependencies, sql_dependents
 
@@ -838,9 +840,12 @@ def identify_command(
     else:
         raise ValueError("identify requires --build-id or --source")
 
-    if build_sbom is not None:
-        _log_step(verbose, f"Attaching build SBOM {build_sbom} to the build's RPMs")
-        enrich_graph_with_build_sbom(graph, build_sbom, on_progress=_progress(verbose))
+    # The single load -> enrich -> reconcile -> render pipeline (D57). Identify
+    # uses just the build_sbom step today; new pipeline steps reach this command
+    # automatically when they apply.
+    spec = RunSpec(arch=arch, build_sbom=build_sbom)
+    result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
+    graph = result.graph
 
     report = identify_file(graph, filepath, owner_package=owner, arch=arch)
 
@@ -952,11 +957,22 @@ def trust_path_command(
     else:
         raise ValueError("trust-path requires --build-id or --source")
     _log_graph_stats(verbose, graph)
-    if build_sbom is not None:
-        _log_step(verbose, f"Attaching build SBOM {build_sbom} to the build's RPMs")
-        enrich_graph_with_build_sbom(graph, build_sbom, on_progress=_progress(verbose))
 
+    # The single load -> enrich -> reconcile -> render pipeline (D57). Errata
+    # defaults to the selected RPM (preserving prior behaviour) by promoting
+    # the RPM selector to errata_subject when --errata-subject is not given.
     rpm_selector = rpm or package
+    effective_errata_subject = errata_subject or rpm_selector
+    spec = RunSpec(
+        package=package,
+        arch=arch,
+        build_sbom=build_sbom,
+        errata=errata,
+        errata_subject=effective_errata_subject,
+    )
+    result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
+    graph = result.graph
+
     if rpm_selector is None:
         _log_step(verbose, "No RPM selector provided; selecting representative binary RPM")
         rpm_node = select_default_binary_rpm(graph, arch=arch)
@@ -964,12 +980,6 @@ def trust_path_command(
         _log_step(verbose, f"Resolving binary RPM selector: {rpm_selector}")
         rpm_node = find_binary_rpm(graph, rpm_selector, arch=arch)
     _log_step(verbose, f"Selected RPM node: {rpm_node.id}")
-    if errata is not None:
-        errata_node = (
-            find_binary_rpm(graph, errata_subject, arch=arch) if errata_subject else rpm_node
-        )
-        _log_step(verbose, f"Attaching errata {errata} to {errata_node.id}")
-        attach_errata_file(graph, errata_node.id, errata)
     _log_step(verbose, "Analyzing source-to-artifact trust path")
     report = trust_path(graph, rpm_node.id)
 
@@ -1182,25 +1192,23 @@ def vuln_command(
     else:
         raise ValueError("vuln requires --build-id or --source")
 
+    # The single load -> enrich -> reconcile -> render pipeline (D57). The
+    # pipeline runs build_sbom *before* verify_cpe, so an NVD match upgrades a
+    # vendor-asserted CPE rather than the other way round -- the order the
+    # design intends and that coverage already uses; the prior inline order
+    # in `vuln` was reversed (latent bug fixed by the migration).
     selector = make_binary_rpm_selector(package=package, arch=arch)
-    if with_rpm_payloads:
-        _log_step(verbose, "Analyzing payload ELFs for linkage")
-        enrich_graph_with_rpm_payloads(graph, node_selector=selector, on_progress=_progress(verbose))
-    if verify_cpe is not None:
-        _log_step(verbose, f"Verifying CPEs against {verify_cpe}")
-        verify_graph_cpe(graph, CpeDictionary.from_file(verify_cpe), node_selector=selector)
-    if build_sbom is not None:
-        _log_step(verbose, f"Setting vendor CPEs from build SBOM {build_sbom}")
-        enrich_graph_with_build_sbom(graph, build_sbom, on_progress=_progress(verbose))
-    if errata is not None:
-        subject_selector = errata_subject or package
-        subject = (
-            find_binary_rpm(graph, subject_selector, arch=arch)
-            if subject_selector
-            else select_default_binary_rpm(graph, arch=arch)
-        )
-        _log_step(verbose, f"Attaching errata {errata} to {subject.id}")
-        attach_errata_file(graph, subject.id, errata)
+    spec = RunSpec(
+        package=package,
+        arch=arch,
+        build_sbom=build_sbom,
+        verify_cpe=verify_cpe,
+        errata=errata,
+        errata_subject=errata_subject or package,
+        with_rpm_payloads=with_rpm_payloads,
+    )
+    result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
+    graph = result.graph
 
     feed = CveFeed.from_file(cve_feed) if cve_feed is not None else None
     report = vulnerability_report(
@@ -1306,12 +1314,13 @@ def license_command(
     if sbom is None:
         raise typer.BadParameter("license needs --sbom FILE (SBOM rollup) or --rpm-licenses")
 
-    subject = (
-        find_binary_rpm(graph, sbom_subject, arch=arch)
-        if sbom_subject
-        else select_default_binary_rpm(graph, arch=arch)
-    )
-    attach_cyclonedx_sbom_claims(graph, subject.id, sbom)
+    # The single load -> enrich -> reconcile -> render pipeline (D57). The SbomStep
+    # attaches CycloneDX claims to sbom_subject (or the default RPM) -- same
+    # subject resolution the prior inline code used.
+    spec = RunSpec(arch=arch, sbom=sbom, sbom_subject=sbom_subject)
+    result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
+    graph = result.graph
+
     report = license_report(graph)
 
     if output_format.lower() == "json":
@@ -1574,7 +1583,9 @@ def inspect_fixture(
 def main(argv: list[str] | None = None) -> int:
     try:
         app(args=argv, standalone_mode=False)
-    except click.ClickException as exc:
+    except (click.ClickException, _TyperClickException) as exc:
+        # Modern Typer forks click, so its NoArgsIsHelpError (raised by
+        # no_args_is_help=True) is NOT a click.ClickException -- catch both.
         exc.show()
         return int(exc.exit_code)
     except (
