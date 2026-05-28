@@ -15,9 +15,11 @@ and is intentionally out of scope here.
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Callable
 
+from albs_graph.adapters._http_cache import HttpCache, cached_range_fetcher
 from albs_graph.dependency import (
     DependencyScope,
     DependencySpec,
@@ -188,27 +190,61 @@ def enrich_graph_with_rpm_headers(
     limit: int | None = None,
     on_progress: Callable[[str], None] | None = None,
     node_selector: NodeSelector | None = None,
+    http_cache: bool = True,
+    max_concurrency: int = 4,
 ) -> HeaderEnrichmentResult:
-    """For each binary RPM node, range-fetch its header and add soname claims."""
+    """For each binary RPM node, range-fetch its header and add soname claims.
+
+    The default fetcher is wrapped in an :class:`HttpCache` (see ``_http_cache``)
+    so reruns serve from disk; pass ``http_cache=False`` to bypass. An injected
+    ``fetch`` is honoured as-is (tests provide their own deterministic fetcher
+    and bring no network at all). ``max_concurrency`` parallelises the per-RPM
+    fetch + parse (workers); graph mutation stays single-threaded in this thread.
+    """
 
     resolver = url_resolver or vault_candidate_urls
-    artifacts = 0
-    fetched = 0
-    claims_added = 0
-    failures: list[str] = []
-    licenses: dict[str, str] = {}
+    # Default path wraps the real fetcher in a disk cache; an injected fetcher
+    # (tests) is honoured verbatim so the cache never touches test data.
+    if fetch is None:
+        cache = HttpCache(enabled=http_cache)
+        active_fetch: RangeFetcher = cached_range_fetcher(cache, _requests_range_fetch)
+    else:
+        active_fetch = fetch
 
+    # Gather eligible nodes first so the worker pool sees a fixed work list (and
+    # `limit` applies the same as before: it caps "what we attempt", not "what
+    # succeeds").
+    work: list[tuple[Node, str]] = []
     for node in graph.find_by_type(NodeType.BINARY_RPM):
         filename = _artifact_filename(graph, node.id)
         if not filename or _is_debug_artifact(filename):
             continue
         if node_selector and not node_selector(node):
             continue
-        if limit is not None and artifacts >= limit:
+        if limit is not None and len(work) >= limit:
             break
-        artifacts += 1
-        candidates = resolver(filename)
-        header, used_url = _try_candidates(filename, candidates, fetch, on_progress)
+        work.append((node, filename))
+
+    def _process(item: tuple[Node, str]) -> tuple[Node, str, RpmHeader | None, str | None]:
+        node, filename = item
+        header, used_url = _try_candidates(
+            filename, resolver(filename), active_fetch, on_progress
+        )
+        return node, filename, header, used_url
+
+    if max_concurrency > 1 and len(work) > 1:
+        with ThreadPoolExecutor(max_workers=max_concurrency) as pool:
+            results = list(pool.map(_process, work))
+    else:
+        results = [_process(item) for item in work]
+
+    # Merge sequentially in this thread -- ProvenanceGraph is not thread-safe.
+    artifacts = len(work)
+    fetched = 0
+    claims_added = 0
+    failures: list[str] = []
+    licenses: dict[str, str] = {}
+    for node, filename, header, used_url in results:
         if header is None:
             failures.append(filename)
             continue

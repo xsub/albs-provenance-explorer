@@ -86,6 +86,10 @@ class RunSpec:
     provides_map: Path | None = None
     use_cas: bool = False
     verify_signatures: bool = False
+    # Network performance knobs for HeadersStep + PayloadStep.
+    max_concurrency: int = 4
+    http_cache: bool = True       # header cache (tiny); default on
+    cache_payloads: bool = False  # payload cache (5-50 MB each); opt-in
 
 
 @dataclass(frozen=True)
@@ -251,7 +255,12 @@ class HeadersStep:
     def run(self, ctx: EnrichmentContext) -> Any:
         ctx.log("Range-reading RPM headers for dynamic-linkage claims")
         return enrich_graph_with_rpm_headers(
-            ctx.graph, limit=ctx.spec.limit, on_progress=ctx.on_progress, node_selector=ctx.selector
+            ctx.graph,
+            limit=ctx.spec.limit,
+            on_progress=ctx.on_progress,
+            node_selector=ctx.selector,
+            http_cache=ctx.spec.http_cache,
+            max_concurrency=ctx.spec.max_concurrency,
         )
 
 
@@ -265,7 +274,12 @@ class PayloadStep:
     def run(self, ctx: EnrichmentContext) -> Any:
         ctx.log("Downloading RPM payloads and parsing ELF objects (rung 4)")
         return enrich_graph_with_rpm_payloads(
-            ctx.graph, limit=ctx.spec.limit, on_progress=ctx.on_progress, node_selector=ctx.selector
+            ctx.graph,
+            limit=ctx.spec.limit,
+            on_progress=ctx.on_progress,
+            node_selector=ctx.selector,
+            cache_payloads=ctx.spec.cache_payloads,
+            max_concurrency=ctx.spec.max_concurrency,
         )
 
 

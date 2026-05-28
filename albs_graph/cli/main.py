@@ -423,6 +423,24 @@ def coverage_command(
         help="Download RPMs and verify GPG signatures with rpmkeys --checksig "
         "(opt-in, network + host rpm; degrades to 'unavailable' if rpmkeys is missing).",
     ),
+    max_concurrency: int = typer.Option(
+        4,
+        "--max-concurrency",
+        help="Worker threads for header/payload fetches (default 4; pass 1 for sequential).",
+    ),
+    http_cache: bool = typer.Option(
+        True,
+        "--http-cache/--no-http-cache",
+        help="Read-through disk cache for header fetches at $ALBS_HTTP_CACHE or "
+        "$XDG_CACHE_HOME/albs-provenance-explorer (default on; only successful "
+        "responses are cached so the mirror cascade still self-heals).",
+    ),
+    cache_payloads: bool = typer.Option(
+        False,
+        "--cache-payloads",
+        help="Also cache full RPM payloads (5-50 MB each; opt-in -- a full --all-archs "
+        "run could reach tens of GB).",
+    ),
     sbom: Optional[Path] = typer.Option(
         None, "--sbom", help="CycloneDX JSON SBOM file to attach as dependency claims."
     ),
@@ -568,6 +586,9 @@ def coverage_command(
         provides_map=provides_map,
         use_cas=use_cas,
         verify_signatures=verify_signatures,
+        max_concurrency=max_concurrency,
+        http_cache=http_cache,
+        cache_payloads=cache_payloads,
     )
     result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
 

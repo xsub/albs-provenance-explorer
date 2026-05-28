@@ -57,7 +57,10 @@ def test_coverage_has_independent_imports_subject(capsys: CaptureFixture[str]) -
 
     assert exit_code == 0
     assert "--imports-subject" in output
-    assert "--requirements-subject" in output
+    # --requirements-subject may be ellipsis-truncated in Rich's rendering when
+    # other long flags widen the column; assert on the unique help description
+    # text so the regression check survives cosmetic re-flow.
+    assert "requirements belong" in output  # from --requirements-subject's help
 
 
 def test_trust_path_errata_flag_closes_has_errata_link(

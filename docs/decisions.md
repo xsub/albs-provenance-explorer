@@ -1660,6 +1660,58 @@ not raise; the dep collapses to a single node). Suite now 246.
 
 ---
 
+## D63 - Content-addressed HTTP cache + bounded concurrency for RPM fetches
+
+Review item #8. Two adapters hit the network per RPM and neither cached:
+`rpm_remote.py` (HeadersStep) Range-fetches the RPM header, trying up to three
+mirror URLs sequentially per RPM (BaseOS -> vault -> AppStream); even the
+single-RPM demo shows three 200/404 round-trips for one header. `rpm_payload.py`
+(PayloadStep) downloads the full RPM payload (5-50 MB). Every run paid the same
+network cost, and the per-RPM walks were strictly sequential -- `--all-archs` on
+a 456-RPM build was linear in wall-time.
+
+Decision: a stdlib-only, read-through disk cache + a worker pool around the
+existing per-RPM loop.
+
+- **`albs_graph/adapters/_http_cache.py`** -- `HttpCache.get_or_fetch(url, fetch,
+  *, range_)`. Key = `sha256(url + ":" + range)`, bucketed by the first 2 chars.
+  Only successful responses are cached: an inner-fetcher exception (today's
+  cascade signal) propagates as-is, so the mirror cascade still self-heals when
+  a vault URL becomes live. Atomic writes (tmp + rename) make a partial write
+  impossible to read back. Cache root: `$ALBS_HTTP_CACHE` -> `$XDG_CACHE_HOME/
+  albs-provenance-explorer` -> `~/.cache/albs-provenance-explorer`. Convenience
+  wrappers `cached_range_fetcher` / `cached_full_fetcher` adapt to the existing
+  `RangeFetcher` / `FullFetcher` Protocols.
+- **`rpm_remote.py`** (HeadersStep) -- the default `fetch` is now wrapped in a
+  cache (default-on; `--no-http-cache` opts out). The per-node work is gathered
+  into a list and processed via `ThreadPoolExecutor` (default `max_workers=4`,
+  user choice over 1/4/8/16); workers compute pure results, the main thread
+  merges into the graph sequentially (no graph locking needed). An injected
+  `fetch` (tests) is honoured verbatim -- the cache never touches test data.
+- **`rpm_payload.py`** (PayloadStep) -- same pattern, but the cache is **opt-in**
+  via `cache_payloads=True` (default False): payloads are 5-50 MB and a full
+  `--all-archs` run could reach tens of GB. Same `max_workers=4` worker pool.
+- **`RunSpec` + CLI** -- `max_concurrency: int = 4`, `http_cache: bool = True`,
+  `cache_payloads: bool = False`. Exposed on `coverage` as `--max-concurrency`,
+  `--http-cache/--no-http-cache`, `--cache-payloads`. Threaded through
+  `HeadersStep`/`PayloadStep`.
+
+Verification: the `coverage` golden output on the synthetic fixture is
+byte-identical before and after (no network, cache untouched). Cache-module
+tests cover miss-then-hit, range isolation, failure-not-cached, disabled
+pass-through, atomic layout, both wrappers, and env-driven root resolution.
+Existing rpm_remote/payload tests inject their own fetcher and `len(work) <= 1`
+so the worker pool degrades to sequential -- behaviour preserved.
+
+Deferred (planned next): `rpmsig.py` (`verify_graph_signatures`) downloads RPMs
+for `rpmkeys --checksig`. It gets a free win when `cache_payloads=True` (same
+URLs cached) but doesn't yet thread `HttpCache` explicitly. That follow-up
+ships once VPS-verified.
+
+Tests +8 (`test_http_cache.py`). Suite now 254.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

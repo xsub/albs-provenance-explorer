@@ -22,9 +22,11 @@ from __future__ import annotations
 
 import io
 import stat
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Callable, Iterator
 
+from albs_graph.adapters._http_cache import HttpCache, cached_full_fetcher
 from albs_graph.dependency import (
     DependencyScope,
     DependencySpec,
@@ -173,28 +175,61 @@ def enrich_graph_with_rpm_payloads(
     limit: int | None = None,
     on_progress: Callable[[str], None] | None = None,
     node_selector: NodeSelector | None = None,
+    cache_payloads: bool = False,
+    max_concurrency: int = 4,
 ) -> PayloadEnrichmentResult:
-    """For each binary RPM, download + analyze the payload and record ELF facts."""
+    """For each binary RPM, download + analyze the payload and record ELF facts.
+
+    The default fetcher is wrapped in an :class:`HttpCache` only when
+    ``cache_payloads=True``: payloads are 5-50 MB and a multi-RPM/all-archs run
+    could consume tens of GB, so caching is opt-in. An injected ``fetch_full``
+    is honoured verbatim (tests bring their own). ``max_concurrency`` parallelises
+    the per-RPM download + cpio + ELF parse; graph mutation stays in this thread.
+    """
 
     resolver = url_resolver or vault_candidate_urls
-    seen = 0
-    read = 0
-    elf_total = 0
-    claims_added = 0
-    go_total = 0
-    static_total = 0
-    failures: list[str] = []
+    # Default path optionally wraps the real fetcher in a disk cache; injected
+    # fetcher (tests) is honoured verbatim.
+    if fetch_full is None and cache_payloads:
+        cache = HttpCache(enabled=True)
+        active_fetch: FullFetcher = cached_full_fetcher(cache, _requests_full_get)
+    elif fetch_full is None:
+        active_fetch = _requests_full_get
+    else:
+        active_fetch = fetch_full
 
+    work: list[tuple[Node, str]] = []
     for node in graph.find_by_type(NodeType.BINARY_RPM):
         filename = _artifact_filename(graph, node.id)
         if not filename or _is_debug_artifact(filename):
             continue
         if node_selector and not node_selector(node):
             continue
-        if limit is not None and seen >= limit:
+        if limit is not None and len(work) >= limit:
             break
-        seen += 1
-        contents = _try_candidates(filename, resolver(filename), fetch_full, on_progress)
+        work.append((node, filename))
+
+    def _process(
+        item: tuple[Node, str],
+    ) -> tuple[Node, str, tuple[list[tuple[str, ElfInfo]], list[str]] | None]:
+        node, filename = item
+        contents = _try_candidates(filename, resolver(filename), active_fetch, on_progress)
+        return node, filename, contents
+
+    if max_concurrency > 1 and len(work) > 1:
+        with ThreadPoolExecutor(max_workers=max_concurrency) as pool:
+            results = list(pool.map(_process, work))
+    else:
+        results = [_process(item) for item in work]
+
+    seen = len(work)
+    read = 0
+    elf_total = 0
+    claims_added = 0
+    go_total = 0
+    static_total = 0
+    failures: list[str] = []
+    for node, filename, contents in results:
         if contents is None:
             failures.append(filename)
             continue
