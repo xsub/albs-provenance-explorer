@@ -1983,6 +1983,37 @@ on both trust-path tables (lines 31 and 530). Suite unchanged at 263.
 
 ---
 
+## D73 - App-facing services for the PyQt investigation workbench branch
+
+The ``InvestigationWorkbenchApp`` branch starts by extracting a service layer
+before adding any GUI. The goal is the final architecture: PyQt calls backend
+services directly, and the CLI uses the same services rather than growing a
+second orchestration path.
+
+Added ``albs_graph.services``:
+
+- ``analysis.py`` wraps graph loading, optional repograph acquisition,
+  ``AnalysisPipeline`` execution, reconciliation, coverage, identity
+  breakdown, and non-fatal warnings.
+- ``queries.py`` exposes typed node/edge summaries, artifact listing, and
+  metadata-aware node search for inspectors and search boxes.
+- ``slices.py`` exposes focused graph projections for trust path, source build,
+  dependency evidence, security context, and universe traversal.
+- ``findings.py`` turns coverage gaps, reconciliation conflicts, cross-distro
+  issues, and missing trust checks into UI-friendly finding records.
+
+The ``coverage`` command now uses ``AnalysisService`` for base graph loading,
+repograph resolution, pipeline execution, coverage, and identity breakdown. Its
+rendering stays in the CLI. This is intentionally incremental: command output
+remains unchanged, but orchestration now has an app-facing entrypoint.
+
+The workbench plan is recorded in
+``docs/plan-pyqt5-investigation-workbench-app.md``. Tests +6 cover the service
+facade, repograph warning path, graph queries, graph slices, dependency-evidence
+projection, and findings. Suite now 269.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

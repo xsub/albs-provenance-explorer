@@ -35,10 +35,6 @@ from albs_graph.adapters.dnf import (
 from albs_graph.adapters.errata import attach_errata_file
 from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
-from albs_graph.adapters.rpmgraph import (
-    RpmgraphUnavailable,
-    run_repograph,
-)
 from albs_graph.adapters.sbom import (
     attach_cyclonedx_sbom_claims,
     enrich_graph_with_build_sbom,
@@ -47,8 +43,8 @@ from albs_graph.adapters.sbom import (
 from albs_graph.adapters.source_imports import attach_source_tree_imports
 from albs_graph.fixtures import build_synthetic_package_graph
 from albs_graph.model import NodeType, ProvenanceGraph
-from albs_graph.pipeline import AnalysisPipeline, RunSpec
-from albs_graph.provenance.coverage import coverage_report, identity_strength
+from albs_graph.pipeline import RunSpec
+from albs_graph.provenance.coverage import coverage_report
 from albs_graph.provenance.identify import identify_file
 from albs_graph.provenance.license import RpmLicenseRollup, license_report
 from albs_graph.dependency import Ecosystem, ResolverRequest, resolver_for
@@ -79,6 +75,7 @@ from albs_graph.provenance.trust import (
 from albs_graph.render import SvgRenderError, graph_to_dot, graph_to_json, graph_to_svg
 from albs_graph.security.cpe import CpeDictionary, verify_graph_cpe
 from albs_graph.security.cve_feed import CveFeed
+from albs_graph.services import AnalysisService, GraphLoadSpec
 from albs_graph.store import load_graph, save_graph, sql_dependencies, sql_dependents
 
 app = typer.Typer(
@@ -531,36 +528,20 @@ def coverage_command(
     refresh_cache: bool = typer.Option(False, "--refresh-cache", help="Ignore an existing cache."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Print progress to stderr."),
 ) -> None:
-    if build_id is not None:
-        metadata = fetch_build_metadata(
-            build_id,
+    service = AnalysisService()
+    graph = service.load_graph(
+        GraphLoadSpec(
+            build_id=build_id,
+            source=source,
             base_url=base_url,
-            progress=_progress(verbose),
-            cache_path=cache,
-            refresh_cache=refresh_cache,
+            cache=cache,
             cache_ttl_seconds=cache_ttl,
-        )
-        graph = graph_from_build_metadata(metadata)
-    elif source:
-        _log_step(verbose, f"Loading ALBS build metadata from {source}")
-        graph = load_synthetic_build_fixture(source)
-    else:
-        raise ValueError("coverage requires --build-id or --source")
+            refresh_cache=refresh_cache,
+        ),
+        on_progress=_progress(verbose),
+    )
     _log_graph_stats(verbose, graph)
     _ = all_packages  # default behavior; flag documents intent and pairs with --all-archs
-
-    # The repograph dot is resolved here (file read / live run + its warning are
-    # I/O and presentation); the rest of the enrichment flow is the pipeline's job.
-    dot_text: str | None = None
-    if repograph_dot is not None:
-        _log_step(verbose, f"Ingesting dnf repograph/rpmgraph dot from {repograph_dot}")
-        dot_text = repograph_dot.read_text(encoding="utf-8")
-    elif repograph is not None:
-        _log_step(verbose, f"Running dnf repograph {repograph}")
-        try:
-            dot_text = run_repograph(repograph)
-        except RpmgraphUnavailable as exc:
-            console.print(f"[yellow]repograph unavailable:[/yellow] {exc}")
 
     spec = RunSpec(
         package=package,
@@ -568,7 +549,6 @@ def coverage_command(
         all_archs=all_archs,
         limit=limit,
         build_sbom=build_sbom,
-        repograph_dot_text=dot_text,
         use_dnf=use_dnf,
         sbom=sbom,
         sbom_subject=sbom_subject,
@@ -590,11 +570,20 @@ def coverage_command(
         http_cache=http_cache,
         cache_payloads=cache_payloads,
     )
-    result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
+    result = service.analyze_graph(
+        graph,
+        spec,
+        repograph_dot=repograph_dot,
+        repograph=repograph,
+        on_progress=_progress(verbose),
+    )
+    for warning in result.warnings:
+        if warning.kind == "repograph_unavailable":
+            console.print(f"[yellow]{warning.message}[/yellow]")
 
     graph = result.graph
     reconciliation = result.reconciliation
-    report = coverage_report(graph)
+    report = result.coverage
     build_sbom_result = result.result("build_sbom")
     rpmgraph_result = result.result("repograph")
     dnf_result = result.result("dnf")
@@ -622,7 +611,7 @@ def coverage_command(
             payload["sbom"] = sbom_result.to_dict()
         if build_sbom_result is not None:
             payload["build_sbom"] = build_sbom_result.to_dict()
-        identity_breakdown = identity_strength(graph)
+        identity_breakdown = result.identity_breakdown
         if identity_breakdown:
             payload["identity_strength"] = identity_breakdown
         if cas_report is not None:
@@ -705,7 +694,7 @@ def coverage_command(
             f"Build SBOM (alma-sbom): matched {build_sbom_result.matched} RPMs, "
             f"set {build_sbom_result.cpes_set} vendor CPEs from {build_sbom_result.components} components"
         )
-    strength = identity_strength(graph)
+    strength = result.identity_breakdown
     if strength:
         parts = []
         if strength.get("verified"):
