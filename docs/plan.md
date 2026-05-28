@@ -108,6 +108,14 @@ RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed
 - ✅ Python language deps (`adapters/pylang.py`, `coverage --requirements`):
   requirements.txt + import scanning -> PyPI claims (pinned == counts toward
   resolution). Template for other language ecosystems.
+- ✅ Multi-language source-tree import scanning (`adapters/source_imports.py`,
+  `source-evidence` default-on / `--no-scan-imports`): walks the checked-out
+  tree, detects each file's language by extension (with shebang fallback), and
+  emits per-language declared-dependency claims for Python, Go, Rust, C/C++,
+  JS/TS, Java, Ruby. Stdlib filtered per language; project-internal references
+  (`require_relative`, `./relative` JS imports, `self::`/`super::`/`crate::` in
+  Rust) excluded. Records what the *code* says it depends on, distinct from the
+  manifest-file discovery that `source.py` does.
 - ✅ Arch-wide universe merge (`merge_graphs` / `build_arch_universe`; repeatable
   `universe --repograph-dot` + `--source`): canonical `pkg:<name>` ids let many
   repograph dots / builds merge into one cross-repo universe.

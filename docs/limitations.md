@@ -62,7 +62,7 @@ resolver) is added.
 
 ---
 
-## Rungs not yet implemented
+## Rung-by-rung implementation status
 
 ### Rung 4 - payload ELF analysis (implemented, with caveats)
 Implemented: full RPM download → cpio payload → ELF parse of confirmed

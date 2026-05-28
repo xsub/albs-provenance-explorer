@@ -46,7 +46,14 @@ The codebase is layered intentionally - keep concerns separate when extending.
 
 **`albs_graph/model/`** - Graph core. `Node`/`Edge` are frozen dataclasses; `NodeType` and `Relation` are `StrEnum`s with a fixed canonical vocabulary (`source_package`, `git_commit`, `cas_attestation`, `build_task`, `srpm`, `binary_rpm`, `signature`, `repository_release`, `errata`, `cve`, `sbom`, `source_tree`, etc.). `ProvenanceGraph` exposes typed lookups (`find_by_type`) and `trust_path_report`. Adding new node/edge kinds means extending these enums first.
 
-**`albs_graph/adapters/`** - Ingestion. Each adapter converts an external evidence source into the graph contract: `albs.py` fetches from `build.almalinux.org` (with on-disk cache + TTL), `rpm.py` reads local RPM headers via `rpmfile`, `sbom.py` imports SPDX/CycloneDX JSON, `errata.py` attaches errata/CVE, `source.py` checks out the exact git commit referenced by ALBS and walks the source tree for `.spec` files and ecosystem manifests (`package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `pom.xml`, Gradle), `source_imports.py` walks the same tree to detect each file's language (extension + shebang) and extract its import/include statements per language (Python, Go, Rust, C/C++, JS/TS, Java, Ruby) as declared-dependency claims. Adapters must not embed resolver semantics - they record evidence, not resolved dependencies.
+**`albs_graph/adapters/`** - Ingestion. Each adapter converts an external evidence source into the graph contract:
+
+- **ALBS + source:** `albs.py` fetches build metadata from `build.almalinux.org` (on-disk cache + TTL); `source.py` checks out the exact git commit referenced by ALBS and walks the tree for `.spec` files + ecosystem manifests (`package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `pom.xml`, Gradle); `source_imports.py` walks the same tree to detect each file's language (extension + shebang) and extract its import/include statements per language (Python, Go, Rust, C/C++, JS/TS, Java, Ruby) as declared-dependency claims; `pylang.py` is the Python-specific `requirements.txt` parser + single-file import scanner that `source_imports.py` builds on.
+- **RPM analysis:** `rpm.py` reads a local `.rpm` via `rpmfile`; `rpm_header.py` parses range-fetched RPM headers; `rpm_remote.py` HTTP Range-fetches just the header from public mirrors (no payload download); `rpm_payload.py` downloads the full payload, unpacks the cpio, and uses `elf.py` to parse `DT_NEEDED`/RPATH/RUNPATH/dlopen + Go/Rust toolchain detection; `rpmsig.py` invokes `rpmkeys --checksig` for GPG signature verification.
+- **Native AlmaLinux tooling:** `dnf.py` runs `dnf repoquery` (requires/recommends/provides) and `dnf --whatprovides` for soname -> providing-package resolution; `rpmgraph.py` parses `dnf repograph` dot output for whole-repo dependency graphs.
+- **External verification + security context:** `cas.py` wraps `cas authenticate` (opt-in) to verify Codenotary attestation hashes; `sbom.py` imports SPDX/CycloneDX SBOMs and attaches a build SBOM's vendor CPE to every matched binary RPM; `errata.py` attaches errata/CVE evidence.
+
+Adapters must not embed resolver semantics - they record evidence, not resolved dependencies.
 
 **`albs_graph/dependency/`** - Normalized dependency-fact model (ecosystem, scope, linkage, resolution state, context). Stores ecosystem-specific raw metadata alongside the normalized fact so future resolver adapters can plug in without changing the graph contract.
 
@@ -54,7 +61,7 @@ The codebase is layered intentionally - keep concerns separate when extending.
 
 **`albs_graph/render/`** - Output formats: `json_export.py`, `dot.py`, `svg.py` (Graphviz). The CLI's `--format` flag maps directly to these.
 
-**`albs_graph/cli/main.py`** - Single Typer app with all commands: `fetch` / `fetch-build`, `inspect-rpm`, `import-sbom`, `trust-path`, `checkout-source`, `source-evidence`, `fixture` / `render-fixture` / `inspect-fixture`. The CLI is where `--cache`, `--cache-ttl`, `--refresh-cache` and `--verbose` are wired up; deeper layers do not know about the filesystem cache.
+**`albs_graph/cli/main.py`** - Single Typer app with all 17 commands: source-side `fetch` / `fetch-build`, `checkout-source`, `source-evidence`, `inspect-rpm`, `import-sbom`; analysis `trust-path`, `identify`, `coverage`, `vuln`, `license`, `resolve`, `slsa`, `universe`; offline-synthetic `fixture` / `render-fixture` / `inspect-fixture`. The CLI is where `--cache`, `--cache-ttl`, `--refresh-cache` and `--verbose` are wired up; deeper layers do not know about the filesystem cache.
 
 ### Identity and trust semantics - load-bearing design rules
 
