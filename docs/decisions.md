@@ -1505,6 +1505,42 @@ specifically). The `coverage` golden output is unchanged. Suite now 233.
 
 ---
 
+## D59 - One comprehensive demo script; retire the per-facet scripts
+
+Six example scripts had accreted - `example.sh` (portable), `example--tour.sh`
+(grand tour), `example--verbose.sh` (build-intelligence), `example--almalinux.sh`
+(CAS), `example--almalinux-native.sh` (native stack), `example--full.sh` (fullest)
+- each a *partial* subset. A coverage audit showed even the tour exercised only 7
+of 17 commands (no `license`, `import-sbom`, signatures, ...). The ask: one
+comprehensive, extensive demo, not yet another partial.
+
+Decision: `example--full.sh` is now THE single demo, covering all 17 commands plus
+the `demo_verbose` build-intelligence view. Added to it: `source-evidence` +
+`checkout-source` (git source + manifest discovery, gated on git), `resolve`
+(language-native; opt-in `RESOLVE_ECOSYSTEM`+`RESOLVE_MANIFEST`, since an RPM build
+carries no language manifest), `inspect-rpm` (opt-in `RPM_FILE`), the offline
+`fixture`/`render-fixture`/`inspect-fixture` trio, the build-intelligence step
+(`python3 -m albs_graph.cli.demo_verbose`: artifact matrix + build/signing/
+processing timing), and the `--verify-cpe`/`--errata` flags (opt-in
+`CPE_FILE`/`ERRATA_FILE`) alongside the existing `--verify-signatures`/`--use-cas`/
+`--build-sbom`. Every step stays gated - a missing tool, file, or network skips,
+never fails - and the portable empty-array idiom keeps it runnable under bash 3.2.
+
+Removed `example.sh`, `example--tour.sh`, `example--verbose.sh`,
+`example--almalinux.sh`, `example--almalinux-native.sh` (folded in or already
+covered). The `demo_verbose` *module* is retained (full.sh calls it). This
+supersedes the tour decisions (D48 retarget, D58 wiring) as a script; their *code*
+features persist - notably `trust-path --errata` (D58) is now used by full.sh.
+
+Consequence: the committed README text-screenshot and
+`examples/demo-build-57810/console.txt` reflect the older nine-step run and must be
+regenerated on the el10 VPS (`COLUMNS=200`; `COLUMNS=140` for the README splice)
+now that the script has more steps. Docs updated (CLAUDE.md, AGENTS.md, plan.md,
+README script sections). No test change - the scripts are not unit-tested; the
+suite stays 233.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

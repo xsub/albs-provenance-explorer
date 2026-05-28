@@ -26,18 +26,19 @@ pytest tests/test_trust.py::test_x  # single test
 ruff check albs_graph tests         # lint
 mypy albs_graph                     # strict typing (configured in pyproject.toml)
 albs-graph --help                   # CLI entrypoint (also: python -m albs_graph.cli.main)
-./example--verbose.sh               # regenerate demo artifacts for build 17812
-VERIFY_GIT=1 ./example--verbose.sh  # also verify git source commit
-./example.sh                        # portable demo (any OS; no native tools)
-./example--almalinux-native.sh      # native dnf/rpm/rpmgraph/cas stack (AlmaLinux host)
-./example--almalinux.sh             # CAS hash verification (opt-in; crash-proof if cas absent)
+./example--full.sh                  # THE single comprehensive demo: every command + feature end to end
+BUILD_ID=58167 PACKAGE=libsndfile ./example--full.sh   # retarget to another build/package
 ```
+
+`example--full.sh` is the one demo script (it superseded the older `example.sh` /
+`example--tour.sh` / `example--verbose.sh` / `example--almalinux*.sh`). Every step
+is gated and skips gracefully when a tool, file, or the network is missing.
 
 CAS (`--use-cas`) and the native RPM/DNF integrations (`--use-dnf`,
 `--repograph`, `--repograph-dot`, `--with-rpm-payloads`) are all optional and
 degrade gracefully when the tool is missing - never required, never fatal.
 
-The verbose demo caches raw ALBS metadata in `examples/live-build-17812/build-17812.albs.json`. That one file is committed (un-ignored in `.gitignore`) because the `build_analysis` tests use it as a fixture and build 17812 is a finished, immutable build; every *other* `*.albs.json` cache stays gitignored. Cache TTL defaults to 5 minutes; override with `CACHE_TTL=<seconds>`. Force a refetch with `--refresh-cache` on CLI commands.
+`example--full.sh` caches raw ALBS metadata under `examples/live-build-<id>/build-<id>.albs.json`. The committed `examples/live-build-17812/build-17812.albs.json` (un-ignored in `.gitignore`) is the `build_analysis` test fixture - build 17812 is a finished, immutable build; every *other* `*.albs.json` cache stays gitignored. Cache TTL defaults to 5 minutes; override with `CACHE_TTL=<seconds>`. Force a refetch with `--refresh-cache` on CLI commands.
 
 ## Architecture
 
@@ -62,7 +63,7 @@ These distinctions show up across the code and must be preserved when adding ada
 - **PURL ≠ CPE ≠ CAS.** PURL = package coordinates (live ALBS RPMs use `pkg:rpm/almalinux/...` with `arch`, `distro`, version/release qualifiers). CPE = security-applicability identity; the graph stores `cpe: null` plus unverified `cpe_candidates` and must not assert an official CPE match without a verification adapter. CAS = build/source/artifact evidence; CAS nodes preserve fields like `build_id`, `alma_commit_sbom_hash`, `git_url`, `git_ref`, `git_commit`, `build_host`, `built_by`.
 - **Trust completeness has two axes.** `provenance_complete` covers ALBS build linkage, signature, release context, source/artifact CAS evidence. `security_context_complete` covers attached SBOM and errata/CVE linkage. `complete` requires both. Do not collapse these - the live `nginx-core` demo intentionally shows provenance complete while security context is missing.
 - **Evidence vs. resolution.** Source-manifest discovery records that a `package.json` or `go.mod` exists; it does NOT run Pip/Poetry/Maven/Gradle/npm/Cargo/Go resolution. Adding that is a separate future layer that consumes manifests and emits resolved dependency facts back into the graph.
-- **CAS hashes are reported, not verified.** `alma_commit_cas_hash` and artifact `cas_hash` reflect what ALBS reports. Only mark CAS evidence as externally verified when an explicit verification step (e.g. `example--almalinux.sh` running `cas`) records that fact.
+- **CAS hashes are reported, not verified.** `alma_commit_cas_hash` and artifact `cas_hash` reflect what ALBS reports. Only mark CAS evidence as externally verified when an explicit verification step (e.g. `example--full.sh` running `cas` via `coverage --use-cas`) records that fact.
 - **RPM `requires`/`provides` are facts in the graph, not its organizing principle.** Provenance edges (`built_by`, `produces`, `signed_as`, `released_to`, `authenticated_by`, `derived_from`) are primary; `requires_runtime` is secondary.
 
 ## Testing

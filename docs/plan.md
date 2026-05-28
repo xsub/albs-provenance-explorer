@@ -93,8 +93,9 @@ RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed
   deps, weak (recommends/suggests) deps as OPTIONAL, conflicts/obsoletes facts,
   and `--whatprovides` for the soname->package mapping. `coverage --use-dnf`.
 - ✅ Enrichment selectors: `--package`, `--arch`, `--all-archs`, `--all-packages`.
-- ✅ Two example scripts: `example.sh` (portable) and
-  `example--almalinux-native.sh` (native dnf/rpm/rpmgraph/cas stack).
+- ✅ One comprehensive demo script: `example--full.sh` (every command + feature
+  end to end; each step gated, skipping gracefully when a tool/file/network is
+  absent). It superseded the earlier per-facet scripts.
 - ✅ `albs-graph coverage [--with-rpm-headers] [--with-rpm-payloads] [--use-cas]
   [--sbom FILE] [--repograph-dot FILE] [--package P] [--arch A] [--all-archs]`.
 - ✅ Soname → package resolution (`coverage --resolve-sonames` / `--provides-map`)
