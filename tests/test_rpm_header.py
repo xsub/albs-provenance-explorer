@@ -277,3 +277,34 @@ def test_candidate_urls_include_live_repo_for_current_builds() -> None:
     vault = urls.index("https://repo.almalinux.org/vault/10.2/BaseOS/x86_64/os/Packages/"
                        "nginx-core-1.26.3-6.el10_2.3.x86_64.rpm")
     assert live < vault
+
+
+def test_requests_range_fetch_rejects_range_ignoring_200_so_httpcache_is_not_poisoned(
+    tmp_path,
+) -> None:
+    # Regression: a server that ignores `Range:` and returns 200 with the full
+    # file would, under the old code, be cached under the small-range key --
+    # subsequent reads of "the header" would replay the *full RPM* bytes.
+    # Validation lives in _requests_range_fetch (so the cascade moves on); the
+    # HttpCache wrapper never sees the bad body.
+    from unittest.mock import patch
+
+    import pytest
+
+    from albs_graph.adapters._http_cache import HttpCache, cached_range_fetcher
+    from albs_graph.adapters.rpm_remote import RpmHeaderFetchError, _requests_range_fetch
+
+    class _RangeIgnoringResponse:
+        status_code = 200  # honest servers return 206 here; this one ignored Range
+        content = b"x" * 5000  # full RPM, not the requested ~100-byte range
+
+    with patch("requests.get", return_value=_RangeIgnoringResponse()):
+        with pytest.raises(RpmHeaderFetchError):
+            _requests_range_fetch("https://example/rpm", 0, 99)
+
+        # And through HttpCache the same raise propagates -- nothing is written.
+        cache = HttpCache(root=tmp_path / "cache", enabled=True)
+        with pytest.raises(RpmHeaderFetchError):
+            cached_range_fetcher(cache, _requests_range_fetch)("https://example/rpm", 0, 99)
+
+    assert list((tmp_path / "cache").rglob("*")) == []  # nothing cached

@@ -359,4 +359,18 @@ def _requests_range_fetch(url: str, start: int, end: int) -> bytes:
     )
     if response.status_code not in (200, 206):
         raise RpmHeaderFetchError(f"HTTP {response.status_code} for {url}")
-    return response.content
+    # A 206 means the server honoured the Range; a 200 means it ignored Range
+    # and returned the full file. Caching that body under a small-range cache
+    # key would poison the cache forever (an RPM parse on the wrong bytes is
+    # the visible symptom). Accept 200 only when the body length matches the
+    # requested range exactly; otherwise raise so _try_candidates moves on and
+    # HttpCache never sees the bad bytes.
+    body = response.content
+    if response.status_code == 200:
+        expected = end - start + 1
+        if len(body) != expected:
+            raise RpmHeaderFetchError(
+                f"{url}: server ignored Range (HTTP 200 with {len(body)} bytes; "
+                f"expected {expected} for bytes={start}-{end})"
+            )
+    return body

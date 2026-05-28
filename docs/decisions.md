@@ -1785,6 +1785,34 @@ convention worth a CLAUDE.md rule once one more example surfaces.
 
 ---
 
+## D66 - HttpCache cannot store Range-ignoring 200 responses (bug #6)
+
+Review item #6 (silent cache poisoning). `_requests_range_fetch` accepted both
+HTTP 206 (the server honoured `Range:`) and HTTP 200 (the server ignored
+`Range:` and returned the *full file*). The cache key, however, was the
+`(url, start, end)` tuple. So a Range-ignoring server's full-file body got
+stored under a tiny-range cache key and replayed forever -- every subsequent
+"header" read for that URL replayed the wrong bytes (full RPM), and the RPM
+parse on the next run would fail or be wrong with no obvious cause.
+
+The fix lives at the **fetcher**, not in HttpCache: HttpCache is intentionally
+HTTP-agnostic (it stores whatever its callable returns). `_requests_range_fetch`
+now requires either 206, or 200 with `len(body) == end - start + 1`. Anything
+else raises `RpmHeaderFetchError`, the same exception
+`_try_candidates` already catches to advance to the next mirror; the cascade
+self-heals and HttpCache never sees the bad body.
+
+The 200-with-correct-length tolerance is deliberate: some intermediaries (a CDN
+serving from cache) may legitimately return 200 with the exact requested slice;
+if the byte count matches, the bytes are correct and cacheable.
+
+Tests +1 (`test_requests_range_fetch_rejects_range_ignoring_200_so_httpcache_is_not_poisoned`):
+`unittest.mock.patch` returns a fake 200 with full-RPM-sized content for a
+small-range request; the call raises *and* the cache directory stays empty.
+Suite now 257.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

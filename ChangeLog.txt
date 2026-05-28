@@ -19,7 +19,17 @@ Conventions:
 2026-05-28
 ----------------------------------------------------------------------
 
-- (this)   fix(model+security): dry-run isolation + EvidencePatch capture for
+- (this)   fix(adapters): HttpCache cannot store Range-ignoring 200 responses
+           (review bug #6). `_requests_range_fetch` now requires 206 or 200
+           with `len(body) == end - start + 1`; otherwise raises
+           `RpmHeaderFetchError` so `_try_candidates` advances to the next
+           mirror and HttpCache never sees the bad body. The CDN-cached
+           200-with-correct-length case is still accepted (the bytes are
+           correct). +1 regression test (mocked Range-ignoring server: the
+           call raises and the cache dir stays empty). Suite 257. (D66;
+           review bug #6.)
+
+- 227b997  fix(model+security): dry-run isolation + EvidencePatch capture for
            CPE verification (review bug #1). `ProvenanceGraph.copy()` now
            deep-copies node/edge metadata trees, so an in-place mutation on a
            nested value of the copy (`security_identity`, candidate dicts) no
