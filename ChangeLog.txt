@@ -16,6 +16,17 @@ Conventions:
     via `git log main --oneline` if needed.
 
 ----------------------------------------------------------------------
+2026-05-29
+----------------------------------------------------------------------
+
+- (this)   feat(cli): port build-SBOM auto-discovery from max. `coverage`,
+           `identify`, `trust-path`, and `vuln` now find
+           `build-<id>.cyclonedx.json` next to the cache or under examples
+           when `--build-id` is used without explicit `--build-sbom`; explicit
+           SBOM paths still win and `--no-auto-sbom` disables discovery. Added
+           focused discovery/CLI resolver tests; suite now 308. (D91.)
+
+----------------------------------------------------------------------
 2026-05-28
 ----------------------------------------------------------------------
 

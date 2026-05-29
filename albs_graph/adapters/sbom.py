@@ -27,6 +27,33 @@ def import_sbom(path: str | Path, attach_to: str | None = None) -> ProvenanceGra
     return graph
 
 
+def discover_build_sbom(
+    build_id: int,
+    *,
+    cache_path: str | Path | None = None,
+    search_dirs: tuple[str | Path, ...] = ("examples",),
+) -> Path | None:
+    """Find a conventionally-named CycloneDX SBOM file for an ALBS build.
+
+    ALBS build metadata does not carry an SBOM URL. The build SBOM is produced
+    separately by alma-sbom as ``build-N.cyclonedx.json``; this helper applies
+    the same file convention used by ``example--full.sh``.
+    """
+
+    candidates: list[Path] = []
+    filename = f"build-{build_id}.cyclonedx.json"
+    if cache_path is not None:
+        cache = Path(cache_path)
+        candidates.append(cache.parent / filename)
+        candidates.append(cache.parent.parent / filename)
+    for directory in search_dirs:
+        candidates.append(Path(directory) / filename)
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
+
+
 def attach_sbom(graph: ProvenanceGraph, rpm_node_id: str | None, sbom_path: str | Path) -> str:
     path = Path(sbom_path)
     data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))

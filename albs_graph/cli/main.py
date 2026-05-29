@@ -38,6 +38,7 @@ from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
 from albs_graph.adapters.sbom import (
     attach_cyclonedx_sbom_claims,
+    discover_build_sbom,
     enrich_graph_with_build_sbom,
     import_sbom,
 )
@@ -453,6 +454,12 @@ def coverage_command(
         help="CycloneDX build SBOM (e.g. from alma-sbom) matched to the build's own RPMs: "
         "attaches each RPM's vendor CPE (moves the identity axis) + PURL/hash + an SBOM link.",
     ),
+    auto_sbom: bool = typer.Option(
+        True,
+        "--auto-sbom/--no-auto-sbom",
+        help="When --build-sbom is not given and --build-id is, auto-discover "
+        "build-<id>.cyclonedx.json next to --cache or under examples/.",
+    ),
     requirements: Optional[Path] = typer.Option(
         None, "--requirements", help="Python requirements.txt to attach as PyPI dependency claims."
     ),
@@ -543,6 +550,9 @@ def coverage_command(
     )
     _log_graph_stats(verbose, graph)
     _ = all_packages  # default behavior; flag documents intent and pairs with --all-archs
+    build_sbom = _resolve_build_sbom(
+        build_sbom, build_id, cache=cache, auto=auto_sbom, verbose=verbose
+    )
 
     spec = RunSpec(
         package=package,
@@ -806,6 +816,11 @@ def identify_command(
     build_sbom: Optional[Path] = typer.Option(
         None, "--build-sbom", help="CycloneDX build SBOM (alma-sbom) to attach to the build's RPMs."
     ),
+    auto_sbom: bool = typer.Option(
+        True,
+        "--auto-sbom/--no-auto-sbom",
+        help="Auto-discover build-<id>.cyclonedx.json near --cache when --build-sbom is not given.",
+    ),
     output_format: str = typer.Option("summary", "--format", "-f", help="summary or json."),
     base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
     cache: Optional[Path] = typer.Option(None, "--cache", help="ALBS metadata cache JSON."),
@@ -828,6 +843,9 @@ def identify_command(
     else:
         raise ValueError("identify requires --build-id or --source")
 
+    build_sbom = _resolve_build_sbom(
+        build_sbom, build_id, cache=cache, auto=auto_sbom, verbose=verbose
+    )
     if build_sbom is not None:
         _log_step(verbose, f"Attaching build SBOM {build_sbom} to the build's RPMs")
         enrich_graph_with_build_sbom(graph, build_sbom, on_progress=_progress(verbose))
@@ -912,6 +930,11 @@ def trust_path_command(
         "--build-sbom",
         help="CycloneDX build SBOM (alma-sbom) to attach, so the trust path's has_sbom check passes.",
     ),
+    auto_sbom: bool = typer.Option(
+        True,
+        "--auto-sbom/--no-auto-sbom",
+        help="Auto-discover build-<id>.cyclonedx.json near --cache when --build-sbom is not given.",
+    ),
     errata: Optional[Path] = typer.Option(
         None,
         "--errata",
@@ -942,6 +965,9 @@ def trust_path_command(
     else:
         raise ValueError("trust-path requires --build-id or --source")
     _log_graph_stats(verbose, graph)
+    build_sbom = _resolve_build_sbom(
+        build_sbom, build_id, cache=cache, auto=auto_sbom, verbose=verbose
+    )
     if build_sbom is not None:
         _log_step(verbose, f"Attaching build SBOM {build_sbom} to the build's RPMs")
         enrich_graph_with_build_sbom(graph, build_sbom, on_progress=_progress(verbose))
@@ -1137,6 +1163,11 @@ def vuln_command(
         "--build-sbom",
         help="CycloneDX build SBOM (alma-sbom): set each RPM's vendor CPE so identities resolve.",
     ),
+    auto_sbom: bool = typer.Option(
+        True,
+        "--auto-sbom/--no-auto-sbom",
+        help="Auto-discover build-<id>.cyclonedx.json near --cache when --build-sbom is not given.",
+    ),
     cve_feed: Optional[Path] = typer.Option(
         None,
         "--cve-feed",
@@ -1172,6 +1203,9 @@ def vuln_command(
     else:
         raise ValueError("vuln requires --build-id or --source")
 
+    build_sbom = _resolve_build_sbom(
+        build_sbom, build_id, cache=cache, auto=auto_sbom, verbose=verbose
+    )
     selector = make_binary_rpm_selector(package=package, arch=arch)
     if with_rpm_payloads:
         _log_step(verbose, "Analyzing payload ELFs for linkage")
@@ -1621,6 +1655,26 @@ def _progress(verbose: bool) -> Callable[[str], None] | None:
 def _log_step(verbose: bool, message: str) -> None:
     if verbose:
         verbose_console.print(f"[cyan]step[/cyan] {message}")
+
+
+def _resolve_build_sbom(
+    explicit: Path | None,
+    build_id: int | None,
+    *,
+    cache: Path | None,
+    auto: bool,
+    verbose: bool,
+) -> Path | None:
+    """Choose the build SBOM: explicit option wins; otherwise discover by convention."""
+
+    if explicit is not None:
+        return explicit
+    if not auto or build_id is None:
+        return None
+    found = discover_build_sbom(build_id, cache_path=cache)
+    if found is not None:
+        _log_step(verbose, f"Auto-discovered build SBOM at {found}")
+    return found
 
 
 def _log_package_metadata(verbose: bool, package: str, source: str) -> None:

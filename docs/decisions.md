@@ -2390,6 +2390,30 @@ same guarded `sbom_args` expansion as the earlier CLI steps. Suite now 297.
 
 ---
 
+## D91 - Port max build-SBOM auto-discovery into the workbench branch
+
+The `max` branch added CLI-side discovery for AlmaLinux build SBOM files: when
+a command is run with `--build-id N` and no explicit `--build-sbom`, the CLI can
+look for the conventional `build-N.cyclonedx.json` file that `alma-sbom` and
+`example--full.sh` produce. The workbench branch already had GUI-side SBOM
+suggestion, but its CLI/backend path still required explicit `--build-sbom`.
+
+Ported behavior:
+
+- New `discover_build_sbom(build_id, cache_path=..., search_dirs=("examples",))`
+  helper checks the cache sibling, one level above the cache, then search dirs.
+- `coverage`, `identify`, `trust-path`, and `vuln` gain
+  `--auto-sbom/--no-auto-sbom`; auto-discovery is enabled by default.
+- Explicit `--build-sbom FILE` wins and skips discovery.
+- `--source`-only commands do not discover because there is no build id.
+- Verbose mode logs the discovered file path.
+
+Tests from the `max` change cover discovery precedence, no-hit behavior,
+directory-vs-file handling, build-id-specific names, and the CLI resolver
+helper. Suite now 308.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
