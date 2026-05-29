@@ -1961,6 +1961,78 @@ Coverage golden byte-identical. Suite stays 263.
 
 ---
 
+## D79 - Live errata source + three-state errata status (no advisory != missing)
+
+User-spotted, and correct: the trust path's ``has_errata_link`` showing
+"missing" is misleading. Errata is a *queryable* fact (dnf updateinfo / the
+AlmaLinux errata feed), and for the vast majority of packages **having no
+advisory is the normal, complete state** -- a clean package was being
+penalised for not being vulnerable, which is backwards. The root cause: the
+graph conflated two states into one boolean. ``has_errata_link`` was true only
+when an advisory edge existed, and an advisory edge existed only when a hand-
+supplied ``--errata FILE`` (or the fixture) created one. So absent that file
+the check was *always* "missing" -- and "missing" meant **"we never looked"**,
+not "this package has no advisory".
+
+Two-part fix.
+
+**Part 1 -- query (new ``albs_graph/adapters/errata_source.py``).** An
+``ErrataSource`` Protocol with two implementations behind an
+``errata_source_for`` factory (the ``resolver_for`` pattern, the user's
+choice of "both behind one contract"):
+
+- ``HttpErrataSource`` -- the AlmaLinux errata feed JSON (file or URL),
+  fetched through ``HttpCache`` + TTL by reusing ``live_feeds._cached_get``
+  (D76). Indexes ``package name -> [(NEVRA, advisory)]``; matches a build by
+  exact name+version+release(+arch). Tolerant of feed shape (bare list /
+  ``{"data": ...}`` / ``{"errata": ...}``) and CVE encoding (``references``
+  with ``type=cve`` or a flat ``cves`` list).
+- ``DnfErrataSource`` -- ``dnf -q updateinfo list --all`` on an AlmaLinux
+  host, parsing the ``ADVISORY  SEV/TYPE  NEVRA`` columns. Degrades to "not
+  consulted" when ``dnf`` is absent (e.g. on a Mac), like the other dnf
+  adapters.
+
+Both expose ``consulted: bool`` -- the load-bearing distinction between
+"checked, none found" and "never checked".
+
+**Part 2 -- three-state status (the user's choice of explicit ok/none/unknown,
+like D71 split identity).** ``TrustPathReport`` gains ``errata_status``:
+
+- ``advisory_present`` -- an advisory edge ships this exact NEVRA.
+- ``confirmed_clean`` -- a source was consulted and found none (node carries
+  ``errata_status="confirmed_clean"`` metadata, written by
+  ``attach_errata_from_source``).
+- ``not_checked`` -- neither; no source was consulted (the historical default).
+
+``has_errata_link`` is now satisfied by the first **two** states -- a
+confirmed-clean package with an SBOM is ``security_context_complete``. Only
+``not_checked`` leaves it genuinely open. ``attach_errata_from_source`` records
+the outcome per RPM (advisory -> ERRATA node + ``FIXES`` edge + CVE nodes, like
+``attach_errata_file``; consulted-but-none -> the clean marker; not consulted
+-> nothing, so it never lies).
+
+Wiring: a pipeline ``ErrataSourceStep`` (applies on ``errata_source`` or
+``errata_feed``; uses the binary-RPM selector, not a single subject, because a
+build's errata coverage spans all its artifacts), plus ``RunSpec`` fields and
+``--errata-source {http,dnf}`` / ``--errata-feed PATH`` / ``--errata-url URL``
+on ``coverage`` / ``vuln`` / ``trust-path``. The trust-path summary renders the
+nuance: ``ok (advisory)`` / ``ok (no advisory)`` / ``missing (not checked)``.
+
+Deliberately **no cas path** (the user's "ok ale bez casa"):
+``alma_commit_sbom_hash`` exists in build.json and could address the SBOM in
+CAS, but that needs the ``cas`` CLI + endpoint -- an opt-in future, like
+``--use-cas``.
+
+Backward compatible: nothing sets ``errata_status`` unless an errata source
+runs, so existing tests (fixture = ``advisory_present``; ``test_errata.py`` =
+``not_checked``) are unchanged; coverage / vuln golden output byte-identical.
++15 test cases (HTTP match/no-match/feed-shapes/url/failure, dnf parse/missing/
+nonzero, factory routing, attach three-state, graph three-state, clean+SBOM
+completes, not-consulted stays not_checked). Suite 317 -> 332. ruff + mypy
+--strict clean; no network.
+
+---
+
 ## D78 - Auto-discover the build SBOM from --build-id (file convention)
 
 User-spotted: "--build-sbom should be discoverable from build.json since

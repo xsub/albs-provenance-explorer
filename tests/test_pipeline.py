@@ -69,6 +69,7 @@ def test_default_steps_are_the_enrichment_flow_in_order() -> None:
         "python",
         "python_imports",
         "errata",
+        "errata_source",
         "verify_cpe",
         "rpm_headers",
         "rpm_payloads",
@@ -85,3 +86,5 @@ def test_default_steps_gate_on_their_spec_fields() -> None:
     assert by_name["rpm_headers"].applies(RunSpec(with_rpm_headers=True))
     assert by_name["soname"].applies(RunSpec(resolve_sonames=True))
     assert by_name["build_sbom"].applies(RunSpec(build_sbom=Path("sbom.json")))
+    assert by_name["errata_source"].applies(RunSpec(errata_source="dnf"))
+    assert by_name["errata_source"].applies(RunSpec(errata_feed=Path("errata.json")))

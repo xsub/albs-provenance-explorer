@@ -16,10 +16,37 @@ Conventions:
     via `git log main --oneline` if needed.
 
 ----------------------------------------------------------------------
+2026-05-30
+----------------------------------------------------------------------
+
+- (this)   feat(errata): live errata source + three-state errata status.
+           User-spotted: trust path's "missing errata" is misleading --
+           errata is queryable, and no advisory is the NORMAL state, not
+           an incompleteness. Root cause: graph conflated "never looked"
+           with "no advisory" into one boolean. Fix (two parts): (1) new
+           adapters/errata_source.py with ErrataSource Protocol + two
+           impls behind errata_source_for factory -- HttpErrataSource
+           (AlmaLinux errata feed file/URL via HttpCache+TTL, reusing
+           live_feeds._cached_get from D76) and DnfErrataSource
+           (`dnf -q updateinfo list --all`, degrades when dnf absent);
+           both expose consulted:bool. (2) TrustPathReport.errata_status
+           three-state: advisory_present / confirmed_clean / not_checked;
+           has_errata_link now satisfied by present OR clean (a clean
+           package with an SBOM is security_context_complete). Pipeline
+           ErrataSourceStep (binary-RPM selector, not one subject) +
+           RunSpec errata_source/errata_feed/errata_url + CLI flags on
+           coverage/vuln/trust-path; trust-path renders ok(advisory) /
+           ok(no advisory) / missing(not checked). NO cas path (user's
+           "ok ale bez casa"). Backward compatible: nothing sets
+           errata_status unless a source runs, so existing tests + the
+           coverage/vuln golden output are unchanged. +15 test cases.
+           Suite 317 → 332. ruff + mypy --strict clean; no network. (D79)
+
+----------------------------------------------------------------------
 2026-05-29
 ----------------------------------------------------------------------
 
-- (this)   feat(cli): auto-discover the build SBOM from --build-id
+- f7409be  feat(cli): auto-discover the build SBOM from --build-id
            (file convention). User noted that passing --build-sbom is
            redundant when the SBOM file already lives next to the cache.
            ALBS build.json itself does NOT carry an SBOM URL (verified on
