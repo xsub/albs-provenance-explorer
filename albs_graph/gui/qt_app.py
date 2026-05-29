@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import re
 import signal
@@ -49,6 +50,8 @@ RECIPE_POPUP_MIN_WIDTH = 460
 BOTTOM_DOCK_MIN_HEIGHT = 96
 BOTTOM_PAGE_MIN_HEIGHT = 0
 GANTT_MIN_HEIGHT = 48
+CLASSIC_ROOT_ENV = "ALBS_EXPLORER_CLASSIC_ROOT"
+CLASSIC_TMP_ROOT = Path("/private/tmp/albs-provenance-workbench")
 
 
 def _repo_root() -> Path:
@@ -66,6 +69,11 @@ def _short_path_label(value: str) -> str:
         parent = path.parent.name
         return f"{parent}/{path.name}" if parent and parent != "." else path.name
     return value
+
+
+def _prepend_env_path(path: Path, existing: str) -> str:
+    prefix = str(path)
+    return f"{prefix}{os.pathsep}{existing}" if existing else prefix
 
 
 class AnalysisSignals(QtCore.QObject):
@@ -264,6 +272,96 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
         self._scene.addLine(0, y + row_height / 2 - 1, left + 920, y + row_height / 2 - 1, QtGui.QPen(palette["row"]))
 
 
+class ConsoleProcessDialog(QtWidgets.QDialog):
+    def __init__(
+        self,
+        *,
+        title: str,
+        program: str,
+        arguments: list[str],
+        cwd: Path,
+        environment: QtCore.QProcessEnvironment,
+        intro: str,
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.resize(1120, 720)
+        self.exit_code: int | None = None
+        self.exit_status: QtCore.QProcess.ExitStatus | None = None
+
+        self.output = QtWidgets.QPlainTextEdit()
+        self.output.setReadOnly(True)
+        self.output.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
+        self.output.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse | QtCore.Qt.TextSelectableByKeyboard
+        )
+
+        self.ok_button = QtWidgets.QPushButton("OK")
+        self.ok_button.setEnabled(False)
+        self.ok_button.clicked.connect(self.accept)
+        self.stop_button = QtWidgets.QPushButton("Stop")
+        self.stop_button.clicked.connect(self.stop_process)
+
+        buttons = QtWidgets.QHBoxLayout()
+        buttons.addStretch(1)
+        buttons.addWidget(self.stop_button)
+        buttons.addWidget(self.ok_button)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.output)
+        layout.addLayout(buttons)
+
+        self.process = QtCore.QProcess(self)
+        self.process.setWorkingDirectory(str(cwd))
+        self.process.setProcessEnvironment(environment)
+        self.process.setProcessChannelMode(QtCore.QProcess.MergedChannels)
+        self.process.readyReadStandardOutput.connect(self._read_output)
+        self.process.finished.connect(self._finished)
+        self.process.errorOccurred.connect(self._failed)
+
+        self._append(intro.rstrip() + "\n\n")
+        self.process.start(program, arguments)
+
+    def stop_process(self) -> None:
+        if self.process.state() == QtCore.QProcess.NotRunning:
+            return
+        self._append("\n[workbench] stopping subprocess...\n")
+        self.process.terminate()
+        if not self.process.waitForFinished(3000):
+            self.process.kill()
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        if self.process.state() != QtCore.QProcess.NotRunning:
+            self.stop_process()
+        event.accept()
+
+    def _read_output(self) -> None:
+        data = bytes(self.process.readAllStandardOutput()).decode(errors="replace")
+        if data:
+            self._append(data)
+
+    def _failed(self, error: QtCore.QProcess.ProcessError) -> None:
+        self._append(f"\n[workbench] subprocess error: {error}\n")
+        self.stop_button.setEnabled(False)
+        self.ok_button.setEnabled(True)
+
+    def _finished(self, exit_code: int, exit_status: QtCore.QProcess.ExitStatus) -> None:
+        self.exit_code = exit_code
+        self.exit_status = exit_status
+        status = "ok" if exit_code == 0 and exit_status == QtCore.QProcess.NormalExit else "failed"
+        self._append(f"\n[workbench] subprocess finished: {status} (exit code {exit_code})\n")
+        self.stop_button.setEnabled(False)
+        self.ok_button.setEnabled(True)
+
+    def _append(self, text: str) -> None:
+        cursor = self.output.textCursor()
+        cursor.movePosition(QtGui.QTextCursor.End)
+        cursor.insertText(text)
+        self.output.setTextCursor(cursor)
+        self.output.ensureCursorVisible()
+
+
 class WorkbenchWindow(QtWidgets.QMainWindow):
     def __init__(
         self,
@@ -293,6 +391,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         self.source_edit = QtWidgets.QLineEdit(str(initial_source or ""))
         self.build_id_edit = QtWidgets.QLineEdit(str(initial_build_id or ""))
+        self.build_id_edit.setPlaceholderText("Enter build id")
         self.build_sbom_edit = QtWidgets.QLineEdit(str(initial_build_sbom or ""))
         self.build_sbom_edit.setPlaceholderText("Build SBOM")
         self.build_sbom_edit.setClearButtonEnabled(True)
@@ -719,6 +818,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.source_edit.textChanged.connect(lambda _text: self._update_input_summary())
         self.build_sbom_edit.textChanged.connect(lambda _text: self._update_input_summary())
         self.build_id_edit.textChanged.connect(lambda _text: self._update_input_summary())
+        self.build_id_edit.returnPressed.connect(self.run_classic_build_pipeline)
         self.artifact_list.currentItemChanged.connect(self._artifact_changed)
         self.artifact_filter.textChanged.connect(self._filter_artifacts)
         self.mode_combo.currentTextChanged.connect(lambda _text: self.render_current_slice())
@@ -931,6 +1031,111 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         worker.signals.failed.connect(self._analysis_failed)
         worker.signals.finished.connect(self._analysis_finished)
         self.thread_pool.start(worker)
+
+    def run_classic_build_pipeline(self) -> None:
+        build_id = self.build_id_edit.text().strip()
+        if not build_id:
+            return
+        if not build_id.isdigit():
+            self._show_error("Build id must be a number.")
+            return
+        try:
+            request = self._classic_build_request(build_id)
+        except ValueError as exc:
+            self._show_error(str(exc))
+            return
+
+        dialog = ConsoleProcessDialog(
+            title=f"Classic ALBS provenance run for build {build_id}",
+            program="/bin/bash",
+            arguments=[str(request["script"])],
+            cwd=request["classic_root"],
+            environment=request["environment"],
+            intro=str(request["intro"]),
+            parent=self,
+        )
+        dialog.exec_()
+
+        cache = request["cache"]
+        if dialog.exit_code != 0:
+            self._show_error("Classic ALBS provenance run did not finish successfully.")
+            return
+        if not cache.exists():
+            self._show_error(f"Classic run finished but did not create {cache}.")
+            return
+
+        self.source_edit.setText(str(cache))
+        self.build_id_edit.clear()
+        sbom = request["sbom_file"]
+        if sbom is not None and sbom.exists():
+            self.build_sbom_edit.setText(str(sbom))
+        self._log(f"Opening classic CLI cache {cache}")
+        self.run_analysis()
+
+    def _classic_build_request(self, build_id: str) -> dict[str, object]:
+        classic_root = self._classic_root()
+        script = classic_root / "example--full.sh"
+        if not script.exists():
+            raise ValueError(f"Classic example runner does not exist: {script}")
+
+        run_root = CLASSIC_TMP_ROOT / f"build-{build_id}"
+        live_dir = run_root / "live"
+        out_dir = run_root / "demo"
+        cache = live_dir / f"build-{build_id}.albs.json"
+        live_dir.mkdir(parents=True, exist_ok=True)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        sbom_file = self._classic_sbom_file(build_id, classic_root)
+        environment = QtCore.QProcessEnvironment.systemEnvironment()
+        environment.insert("BUILD_ID", build_id)
+        environment.insert("LIVE_DIR", str(live_dir))
+        environment.insert("OUT_DIR", str(out_dir))
+        environment.insert("CACHE", str(cache))
+        environment.insert("PYTHONPATH", _prepend_env_path(classic_root, environment.value("PYTHONPATH")))
+        environment.insert("PATH", _prepend_env_path(Path(sys.executable).parent, environment.value("PATH")))
+        if sbom_file is not None:
+            environment.insert("SBOM_FILE", str(sbom_file))
+
+        intro = "\n".join(
+            [
+                f"[workbench] classic root: {classic_root}",
+                f"[workbench] output root: {run_root}",
+                f"[workbench] cache target: {cache}",
+                f"[workbench] command: BUILD_ID={build_id} /bin/bash {script}",
+            ]
+        )
+        return {
+            "classic_root": classic_root,
+            "script": script,
+            "environment": environment,
+            "cache": cache,
+            "sbom_file": sbom_file,
+            "intro": intro,
+        }
+
+    def _classic_root(self) -> Path:
+        configured = os.environ.get(CLASSIC_ROOT_ENV)
+        candidates = []
+        if configured:
+            candidates.append(Path(configured).expanduser())
+        candidates.append(_repo_root().parent / "albs-provenance-explorer")
+        candidates.append(_repo_root())
+        for candidate in candidates:
+            if (candidate / "example--full.sh").exists():
+                return candidate
+        raise ValueError(
+            "Could not find the classic max checkout. Set "
+            f"{CLASSIC_ROOT_ENV} to the albs-provenance-explorer path."
+        )
+
+    def _classic_sbom_file(self, build_id: str, classic_root: Path) -> Path | None:
+        for candidate in (
+            _repo_root() / "examples" / f"build-{build_id}.cyclonedx.json",
+            classic_root / "examples" / f"build-{build_id}.cyclonedx.json",
+        ):
+            if candidate.exists():
+                return candidate
+        return None
 
     def _load_spec(self) -> GraphLoadSpec:
         build_id = self.build_id_edit.text().strip()

@@ -275,6 +275,13 @@ switches; full source/SBOM paths move to tooltips plus the selectable status-bar
 summary. Reload Program, Exit, window-close cleanup and terminal Ctrl+C handling
 are part of the application lifecycle rather than ad hoc toolbar buttons.
 
+Entering a build id and pressing Enter now delegates acquisition to the classic
+CLI workflow: the workbench runs the sibling `max` checkout's `example--full.sh`
+in a subprocess, streams output into a modal console dialog, waits for OK after
+completion, then opens the generated `/private/tmp/albs-provenance-workbench`
+cache in the PyQt app. This keeps the GUI backend-oriented while still reusing
+the known comprehensive CLI path for live build collection.
+
 ---
 
 ## 10. Recommended First Implementation Path
