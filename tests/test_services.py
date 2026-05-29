@@ -13,14 +13,18 @@ from albs_graph.services import (
     AnalysisService,
     GraphLoadSpec,
     WorkbenchSession,
+    compare_builds,
     compare_artifacts,
     coverage_rows,
+    evidence_matrix_rows,
     evidence_bundle,
     evidence_report_html,
+    filter_graph_layers,
     GraphQueries,
     GraphSlices,
     findings_for_analysis,
     investigation_recipes,
+    timeline_gantt_rows,
     timeline_rows,
     timeline_tree,
 )
@@ -176,6 +180,57 @@ def test_workbench_timeline_tree_uses_build_analysis_steps() -> None:
     assert x86_task.duration_seconds == 398.212342
     assert any(child.label == "build_node_stats.build_binaries" for child in x86_task.children)
     assert any(child.kind == "artifacts" for child in x86_task.children)
+
+
+def test_workbench_gantt_rows_preserve_timing_offsets() -> None:
+    result = AnalysisService(pipeline=AnalysisPipeline(steps=())).analyze(
+        GraphLoadSpec(source=Path("examples/live-build-17812/build-17812.albs.json")),
+        RunSpec(),
+    )
+
+    rows = timeline_gantt_rows(result.graph, result.build_analysis)
+    x86_task = next(row for row in rows if row.label == "ALBS task 188077 x86_64")
+
+    assert x86_task.offset_seconds >= 0
+    assert x86_task.duration_seconds == 398.212342
+    assert any(row.depth == 1 and row.kind == "build_step" for row in rows)
+
+
+def test_workbench_evidence_matrix_reports_per_artifact_completeness() -> None:
+    rows = evidence_matrix_rows(build_synthetic_fixture_graph())
+    row = next(item for item in rows if item.node_id == SYNTHETIC_RPM_ID)
+
+    assert row.provenance == "complete"
+    assert row.security_context == "complete"
+    assert row.signature == "ok"
+    assert row.completeness > 0.75
+
+
+def test_workbench_layer_filter_hides_disabled_security_context() -> None:
+    graph = build_synthetic_fixture_graph()
+
+    filtered = filter_graph_layers(graph, {"build"}, always_nodes={SYNTHETIC_RPM_ID})
+
+    assert SYNTHETIC_RPM_ID in filtered.nodes
+    assert not filtered.find_by_type(NodeType.SBOM)
+    assert not filtered.find_by_type(NodeType.CVE)
+    assert list(filter_graph_layers(graph, set(), always_nodes={SYNTHETIC_RPM_ID}).nodes) == [
+        SYNTHETIC_RPM_ID
+    ]
+
+
+def test_compare_builds_reports_artifact_and_evidence_changes() -> None:
+    left = build_synthetic_fixture_graph()
+    right = build_synthetic_fixture_graph()
+    right.remove_edges_where(
+        lambda edge: edge.source == SYNTHETIC_RPM_ID and edge.relation == Relation.DESCRIBED_BY
+    )
+    right.update_metadata(SYNTHETIC_RPM_ID, {"release": "2"})
+
+    rows = compare_builds(left, right)
+
+    assert any(row.area == "artifact" and row.change == "changed" for row in rows)
+    assert any(row.area == "evidence" and "sbom" in row.detail for row in rows)
 
 
 def test_workbench_session_round_trips_dict() -> None:

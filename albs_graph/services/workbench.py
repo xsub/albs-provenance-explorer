@@ -3,10 +3,11 @@ from __future__ import annotations
 import json
 from html import escape
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from albs_graph.model import NodeType, ProvenanceGraph
+from albs_graph.model import Edge, Node, NodeType, ProvenanceGraph, Relation
 from albs_graph.provenance.build_analysis import BuildAnalysis, SignTaskTiming, TaskTiming
 from albs_graph.provenance.coverage import CoverageReport
 from albs_graph.services.findings import Finding
@@ -84,6 +85,108 @@ class TimelineTreeItem:
         ).to_dict()
         data["children"] = [child.to_dict() for child in self.children]
         return data
+
+
+@dataclass(frozen=True)
+class TimelineGanttRow:
+    depth: int
+    kind: str
+    label: str
+    status: str
+    node_id: str
+    detail: str
+    offset_seconds: float
+    duration_seconds: float
+    started_at: str | None = None
+    finished_at: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "depth": self.depth,
+            "kind": self.kind,
+            "label": self.label,
+            "status": self.status,
+            "node_id": self.node_id,
+            "detail": self.detail,
+            "offset_seconds": self.offset_seconds,
+            "duration_seconds": self.duration_seconds,
+            "started_at": self.started_at,
+            "finished_at": self.finished_at,
+        }
+
+
+@dataclass(frozen=True)
+class EvidenceMatrixRow:
+    node_id: str
+    package: str
+    arch: str
+    version: str
+    release: str
+    provenance: str
+    security_context: str
+    build_task: str
+    source_cas: str
+    artifact_cas: str
+    signature: str
+    release_context: str
+    sbom: str
+    errata: str
+    tests: str
+    completeness: float
+    missing: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "node_id": self.node_id,
+            "package": self.package,
+            "arch": self.arch,
+            "version": self.version,
+            "release": self.release,
+            "provenance": self.provenance,
+            "security_context": self.security_context,
+            "build_task": self.build_task,
+            "source_cas": self.source_cas,
+            "artifact_cas": self.artifact_cas,
+            "signature": self.signature,
+            "release_context": self.release_context,
+            "sbom": self.sbom,
+            "errata": self.errata,
+            "tests": self.tests,
+            "completeness": self.completeness,
+            "missing": self.missing,
+        }
+
+
+@dataclass(frozen=True)
+class BuildDiffRow:
+    area: str
+    change: str
+    key: str
+    left: str
+    right: str
+    detail: str
+    left_node_id: str | None = None
+    right_node_id: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "area": self.area,
+            "change": self.change,
+            "key": self.key,
+            "left": self.left,
+            "right": self.right,
+            "detail": self.detail,
+            "left_node_id": self.left_node_id,
+            "right_node_id": self.right_node_id,
+        }
+
+
+@dataclass(frozen=True)
+class GraphLayer:
+    code: str
+    label: str
+    node_types: frozenset[str]
+    relations: frozenset[str]
 
 
 @dataclass(frozen=True)
@@ -181,6 +284,136 @@ def timeline_tree(
     ):
         return _analysis_timeline_tree(graph, build_analysis)
     return _graph_timeline_tree(graph)
+
+
+def timeline_gantt_rows(
+    graph: ProvenanceGraph, build_analysis: BuildAnalysis | None = None
+) -> list[TimelineGanttRow]:
+    events = timeline_tree(graph, build_analysis)
+    base = _timeline_base(events)
+    rows: list[TimelineGanttRow] = []
+    for event in events:
+        _append_gantt_rows(event, rows, base=base, depth=0, parent_offset=0.0)
+    return rows
+
+
+def evidence_matrix_rows(graph: ProvenanceGraph) -> list[EvidenceMatrixRow]:
+    rows: list[EvidenceMatrixRow] = []
+    for node in sorted(
+        graph.find_by_type(NodeType.BINARY_RPM),
+        key=lambda item: (
+            str(item.metadata.get("name") or item.label),
+            str(item.metadata.get("arch") or ""),
+            item.id,
+        ),
+    ):
+        report = graph.trust_path_report(node.id)
+        checks = report.checks
+        has_tests = _artifact_has_tests(graph, node.id)
+        status_values = {
+            "build_task": checks.get("has_build_task", False),
+            "source_cas": checks.get("has_source_cas_attestation", False),
+            "artifact_cas": checks.get("has_artifact_cas_attestation", False),
+            "signature": checks.get("has_signature", False),
+            "release_context": checks.get("has_release", False),
+            "sbom": checks.get("has_sbom", False),
+            "errata": checks.get("has_errata_link", False),
+            "tests": has_tests,
+        }
+        missing = list(report.missing)
+        if not has_tests:
+            missing.append("has_tests")
+        covered = sum(1 for value in status_values.values() if value)
+        rows.append(
+            EvidenceMatrixRow(
+                node_id=node.id,
+                package=str(node.metadata.get("name") or node.label),
+                arch=str(node.metadata.get("arch") or node.metadata.get("build_arch") or ""),
+                version=str(node.metadata.get("version") or ""),
+                release=str(node.metadata.get("release") or ""),
+                provenance="complete" if report.provenance_complete else "incomplete",
+                security_context="complete" if report.security_context_complete else "incomplete",
+                build_task=_status(status_values["build_task"]),
+                source_cas=_status(status_values["source_cas"]),
+                artifact_cas=_status(status_values["artifact_cas"]),
+                signature=_status(status_values["signature"]),
+                release_context=_status(status_values["release_context"]),
+                sbom=_status(status_values["sbom"]),
+                errata=_status(status_values["errata"]),
+                tests=_status(status_values["tests"]),
+                completeness=covered / len(status_values),
+                missing=", ".join(missing),
+            )
+        )
+    return rows
+
+
+def compare_builds(
+    left: ProvenanceGraph,
+    right: ProvenanceGraph,
+    *,
+    left_build_analysis: BuildAnalysis | None = None,
+    right_build_analysis: BuildAnalysis | None = None,
+) -> list[BuildDiffRow]:
+    from albs_graph.services.compare import compare_artifacts
+
+    rows = [
+        BuildDiffRow(
+            area="artifact",
+            change=delta.change,
+            key=delta.key,
+            left=delta.left or "",
+            right=delta.right or "",
+            detail=delta.detail,
+            left_node_id=delta.left,
+            right_node_id=delta.right,
+        )
+        for delta in compare_artifacts(left, right)
+    ]
+    rows.extend(_compare_evidence_matrices(left, right))
+    rows.extend(_compare_build_timings(left_build_analysis, right_build_analysis))
+    return sorted(rows, key=lambda row: (row.area, row.change, row.key))
+
+
+def graph_layers() -> tuple[GraphLayer, ...]:
+    return GRAPH_LAYERS
+
+
+def filter_graph_layers(
+    graph: ProvenanceGraph,
+    enabled_layers: set[str],
+    *,
+    always_nodes: set[str] | None = None,
+) -> ProvenanceGraph:
+    if enabled_layers == {layer.code for layer in GRAPH_LAYERS}:
+        return graph
+    always = {node_id for node_id in (always_nodes or set()) if node_id in graph.nodes}
+    allowed_node_types = {
+        node_type
+        for layer in GRAPH_LAYERS
+        if layer.code in enabled_layers
+        for node_type in layer.node_types
+    }
+    allowed_relations = {
+        relation
+        for layer in GRAPH_LAYERS
+        if layer.code in enabled_layers
+        for relation in layer.relations
+    }
+    kept_edges = [
+        edge
+        for edge in graph.edges
+        if str(edge.relation) in allowed_relations
+        and _node_layer_allowed(graph.nodes[edge.source], allowed_node_types, always)
+        and _node_layer_allowed(graph.nodes[edge.target], allowed_node_types, always)
+    ]
+    selected = set(always)
+    selected.update(
+        node.id for node in graph.nodes.values() if str(node.type) in allowed_node_types
+    )
+    selected.update(edge.source for edge in kept_edges)
+    selected.update(edge.target for edge in kept_edges)
+    return _subgraph_from_edges(graph, selected, kept_edges)
 
 
 def _graph_timeline_tree(graph: ProvenanceGraph) -> list[TimelineTreeItem]:
@@ -345,6 +578,327 @@ def _artifact_counts_text(counts: dict[str, int]) -> str:
     return ", ".join(f"{kind}={count}" for kind, count in sorted(counts.items()))
 
 
+GRAPH_LAYERS = (
+    GraphLayer(
+        "build",
+        "Build",
+        frozenset(
+            {
+                str(NodeType.SOURCE_PACKAGE),
+                str(NodeType.GIT_REPOSITORY),
+                str(NodeType.GIT_COMMIT),
+                str(NodeType.BUILD_TASK),
+                str(NodeType.BUILD_ENVIRONMENT),
+                str(NodeType.SRPM),
+                str(NodeType.BINARY_RPM),
+                str(NodeType.SOURCE_TREE),
+                str(NodeType.SOURCE_FILE),
+                str(NodeType.SOURCE_MANIFEST),
+            }
+        ),
+        frozenset(
+            {
+                str(Relation.STORED_IN),
+                str(Relation.POINTS_TO),
+                str(Relation.BUILT_BY),
+                str(Relation.BUILT_IN),
+                str(Relation.PRODUCES),
+                str(Relation.DERIVED_FROM),
+                str(Relation.CONTAINS),
+                str(Relation.REFERENCES),
+            }
+        ),
+    ),
+    GraphLayer(
+        "cas",
+        "CAS",
+        frozenset({str(NodeType.CAS_ATTESTATION)}),
+        frozenset({str(Relation.AUTHENTICATED_BY)}),
+    ),
+    GraphLayer(
+        "sign_release",
+        "Sign/Release",
+        frozenset({str(NodeType.SIGNATURE), str(NodeType.REPOSITORY_RELEASE)}),
+        frozenset({str(Relation.SIGNED_AS), str(Relation.RELEASED_TO)}),
+    ),
+    GraphLayer(
+        "tests",
+        "Tests",
+        frozenset({str(NodeType.TEST_RESULT)}),
+        frozenset({str(Relation.TESTED_BY)}),
+    ),
+    GraphLayer(
+        "security",
+        "Security",
+        frozenset({str(NodeType.SBOM), str(NodeType.ERRATA), str(NodeType.CVE)}),
+        frozenset({str(Relation.DESCRIBED_BY), str(Relation.FIXES), str(Relation.AFFECTED_BY)}),
+    ),
+    GraphLayer(
+        "dependencies",
+        "Dependencies",
+        frozenset(
+            {
+                str(NodeType.EXTERNAL_PACKAGE),
+                str(NodeType.DEPENDENCY_SPEC),
+                str(NodeType.DEPENDENCY_CLAIM),
+                str(NodeType.DEPENDENCY_RESOLUTION),
+            }
+        ),
+        frozenset(
+            {
+                str(Relation.REQUIRES_RUNTIME),
+                str(Relation.REQUIRES_BUILDTIME),
+                str(Relation.DECLARES_DEPENDENCY),
+                str(Relation.PROVIDES),
+                str(Relation.OBSERVED_AS),
+                str(Relation.CORROBORATES),
+                str(Relation.CONFLICTS_WITH),
+                str(Relation.SUPERSEDES),
+            }
+        ),
+    ),
+)
+
+
+def _append_gantt_rows(
+    event: TimelineTreeItem,
+    rows: list[TimelineGanttRow],
+    *,
+    base: datetime | None,
+    depth: int,
+    parent_offset: float,
+) -> None:
+    start = _parse_datetime(event.started_at)
+    finish = _parse_datetime(event.finished_at)
+    offset = _offset_seconds(base, start) if base and start else parent_offset
+    duration = event.duration_seconds
+    if duration is None and start and finish:
+        duration = max(0.0, (finish - start).total_seconds())
+    rows.append(
+        TimelineGanttRow(
+            depth=depth,
+            kind=event.kind,
+            label=event.label,
+            status=event.status,
+            node_id=event.node_id,
+            detail=event.detail,
+            offset_seconds=round(max(0.0, offset), 6),
+            duration_seconds=round(max(0.0, duration or 0.0), 6),
+            started_at=event.started_at,
+            finished_at=event.finished_at,
+        )
+    )
+    child_offset = max(0.0, offset)
+    for child in event.children:
+        _append_gantt_rows(child, rows, base=base, depth=depth + 1, parent_offset=child_offset)
+
+
+def _timeline_base(events: list[TimelineTreeItem]) -> datetime | None:
+    starts = [
+        start
+        for event in events
+        for start in _timeline_starts(event)
+        if start is not None
+    ]
+    return min(starts) if starts else None
+
+
+def _timeline_starts(event: TimelineTreeItem) -> list[datetime | None]:
+    return [_parse_datetime(event.started_at)] + [
+        start for child in event.children for start in _timeline_starts(child)
+    ]
+
+
+def _parse_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    text = value.replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        try:
+            return datetime.fromisoformat(text.replace(" ", "T"))
+        except ValueError:
+            return None
+
+
+def _offset_seconds(base: datetime, value: datetime) -> float:
+    if base.tzinfo is None and value.tzinfo is not None:
+        value = value.replace(tzinfo=None)
+    elif base.tzinfo is not None and value.tzinfo is None:
+        base = base.replace(tzinfo=None)
+    return (value - base).total_seconds()
+
+
+def _artifact_has_tests(graph: ProvenanceGraph, node_id: str) -> bool:
+    if any(edge.relation == Relation.TESTED_BY for edge in graph.outgoing(node_id)):
+        return True
+    return any(
+        graph.outgoing(edge.source, Relation.TESTED_BY)
+        for edge in graph.incoming(node_id, Relation.PRODUCES)
+    )
+
+
+def _status(value: bool) -> str:
+    return "ok" if value else "missing"
+
+
+def _compare_evidence_matrices(
+    left: ProvenanceGraph, right: ProvenanceGraph
+) -> list[BuildDiffRow]:
+    left_rows = {_evidence_key(row): row for row in evidence_matrix_rows(left)}
+    right_rows = {_evidence_key(row): row for row in evidence_matrix_rows(right)}
+    rows: list[BuildDiffRow] = []
+    for key in sorted(left_rows.keys() & right_rows.keys()):
+        left_row = left_rows[key]
+        right_row = right_rows[key]
+        left_state = _evidence_state(left_row)
+        right_state = _evidence_state(right_row)
+        if left_state != right_state:
+            rows.append(
+                BuildDiffRow(
+                    area="evidence",
+                    change="changed",
+                    key=key,
+                    left=left_state,
+                    right=right_state,
+                    detail=_changed_fields(left_state, right_state),
+                    left_node_id=left_row.node_id,
+                    right_node_id=right_row.node_id,
+                )
+            )
+    return rows
+
+
+def _compare_build_timings(
+    left: BuildAnalysis | None, right: BuildAnalysis | None
+) -> list[BuildDiffRow]:
+    if left is None or right is None:
+        return []
+    rows: list[BuildDiffRow] = []
+    if left.wall_seconds != right.wall_seconds:
+        rows.append(
+            BuildDiffRow(
+                area="build",
+                change="changed",
+                key="overall wall time",
+                left=_seconds_value(left.wall_seconds),
+                right=_seconds_value(right.wall_seconds),
+                detail=f"build {left.build_id} -> {right.build_id}",
+            )
+        )
+    left_tasks = {_task_compare_key(task): task for task in left.task_timings}
+    right_tasks = {_task_compare_key(task): task for task in right.task_timings}
+    for key in sorted(left_tasks.keys() - right_tasks.keys()):
+        task = left_tasks[key]
+        rows.append(
+            BuildDiffRow(
+                area="task",
+                change="removed",
+                key=key,
+                left=_task_timing_state(task),
+                right="",
+                detail=f"ALBS task {task.task_id}",
+                left_node_id=f"build:albs-task:{task.task_id}",
+            )
+        )
+    for key in sorted(right_tasks.keys() - left_tasks.keys()):
+        task = right_tasks[key]
+        rows.append(
+            BuildDiffRow(
+                area="task",
+                change="added",
+                key=key,
+                left="",
+                right=_task_timing_state(task),
+                detail=f"ALBS task {task.task_id}",
+                right_node_id=f"build:albs-task:{task.task_id}",
+            )
+        )
+    for key in sorted(left_tasks.keys() & right_tasks.keys()):
+        left_task = left_tasks[key]
+        right_task = right_tasks[key]
+        left_state = _task_timing_state(left_task)
+        right_state = _task_timing_state(right_task)
+        if left_state != right_state:
+            rows.append(
+                BuildDiffRow(
+                    area="task",
+                    change="changed",
+                    key=key,
+                    left=left_state,
+                    right=right_state,
+                    detail=f"ALBS task {left_task.task_id} -> {right_task.task_id}",
+                    left_node_id=f"build:albs-task:{left_task.task_id}",
+                    right_node_id=f"build:albs-task:{right_task.task_id}",
+                )
+            )
+    return rows
+
+
+def _evidence_key(row: EvidenceMatrixRow) -> str:
+    return f"{row.package}|{row.arch}"
+
+
+def _evidence_state(row: EvidenceMatrixRow) -> str:
+    fields = [
+        ("prov", row.provenance),
+        ("sec", row.security_context),
+        ("build", row.build_task),
+        ("src_cas", row.source_cas),
+        ("art_cas", row.artifact_cas),
+        ("sig", row.signature),
+        ("release", row.release_context),
+        ("sbom", row.sbom),
+        ("errata", row.errata),
+        ("tests", row.tests),
+    ]
+    return "; ".join(f"{name}={value}" for name, value in fields)
+
+
+def _changed_fields(left: str, right: str) -> str:
+    left_parts = dict(part.split("=", 1) for part in left.split("; ") if "=" in part)
+    right_parts = dict(part.split("=", 1) for part in right.split("; ") if "=" in part)
+    changed = [
+        key
+        for key in sorted(left_parts.keys() | right_parts.keys())
+        if left_parts.get(key) != right_parts.get(key)
+    ]
+    return ", ".join(changed)
+
+
+def _task_compare_key(task: TaskTiming) -> str:
+    return task.arch
+
+
+def _task_timing_state(task: TaskTiming) -> str:
+    return (
+        f"status={task.status}; wall={_seconds_value(task.wall_seconds)}; "
+        f"tests={task.test_tasks}; artifacts={_artifact_counts_text(task.artifact_counts)}"
+    )
+
+
+def _seconds_value(value: float | None) -> str:
+    return "" if value is None else f"{value:.3f}s"
+
+
+def _node_layer_allowed(node: Node, allowed_node_types: set[str], always: set[str]) -> bool:
+    return node.id in always or str(node.type) in allowed_node_types
+
+
+def _subgraph_from_edges(
+    graph: ProvenanceGraph, selected: set[str], edges: list[Edge]
+) -> ProvenanceGraph:
+    filtered = ProvenanceGraph()
+    for node in graph.nodes.values():
+        if node.id in selected:
+            filtered.add_node(node)
+    for edge in edges:
+        if edge.source in filtered.nodes and edge.target in filtered.nodes:
+            filtered.add_edge(edge.source, edge.target, edge.relation, **edge.metadata)
+    return filtered
+
+
 def investigation_recipes(
     graph: ProvenanceGraph,
     coverage: CoverageReport,
@@ -429,8 +983,10 @@ def evidence_bundle(
         "selected_node": selected,
         "selected_edge": _selected_edge_raw(edge_graph, selected_edge_index),
         "coverage": [row.to_dict() for row in coverage_rows(coverage)],
+        "evidence_matrix": [row.to_dict() for row in evidence_matrix_rows(graph)],
         "findings": [finding.to_dict() for finding in findings],
         "timeline": [row.to_dict() for row in timeline_rows(graph, build_analysis)],
+        "timeline_gantt": [row.to_dict() for row in timeline_gantt_rows(graph, build_analysis)],
         "slice": graph_slice.to_dict() if graph_slice is not None else None,
         "slice_graph": graph_slice.graph.to_dict() if graph_slice is not None else None,
         "svg": svg,
@@ -443,6 +999,7 @@ def evidence_report_html(bundle: dict[str, Any]) -> str:
     selected_edge = bundle.get("selected_edge") or {}
     slice_info = bundle.get("slice") or {}
     coverage = bundle.get("coverage") or []
+    evidence_matrix = bundle.get("evidence_matrix") or []
     findings = bundle.get("findings") or []
     timeline = bundle.get("timeline") or []
     svg = str(bundle.get("svg") or "")
@@ -473,6 +1030,28 @@ def evidence_report_html(bundle: dict[str, Any]) -> str:
             "<main>",
             _section("Current Slice", _dict_table(slice_info)),
             _section("Coverage", _rows_table(coverage, ["axis", "covered", "total", "ratio", "status"])),
+            _section(
+                "Evidence Matrix",
+                _rows_table(
+                    evidence_matrix,
+                    [
+                        "package",
+                        "arch",
+                        "provenance",
+                        "security_context",
+                        "build_task",
+                        "source_cas",
+                        "artifact_cas",
+                        "signature",
+                        "release_context",
+                        "sbom",
+                        "errata",
+                        "tests",
+                        "completeness",
+                        "missing",
+                    ],
+                ),
+            ),
             _section("Findings", _rows_table(findings, ["severity", "code", "subject", "detail"])),
             _section(
                 "Timeline",

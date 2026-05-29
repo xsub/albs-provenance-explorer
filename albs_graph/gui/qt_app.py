@@ -19,17 +19,21 @@ from albs_graph.gui.render import workbench_graph_rendering
 from albs_graph.services import (
     AnalysisResult,
     AnalysisService,
-    compare_artifacts,
     evidence_report_html,
     GraphLoadSpec,
     GraphQueries,
     GraphSlice,
     GraphSlices,
     WorkbenchSession,
+    compare_builds,
     coverage_rows,
     evidence_bundle,
+    evidence_matrix_rows,
+    filter_graph_layers,
     findings_for_analysis,
+    graph_layers,
     investigation_recipes,
+    timeline_gantt_rows,
     timeline_tree,
 )
 
@@ -129,6 +133,103 @@ class GraphSvgWidget(QtSvg.QSvgWidget):
         return edge_at(self._edge_regions, x, y)
 
 
+class TimelineGanttView(QtWidgets.QGraphicsView):
+    nodeActivated = QtCore.pyqtSignal(str)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._scene = QtWidgets.QGraphicsScene(self)
+        self.setScene(self._scene)
+        self.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
+        self.setMinimumHeight(260)
+
+    def set_events(self, graph, build_analysis, *, dark: bool) -> None:
+        rows = timeline_gantt_rows(graph, build_analysis)
+        self._scene.clear()
+        if not rows:
+            self._scene.addText("No timeline data")
+            return
+        palette = _gantt_palette(dark)
+        label_width = 330
+        left = label_width + 36
+        top = 42
+        row_height = 28
+        timeline_width = 920
+        span = max((row.offset_seconds + row.duration_seconds for row in rows), default=1.0)
+        span = max(span, 1.0)
+        scale = timeline_width / span
+        self._draw_gantt_axis(palette, left, top, timeline_width, span, scale)
+        for index, row in enumerate(rows):
+            y = top + 22 + index * row_height
+            self._draw_gantt_row(palette, row, y, left, label_width, scale, row_height)
+        self._scene.setSceneRect(0, 0, left + timeline_width + 180, top + 48 + len(rows) * row_height)
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        item = self.itemAt(event.pos())
+        while item is not None:
+            node_id = item.data(0)
+            if node_id:
+                self.nodeActivated.emit(str(node_id))
+                return
+            item = item.parentItem()
+        super().mousePressEvent(event)
+
+    def _draw_gantt_axis(
+        self,
+        palette: dict[str, QtGui.QColor],
+        left: int,
+        top: int,
+        width: int,
+        span: float,
+        scale: float,
+    ) -> None:
+        pen = QtGui.QPen(palette["grid"])
+        self._scene.addLine(left, top, left + width, top, pen)
+        tick_count = 5
+        for index in range(tick_count + 1):
+            seconds = span * index / tick_count
+            x = left + seconds * scale
+            self._scene.addLine(x, top - 5, x, top + 9000, pen)
+            label = self._scene.addText(_format_seconds(seconds))
+            label.setDefaultTextColor(palette["muted"])
+            label.setPos(x - 18, 12)
+
+    def _draw_gantt_row(
+        self,
+        palette: dict[str, QtGui.QColor],
+        row,
+        y: float,
+        left: int,
+        label_width: int,
+        scale: float,
+        row_height: int,
+    ) -> None:
+        text = "  " * row.depth + row.label
+        label = self._scene.addText(text)
+        label.setDefaultTextColor(palette["text"])
+        label.setPos(8, y - 7)
+        if row.node_id:
+            label.setData(0, row.node_id)
+        detail = self._scene.addText(row.status or row.kind)
+        detail.setDefaultTextColor(palette["muted"])
+        detail.setPos(label_width - 120, y - 7)
+        x = left + row.offset_seconds * scale
+        width = max(5.0, row.duration_seconds * scale) if row.duration_seconds else 7.0
+        rect = QtCore.QRectF(x, y - 7, width, 16)
+        fill = palette.get(row.kind, palette["bar"])
+        item = self._scene.addRoundedRect(rect, 4, 4, QtGui.QPen(palette["bar_border"]), QtGui.QBrush(fill))
+        if row.node_id:
+            item.setData(0, row.node_id)
+            item.setToolTip(row.node_id)
+        duration = _format_seconds(row.duration_seconds)
+        if duration:
+            duration_text = self._scene.addText(duration)
+            duration_text.setDefaultTextColor(palette["muted"])
+            duration_text.setPos(x + width + 6, y - 7)
+        self._scene.addLine(0, y + row_height / 2 - 1, left + 920, y + row_height / 2 - 1, QtGui.QPen(palette["row"]))
+
+
 class WorkbenchWindow(QtWidgets.QMainWindow):
     def __init__(
         self,
@@ -170,6 +271,17 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         )
         self.recipe_combo.view().setTextElideMode(QtCore.Qt.ElideNone)
         self.recipe_combo.view().setMinimumWidth(RECIPE_POPUP_MIN_WIDTH)
+        self.layer_button = QtWidgets.QToolButton()
+        self.layer_button.setText("Layers")
+        self.layer_button.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+        self.layer_menu = QtWidgets.QMenu(self.layer_button)
+        self.layer_actions: dict[str, QtWidgets.QAction] = {}
+        for layer in graph_layers():
+            action = self.layer_menu.addAction(layer.label)
+            action.setCheckable(True)
+            action.setChecked(True)
+            self.layer_actions[layer.code] = action
+        self.layer_button.setMenu(self.layer_menu)
         self.graph_search_edit = QtWidgets.QLineEdit()
         self.graph_search_edit.setPlaceholderText("Search graph")
         self.graph_search_edit.setFixedWidth(160)
@@ -228,6 +340,30 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.coverage_table.setHorizontalHeaderLabels(["Axis", "Covered", "Total", "Ratio", "Status"])
         self.coverage_table.horizontalHeader().setStretchLastSection(True)
         self.coverage_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.evidence_table = QtWidgets.QTableWidget(0, 15)
+        self.evidence_table.setHorizontalHeaderLabels(
+            [
+                "Package",
+                "Arch",
+                "Version",
+                "Release",
+                "Provenance",
+                "Security",
+                "Build",
+                "Source CAS",
+                "Artifact CAS",
+                "Signature",
+                "Release",
+                "SBOM",
+                "Errata",
+                "Tests",
+                "Missing",
+            ]
+        )
+        self.evidence_table.horizontalHeader().setStretchLastSection(True)
+        self.evidence_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.evidence_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.evidence_table.setAlternatingRowColors(True)
         self.timeline_table = QtWidgets.QTreeWidget()
         self.timeline_table.setHeaderLabels(
             ["Stage", "Status", "Duration", "Started", "Finished", "Graph node", "Detail"]
@@ -235,8 +371,23 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.timeline_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.timeline_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.timeline_table.setAlternatingRowColors(True)
-        self.compare_table = QtWidgets.QTableWidget(0, 5)
-        self.compare_table.setHorizontalHeaderLabels(["Change", "Key", "Left", "Right", "Detail"])
+        self.timeline_view_combo = QtWidgets.QComboBox()
+        self.timeline_view_combo.addItems(["Tree", "Gantt"])
+        self.timeline_gantt = TimelineGanttView()
+        self.timeline_stack = QtWidgets.QStackedWidget()
+        self.timeline_stack.addWidget(self.timeline_table)
+        self.timeline_stack.addWidget(self.timeline_gantt)
+        self.timeline_panel = QtWidgets.QWidget()
+        timeline_layout = QtWidgets.QVBoxLayout(self.timeline_panel)
+        timeline_layout.setContentsMargins(0, 0, 0, 0)
+        timeline_header = QtWidgets.QHBoxLayout()
+        timeline_header.setContentsMargins(6, 4, 6, 4)
+        timeline_header.addStretch(1)
+        timeline_header.addWidget(self.timeline_view_combo)
+        timeline_layout.addLayout(timeline_header)
+        timeline_layout.addWidget(self.timeline_stack)
+        self.compare_table = QtWidgets.QTableWidget(0, 6)
+        self.compare_table.setHorizontalHeaderLabels(["Area", "Change", "Key", "Left", "Right", "Detail"])
         self.compare_table.horizontalHeader().setStretchLastSection(True)
         self.compare_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.compare_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
@@ -318,6 +469,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         toolbar.addWidget(QtWidgets.QLabel("Mode"))
         toolbar.addWidget(self.mode_combo)
         toolbar.addWidget(self.recipe_combo)
+        toolbar.addWidget(self.layer_button)
         toolbar.addAction(zoom_in_action)
         toolbar.addAction(zoom_out_action)
         toolbar.addAction(fit_action)
@@ -367,7 +519,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         bottom = QtWidgets.QTabWidget()
         bottom.addTab(self.findings_table, "Findings")
         bottom.addTab(self.coverage_table, "Coverage")
-        bottom.addTab(self.timeline_table, "Timeline")
+        bottom.addTab(self.evidence_table, "Evidence")
+        bottom.addTab(self.timeline_panel, "Timeline")
         bottom.addTab(self.compare_table, "Compare")
         bottom.addTab(self.log, "Log")
         dock = QtWidgets.QDockWidget("Investigation Output")
@@ -390,10 +543,18 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.edges_table.itemDoubleClicked.connect(self._edge_activated)
         self.timeline_table.itemActivated.connect(self._timeline_activated)
         self.timeline_table.itemDoubleClicked.connect(self._timeline_activated)
+        self.timeline_gantt.nodeActivated.connect(
+            lambda node_id: self._navigate_to_node(node_id, prefer_artifact=False)
+        )
+        self.timeline_view_combo.currentIndexChanged.connect(self.timeline_stack.setCurrentIndex)
+        self.evidence_table.itemActivated.connect(self._evidence_activated)
+        self.evidence_table.itemDoubleClicked.connect(self._evidence_activated)
         self.compare_table.itemActivated.connect(self._compare_activated)
         self.compare_table.itemDoubleClicked.connect(self._compare_activated)
         self.recipe_combo.activated.connect(self._recipe_activated)
         self.graph_search_edit.returnPressed.connect(self.search_current_graph)
+        for action in self.layer_actions.values():
+            action.triggered.connect(lambda _checked: self.render_current_slice())
 
     def _apply_style(self) -> None:
         self.dark_mode = self._is_dark_palette()
@@ -549,6 +710,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._populate_artifacts()
         self._populate_findings()
         self._populate_coverage_table()
+        self._populate_evidence_table()
         self._populate_timeline()
         self._populate_recipes()
         self._update_coverage()
@@ -631,11 +793,48 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 self.coverage_table.setItem(row, column, QtWidgets.QTableWidgetItem(value))
         self.coverage_table.resizeColumnsToContents()
 
+    def _populate_evidence_table(self) -> None:
+        assert self.result is not None
+        rows = evidence_matrix_rows(self.result.graph)
+        self.evidence_table.setRowCount(len(rows))
+        for row, evidence in enumerate(rows):
+            values = [
+                evidence.package,
+                evidence.arch,
+                evidence.version,
+                evidence.release,
+                evidence.provenance,
+                evidence.security_context,
+                evidence.build_task,
+                evidence.source_cas,
+                evidence.artifact_cas,
+                evidence.signature,
+                evidence.release_context,
+                evidence.sbom,
+                evidence.errata,
+                evidence.tests,
+                evidence.missing,
+            ]
+            for column, value in enumerate(values):
+                item = QtWidgets.QTableWidgetItem(value)
+                item.setData(QtCore.Qt.UserRole, evidence.node_id)
+                if value == "missing" or value == "incomplete":
+                    item.setForeground(QtGui.QBrush(QtGui.QColor("#F08A8A")))
+                elif value == "ok" or value == "complete":
+                    item.setForeground(QtGui.QBrush(QtGui.QColor("#87D37C")))
+                self.evidence_table.setItem(row, column, item)
+        self.evidence_table.resizeColumnsToContents()
+
     def _populate_timeline(self) -> None:
         assert self.result is not None
         self.timeline_table.clear()
         for event in timeline_tree(self.result.graph, self.result.build_analysis):
             self.timeline_table.addTopLevelItem(self._timeline_item(event))
+        self.timeline_gantt.set_events(
+            self.result.graph,
+            self.result.build_analysis,
+            dark=self.dark_mode,
+        )
         self.timeline_table.expandToDepth(1)
         for column in range(self.timeline_table.columnCount()):
             self.timeline_table.resizeColumnToContents(column)
@@ -718,6 +917,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                     subject_id,
                     include_tests=self.include_tests.isChecked(),
                 )
+            graph_slice = self._apply_layer_filter(graph_slice)
         except Exception as exc:
             self._show_error(str(exc))
             return
@@ -730,6 +930,24 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._render_current_svg()
         self._populate_slice_nodes(graph_slice)
         self._show_node(self.selected_node_id, render_graph=False)
+
+    def _apply_layer_filter(self, graph_slice: GraphSlice) -> GraphSlice:
+        enabled = {
+            code for code, action in self.layer_actions.items() if action.isChecked()
+        }
+        filtered = filter_graph_layers(
+            graph_slice.graph,
+            enabled,
+            always_nodes={node_id for node_id in (graph_slice.focus,) if node_id},
+        )
+        if filtered is graph_slice.graph:
+            return graph_slice
+        return GraphSlice(
+            name=graph_slice.name,
+            graph=filtered,
+            focus=graph_slice.focus,
+            metadata=graph_slice.metadata | {"layers": sorted(enabled)},
+        )
 
     def _update_graph_header(self, graph_slice: GraphSlice, subject_id: str) -> None:
         assert self.result is not None
@@ -865,6 +1083,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         node_id = item.data(0, QtCore.Qt.UserRole)
         if node_id:
             self._navigate_to_node(str(node_id), prefer_artifact=False)
+
+    def _evidence_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
+        node_id = item.data(QtCore.Qt.UserRole)
+        if node_id:
+            self._navigate_to_node(str(node_id), prefer_artifact=True)
 
     def _recipe_activated(self, index: int) -> None:
         if index <= 0:
@@ -1087,16 +1310,21 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         except Exception as exc:
             self._show_error(str(exc))
             return
-        deltas = compare_artifacts(self.result.graph, other.graph)
+        deltas = compare_builds(
+            self.result.graph,
+            other.graph,
+            left_build_analysis=self.result.build_analysis,
+            right_build_analysis=other.build_analysis,
+        )
         self.compare_table.setRowCount(len(deltas))
         for row, delta in enumerate(deltas):
-            values = [delta.change, delta.key, delta.left or "", delta.right or "", delta.detail]
+            values = [delta.area, delta.change, delta.key, delta.left, delta.right, delta.detail]
             for column, value in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(value)
-                item.setData(QtCore.Qt.UserRole, delta.left or "")
+                item.setData(QtCore.Qt.UserRole, delta.left_node_id or delta.right_node_id or "")
                 self.compare_table.setItem(row, column, item)
         self.compare_table.resizeColumnsToContents()
-        self._log(f"Compared current graph with {path}: {len(deltas)} artifact deltas")
+        self._log(f"Compared current graph with {path}: {len(deltas)} build deltas")
 
     def save_session(self) -> None:
         path, _filter = QtWidgets.QFileDialog.getSaveFileName(
@@ -1191,3 +1419,39 @@ def _format_seconds(value: float | None) -> str:
         return f"{int(minutes)}m {seconds:.1f}s"
     hours, minutes = divmod(minutes, 60)
     return f"{int(hours)}h {int(minutes)}m {seconds:.0f}s"
+
+
+def _gantt_palette(dark: bool) -> dict[str, QtGui.QColor]:
+    if dark:
+        return {
+            "text": QtGui.QColor("#EEF2F6"),
+            "muted": QtGui.QColor("#AAB5C2"),
+            "grid": QtGui.QColor("#3C4652"),
+            "row": QtGui.QColor("#252B33"),
+            "bar": QtGui.QColor("#2F6FED"),
+            "bar_border": QtGui.QColor("#8AB4FF"),
+            "build_task": QtGui.QColor("#5A3B66"),
+            "build_step": QtGui.QColor("#2F6FED"),
+            "test_tasks": QtGui.QColor("#35546B"),
+            "test_step": QtGui.QColor("#4B7190"),
+            "artifacts": QtGui.QColor("#4B4F5C"),
+            "artifact_group": QtGui.QColor("#6B5B38"),
+            "sign_task": QtGui.QColor("#6B4C2F"),
+            "sign_step": QtGui.QColor("#8A633F"),
+        }
+    return {
+        "text": QtGui.QColor("#17212B"),
+        "muted": QtGui.QColor("#52616F"),
+        "grid": QtGui.QColor("#D8DDE6"),
+        "row": QtGui.QColor("#EEF2F6"),
+        "bar": QtGui.QColor("#2F6FED"),
+        "bar_border": QtGui.QColor("#174EA6"),
+        "build_task": QtGui.QColor("#DCC8E8"),
+        "build_step": QtGui.QColor("#8EB7FF"),
+        "test_tasks": QtGui.QColor("#BFD7EA"),
+        "test_step": QtGui.QColor("#9AC2E0"),
+        "artifacts": QtGui.QColor("#DDD7C8"),
+        "artifact_group": QtGui.QColor("#E6D5A9"),
+        "sign_task": QtGui.QColor("#E8C9A5"),
+        "sign_step": QtGui.QColor("#D9AA76"),
+    }

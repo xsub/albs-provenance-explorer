@@ -242,6 +242,16 @@ expand into performance steps, aggregate test steps and artifact groups. Graph
 node ids remain attached to rows where a timeline event can navigate back into
 the provenance graph.
 
+The next investigation layer is now present in the branch. Timeline can be
+viewed either as the expandable task tree or as a Gantt-style cascade derived
+from the same `BuildAnalysis` rows. The bottom pane also has an Evidence matrix
+that shows per-binary build, source CAS, artifact CAS, signature, release, SBOM,
+errata and test coverage. Build comparison now combines artifact deltas with
+evidence-status changes and build-task timing changes. The graph toolbar has
+toggleable layers for Build, CAS, Sign/Release, Tests, Security and
+Dependencies, and the inspector summary includes relation counts plus semantic
+completeness context for binary RPMs, build tasks and CAS attestations.
+
 ---
 
 ## 10. Recommended First Implementation Path

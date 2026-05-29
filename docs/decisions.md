@@ -2184,6 +2184,39 @@ Tests unchanged; this is a PyQt presentation fix. Suite remains 289.
 
 ---
 
+## D82 - Workbench Gantt, evidence matrix, build diff, layers, and inspector context
+
+The workbench had enough interaction to navigate a graph, but the next
+highest-value workflows needed more analytical structure: the build timeline
+needed a visual cascade, artifact evidence needed to be comparable at a glance,
+the compare tab needed more than artifact add/remove/change rows, graph density
+needed user-controlled layers, and the inspector needed semantic context beyond
+raw metadata.
+
+Fix: add service-level view models for the new UI projections instead of
+embedding analysis logic directly in Qt:
+
+- `timeline_gantt_rows` flattens the existing timeline tree into offset/duration
+  rows for a Gantt-style cascade.
+- `evidence_matrix_rows` reports per-binary provenance/security/test evidence
+  status and missing evidence.
+- `compare_builds` combines artifact deltas, evidence status changes, and
+  `BuildAnalysis` task timing changes.
+- `graph_layers` / `filter_graph_layers` expose Build, CAS, Sign/Release,
+  Tests, Security, and Dependencies as toggleable graph layers.
+- The inspector summary now includes relation counts plus semantic rows for
+  binary RPM completeness, build-task output/test counts, and CAS authentication
+  context.
+
+The PyQt workbench now exposes Tree/Gantt timeline selection, an Evidence tab,
+the richer Compare tab, a Layers toolbar menu, and the enhanced inspector
+summary while keeping the CLI/backend service boundary intact.
+
+Tests +4 cover Gantt row timing, the evidence matrix, layer filtering, and
+combined build comparison. Suite now 293.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
