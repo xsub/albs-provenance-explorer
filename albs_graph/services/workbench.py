@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from albs_graph.model import NodeType, ProvenanceGraph
+from albs_graph.provenance.build_analysis import BuildAnalysis, SignTaskTiming, TaskTiming
 from albs_graph.provenance.coverage import CoverageReport
 from albs_graph.services.findings import Finding
 from albs_graph.services.slices import GraphSlice
@@ -37,15 +38,52 @@ class TimelineRow:
     status: str
     node_id: str
     detail: str
+    duration_seconds: float | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
 
-    def to_dict(self) -> dict[str, str]:
-        return {
+    def to_dict(self) -> dict[str, Any]:
+        data: dict[str, Any] = {
             "kind": self.kind,
             "label": self.label,
             "status": self.status,
             "node_id": self.node_id,
             "detail": self.detail,
         }
+        if self.duration_seconds is not None:
+            data["duration_seconds"] = self.duration_seconds
+        if self.started_at:
+            data["started_at"] = self.started_at
+        if self.finished_at:
+            data["finished_at"] = self.finished_at
+        return data
+
+
+@dataclass(frozen=True)
+class TimelineTreeItem:
+    kind: str
+    label: str
+    status: str = ""
+    node_id: str = ""
+    detail: str = ""
+    duration_seconds: float | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    children: tuple["TimelineTreeItem", ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        data = TimelineRow(
+            kind=self.kind,
+            label=self.label,
+            status=self.status,
+            node_id=self.node_id,
+            detail=self.detail,
+            duration_seconds=self.duration_seconds,
+            started_at=self.started_at,
+            finished_at=self.finished_at,
+        ).to_dict()
+        data["children"] = [child.to_dict() for child in self.children]
+        return data
 
 
 @dataclass(frozen=True)
@@ -126,26 +164,47 @@ def coverage_rows(report: CoverageReport) -> list[CoverageRow]:
     return rows
 
 
-def timeline_rows(graph: ProvenanceGraph) -> list[TimelineRow]:
+def timeline_rows(
+    graph: ProvenanceGraph, build_analysis: BuildAnalysis | None = None
+) -> list[TimelineRow]:
     rows: list[TimelineRow] = []
+    for item in timeline_tree(graph, build_analysis):
+        _flatten_timeline(item, rows)
+    return rows
+
+
+def timeline_tree(
+    graph: ProvenanceGraph, build_analysis: BuildAnalysis | None = None
+) -> list[TimelineTreeItem]:
+    if build_analysis is not None and (
+        build_analysis.task_timings or build_analysis.sign_timings
+    ):
+        return _analysis_timeline_tree(graph, build_analysis)
+    return _graph_timeline_tree(graph)
+
+
+def _graph_timeline_tree(graph: ProvenanceGraph) -> list[TimelineTreeItem]:
+    rows: list[TimelineTreeItem] = []
     for node in graph.find_by_type(NodeType.BUILD_TASK):
         produced = len(graph.outgoing(node.id))
         arch = node.metadata.get("arch") or node.metadata.get("build_arch") or "unknown"
         status = node.metadata.get("status")
         rows.append(
-            TimelineRow(
+            TimelineTreeItem(
                 kind="build_task",
                 label=node.label,
                 status=str(status) if status is not None else "",
                 node_id=node.id,
                 detail=f"{arch}; {produced} outgoing edges",
+                started_at=_optional_text(node.metadata.get("started_at")),
+                finished_at=_optional_text(node.metadata.get("finished_at")),
             )
         )
     for node in graph.find_by_type(NodeType.SIGNATURE):
         status = node.metadata.get("status")
         task_id = node.metadata.get("task_id") or node.metadata.get("sign_task_id")
         rows.append(
-            TimelineRow(
+            TimelineTreeItem(
                 kind="signature",
                 label=node.label,
                 status=str(status) if status is not None else "",
@@ -154,6 +213,136 @@ def timeline_rows(graph: ProvenanceGraph) -> list[TimelineRow]:
             )
         )
     return sorted(rows, key=lambda row: (row.kind, row.label, row.node_id))
+
+
+def _analysis_timeline_tree(
+    graph: ProvenanceGraph, build_analysis: BuildAnalysis
+) -> list[TimelineTreeItem]:
+    items = [_task_timeline_item(graph, task) for task in build_analysis.task_timings]
+    items.extend(_sign_timeline_item(sign) for sign in build_analysis.sign_timings)
+    return items
+
+
+def _task_timeline_item(graph: ProvenanceGraph, task: TaskTiming) -> TimelineTreeItem:
+    node_id = _task_node_id(graph, task.task_id)
+    step_children = tuple(
+        TimelineTreeItem(
+            kind="build_step",
+            label=step.name,
+            status="",
+            node_id=node_id,
+            detail="build performance step",
+            duration_seconds=step.seconds,
+            started_at=step.started_at,
+            finished_at=step.finished_at,
+        )
+        for step in task.steps
+    )
+    test_children = tuple(
+        TimelineTreeItem(
+            kind="test_step",
+            label=name,
+            node_id=node_id,
+            detail=f"{task.test_tasks} test task(s)",
+            duration_seconds=seconds,
+        )
+        for name, seconds in task.test_step_totals.items()
+    )
+    artifact_children = tuple(
+        TimelineTreeItem(
+            kind="artifact_group",
+            label=artifact_type,
+            node_id=node_id,
+            detail=f"{count} artifact(s)",
+        )
+        for artifact_type, count in sorted(task.artifact_counts.items())
+    )
+    children: list[TimelineTreeItem] = []
+    children.extend(step_children)
+    if test_children:
+        children.append(
+            TimelineTreeItem(
+                kind="test_tasks",
+                label=f"test tasks ({task.test_tasks})",
+                node_id=node_id,
+                detail="aggregate test performance",
+                children=test_children,
+            )
+        )
+    if artifact_children:
+        children.append(
+            TimelineTreeItem(
+                kind="artifacts",
+                label="artifacts",
+                node_id=node_id,
+                detail=_artifact_counts_text(task.artifact_counts),
+                children=artifact_children,
+            )
+        )
+    return TimelineTreeItem(
+        kind="build_task",
+        label=f"ALBS task {task.task_id} {task.arch}",
+        status=str(task.status) if task.status is not None else "",
+        node_id=node_id,
+        detail=f"{task.arch}; {_artifact_counts_text(task.artifact_counts)}",
+        duration_seconds=task.wall_seconds,
+        started_at=task.started_at,
+        finished_at=task.finished_at,
+        children=tuple(children),
+    )
+
+
+def _sign_timeline_item(sign: SignTaskTiming) -> TimelineTreeItem:
+    children = tuple(
+        TimelineTreeItem(
+            kind="sign_step",
+            label=name,
+            detail="signing performance step",
+            duration_seconds=seconds,
+        )
+        for name, seconds in sorted(sign.stats_seconds.items())
+    )
+    return TimelineTreeItem(
+        kind="sign_task",
+        label=f"ALBS sign task {sign.sign_task_id}",
+        status=str(sign.status) if sign.status is not None else "",
+        node_id=f"sig:albs:{sign.sign_task_id}",
+        detail="signature task",
+        duration_seconds=sign.wall_seconds,
+        started_at=sign.started_at,
+        finished_at=sign.finished_at,
+        children=children,
+    )
+
+
+def _flatten_timeline(item: TimelineTreeItem, rows: list[TimelineRow]) -> None:
+    rows.append(
+        TimelineRow(
+            kind=item.kind,
+            label=item.label,
+            status=item.status,
+            node_id=item.node_id,
+            detail=item.detail,
+            duration_seconds=item.duration_seconds,
+            started_at=item.started_at,
+            finished_at=item.finished_at,
+        )
+    )
+    for child in item.children:
+        _flatten_timeline(child, rows)
+
+
+def _task_node_id(graph: ProvenanceGraph, task_id: str) -> str:
+    node_id = f"build:albs-task:{task_id}"
+    if node_id in graph.nodes:
+        return node_id
+    return ""
+
+
+def _artifact_counts_text(counts: dict[str, int]) -> str:
+    if not counts:
+        return "no artifacts"
+    return ", ".join(f"{kind}={count}" for kind, count in sorted(counts.items()))
 
 
 def investigation_recipes(
@@ -230,6 +419,7 @@ def evidence_bundle(
     session: WorkbenchSession,
     selected_edge_index: int | None = None,
     selected_edge_graph: ProvenanceGraph | None = None,
+    build_analysis: BuildAnalysis | None = None,
 ) -> dict[str, Any]:
     selected = _selected_node_raw(graph, selected_node_id)
     edge_graph = selected_edge_graph or graph
@@ -240,7 +430,7 @@ def evidence_bundle(
         "selected_edge": _selected_edge_raw(edge_graph, selected_edge_index),
         "coverage": [row.to_dict() for row in coverage_rows(coverage)],
         "findings": [finding.to_dict() for finding in findings],
-        "timeline": [row.to_dict() for row in timeline_rows(graph)],
+        "timeline": [row.to_dict() for row in timeline_rows(graph, build_analysis)],
         "slice": graph_slice.to_dict() if graph_slice is not None else None,
         "slice_graph": graph_slice.graph.to_dict() if graph_slice is not None else None,
         "svg": svg,
@@ -284,7 +474,22 @@ def evidence_report_html(bundle: dict[str, Any]) -> str:
             _section("Current Slice", _dict_table(slice_info)),
             _section("Coverage", _rows_table(coverage, ["axis", "covered", "total", "ratio", "status"])),
             _section("Findings", _rows_table(findings, ["severity", "code", "subject", "detail"])),
-            _section("Timeline", _rows_table(timeline, ["kind", "label", "status", "node_id", "detail"])),
+            _section(
+                "Timeline",
+                _rows_table(
+                    timeline,
+                    [
+                        "kind",
+                        "label",
+                        "status",
+                        "duration_seconds",
+                        "started_at",
+                        "finished_at",
+                        "node_id",
+                        "detail",
+                    ],
+                ),
+            ),
             _section("Selected Node", _raw_block(selected_node)),
             _section("Selected Edge", _raw_block(selected_edge)),
             _section("Graph", f'<div class="graph">{svg}</div>'),

@@ -30,7 +30,7 @@ from albs_graph.services import (
     evidence_bundle,
     findings_for_analysis,
     investigation_recipes,
-    timeline_rows,
+    timeline_tree,
 )
 
 
@@ -217,11 +217,13 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.coverage_table.setHorizontalHeaderLabels(["Axis", "Covered", "Total", "Ratio", "Status"])
         self.coverage_table.horizontalHeader().setStretchLastSection(True)
         self.coverage_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.timeline_table = QtWidgets.QTableWidget(0, 5)
-        self.timeline_table.setHorizontalHeaderLabels(["Kind", "Label", "Status", "Node id", "Detail"])
-        self.timeline_table.horizontalHeader().setStretchLastSection(True)
+        self.timeline_table = QtWidgets.QTreeWidget()
+        self.timeline_table.setHeaderLabels(
+            ["Stage", "Status", "Duration", "Started", "Finished", "Graph node", "Detail"]
+        )
         self.timeline_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.timeline_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.timeline_table.setAlternatingRowColors(True)
         self.compare_table = QtWidgets.QTableWidget(0, 5)
         self.compare_table.setHorizontalHeaderLabels(["Change", "Key", "Left", "Right", "Detail"])
         self.compare_table.horizontalHeader().setStretchLastSection(True)
@@ -426,7 +428,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 color: {text};
                 padding: 4px;
             }}
-            QListWidget, QTableWidget, QPlainTextEdit, QScrollArea, QLineEdit, QComboBox {{
+            QListWidget, QTreeWidget, QTableWidget, QPlainTextEdit, QScrollArea, QLineEdit, QComboBox {{
                 background: {panel};
                 color: {text};
                 border: 1px solid {border};
@@ -436,7 +438,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             QListWidget::item {{
                 padding: 3px 6px;
             }}
-            QTableWidget {{
+            QTreeWidget, QTableWidget {{
                 alternate-background-color: {alternate};
             }}
             QPlainTextEdit {{
@@ -620,15 +622,29 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
     def _populate_timeline(self) -> None:
         assert self.result is not None
-        rows = timeline_rows(self.result.graph)
-        self.timeline_table.setRowCount(len(rows))
-        for row, event in enumerate(rows):
-            values = [event.kind, event.label, event.status, event.node_id, event.detail]
-            for column, value in enumerate(values):
-                item = QtWidgets.QTableWidgetItem(value)
-                item.setData(QtCore.Qt.UserRole, event.node_id)
-                self.timeline_table.setItem(row, column, item)
-        self.timeline_table.resizeColumnsToContents()
+        self.timeline_table.clear()
+        for event in timeline_tree(self.result.graph, self.result.build_analysis):
+            self.timeline_table.addTopLevelItem(self._timeline_item(event))
+        self.timeline_table.expandToDepth(1)
+        for column in range(self.timeline_table.columnCount()):
+            self.timeline_table.resizeColumnToContents(column)
+
+    def _timeline_item(self, event) -> QtWidgets.QTreeWidgetItem:
+        item = QtWidgets.QTreeWidgetItem(
+            [
+                event.label,
+                event.status,
+                _format_seconds(event.duration_seconds),
+                event.started_at or "",
+                event.finished_at or "",
+                event.node_id,
+                event.detail,
+            ]
+        )
+        item.setData(0, QtCore.Qt.UserRole, event.node_id)
+        for child in event.children:
+            item.addChild(self._timeline_item(child))
+        return item
 
     def _populate_recipes(self) -> None:
         assert self.result is not None
@@ -822,8 +838,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         if edge_index is not None:
             self._show_edge(int(edge_index), from_slice=False)
 
-    def _timeline_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
-        node_id = item.data(QtCore.Qt.UserRole)
+    def _timeline_activated(self, item: QtWidgets.QTreeWidgetItem, _column: int = 0) -> None:
+        node_id = item.data(0, QtCore.Qt.UserRole)
         if node_id:
             self._navigate_to_node(str(node_id), prefer_artifact=False)
 
@@ -995,6 +1011,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             ),
             svg=self.current_svg,
             session=self._current_session(),
+            build_analysis=self.result.build_analysis,
         )
         Path(path).write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         self._log(f"Exported evidence bundle to {path}")
@@ -1025,6 +1042,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             ),
             svg=self.current_svg,
             session=self._current_session(),
+            build_analysis=self.result.build_analysis,
         )
         Path(path).write_text(evidence_report_html(bundle), encoding="utf-8")
         self._log(f"Exported HTML report to {path}")
@@ -1138,3 +1156,15 @@ def run(
     )
     window.show()
     return int(app.exec_())
+
+
+def _format_seconds(value: float | None) -> str:
+    if value is None:
+        return ""
+    if value < 60:
+        return f"{value:.2f}s"
+    minutes, seconds = divmod(value, 60)
+    if minutes < 60:
+        return f"{int(minutes)}m {seconds:.1f}s"
+    hours, minutes = divmod(minutes, 60)
+    return f"{int(hours)}h {int(minutes)}m {seconds:.0f}s"

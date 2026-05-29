@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Callable
 
 from albs_graph.adapters.albs import (
+    AlbsBuildMetadata,
     graph_from_build_metadata,
-    load_synthetic_build_fixture,
     fetch_build_metadata,
+    parse_build_metadata,
 )
 from albs_graph.adapters.rpmgraph import RpmgraphUnavailable, run_repograph
 from albs_graph.model import ProvenanceGraph
 from albs_graph.pipeline import AnalysisPipeline, PipelineResult, Progress, RunSpec
+from albs_graph.provenance.build_analysis import BuildAnalysis, analyze_albs_build
 from albs_graph.provenance.coverage import CoverageReport, coverage_report, identity_strength
 from albs_graph.provenance.reconcile import ReconciliationReport
 
@@ -57,6 +60,7 @@ class AnalysisResult:
     coverage: CoverageReport
     identity_breakdown: dict[str, int] = field(default_factory=dict)
     warnings: list[ServiceWarning] = field(default_factory=list)
+    build_analysis: BuildAnalysis | None = None
 
     @property
     def reconciliation(self) -> ReconciliationReport:
@@ -81,9 +85,15 @@ class AnalysisService:
     def load_graph(self, spec: GraphLoadSpec, *, on_progress: Progress = None) -> ProvenanceGraph:
         """Load the base graph from ALBS metadata or a local fixture."""
 
+        metadata = self._load_build_metadata(spec, on_progress=on_progress)
+        return graph_from_build_metadata(metadata)
+
+    def _load_build_metadata(
+        self, spec: GraphLoadSpec, *, on_progress: Progress = None
+    ) -> AlbsBuildMetadata:
         spec.validate()
         if spec.build_id is not None:
-            metadata = fetch_build_metadata(
+            return fetch_build_metadata(
                 spec.build_id,
                 base_url=spec.base_url,
                 progress=on_progress,
@@ -91,12 +101,11 @@ class AnalysisService:
                 refresh_cache=spec.refresh_cache,
                 cache_ttl_seconds=spec.cache_ttl_seconds,
             )
-            return graph_from_build_metadata(metadata)
 
         assert spec.source is not None
         if on_progress:
             on_progress(f"Loading ALBS build metadata from {spec.source}")
-        return load_synthetic_build_fixture(spec.source)
+        return parse_build_metadata(json.loads(spec.source.read_text(encoding="utf-8")))
 
     def analyze(
         self,
@@ -110,7 +119,8 @@ class AnalysisService:
     ) -> AnalysisResult:
         """Load a graph, run enrichment, reconcile, and compute coverage."""
 
-        graph = self.load_graph(load_spec, on_progress=on_progress)
+        metadata = self._load_build_metadata(load_spec, on_progress=on_progress)
+        graph = graph_from_build_metadata(metadata)
         return self.analyze_graph(
             graph,
             run_spec,
@@ -118,6 +128,7 @@ class AnalysisService:
             repograph=repograph,
             on_progress=on_progress,
             dry_run=dry_run,
+            build_analysis=analyze_albs_build(metadata.raw),
         )
 
     def analyze_graph(
@@ -129,6 +140,7 @@ class AnalysisService:
         repograph: str | None = None,
         on_progress: Progress = None,
         dry_run: bool = False,
+        build_analysis: BuildAnalysis | None = None,
     ) -> AnalysisResult:
         """Run enrichment against an already loaded graph."""
 
@@ -148,6 +160,7 @@ class AnalysisService:
             coverage=coverage_report(enriched),
             identity_breakdown=identity_strength(enriched),
             warnings=warnings,
+            build_analysis=build_analysis,
         )
 
     def _resolve_repograph(

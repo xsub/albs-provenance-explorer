@@ -2150,6 +2150,25 @@ edge inspector rendering, and HTML report rendering. Suite now 287.
 
 ---
 
+## D80 - Workbench timeline tree from ALBS build analysis
+
+The first Timeline tab was not a timeline: it listed build-task/signature graph
+nodes with no real durations, so it did not explain how an ALBS task progressed.
+
+Fix: carry `BuildAnalysis` through `AnalysisResult` whenever a graph is loaded
+from raw ALBS metadata (`--source` / build-id fetch). The workbench timeline now
+uses `timeline_tree`, a hierarchical view model rooted at build/sign tasks. Each
+build task row includes status, wall time, start and finish, and expands into
+build performance steps, aggregate test timing, and artifact groups. If only a
+graph is available, the old graph-derived timeline is retained as a graceful
+fallback. The PyQt tab is now a `QTreeWidget`, so tasks can be expanded like a
+job cascade while still carrying graph node ids for navigation.
+
+Tests +2 cover build-analysis attachment in `AnalysisService` and tree timeline
+construction from the committed ALBS metadata fixture. Suite now 289.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

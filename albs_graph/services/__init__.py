@@ -9,12 +9,14 @@ from .workbench import (
     CoverageRow,
     InvestigationRecipe,
     TimelineRow,
+    TimelineTreeItem,
     WorkbenchSession,
     coverage_rows,
     evidence_report_html,
     evidence_bundle,
     investigation_recipes,
     timeline_rows,
+    timeline_tree,
 )
 
 __all__ = [
@@ -32,6 +34,7 @@ __all__ = [
     "NodeSummary",
     "ServiceWarning",
     "TimelineRow",
+    "TimelineTreeItem",
     "WorkbenchSession",
     "compare_artifacts",
     "coverage_rows",
@@ -40,4 +43,5 @@ __all__ = [
     "findings_for_analysis",
     "investigation_recipes",
     "timeline_rows",
+    "timeline_tree",
 ]

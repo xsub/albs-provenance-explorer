@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from albs_graph.adapters.rpmgraph import RpmgraphUnavailable
 from albs_graph.dependency import DependencySpec, Ecosystem, PackageIdentity
@@ -10,6 +11,7 @@ from albs_graph.pipeline import AnalysisPipeline, EnrichmentContext, RunSpec
 from albs_graph.provenance.reconcile import DependencyClaim, add_dependency_claim
 from albs_graph.services import (
     AnalysisService,
+    GraphLoadSpec,
     WorkbenchSession,
     compare_artifacts,
     coverage_rows,
@@ -20,6 +22,7 @@ from albs_graph.services import (
     findings_for_analysis,
     investigation_recipes,
     timeline_rows,
+    timeline_tree,
 )
 
 
@@ -67,6 +70,19 @@ def test_analysis_service_reports_repograph_warning_without_failing() -> None:
 
     assert [warning.kind for warning in result.warnings] == ["repograph_unavailable"]
     assert "dnf is missing" in result.warnings[0].message
+
+
+def test_analysis_service_attaches_build_analysis_from_source_metadata() -> None:
+    service = AnalysisService(pipeline=AnalysisPipeline(steps=()))
+
+    result = service.analyze(
+        GraphLoadSpec(source=Path("examples/live-build-17812/build-17812.albs.json")),
+        RunSpec(),
+    )
+
+    assert result.build_analysis is not None
+    assert result.build_analysis.build_id == "17812"
+    assert result.build_analysis.task_timings[0].wall_seconds is not None
 
 
 def test_graph_queries_summarize_and_search_nodes() -> None:
@@ -146,6 +162,20 @@ def test_workbench_views_summarize_coverage_timeline_and_recipes() -> None:
     assert any(row.axis == "provenance" for row in coverage)
     assert any(row.kind == "build_task" for row in timeline)
     assert any(recipe.mode == "Node Neighborhood" for recipe in recipes)
+
+
+def test_workbench_timeline_tree_uses_build_analysis_steps() -> None:
+    result = AnalysisService(pipeline=AnalysisPipeline(steps=())).analyze(
+        GraphLoadSpec(source=Path("examples/live-build-17812/build-17812.albs.json")),
+        RunSpec(),
+    )
+
+    tree = timeline_tree(result.graph, result.build_analysis)
+    x86_task = next(item for item in tree if item.label == "ALBS task 188077 x86_64")
+
+    assert x86_task.duration_seconds == 398.212342
+    assert any(child.label == "build_node_stats.build_binaries" for child in x86_task.children)
+    assert any(child.kind == "artifacts" for child in x86_task.children)
 
 
 def test_workbench_session_round_trips_dict() -> None:

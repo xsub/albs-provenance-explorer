@@ -235,6 +235,13 @@ search controls, the compare tab can diff the current build against another
 ALBS metadata JSON via `compare_artifacts`, and HTML report export produces a
 human-readable investigation artifact from the same evidence bundle.
 
+Timeline is now driven by `BuildAnalysis` when the workbench opens raw ALBS
+metadata. Instead of a flat node list, the Timeline tab is a tree:
+build/sign task rows carry status, start, finish and wall time, and build tasks
+expand into performance steps, aggregate test steps and artifact groups. Graph
+node ids remain attached to rows where a timeline event can navigate back into
+the provenance graph.
+
 ---
 
 ## 10. Recommended First Implementation Path
