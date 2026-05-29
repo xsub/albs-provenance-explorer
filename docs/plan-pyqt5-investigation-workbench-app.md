@@ -229,6 +229,12 @@ the optional `gui` extra. It also now has a one-hop Node Neighborhood mode,
 coverage and timeline tabs, recipe shortcuts, JSON evidence-bundle export, and
 save/load support for lightweight workbench sessions.
 
+The next layer makes the graph itself more workbench-like: edges are clickable
+and inspectable as first-class objects, the canvas has zoom / fit / reset and
+search controls, the compare tab can diff the current build against another
+ALBS metadata JSON via `compare_artifacts`, and HTML report export produces a
+human-readable investigation artifact from the same evidence bundle.
+
 ---
 
 ## 10. Recommended First Implementation Path

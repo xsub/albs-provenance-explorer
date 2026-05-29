@@ -14,6 +14,7 @@ from albs_graph.services import (
     compare_artifacts,
     coverage_rows,
     evidence_bundle,
+    evidence_report_html,
     GraphQueries,
     GraphSlices,
     findings_for_analysis,
@@ -153,6 +154,7 @@ def test_workbench_session_round_trips_dict() -> None:
         mode="Node Neighborhood",
         selected_artifact_id=SYNTHETIC_RPM_ID,
         selected_node_id="build:albs:123456",
+        selected_edge_index=2,
     )
 
     restored = WorkbenchSession.from_dict(session.to_dict())
@@ -173,14 +175,36 @@ def test_evidence_bundle_exports_current_slice_context() -> None:
         coverage=result.coverage,
         findings=findings,
         selected_node_id=SYNTHETIC_RPM_ID,
+        selected_edge_index=0,
+        selected_edge_graph=graph_slice.graph,
         svg="<svg/>",
         session=WorkbenchSession(selected_node_id=SYNTHETIC_RPM_ID),
     )
 
     assert bundle["schema"].endswith("/v1")
     assert bundle["selected_node"]["node"]["id"] == SYNTHETIC_RPM_ID
+    assert bundle["selected_edge"]["index"] == 0
     assert bundle["slice"]["name"] == "trust_path"
     assert bundle["svg"] == "<svg/>"
+
+
+def test_evidence_report_html_renders_bundle_sections() -> None:
+    bundle = {
+        "session": {"source": "build.json"},
+        "slice": {"name": "trust_path"},
+        "coverage": [{"axis": "provenance", "covered": 1, "total": 1, "ratio": 1, "status": "complete"}],
+        "findings": [{"severity": "info", "code": "trust.has_sbom", "subject": "rpm:1", "detail": ""}],
+        "timeline": [],
+        "selected_node": {"node": {"id": "rpm:1"}},
+        "selected_edge": {"index": 0},
+        "svg": "<svg></svg>",
+    }
+
+    html = evidence_report_html(bundle)
+
+    assert "ALBS Provenance Investigation Report" in html
+    assert "trust.has_sbom" in html
+    assert "<svg></svg>" in html
 
 
 def test_compare_artifacts_reports_added_removed_and_changed_artifacts() -> None:

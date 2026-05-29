@@ -7,13 +7,20 @@ import sys
 
 from PyQt5 import QtCore, QtGui, QtSvg, QtWidgets
 
-from albs_graph.gui.inspect import InspectorEdge, inspector_view, raw_json
+from albs_graph.gui.inspect import (
+    InspectorEdge,
+    edge_inspector_view,
+    inspector_view,
+    raw_json,
+)
 from albs_graph.pipeline import RunSpec
-from albs_graph.gui.hitmap import NodeRegion, node_at
+from albs_graph.gui.hitmap import EdgeRegion, NodeRegion, edge_at, node_at
 from albs_graph.gui.render import workbench_graph_rendering
 from albs_graph.services import (
     AnalysisResult,
     AnalysisService,
+    compare_artifacts,
+    evidence_report_html,
     GraphLoadSpec,
     GraphQueries,
     GraphSlice,
@@ -55,14 +62,19 @@ class AnalysisWorker(QtCore.QRunnable):
 
 class GraphSvgWidget(QtSvg.QSvgWidget):
     nodeClicked = QtCore.pyqtSignal(str)
+    edgeClicked = QtCore.pyqtSignal(int)
 
     def __init__(self) -> None:
         super().__init__()
         self._node_regions: tuple[NodeRegion, ...] = ()
+        self._edge_regions: tuple[EdgeRegion, ...] = ()
         self.setMouseTracking(True)
 
-    def set_node_regions(self, regions: tuple[NodeRegion, ...]) -> None:
-        self._node_regions = regions
+    def set_regions(
+        self, node_regions: tuple[NodeRegion, ...], edge_regions: tuple[EdgeRegion, ...]
+    ) -> None:
+        self._node_regions = node_regions
+        self._edge_regions = edge_regions
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.button() == QtCore.Qt.LeftButton:
@@ -71,12 +83,18 @@ class GraphSvgWidget(QtSvg.QSvgWidget):
                 self.nodeClicked.emit(node_id)
                 event.accept()
                 return
+            edge_index = self._edge_index_at(event.pos())
+            if edge_index is not None:
+                self.edgeClicked.emit(edge_index)
+                event.accept()
+                return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
         cursor = (
             QtCore.Qt.PointingHandCursor
             if self._node_id_at(event.pos()) is not None
+            or self._edge_index_at(event.pos()) is not None
             else QtCore.Qt.ArrowCursor
         )
         self.setCursor(cursor)
@@ -95,6 +113,16 @@ class GraphSvgWidget(QtSvg.QSvgWidget):
         x = point.x() * size.width() / self.width()
         y = point.y() * size.height() / self.height()
         return node_at(self._node_regions, x, y)
+
+    def _edge_index_at(self, point: QtCore.QPoint) -> int | None:
+        if not self._edge_regions:
+            return None
+        size = self.renderer().defaultSize()
+        if not size.isValid() or self.width() <= 0 or self.height() <= 0:
+            return None
+        x = point.x() * size.width() / self.width()
+        y = point.y() * size.height() / self.height()
+        return edge_at(self._edge_regions, x, y)
 
 
 class WorkbenchWindow(QtWidgets.QMainWindow):
@@ -115,9 +143,13 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.findings = []
         self.pending_session: WorkbenchSession | None = None
         self.selected_node_id: str | None = None
+        self.selected_edge_index: int | None = None
         self.current_svg = ""
         self.dark_mode = False
         self.base_url = base_url
+        self.graph_scale = 1.0
+        self.graph_fit_to_view = False
+        self.svg_default_size = QtCore.QSize(900, 560)
 
         self.source_edit = QtWidgets.QLineEdit(str(initial_source or ""))
         self.build_id_edit = QtWidgets.QLineEdit(str(initial_build_id or ""))
@@ -127,6 +159,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         )
         self.recipe_combo = QtWidgets.QComboBox()
         self.recipe_combo.addItem("Recipes")
+        self.graph_search_edit = QtWidgets.QLineEdit()
+        self.graph_search_edit.setPlaceholderText("Search graph")
+        self.graph_search_edit.setFixedWidth(160)
         self.include_tests = QtWidgets.QCheckBox("Tests")
         self.coverage_label = QtWidgets.QLabel("No graph loaded")
         self.progress_label = QtWidgets.QLabel("")
@@ -187,6 +222,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.timeline_table.horizontalHeader().setStretchLastSection(True)
         self.timeline_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.timeline_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.compare_table = QtWidgets.QTableWidget(0, 5)
+        self.compare_table.setHorizontalHeaderLabels(["Change", "Key", "Left", "Right", "Detail"])
+        self.compare_table.horizontalHeader().setStretchLastSection(True)
+        self.compare_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.compare_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 
         self.log = QtWidgets.QPlainTextEdit()
         self.log.setReadOnly(True)
@@ -228,15 +268,29 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self,
         )
         export_bundle_action.triggered.connect(self.export_bundle)
+        export_html_action = QtWidgets.QAction("Export HTML", self)
+        export_html_action.triggered.connect(self.export_html_report)
+        compare_action = QtWidgets.QAction("Compare", self)
+        compare_action.triggered.connect(self.compare_with_source)
         save_session_action = QtWidgets.QAction("Save Session", self)
         save_session_action.triggered.connect(self.save_session)
         load_session_action = QtWidgets.QAction("Load Session", self)
         load_session_action.triggered.connect(self.load_session)
+        zoom_in_action = QtWidgets.QAction("Zoom In", self)
+        zoom_in_action.triggered.connect(self.zoom_in_graph)
+        zoom_out_action = QtWidgets.QAction("Zoom Out", self)
+        zoom_out_action.triggered.connect(self.zoom_out_graph)
+        fit_action = QtWidgets.QAction("Fit", self)
+        fit_action.triggered.connect(self.fit_graph)
+        reset_action = QtWidgets.QAction("Reset", self)
+        reset_action.triggered.connect(self.reset_graph_zoom)
 
         toolbar.addAction(open_action)
         toolbar.addAction(run_action)
         toolbar.addAction(export_action)
         toolbar.addAction(export_bundle_action)
+        toolbar.addAction(export_html_action)
+        toolbar.addAction(compare_action)
         toolbar.addAction(save_session_action)
         toolbar.addAction(load_session_action)
         toolbar.addSeparator()
@@ -251,6 +305,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         toolbar.addWidget(QtWidgets.QLabel("Mode"))
         toolbar.addWidget(self.mode_combo)
         toolbar.addWidget(self.recipe_combo)
+        toolbar.addAction(zoom_in_action)
+        toolbar.addAction(zoom_out_action)
+        toolbar.addAction(fit_action)
+        toolbar.addAction(reset_action)
+        toolbar.addWidget(self.graph_search_edit)
         toolbar.addWidget(self.include_tests)
 
         left = QtWidgets.QWidget()
@@ -296,6 +355,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         bottom.addTab(self.findings_table, "Findings")
         bottom.addTab(self.coverage_table, "Coverage")
         bottom.addTab(self.timeline_table, "Timeline")
+        bottom.addTab(self.compare_table, "Compare")
         bottom.addTab(self.log, "Log")
         dock = QtWidgets.QDockWidget("Investigation Output")
         dock.setWidget(bottom)
@@ -310,13 +370,17 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.include_tests.stateChanged.connect(lambda _state: self.render_current_slice())
         self.slice_nodes.itemSelectionChanged.connect(self._slice_node_changed)
         self.svg_widget.nodeClicked.connect(self._graph_node_clicked)
+        self.svg_widget.edgeClicked.connect(self._graph_edge_clicked)
         self.findings_table.itemActivated.connect(self._finding_activated)
         self.findings_table.itemDoubleClicked.connect(self._finding_activated)
         self.edges_table.itemActivated.connect(self._edge_activated)
         self.edges_table.itemDoubleClicked.connect(self._edge_activated)
         self.timeline_table.itemActivated.connect(self._timeline_activated)
         self.timeline_table.itemDoubleClicked.connect(self._timeline_activated)
+        self.compare_table.itemActivated.connect(self._compare_activated)
+        self.compare_table.itemDoubleClicked.connect(self._compare_activated)
         self.recipe_combo.activated.connect(self._recipe_activated)
+        self.graph_search_edit.returnPressed.connect(self.search_current_graph)
 
     def _apply_style(self) -> None:
         self.dark_mode = self._is_dark_palette()
@@ -620,6 +684,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             return
         self.current_slice = graph_slice
         self.selected_node_id = graph_slice.focus or subject_id
+        self.selected_edge_index = None
+        self.graph_fit_to_view = False
+        self.graph_scale = 1.0
         self._update_graph_header(graph_slice, subject_id)
         self._render_current_svg()
         self._populate_slice_nodes(graph_slice)
@@ -640,27 +707,82 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self.current_slice.graph,
             dark=self.dark_mode,
             selected_node_id=self.selected_node_id,
+            selected_edge_index=self.selected_edge_index,
         )
         self.current_svg = rendering.svg
-        self._load_svg(self.current_svg, rendering.node_regions)
+        self._load_svg(self.current_svg, rendering.node_regions, rendering.edge_regions)
 
-    def _load_svg(self, svg: str, node_regions: tuple[NodeRegion, ...]) -> None:
+    def _load_svg(
+        self,
+        svg: str,
+        node_regions: tuple[NodeRegion, ...],
+        edge_regions: tuple[EdgeRegion, ...],
+    ) -> None:
         self.svg_widget.load(QtCore.QByteArray(svg.encode("utf-8")))
-        self.svg_widget.set_node_regions(node_regions)
+        self.svg_widget.set_regions(node_regions, edge_regions)
         renderer = self.svg_widget.renderer()
         size = renderer.defaultSize()
         if not size.isValid() or size.width() <= 0 or size.height() <= 0:
             size = QtCore.QSize(900, 560)
-        viewport = self.svg_scroll.viewport().size()
-        # Keep text legible: fit only modestly oversized graphs, otherwise use
-        # the SVG's natural size and let the scroll area do its job.
-        scale = 1.0
-        if size.width() < viewport.width() and size.height() < viewport.height():
-            scale = min(1.35, viewport.width() / max(1, size.width()))
-        elif size.width() <= viewport.width() * 1.4:
-            scale = max(0.8, min(1.0, viewport.width() / max(1, size.width())))
-        target = QtCore.QSize(max(720, int(size.width() * scale)), max(520, int(size.height() * scale)))
+        self.svg_default_size = size
+        target = self._graph_target_size(size)
         self.svg_widget.setFixedSize(target)
+
+    def _graph_target_size(self, size: QtCore.QSize) -> QtCore.QSize:
+        viewport = self.svg_scroll.viewport().size()
+        if self.graph_fit_to_view:
+            scale = min(
+                viewport.width() / max(1, size.width()),
+                viewport.height() / max(1, size.height()),
+            )
+            self.graph_scale = max(0.15, min(2.5, scale))
+        elif self.graph_scale == 1.0:
+            if size.width() < viewport.width() and size.height() < viewport.height():
+                self.graph_scale = min(1.35, viewport.width() / max(1, size.width()))
+            elif size.width() <= viewport.width() * 1.4:
+                self.graph_scale = max(0.8, min(1.0, viewport.width() / max(1, size.width())))
+        return QtCore.QSize(
+            max(720, int(size.width() * self.graph_scale)),
+            max(520, int(size.height() * self.graph_scale)),
+        )
+
+    def _resize_current_graph(self) -> None:
+        self.svg_widget.setFixedSize(self._graph_target_size(self.svg_default_size))
+
+    def zoom_in_graph(self) -> None:
+        self.graph_fit_to_view = False
+        self.graph_scale = min(4.0, self.graph_scale * 1.2)
+        self._resize_current_graph()
+
+    def zoom_out_graph(self) -> None:
+        self.graph_fit_to_view = False
+        self.graph_scale = max(0.2, self.graph_scale / 1.2)
+        self._resize_current_graph()
+
+    def fit_graph(self) -> None:
+        self.graph_fit_to_view = True
+        self._resize_current_graph()
+
+    def reset_graph_zoom(self) -> None:
+        self.graph_fit_to_view = False
+        self.graph_scale = 1.0
+        self._resize_current_graph()
+
+    def search_current_graph(self) -> None:
+        text = self.graph_search_edit.text().strip()
+        if not text:
+            return
+        if self.current_slice is not None:
+            matches = GraphQueries(self.current_slice.graph).find_nodes(text, limit=1)
+            if matches:
+                self._show_node(matches[0].id)
+                return
+        if self.result is not None:
+            matches = GraphQueries(self.result.graph).find_nodes(text, limit=1)
+            if matches:
+                self._navigate_to_node(matches[0].id, prefer_artifact=True)
+                return
+        self._log(f"No graph match for {text}")
 
     def _populate_slice_nodes(self, graph_slice: GraphSlice) -> None:
         rows = sorted(
@@ -687,15 +809,18 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _graph_node_clicked(self, node_id: str) -> None:
         self._show_node(node_id)
 
+    def _graph_edge_clicked(self, edge_index: int) -> None:
+        self._show_edge(edge_index, from_slice=True)
+
     def _finding_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
         subject = item.data(QtCore.Qt.UserRole)
         if subject:
             self._navigate_to_node(str(subject), prefer_artifact=True)
 
     def _edge_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
-        other = item.data(QtCore.Qt.UserRole)
-        if other:
-            self._navigate_to_node(str(other), prefer_artifact=False)
+        edge_index = item.data(QtCore.Qt.UserRole)
+        if edge_index is not None:
+            self._show_edge(int(edge_index), from_slice=False)
 
     def _timeline_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
         node_id = item.data(QtCore.Qt.UserRole)
@@ -719,6 +844,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self.render_current_slice()
         self.recipe_combo.setCurrentIndex(0)
 
+    def _compare_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
+        node_id = item.data(QtCore.Qt.UserRole)
+        if node_id:
+            self._navigate_to_node(str(node_id), prefer_artifact=True)
+
     def _show_node(self, node_id: str, *, render_graph: bool = True) -> None:
         if self.result is None:
             return
@@ -733,11 +863,33 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._populate_edges_table(view.incoming + view.outgoing)
         self.raw_inspector.setPlainText(raw_json(view))
         self._select_slice_node(node_id)
+        previous_edge = self.selected_edge_index
+        self.selected_edge_index = None
         if self.current_slice is not None and node_id in self.current_slice.graph.nodes:
             previous = self.selected_node_id
             self.selected_node_id = node_id
-            if render_graph and previous != node_id:
+            if render_graph and (previous != node_id or previous_edge is not None):
                 self._render_current_svg()
+
+    def _show_edge(self, edge_index: int, *, from_slice: bool) -> None:
+        graph = self.current_slice.graph if from_slice and self.current_slice is not None else None
+        if graph is None:
+            if self.result is None:
+                return
+            graph = self.result.graph
+        try:
+            view = edge_inspector_view(graph, edge_index)
+        except ValueError:
+            return
+        self._populate_key_value_table(self.summary_table, view.summary)
+        self._populate_key_value_table(self.metadata_table, view.metadata)
+        self._populate_edges_table([])
+        self.raw_inspector.setPlainText(raw_json(view))
+        if from_slice:
+            self.selected_edge_index = edge_index
+            self.selected_node_id = None
+            self.slice_nodes.clearSelection()
+            self._render_current_svg()
 
     def _select_slice_node(self, node_id: str) -> None:
         for row in range(self.slice_nodes.rowCount()):
@@ -798,7 +950,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             ]
             for column, value in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(value)
-                item.setData(QtCore.Qt.UserRole, edge.other_id)
+                item.setData(QtCore.Qt.UserRole, edge.index)
                 self.edges_table.setItem(row, column, item)
         self.edges_table.resizeColumnsToContents()
 
@@ -835,11 +987,75 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             coverage=self.result.coverage,
             findings=self.findings,
             selected_node_id=self.selected_node_id,
+            selected_edge_index=self.selected_edge_index,
+            selected_edge_graph=(
+                self.current_slice.graph
+                if self.selected_edge_index is not None and self.current_slice is not None
+                else None
+            ),
             svg=self.current_svg,
             session=self._current_session(),
         )
         Path(path).write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         self._log(f"Exported evidence bundle to {path}")
+
+    def export_html_report(self) -> None:
+        if self.result is None:
+            self._show_error("No analysis result to export.")
+            return
+        path, _filter = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "Export investigation HTML report",
+            "investigation-report.html",
+            "HTML files (*.html);;All files (*)",
+        )
+        if not path:
+            return
+        bundle = evidence_bundle(
+            graph=self.result.graph,
+            graph_slice=self.current_slice,
+            coverage=self.result.coverage,
+            findings=self.findings,
+            selected_node_id=self.selected_node_id,
+            selected_edge_index=self.selected_edge_index,
+            selected_edge_graph=(
+                self.current_slice.graph
+                if self.selected_edge_index is not None and self.current_slice is not None
+                else None
+            ),
+            svg=self.current_svg,
+            session=self._current_session(),
+        )
+        Path(path).write_text(evidence_report_html(bundle), encoding="utf-8")
+        self._log(f"Exported HTML report to {path}")
+
+    def compare_with_source(self) -> None:
+        if self.result is None:
+            self._show_error("Run analysis before comparing.")
+            return
+        path, _filter = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            "Compare with ALBS build metadata",
+            str(Path.cwd()),
+            "JSON files (*.json);;All files (*)",
+        )
+        if not path:
+            return
+        try:
+            other = AnalysisService().analyze(GraphLoadSpec(source=Path(path)), RunSpec())
+        except Exception as exc:
+            self._show_error(str(exc))
+            return
+        deltas = compare_artifacts(self.result.graph, other.graph)
+        self.compare_table.setRowCount(len(deltas))
+        for row, delta in enumerate(deltas):
+            values = [delta.change, delta.key, delta.left or "", delta.right or "", delta.detail]
+            for column, value in enumerate(values):
+                item = QtWidgets.QTableWidgetItem(value)
+                item.setData(QtCore.Qt.UserRole, delta.left or "")
+                self.compare_table.setItem(row, column, item)
+        self.compare_table.resizeColumnsToContents()
+        self._log(f"Compared current graph with {path}: {len(deltas)} artifact deltas")
 
     def save_session(self) -> None:
         path, _filter = QtWidgets.QFileDialog.getSaveFileName(
@@ -882,6 +1098,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 str(current.data(QtCore.Qt.UserRole)) if current is not None else None
             ),
             selected_node_id=self.selected_node_id,
+            selected_edge_index=self.selected_edge_index,
         )
 
     def _apply_session(self, session: WorkbenchSession) -> None:
@@ -893,6 +1110,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         if session.selected_artifact_id and self._select_artifact(session.selected_artifact_id):
             if session.selected_node_id:
                 self._navigate_to_node(session.selected_node_id, prefer_artifact=False)
+            elif session.selected_edge_index is not None:
+                self._show_edge(session.selected_edge_index, from_slice=True)
             return
         if self.artifact_list.count():
             self.artifact_list.setCurrentRow(0)

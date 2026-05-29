@@ -2128,6 +2128,28 @@ Suite now 283.
 
 ---
 
+## D79 - Workbench edge selection, graph controls, compare, and HTML reports
+
+The workbench's first interactive graph pass handled node selection, but the
+next highest-value steps were to make edges inspectable, give users basic graph
+controls, expose build comparison in the UI, and produce shareable reports.
+
+Fix: extend Graphviz image-map parsing to distinguish node and edge regions.
+Workbench DOT now assigns URLs to edges and can highlight a selected edge.
+`edge_inspector_view` gives edges the same Summary / Metadata / Raw treatment as
+nodes, while the PyQt graph widget emits node or edge selections based on the
+clicked SVG region. The graph toolbar also gains zoom in/out, fit, reset, and
+search controls. The compare tab loads another ALBS metadata JSON and shows
+added, removed, and changed artifact rows through the existing
+`compare_artifacts` service. The evidence bundle can now carry selected-edge
+context, and `evidence_report_html` renders that bundle into a standalone HTML
+investigation report.
+
+Tests +4 cover edge hit-map parsing, clickable/highlighted edge DOT output,
+edge inspector rendering, and HTML report rendering. Suite now 287.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

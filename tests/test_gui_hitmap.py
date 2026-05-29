@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from albs_graph.gui.hitmap import NodeRegion, node_at, node_regions_from_cmap
+from albs_graph.gui.hitmap import (
+    EdgeRegion,
+    NodeRegion,
+    edge_at,
+    graph_regions_from_cmap,
+    node_at,
+    node_regions_from_cmap,
+)
 
 
 def test_node_regions_from_cmap_decodes_graphviz_node_urls() -> None:
@@ -17,6 +24,23 @@ def test_node_regions_from_cmap_decodes_graphviz_node_urls() -> None:
     )
     assert node_at(regions, 10, 10) == "rpm:1"
     assert node_at(regions, 30, 10) is None
+
+
+def test_graph_regions_from_cmap_decodes_edge_urls() -> None:
+    cmapx = """
+    <map id="albs_workbench" name="albs_workbench">
+      <area shape="poly" href="edge:7" coords="0,0,20,0,20,20,0,20"/>
+    </map>
+    """
+
+    regions = graph_regions_from_cmap(cmapx)
+
+    assert regions.nodes == ()
+    assert regions.edges == (
+        EdgeRegion(7, "poly", (0.0, 0.0, 20.0, 0.0, 20.0, 20.0, 0.0, 20.0)),
+    )
+    assert edge_at(regions.edges, 10, 10) == 7
+    assert edge_at(regions.edges, 30, 10) is None
 
 
 def test_node_region_supports_rect_circle_and_polygon_hits() -> None:

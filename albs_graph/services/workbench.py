@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from html import escape
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -74,6 +75,7 @@ class WorkbenchSession:
     artifact_filter: str = ""
     selected_artifact_id: str | None = None
     selected_node_id: str | None = None
+    selected_edge_index: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -84,6 +86,7 @@ class WorkbenchSession:
             "artifact_filter": self.artifact_filter,
             "selected_artifact_id": self.selected_artifact_id,
             "selected_node_id": self.selected_node_id,
+            "selected_edge_index": self.selected_edge_index,
         }
 
     @classmethod
@@ -96,6 +99,7 @@ class WorkbenchSession:
             artifact_filter=str(data.get("artifact_filter") or ""),
             selected_artifact_id=_optional_text(data.get("selected_artifact_id")),
             selected_node_id=_optional_text(data.get("selected_node_id")),
+            selected_edge_index=_optional_int(data.get("selected_edge_index")),
         )
 
     @classmethod
@@ -224,12 +228,16 @@ def evidence_bundle(
     selected_node_id: str | None,
     svg: str,
     session: WorkbenchSession,
+    selected_edge_index: int | None = None,
+    selected_edge_graph: ProvenanceGraph | None = None,
 ) -> dict[str, Any]:
     selected = _selected_node_raw(graph, selected_node_id)
+    edge_graph = selected_edge_graph or graph
     return {
         "schema": "albs-provenance-workbench/evidence-bundle/v1",
         "session": session.to_dict(),
         "selected_node": selected,
+        "selected_edge": _selected_edge_raw(edge_graph, selected_edge_index),
         "coverage": [row.to_dict() for row in coverage_rows(coverage)],
         "findings": [finding.to_dict() for finding in findings],
         "timeline": [row.to_dict() for row in timeline_rows(graph)],
@@ -239,10 +247,68 @@ def evidence_bundle(
     }
 
 
+def evidence_report_html(bundle: dict[str, Any]) -> str:
+    session = bundle.get("session") or {}
+    selected_node = bundle.get("selected_node") or {}
+    selected_edge = bundle.get("selected_edge") or {}
+    slice_info = bundle.get("slice") or {}
+    coverage = bundle.get("coverage") or []
+    findings = bundle.get("findings") or []
+    timeline = bundle.get("timeline") or []
+    svg = str(bundle.get("svg") or "")
+    title = "ALBS Provenance Investigation Report"
+    return "\n".join(
+        [
+            "<!doctype html>",
+            '<html lang="en">',
+            "<head>",
+            '<meta charset="utf-8">',
+            f"<title>{title}</title>",
+            "<style>",
+            "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"
+            "margin:0;background:#f5f7fa;color:#17212b}",
+            "header{padding:24px 32px;background:#20242a;color:#eef2f6}",
+            "main{padding:24px 32px;display:grid;gap:24px}",
+            "section{background:white;border:1px solid #d8dde6;padding:16px}",
+            "h1,h2{margin:0 0 12px}",
+            "table{border-collapse:collapse;width:100%;font-size:13px}",
+            "th,td{border:1px solid #d8dde6;padding:6px 8px;text-align:left;vertical-align:top}",
+            "th{background:#eef2f6}",
+            "pre{white-space:pre-wrap;background:#17212b;color:#eef2f6;padding:12px;overflow:auto}",
+            ".graph{overflow:auto;background:#171a1f;padding:12px}",
+            "</style>",
+            "</head>",
+            "<body>",
+            f"<header><h1>{title}</h1><div>{escape(str(session.get('source') or session.get('build_id') or 'current investigation'))}</div></header>",
+            "<main>",
+            _section("Current Slice", _dict_table(slice_info)),
+            _section("Coverage", _rows_table(coverage, ["axis", "covered", "total", "ratio", "status"])),
+            _section("Findings", _rows_table(findings, ["severity", "code", "subject", "detail"])),
+            _section("Timeline", _rows_table(timeline, ["kind", "label", "status", "node_id", "detail"])),
+            _section("Selected Node", _raw_block(selected_node)),
+            _section("Selected Edge", _raw_block(selected_edge)),
+            _section("Graph", f'<div class="graph">{svg}</div>'),
+            "</main>",
+            "</body>",
+            "</html>",
+            "",
+        ]
+    )
+
+
 def _optional_text(value: Any) -> str | None:
     if value in (None, ""):
         return None
     return str(value)
+
+
+def _optional_int(value: Any) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _selected_node_raw(graph: ProvenanceGraph, node_id: str | None) -> dict[str, Any] | None:
@@ -253,3 +319,51 @@ def _selected_node_raw(graph: ProvenanceGraph, node_id: str | None) -> dict[str,
         "incoming": [edge.to_dict() for edge in graph.incoming(node_id)],
         "outgoing": [edge.to_dict() for edge in graph.outgoing(node_id)],
     }
+
+
+def _selected_edge_raw(graph: ProvenanceGraph, edge_index: int | None) -> dict[str, Any] | None:
+    if edge_index is None:
+        return None
+    try:
+        edge = graph.edges[edge_index]
+    except IndexError:
+        return None
+    return {
+        "index": edge_index,
+        "edge": edge.to_dict(),
+        "source": graph.nodes[edge.source].to_dict(),
+        "target": graph.nodes[edge.target].to_dict(),
+    }
+
+
+def _section(title: str, body: str) -> str:
+    return f"<section><h2>{escape(title)}</h2>{body}</section>"
+
+
+def _dict_table(data: dict[str, Any]) -> str:
+    if not data:
+        return "<p>No data.</p>"
+    rows = "".join(
+        f"<tr><th>{escape(str(key))}</th><td>{escape(json.dumps(value, sort_keys=True) if isinstance(value, (dict, list)) else str(value))}</td></tr>"
+        for key, value in data.items()
+    )
+    return f"<table>{rows}</table>"
+
+
+def _rows_table(rows: list[dict[str, Any]], columns: list[str]) -> str:
+    if not rows:
+        return "<p>No rows.</p>"
+    header = "".join(f"<th>{escape(column)}</th>" for column in columns)
+    body = "".join(
+        "<tr>"
+        + "".join(f"<td>{escape(str(row.get(column) or ''))}</td>" for column in columns)
+        + "</tr>"
+        for row in rows
+    )
+    return f"<table><thead><tr>{header}</tr></thead><tbody>{body}</tbody></table>"
+
+
+def _raw_block(data: Any) -> str:
+    if not data:
+        return "<p>No selection.</p>"
+    return f"<pre>{escape(json.dumps(data, indent=2, sort_keys=True))}</pre>"

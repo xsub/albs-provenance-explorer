@@ -6,7 +6,7 @@ import textwrap
 from xml.sax.saxutils import escape
 from urllib.parse import quote
 
-from albs_graph.gui.hitmap import NodeRegion, node_regions_from_cmap
+from albs_graph.gui.hitmap import EdgeRegion, GraphRegions, NodeRegion, graph_regions_from_cmap
 from albs_graph.model import Node, NodeType, ProvenanceGraph
 
 
@@ -53,20 +53,37 @@ DARK_NODE_COLORS = {
 class WorkbenchGraphRendering:
     svg: str
     node_regions: tuple[NodeRegion, ...]
+    edge_regions: tuple[EdgeRegion, ...]
 
 
 def workbench_graph_to_svg(
-    graph: ProvenanceGraph, *, dark: bool = False, selected_node_id: str | None = None
+    graph: ProvenanceGraph,
+    *,
+    dark: bool = False,
+    selected_node_id: str | None = None,
+    selected_edge_index: int | None = None,
 ) -> str:
     return workbench_graph_rendering(
-        graph, dark=dark, selected_node_id=selected_node_id
+        graph,
+        dark=dark,
+        selected_node_id=selected_node_id,
+        selected_edge_index=selected_edge_index,
     ).svg
 
 
 def workbench_graph_rendering(
-    graph: ProvenanceGraph, *, dark: bool = False, selected_node_id: str | None = None
+    graph: ProvenanceGraph,
+    *,
+    dark: bool = False,
+    selected_node_id: str | None = None,
+    selected_edge_index: int | None = None,
 ) -> WorkbenchGraphRendering:
-    dot = workbench_graph_to_dot(graph, dark=dark, selected_node_id=selected_node_id)
+    dot = workbench_graph_to_dot(
+        graph,
+        dark=dark,
+        selected_node_id=selected_node_id,
+        selected_edge_index=selected_edge_index,
+    )
     try:
         svg_result = _run_dot(dot, "svg")
     except FileNotFoundError as exc:
@@ -78,13 +95,23 @@ def workbench_graph_rendering(
 
     cmap_result = _run_dot(dot, "cmapx")
     regions = (
-        node_regions_from_cmap(cmap_result.stdout) if cmap_result.returncode == 0 else ()
+        graph_regions_from_cmap(cmap_result.stdout)
+        if cmap_result.returncode == 0
+        else GraphRegions((), ())
     )
-    return WorkbenchGraphRendering(svg=svg_result.stdout, node_regions=regions)
+    return WorkbenchGraphRendering(
+        svg=svg_result.stdout,
+        node_regions=regions.nodes,
+        edge_regions=regions.edges,
+    )
 
 
 def workbench_graph_to_dot(
-    graph: ProvenanceGraph, *, dark: bool = False, selected_node_id: str | None = None
+    graph: ProvenanceGraph,
+    *,
+    dark: bool = False,
+    selected_node_id: str | None = None,
+    selected_edge_index: int | None = None,
 ) -> str:
     theme = _theme(dark)
     colors = DARK_NODE_COLORS if dark else LIGHT_NODE_COLORS
@@ -116,10 +143,15 @@ def workbench_graph_to_dot(
             f'  "{_escape(node.id)}" [label="{label}", fillcolor="{fill}", '
             f'color="{border}", penwidth={penwidth}, tooltip="{tooltip}", URL="{url}"];'
         )
-    for edge in graph.edges:
+    for index, edge in enumerate(graph.edges):
         relation = _edge_label(str(edge.relation))
+        color = theme["selected"] if index == selected_edge_index else theme["edge"]
+        penwidth = "3.2" if index == selected_edge_index else "1.5"
+        tooltip = _escape(f"{index}: {edge.source} {relation} {edge.target}")
         lines.append(
-            f'  "{_escape(edge.source)}" -> "{_escape(edge.target)}" [label="{_escape(relation)}"];'
+            f'  "{_escape(edge.source)}" -> "{_escape(edge.target)}" '
+            f'[label="{_escape(relation)}", color="{color}", penwidth={penwidth}, '
+            f'tooltip="{tooltip}", URL="edge:{index}"];'
         )
     lines.append("}")
     return "\n".join(lines) + "\n"
@@ -261,6 +293,7 @@ def _fallback_rendering(graph: ProvenanceGraph, *, dark: bool, note: str) -> Wor
     return WorkbenchGraphRendering(
         svg=_fallback_svg(graph, dark=dark, note=note),
         node_regions=_fallback_node_regions(graph),
+        edge_regions=_fallback_edge_regions(graph),
     )
 
 
@@ -310,4 +343,12 @@ def _fallback_node_regions(graph: ProvenanceGraph) -> tuple[NodeRegion, ...]:
         y = 92 + index * 92
         regions.append(NodeRegion(edge.source, "rect", (36, y, 321, y + 56)))
         regions.append(NodeRegion(edge.target, "rect", (524, y, 809, y + 56)))
+    return tuple(regions)
+
+
+def _fallback_edge_regions(graph: ProvenanceGraph) -> tuple[EdgeRegion, ...]:
+    regions: list[EdgeRegion] = []
+    for index, _edge in enumerate(graph.edges):
+        y = 92 + index * 92
+        regions.append(EdgeRegion(index, "rect", (345, y + 16, 500, y + 40)))
     return tuple(regions)

@@ -26,3 +26,12 @@ def test_workbench_dot_marks_nodes_clickable_and_highlights_selection() -> None:
 
     assert 'URL="node:' in dot
     assert 'color="#2F6FED", penwidth=3.0' in dot
+
+
+def test_workbench_dot_marks_edges_clickable_and_highlights_selection() -> None:
+    graph = build_synthetic_fixture_graph()
+
+    dot = workbench_graph_to_dot(graph, selected_edge_index=0)
+
+    assert 'URL="edge:0"' in dot
+    assert 'color="#2F6FED", penwidth=3.2' in dot

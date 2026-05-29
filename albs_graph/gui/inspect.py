@@ -44,6 +44,25 @@ def inspector_view(graph: ProvenanceGraph, node_id: str) -> InspectorView:
     )
 
 
+def edge_inspector_view(graph: ProvenanceGraph, edge_index: int) -> InspectorView:
+    edge = GraphQueries(graph).edge_summary(edge_index)
+    return InspectorView(
+        summary=[
+            ("Type", "edge"),
+            ("Index", str(edge.index)),
+            ("Relation", edge.relation),
+            ("Source", edge.source),
+            ("Source label", edge.source_label),
+            ("Target", edge.target),
+            ("Target label", edge.target_label),
+        ],
+        metadata=_metadata_rows(edge.metadata),
+        incoming=[],
+        outgoing=[],
+        raw={"edge": edge.to_dict()},
+    )
+
+
 def raw_json(view: InspectorView) -> str:
     return json.dumps(view.raw, indent=2, sort_keys=True)
 

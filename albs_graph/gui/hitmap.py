@@ -12,21 +12,33 @@ class NodeRegion:
     coords: tuple[float, ...]
 
     def contains(self, x: float, y: float) -> bool:
-        if self.shape == "rect" and len(self.coords) >= 4:
-            left, top, right, bottom = self.coords[:4]
-            return left <= x <= right and top <= y <= bottom
-        if self.shape == "circle" and len(self.coords) >= 3:
-            cx, cy, radius = self.coords[:3]
-            return (x - cx) ** 2 + (y - cy) ** 2 <= radius**2
-        if self.shape in {"poly", "polygon"} and len(self.coords) >= 6:
-            return _point_in_polygon(x, y, self.coords)
-        return False
+        return _contains(self.shape, self.coords, x, y)
+
+
+@dataclass(frozen=True)
+class EdgeRegion:
+    edge_index: int
+    shape: str
+    coords: tuple[float, ...]
+
+    def contains(self, x: float, y: float) -> bool:
+        return _contains(self.shape, self.coords, x, y)
+
+
+@dataclass(frozen=True)
+class GraphRegions:
+    nodes: tuple[NodeRegion, ...]
+    edges: tuple[EdgeRegion, ...]
 
 
 def node_regions_from_cmap(cmapx: str) -> tuple[NodeRegion, ...]:
+    return graph_regions_from_cmap(cmapx).nodes
+
+
+def graph_regions_from_cmap(cmapx: str) -> GraphRegions:
     parser = _CMapParser()
     parser.feed(cmapx)
-    return tuple(parser.regions)
+    return GraphRegions(nodes=tuple(parser.node_regions), edges=tuple(parser.edge_regions))
 
 
 def node_at(regions: tuple[NodeRegion, ...], x: float, y: float) -> str | None:
@@ -36,28 +48,42 @@ def node_at(regions: tuple[NodeRegion, ...], x: float, y: float) -> str | None:
     return None
 
 
+def edge_at(regions: tuple[EdgeRegion, ...], x: float, y: float) -> int | None:
+    for region in reversed(regions):
+        if region.contains(x, y):
+            return region.edge_index
+    return None
+
+
 class _CMapParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
-        self.regions: list[NodeRegion] = []
+        self.node_regions: list[NodeRegion] = []
+        self.edge_regions: list[EdgeRegion] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag != "area":
             return
         values = {key: value for key, value in attrs if value is not None}
         href = unquote(values.get("href", ""))
-        if not href.startswith("node:"):
-            return
         coords = _parse_coords(values.get("coords", ""))
         if not coords:
             return
-        self.regions.append(
-            NodeRegion(
-                node_id=href.removeprefix("node:"),
-                shape=values.get("shape", "").lower(),
-                coords=coords,
+        shape = values.get("shape", "").lower()
+        if href.startswith("node:"):
+            self.node_regions.append(
+                NodeRegion(
+                    node_id=href.removeprefix("node:"),
+                    shape=shape,
+                    coords=coords,
+                )
             )
-        )
+        elif href.startswith("edge:"):
+            try:
+                edge_index = int(href.removeprefix("edge:"))
+            except ValueError:
+                return
+            self.edge_regions.append(EdgeRegion(edge_index=edge_index, shape=shape, coords=coords))
 
 
 def _parse_coords(value: str) -> tuple[float, ...]:
@@ -87,3 +113,15 @@ def _point_in_polygon(x: float, y: float, coords: tuple[float, ...]) -> bool:
                 inside = not inside
         previous_x, previous_y = current_x, current_y
     return inside
+
+
+def _contains(shape: str, coords: tuple[float, ...], x: float, y: float) -> bool:
+    if shape == "rect" and len(coords) >= 4:
+        left, top, right, bottom = coords[:4]
+        return left <= x <= right and top <= y <= bottom
+    if shape == "circle" and len(coords) >= 3:
+        cx, cy, radius = coords[:3]
+        return (x - cx) ** 2 + (y - cy) ** 2 <= radius**2
+    if shape in {"poly", "polygon"} and len(coords) >= 6:
+        return _point_in_polygon(x, y, coords)
+    return False
