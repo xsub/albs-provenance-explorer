@@ -9,6 +9,7 @@ def test_workbench_dot_uses_dark_theme() -> None:
 
     assert 'bgcolor="#171A1F"' in dot
     assert 'fontcolor="#F0F3F7"' in dot
+    assert "Inter" not in dot
 
 
 def test_workbench_dot_wraps_long_rpm_labels() -> None:

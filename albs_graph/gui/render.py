@@ -10,6 +10,9 @@ from albs_graph.gui.hitmap import EdgeRegion, GraphRegions, NodeRegion, graph_re
 from albs_graph.model import Node, NodeType, ProvenanceGraph
 
 
+GRAPH_FONT = "Arial"
+SVG_FONT_STACK = "Arial,Helvetica,sans-serif"
+
 LIGHT_NODE_COLORS = {
     "source_package": "#E8F5E9",
     "git_repository": "#E3F2FD",
@@ -119,15 +122,15 @@ def workbench_graph_to_dot(
         "digraph albs_workbench {",
         (
             f'  graph [rankdir=LR, bgcolor="{theme["background"]}", '
-            'fontname="Inter", pad="0.35", nodesep="0.65", ranksep="1.05"];'
+            f'fontname="{GRAPH_FONT}", pad="0.35", nodesep="0.65", ranksep="1.05"];'
         ),
         (
-            f'  node [shape=box, style="rounded,filled", fontname="Inter", '
+            f'  node [shape=box, style="rounded,filled", fontname="{GRAPH_FONT}", '
             f'fontsize=12, penwidth=1.4, margin="0.14,0.08", color="{theme["node_border"]}", '
             f'fontcolor="{theme["text"]}"];'
         ),
         (
-            f'  edge [fontname="Inter", fontsize=9, color="{theme["edge"]}", '
+            f'  edge [fontname="{GRAPH_FONT}", fontsize=9, color="{theme["edge"]}", '
             f'fontcolor="{theme["muted"]}", arrowsize=0.75, penwidth=1.5];'
         ),
     ]
@@ -306,7 +309,7 @@ def _fallback_svg(graph: ProvenanceGraph, *, dark: bool, note: str) -> str:
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
         (
             "<style>"
-            f"text{{font-family:Inter,Arial,sans-serif;font-size:13px;fill:{theme['text']}}}"
+            f"text{{font-family:{SVG_FONT_STACK};font-size:13px;fill:{theme['text']}}}"
             f".meta{{fill:{theme['muted']};font-size:11px}}"
             f".node{{fill:{theme['node_fill']};stroke:{theme['node_border']};stroke-width:1.2;rx:7}}"
             f".edge{{stroke:{theme['edge']};stroke-width:1.5;marker-end:url(#arrow)}}"

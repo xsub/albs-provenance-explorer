@@ -218,7 +218,13 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
         width = max(5.0, row.duration_seconds * scale) if row.duration_seconds else 7.0
         rect = QtCore.QRectF(x, y - 7, width, 16)
         fill = palette.get(row.kind, palette["bar"])
-        item = self._scene.addRoundedRect(rect, 4, 4, QtGui.QPen(palette["bar_border"]), QtGui.QBrush(fill))
+        path = QtGui.QPainterPath()
+        path.addRoundedRect(rect, 4, 4)
+        item = self._scene.addPath(
+            path,
+            QtGui.QPen(palette["bar_border"]),
+            QtGui.QBrush(fill),
+        )
         if row.node_id:
             item.setData(0, row.node_id)
             item.setToolTip(row.node_id)

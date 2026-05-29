@@ -2217,6 +2217,24 @@ combined build comparison. Suite now 293.
 
 ---
 
+## D83 - Workbench Gantt PyQt5 compatibility and available graph font
+
+The first Gantt implementation used `QGraphicsScene.addRoundedRect`, which is
+not available in PyQt5 and crashed the workbench as soon as analysis populated
+the Timeline tab. Qt also warned that the SVG/DOT renderer requested the missing
+`Inter` font family, causing font-alias population work during startup/rendering.
+
+Fix: draw Gantt bars with `QPainterPath.addRoundedRect` plus
+`QGraphicsScene.addPath`, which is supported by PyQt5. Replace graph renderer
+font declarations with `Arial` / `Arial,Helvetica,sans-serif` in both the
+workbench renderer and the older generic DOT/SVG renderers so Qt does not need
+to resolve a missing font family. No graph semantics changed.
+
+Tests unchanged; render tests now assert DOT output does not request `Inter`.
+Suite remains 293.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
