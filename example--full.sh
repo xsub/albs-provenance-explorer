@@ -76,7 +76,7 @@ main() {
   opt run fetch --build-id "$BUILD_ID" --cache "$CACHE" --cache-ttl 86400 \
     --format json -o "$LIVE_DIR/build-$BUILD_ID.json" --verbose
   if [[ ! -f "$CACHE" ]]; then
-    printf 'ERROR: no cached metadata at %s (need network for the first run).\n' "$CACHE"
+    printf 'ERROR: no usable cached metadata at %s (fetch failed, build missing, or network unavailable).\n' "$CACHE"
     return 1
   fi
 

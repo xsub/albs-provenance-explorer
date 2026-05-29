@@ -2443,8 +2443,39 @@ Ported backend areas:
 
 Backend equality check: after the port, the non-GUI/non-service backend paths
 and their tests match `max` for the targeted files. The combined workbench
-branch now has the max backend plus the PyQt workbench additions. Full suite:
-350 tests; ruff and mypy clean.
+branch now has the max backend plus the PyQt workbench additions. Ruff, mypy
+and the full suite were clean after the port.
+
+---
+
+## D93 - Reject empty ALBS SPA-shell HTML fallback metadata
+
+Loading build 57811 through the workbench exposed a false-success path in the
+ALBS HTML fallback. The live API returns `404 {"detail":"Build with
+build_id=57811 is not found"}`, while `/build/57811` returns only the generic
+single-page application shell (`<title>AlmaLinux Build System</title><div
+id=q-app>`). The fallback parser treated that page title as package
+`AlmaLinux`, wrote a raw cache with no source RPM, no binary RPMs, `commit:
+unknown`, and `unknown-albs-source:AlmaLinux`, then every later command saw a
+"fresh" cache and built a useless five-node graph.
+
+Fix:
+
+- `parse_build_page` no longer falls back to the page title as a package name.
+  It requires an explicit package/source label or derives the package from an
+  RPM link. A generic SPA shell now raises `ValueError` instead of producing
+  metadata.
+- Existing bad caches from the old parser are recognized by their generic title,
+  missing RPMs, unknown commit, and `unknown-albs-source:*` repository, then
+  discarded before refetch.
+- The workbench's classic runner now prefers the current workbench checkout
+  before the sibling `max` checkout. `ALBS_EXPLORER_CLASSIC_ROOT` still
+  overrides this, but the default now uses the backend that has already been
+  ported into the workbench branch.
+
+Outcome: build 57811 is reported as unavailable/invalid metadata instead of
+opening a misleading graph. Valid HTML fallbacks with a package label or RPM
+links still cache and reload. Suite now 352.
 
 ---
 

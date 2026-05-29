@@ -19,6 +19,14 @@ Conventions:
 2026-05-29
 ----------------------------------------------------------------------
 
+- (this)   fix(albs): reject empty ALBS SPA-shell HTML fallback caches. Build
+           57811 returns API 404 plus the generic frontend shell at `/build/57811`;
+           the old parser cached that as package `AlmaLinux` with zero RPMs,
+           making the workbench open a useless 5-node graph. Empty fallback
+           pages now raise, older empty fallback caches are discarded before
+           refetch, and the workbench's classic runner prefers this checkout
+           after the max backend port. Suite now 352. (D93.)
+
 - (this)   feat(backend): port the remaining backend work from max into the
            InvestigationWorkbenchApp branch. Backend file contents now match
            max for the pipeline/CLI, SQLite store, native resolvers, live

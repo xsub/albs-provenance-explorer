@@ -1095,8 +1095,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         candidates = []
         if configured:
             candidates.append(Path(configured).expanduser())
-        candidates.append(_repo_root().parent / "albs-provenance-explorer")
         candidates.append(_repo_root())
+        candidates.append(_repo_root().parent / "albs-provenance-explorer")
         for candidate in candidates:
             if (candidate / "example--full.sh").exists():
                 return candidate
