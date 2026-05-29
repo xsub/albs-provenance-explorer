@@ -20,9 +20,12 @@ from albs_graph.services import (
     evidence_bundle,
     evidence_report_html,
     filter_graph_layers,
+    finding_drilldown_rows,
     GraphQueries,
     GraphSlices,
     findings_for_analysis,
+    run_graph_query,
+    source_evidence_rows,
     investigation_recipes,
     timeline_gantt_rows,
     timeline_rows,
@@ -231,6 +234,69 @@ def test_compare_builds_reports_artifact_and_evidence_changes() -> None:
 
     assert any(row.area == "artifact" and row.change == "changed" for row in rows)
     assert any(row.area == "evidence" and "sbom" in row.detail for row in rows)
+
+
+def test_workbench_source_evidence_summarizes_backbone_and_scanned_files() -> None:
+    graph = build_synthetic_fixture_graph()
+    graph.add_node(
+        Node(
+            "source-tree:synthetic",
+            NodeType.SOURCE_TREE,
+            "synthetic source tree",
+            {"files": 2, "manifests": 1, "spec_files": 1, "dependency_specs": 1},
+        )
+    )
+    graph.add_edge("src:synthetic", "source-tree:synthetic", Relation.DESCRIBED_BY)
+    graph.add_node(
+        Node("source-file:synthetic.spec", NodeType.SOURCE_FILE, "synthetic.spec", {"kind": "spec"})
+    )
+    graph.add_edge("source-tree:synthetic", "source-file:synthetic.spec", Relation.CONTAINS)
+    graph.add_node(
+        Node(
+            "source-file:Cargo.toml",
+            NodeType.SOURCE_MANIFEST,
+            "Cargo.toml",
+            {"kind": "manifest", "ecosystem": "cargo"},
+        )
+    )
+    graph.add_edge("source-tree:synthetic", "source-file:Cargo.toml", Relation.CONTAINS)
+    graph.add_node(
+        Node(
+            "dep:make",
+            NodeType.DEPENDENCY_SPEC,
+            "make",
+            {"requested": "make", "scope": "buildtime", "resolution_state": "declared"},
+        )
+    )
+    graph.add_edge("source-file:synthetic.spec", "dep:make", Relation.DECLARES_DEPENDENCY)
+
+    rows = source_evidence_rows(graph, SYNTHETIC_RPM_ID)
+
+    assert any(row.category == "git repository" for row in rows)
+    assert any(row.category == "source tree" for row in rows)
+    assert any(row.category == "manifest" and row.label == "Cargo.toml" for row in rows)
+    assert any(row.category == "declared dependency" and row.label == "make" for row in rows)
+
+
+def test_workbench_graph_query_presets_find_paths_and_gaps() -> None:
+    graph = _tiny_graph()
+
+    gaps = run_graph_query(graph, "missing_sbom")
+    path = run_graph_query(build_synthetic_fixture_graph(), "source_to_artifact_path", subject_id=SYNTHETIC_RPM_ID)
+
+    assert gaps[0].node_id == "rpm:app:x86_64"
+    assert path[0].node_id == "src:synthetic"
+    assert path[-1].node_id == SYNTHETIC_RPM_ID
+
+
+def test_finding_drilldown_expands_artifact_checks() -> None:
+    result = AnalysisService(pipeline=AnalysisPipeline(steps=())).analyze_graph(_tiny_graph(), RunSpec())
+    finding = next(item for item in findings_for_analysis(result.graph, result.coverage, result.reconciliation) if item.subject)
+
+    rows = finding_drilldown_rows(result.graph, finding)
+
+    assert rows[0].kind == "finding"
+    assert any(row.kind == "check" and row.detail == "missing" for row in rows)
 
 
 def test_workbench_session_round_trips_dict() -> None:

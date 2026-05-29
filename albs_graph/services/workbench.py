@@ -190,6 +190,54 @@ class GraphLayer:
 
 
 @dataclass(frozen=True)
+class SourceEvidenceRow:
+    category: str
+    label: str
+    node_id: str
+    detail: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "category": self.category,
+            "label": self.label,
+            "node_id": self.node_id,
+            "detail": self.detail,
+        }
+
+
+@dataclass(frozen=True)
+class GraphQueryPreset:
+    code: str
+    title: str
+    detail: str
+    requires_subject: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "code": self.code,
+            "title": self.title,
+            "detail": self.detail,
+            "requires_subject": self.requires_subject,
+        }
+
+
+@dataclass(frozen=True)
+class GraphQueryRow:
+    kind: str
+    label: str
+    node_id: str
+    detail: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "label": self.label,
+            "node_id": self.node_id,
+            "detail": self.detail,
+        }
+
+
+@dataclass(frozen=True)
 class InvestigationRecipe:
     code: str
     title: str
@@ -414,6 +462,129 @@ def filter_graph_layers(
     selected.update(edge.source for edge in kept_edges)
     selected.update(edge.target for edge in kept_edges)
     return _subgraph_from_edges(graph, selected, kept_edges)
+
+
+def source_evidence_rows(
+    graph: ProvenanceGraph,
+    subject_id: str | None = None,
+) -> list[SourceEvidenceRow]:
+    rows: list[SourceEvidenceRow] = []
+    seen: set[tuple[str, str]] = set()
+
+    def add(category: str, node_id: str, detail: str = "") -> None:
+        if node_id not in graph.nodes:
+            return
+        key = (category, node_id)
+        if key in seen:
+            return
+        seen.add(key)
+        node = graph.nodes[node_id]
+        rows.append(SourceEvidenceRow(category, node.label, node.id, detail or _node_detail(node)))
+
+    path = _source_path(graph, subject_id)
+    for node_id in path:
+        node = graph.nodes.get(node_id)
+        if node is None:
+            continue
+        category = _source_path_category(node)
+        if category:
+            add(category, node_id)
+
+    source_packages = [
+        node_id
+        for node_id in path
+        if node_id in graph.nodes and graph.nodes[node_id].type == NodeType.SOURCE_PACKAGE
+    ]
+    tree_ids = _source_tree_ids(graph, source_packages)
+    for tree_id in tree_ids:
+        add("source tree", tree_id)
+        for edge in graph.outgoing(tree_id, Relation.CONTAINS):
+            node = graph.nodes[edge.target]
+            if node.type == NodeType.SOURCE_MANIFEST:
+                add("manifest", node.id)
+            elif node.metadata.get("kind") == "spec":
+                add("spec", node.id)
+
+    for file_row in list(rows):
+        if file_row.category not in {"manifest", "spec"}:
+            continue
+        for edge in graph.outgoing(file_row.node_id):
+            target = graph.nodes[edge.target]
+            if edge.relation == Relation.DECLARES_DEPENDENCY:
+                add("declared dependency", target.id, _dependency_detail(target))
+            elif edge.relation == Relation.REFERENCES:
+                add(str(target.metadata.get("kind") or "source reference"), target.id)
+
+    if not rows:
+        for node in graph.find_by_type(NodeType.SOURCE_PACKAGE):
+            add("source package", node.id)
+    return rows
+
+
+def graph_query_presets() -> tuple[GraphQueryPreset, ...]:
+    return GRAPH_QUERY_PRESETS
+
+
+def run_graph_query(
+    graph: ProvenanceGraph,
+    query_code: str,
+    *,
+    subject_id: str | None = None,
+) -> list[GraphQueryRow]:
+    if query_code == "source_to_artifact_path":
+        return _query_source_to_artifact_path(graph, subject_id)
+    if query_code == "source_evidence":
+        return [
+            GraphQueryRow(row.category, row.label, row.node_id, row.detail)
+            for row in source_evidence_rows(graph, subject_id)
+        ]
+    if query_code == "missing_sbom":
+        return _query_missing_check(graph, "has_sbom")
+    if query_code == "missing_errata":
+        return _query_missing_check(graph, "has_errata_link")
+    if query_code == "missing_artifact_cas":
+        return _query_missing_check(graph, "has_artifact_cas_attestation")
+    if query_code == "missing_source_cas":
+        return _query_missing_check(graph, "has_source_cas_attestation")
+    if query_code == "missing_signature":
+        return _query_missing_check(graph, "has_signature")
+    if query_code == "cas_attestations":
+        return _query_nodes(graph, NodeType.CAS_ATTESTATION, "cas")
+    if query_code == "dependency_conflicts":
+        return _query_dependency_conflicts(graph)
+    if query_code == "coverage_gaps":
+        return [
+            GraphQueryRow("artifact", row.package, row.node_id, row.missing)
+            for row in evidence_matrix_rows(graph)
+            if row.missing
+        ]
+    return []
+
+
+def finding_drilldown_rows(graph: ProvenanceGraph, finding: Finding) -> list[GraphQueryRow]:
+    rows = [
+        GraphQueryRow("finding", finding.code, finding.subject or "", finding.detail or "")
+    ]
+    subject = finding.subject
+    if subject and subject in graph.nodes:
+        node = graph.nodes[subject]
+        rows.append(GraphQueryRow("subject", node.label, node.id, _node_detail(node)))
+        if node.type == NodeType.BINARY_RPM:
+            report = graph.trust_path_report(node.id)
+            for name, passed in sorted(report.checks.items()):
+                rows.append(
+                    GraphQueryRow(
+                        "check",
+                        name,
+                        node.id,
+                        "ok" if passed else "missing",
+                    )
+                )
+            rows.extend(
+                GraphQueryRow(row.category, row.label, row.node_id, row.detail)
+                for row in source_evidence_rows(graph, node.id)
+            )
+    return rows
 
 
 def _graph_timeline_tree(graph: ProvenanceGraph) -> list[TimelineTreeItem]:
@@ -658,6 +829,193 @@ GRAPH_LAYERS = (
         ),
     ),
 )
+
+
+GRAPH_QUERY_PRESETS = (
+    GraphQueryPreset(
+        "source_to_artifact_path",
+        "Source to selected artifact",
+        "Show the trust path from source package through git/CAS/build to the selected RPM.",
+        requires_subject=True,
+    ),
+    GraphQueryPreset(
+        "source_evidence",
+        "Source evidence",
+        "Show source package, git, source CAS, source tree, spec and manifest evidence.",
+    ),
+    GraphQueryPreset("coverage_gaps", "Coverage gaps", "List artifacts with missing evidence."),
+    GraphQueryPreset("missing_sbom", "Artifacts without SBOM", "List RPMs missing SBOM links."),
+    GraphQueryPreset(
+        "missing_errata",
+        "Artifacts without errata",
+        "List RPMs missing errata/CVE context.",
+    ),
+    GraphQueryPreset(
+        "missing_artifact_cas",
+        "Artifacts without artifact CAS",
+        "List RPMs missing artifact CAS evidence.",
+    ),
+    GraphQueryPreset(
+        "missing_source_cas",
+        "Artifacts without source CAS",
+        "List RPMs missing source CAS evidence.",
+    ),
+    GraphQueryPreset(
+        "missing_signature",
+        "Artifacts without signature",
+        "List RPMs missing signature evidence.",
+    ),
+    GraphQueryPreset("cas_attestations", "All CAS attestations", "List CAS evidence nodes."),
+    GraphQueryPreset(
+        "dependency_conflicts",
+        "Dependency conflicts",
+        "List dependency conflict edges emitted by reconciliation.",
+    ),
+)
+
+
+def _source_path(graph: ProvenanceGraph, subject_id: str | None) -> list[str]:
+    if subject_id and subject_id in graph.nodes:
+        node = graph.nodes[subject_id]
+        if node.type == NodeType.BINARY_RPM:
+            return graph.trust_path_report(subject_id).path
+        if node.type in {
+            NodeType.SOURCE_PACKAGE,
+            NodeType.GIT_REPOSITORY,
+            NodeType.GIT_COMMIT,
+            NodeType.CAS_ATTESTATION,
+            NodeType.SOURCE_TREE,
+            NodeType.SOURCE_FILE,
+            NodeType.SOURCE_MANIFEST,
+        }:
+            return [subject_id]
+    first_rpm = next(iter(graph.find_by_type(NodeType.BINARY_RPM)), None)
+    if first_rpm is not None:
+        return graph.trust_path_report(first_rpm.id).path
+    return [node.id for node in graph.find_by_type(NodeType.SOURCE_PACKAGE)]
+
+
+def _source_path_category(node: Node) -> str:
+    if node.type == NodeType.SOURCE_PACKAGE:
+        return "source package"
+    if node.type == NodeType.GIT_REPOSITORY:
+        return "git repository"
+    if node.type == NodeType.GIT_COMMIT:
+        return "git commit"
+    if node.type == NodeType.CAS_ATTESTATION and node.metadata.get("subject_type") == "source_commit":
+        return "source CAS"
+    if node.type == NodeType.SOURCE_TREE:
+        return "source tree"
+    if node.type == NodeType.SOURCE_MANIFEST:
+        return "manifest"
+    if node.type == NodeType.SOURCE_FILE:
+        return str(node.metadata.get("kind") or "source file")
+    return ""
+
+
+def _source_tree_ids(graph: ProvenanceGraph, source_packages: list[str]) -> list[str]:
+    tree_ids = [
+        edge.target
+        for source_id in source_packages
+        for edge in graph.outgoing(source_id, Relation.DESCRIBED_BY)
+        if graph.nodes[edge.target].type == NodeType.SOURCE_TREE
+    ]
+    if tree_ids:
+        return sorted(set(tree_ids))
+    return sorted(node.id for node in graph.find_by_type(NodeType.SOURCE_TREE))
+
+
+def _node_detail(node: Node) -> str:
+    md = node.metadata
+    if node.type == NodeType.SOURCE_TREE:
+        return (
+            f"files={md.get('files', 0)}; manifests={md.get('manifests', 0)}; "
+            f"specs={md.get('spec_files', 0)}; deps={md.get('dependency_specs', 0)}"
+        )
+    if node.type in {NodeType.SOURCE_FILE, NodeType.SOURCE_MANIFEST}:
+        parts = [str(md.get("path") or node.label)]
+        if md.get("ecosystem"):
+            parts.append(f"ecosystem={md['ecosystem']}")
+        if md.get("size") is not None:
+            parts.append(f"size={md['size']}")
+        if md.get("sha256"):
+            parts.append(f"sha256={str(md['sha256'])[:16]}...")
+        return "; ".join(parts)
+    if node.type == NodeType.CAS_ATTESTATION:
+        return f"cas_hash={md.get('cas_hash') or md.get('hash') or node.label}"
+    if node.type == NodeType.GIT_REPOSITORY:
+        return str(md.get("url") or md.get("origin") or node.label)
+    if node.type == NodeType.GIT_COMMIT:
+        return str(md.get("commit") or md.get("branch") or node.label)
+    if node.type == NodeType.DEPENDENCY_SPEC:
+        return _dependency_detail(node)
+    interesting = [
+        f"{key}={value}"
+        for key, value in sorted(md.items())
+        if key in {"package", "build_id", "arch", "name", "version", "release"}
+    ]
+    return "; ".join(interesting)
+
+
+def _dependency_detail(node: Node) -> str:
+    md = node.metadata
+    parts = [
+        str(md.get("requested") or md.get("name") or node.label),
+        f"scope={md.get('scope', '')}",
+        f"state={md.get('resolution_state', '')}",
+    ]
+    if md.get("source"):
+        parts.append(f"source={md['source']}")
+    return "; ".join(part for part in parts if part and not part.endswith("="))
+
+
+def _query_source_to_artifact_path(
+    graph: ProvenanceGraph, subject_id: str | None
+) -> list[GraphQueryRow]:
+    path = _source_path(graph, subject_id)
+    return [
+        GraphQueryRow(str(graph.nodes[node_id].type), graph.nodes[node_id].label, node_id, _node_detail(graph.nodes[node_id]))
+        for node_id in path
+        if node_id in graph.nodes
+    ]
+
+
+def _query_missing_check(graph: ProvenanceGraph, check: str) -> list[GraphQueryRow]:
+    rows: list[GraphQueryRow] = []
+    for node in graph.find_by_type(NodeType.BINARY_RPM):
+        report = graph.trust_path_report(node.id)
+        if not report.checks.get(check, False):
+            rows.append(
+                GraphQueryRow("artifact", node.label, node.id, f"missing {check}")
+            )
+    return sorted(rows, key=lambda row: (row.label, row.node_id))
+
+
+def _query_nodes(
+    graph: ProvenanceGraph, node_type: NodeType, kind: str
+) -> list[GraphQueryRow]:
+    return [
+        GraphQueryRow(kind, node.label, node.id, _node_detail(node))
+        for node in sorted(graph.find_by_type(node_type), key=lambda item: (item.label, item.id))
+    ]
+
+
+def _query_dependency_conflicts(graph: ProvenanceGraph) -> list[GraphQueryRow]:
+    rows: list[GraphQueryRow] = []
+    for edge in graph.edges:
+        if edge.relation != Relation.CONFLICTS_WITH:
+            continue
+        source = graph.nodes[edge.source]
+        target = graph.nodes[edge.target]
+        rows.append(
+            GraphQueryRow(
+                "conflict",
+                source.label,
+                source.id,
+                f"conflicts with {target.label} ({target.id})",
+            )
+        )
+    return rows
 
 
 def _append_gantt_rows(
@@ -984,6 +1342,9 @@ def evidence_bundle(
         "selected_edge": _selected_edge_raw(edge_graph, selected_edge_index),
         "coverage": [row.to_dict() for row in coverage_rows(coverage)],
         "evidence_matrix": [row.to_dict() for row in evidence_matrix_rows(graph)],
+        "source_evidence": [
+            row.to_dict() for row in source_evidence_rows(graph, selected_node_id)
+        ],
         "findings": [finding.to_dict() for finding in findings],
         "timeline": [row.to_dict() for row in timeline_rows(graph, build_analysis)],
         "timeline_gantt": [row.to_dict() for row in timeline_gantt_rows(graph, build_analysis)],
@@ -1000,6 +1361,7 @@ def evidence_report_html(bundle: dict[str, Any]) -> str:
     slice_info = bundle.get("slice") or {}
     coverage = bundle.get("coverage") or []
     evidence_matrix = bundle.get("evidence_matrix") or []
+    source_evidence = bundle.get("source_evidence") or []
     findings = bundle.get("findings") or []
     timeline = bundle.get("timeline") or []
     svg = str(bundle.get("svg") or "")
@@ -1051,6 +1413,10 @@ def evidence_report_html(bundle: dict[str, Any]) -> str:
                         "missing",
                     ],
                 ),
+            ),
+            _section(
+                "Source Evidence",
+                _rows_table(source_evidence, ["category", "label", "node_id", "detail"]),
             ),
             _section("Findings", _rows_table(findings, ["severity", "code", "subject", "detail"])),
             _section(

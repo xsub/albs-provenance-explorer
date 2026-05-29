@@ -252,6 +252,16 @@ toggleable layers for Build, CAS, Sign/Release, Tests, Security and
 Dependencies, and the inspector summary includes relation counts plus semantic
 completeness context for binary RPMs, build tasks and CAS attestations.
 
+Source and repeated investigation questions are now also first-class workbench
+views. The Source tab summarizes the source package, git repository, git commit,
+source CAS, optional source-tree scan, spec files, manifests, declared
+dependencies and source/patch references. The Queries tab provides reusable
+path/finding helpers such as source-to-artifact path, missing SBOM, missing
+errata, missing CAS/signature evidence, coverage gaps, all CAS attestations and
+dependency conflicts. Activating a finding now also fills a Finding Detail tab
+with the failed trust checks and related source evidence for the selected
+subject.
+
 ---
 
 ## 10. Recommended First Implementation Path

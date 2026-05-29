@@ -2235,6 +2235,35 @@ Suite remains 293.
 
 ---
 
+## D84 - Workbench source evidence, graph queries, and finding drill-down
+
+After the Gantt/evidence/layer pass, the next highest-value investigation
+workflow was to make the source side and repeated graph questions first-class
+UI surfaces. The graph already carried source-package, git repository, commit,
+source CAS, and optional source-tree/spec/manifest evidence, but users had to
+hunt for those nodes manually. Findings also navigated to a subject, but did not
+explain the failed checks around that subject.
+
+Fix: add service-level view models for source and query workflows:
+
+- `source_evidence_rows` summarizes source package, git repository, git commit,
+  source CAS, source tree, spec files, manifests, declared dependencies, and
+  source/patch references when present.
+- `graph_query_presets` / `run_graph_query` provide reusable investigation
+  queries for source-to-artifact paths, source evidence, coverage gaps, missing
+  SBOM/errata/CAS/signature evidence, all CAS nodes, and dependency conflicts.
+- `finding_drilldown_rows` expands a finding into the subject, trust checks, and
+  related source evidence.
+
+The PyQt workbench now has Source, Queries, and Finding Detail tabs. Rows keep
+node ids attached so double-clicking can navigate back into the graph/inspector.
+The evidence bundle and HTML report now include source evidence as well.
+
+Tests +3 cover source-evidence summarization, graph query presets, and finding
+drill-down expansion. Suite now 296.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

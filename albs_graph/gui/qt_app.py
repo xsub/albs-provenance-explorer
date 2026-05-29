@@ -30,9 +30,13 @@ from albs_graph.services import (
     evidence_bundle,
     evidence_matrix_rows,
     filter_graph_layers,
+    finding_drilldown_rows,
     findings_for_analysis,
     graph_layers,
+    graph_query_presets,
     investigation_recipes,
+    run_graph_query,
+    source_evidence_rows,
     timeline_gantt_rows,
     timeline_tree,
 )
@@ -370,6 +374,37 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.evidence_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.evidence_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.evidence_table.setAlternatingRowColors(True)
+        self.source_table = QtWidgets.QTableWidget(0, 4)
+        self.source_table.setHorizontalHeaderLabels(["Category", "Label", "Node id", "Detail"])
+        self.source_table.horizontalHeader().setStretchLastSection(True)
+        self.source_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.source_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.source_table.setAlternatingRowColors(True)
+        self.query_combo = QtWidgets.QComboBox()
+        for preset in graph_query_presets():
+            self.query_combo.addItem(preset.title, preset.code)
+        self.query_run_button = QtWidgets.QPushButton("Run")
+        self.query_table = QtWidgets.QTableWidget(0, 4)
+        self.query_table.setHorizontalHeaderLabels(["Kind", "Label", "Node id", "Detail"])
+        self.query_table.horizontalHeader().setStretchLastSection(True)
+        self.query_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.query_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.query_table.setAlternatingRowColors(True)
+        self.query_panel = QtWidgets.QWidget()
+        query_layout = QtWidgets.QVBoxLayout(self.query_panel)
+        query_layout.setContentsMargins(0, 0, 0, 0)
+        query_header = QtWidgets.QHBoxLayout()
+        query_header.setContentsMargins(6, 4, 6, 4)
+        query_header.addWidget(self.query_combo, 1)
+        query_header.addWidget(self.query_run_button)
+        query_layout.addLayout(query_header)
+        query_layout.addWidget(self.query_table)
+        self.finding_detail_table = QtWidgets.QTableWidget(0, 4)
+        self.finding_detail_table.setHorizontalHeaderLabels(["Kind", "Label", "Node id", "Detail"])
+        self.finding_detail_table.horizontalHeader().setStretchLastSection(True)
+        self.finding_detail_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.finding_detail_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.finding_detail_table.setAlternatingRowColors(True)
         self.timeline_table = QtWidgets.QTreeWidget()
         self.timeline_table.setHeaderLabels(
             ["Stage", "Status", "Duration", "Started", "Finished", "Graph node", "Detail"]
@@ -526,6 +561,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         bottom.addTab(self.findings_table, "Findings")
         bottom.addTab(self.coverage_table, "Coverage")
         bottom.addTab(self.evidence_table, "Evidence")
+        bottom.addTab(self.source_table, "Source")
+        bottom.addTab(self.query_panel, "Queries")
+        bottom.addTab(self.finding_detail_table, "Finding Detail")
         bottom.addTab(self.timeline_panel, "Timeline")
         bottom.addTab(self.compare_table, "Compare")
         bottom.addTab(self.log, "Log")
@@ -555,6 +593,14 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.timeline_view_combo.currentIndexChanged.connect(self.timeline_stack.setCurrentIndex)
         self.evidence_table.itemActivated.connect(self._evidence_activated)
         self.evidence_table.itemDoubleClicked.connect(self._evidence_activated)
+        self.source_table.itemActivated.connect(self._source_activated)
+        self.source_table.itemDoubleClicked.connect(self._source_activated)
+        self.query_run_button.clicked.connect(self._run_selected_query)
+        self.query_combo.activated.connect(lambda _index: self._run_selected_query())
+        self.query_table.itemActivated.connect(self._query_activated)
+        self.query_table.itemDoubleClicked.connect(self._query_activated)
+        self.finding_detail_table.itemActivated.connect(self._query_activated)
+        self.finding_detail_table.itemDoubleClicked.connect(self._query_activated)
         self.compare_table.itemActivated.connect(self._compare_activated)
         self.compare_table.itemDoubleClicked.connect(self._compare_activated)
         self.recipe_combo.activated.connect(self._recipe_activated)
@@ -717,6 +763,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._populate_findings()
         self._populate_coverage_table()
         self._populate_evidence_table()
+        self._populate_source_table()
+        self._run_selected_query()
         self._populate_timeline()
         self._populate_recipes()
         self._update_coverage()
@@ -831,6 +879,50 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 self.evidence_table.setItem(row, column, item)
         self.evidence_table.resizeColumnsToContents()
 
+    def _populate_source_table(self, subject_id: str | None = None) -> None:
+        if self.result is None:
+            return
+        rows = source_evidence_rows(self.result.graph, subject_id or self._current_subject_id())
+        self._populate_query_like_table(self.source_table, rows)
+
+    def _run_selected_query(self) -> None:
+        if self.result is None:
+            return
+        code = self.query_combo.currentData()
+        rows = run_graph_query(
+            self.result.graph,
+            str(code or "coverage_gaps"),
+            subject_id=self._current_subject_id(),
+        )
+        self._populate_query_like_table(self.query_table, rows)
+
+    def _populate_finding_detail(self, finding) -> None:
+        if self.result is None:
+            return
+        rows = finding_drilldown_rows(self.result.graph, finding)
+        self._populate_query_like_table(self.finding_detail_table, rows)
+
+    def _populate_query_like_table(self, table: QtWidgets.QTableWidget, rows) -> None:
+        table.setRowCount(len(rows))
+        for row, item_data in enumerate(rows):
+            values = [
+                item_data.category if hasattr(item_data, "category") else item_data.kind,
+                item_data.label,
+                item_data.node_id,
+                item_data.detail,
+            ]
+            for column, value in enumerate(values):
+                item = QtWidgets.QTableWidgetItem(str(value))
+                item.setData(QtCore.Qt.UserRole, item_data.node_id)
+                table.setItem(row, column, item)
+        table.resizeColumnsToContents()
+
+    def _current_subject_id(self) -> str | None:
+        current = self.artifact_list.currentItem()
+        if current is not None:
+            return str(current.data(QtCore.Qt.UserRole))
+        return self.selected_node_id
+
     def _populate_timeline(self) -> None:
         assert self.result is not None
         self.timeline_table.clear()
@@ -935,6 +1027,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._update_graph_header(graph_slice, subject_id)
         self._render_current_svg()
         self._populate_slice_nodes(graph_slice)
+        self._populate_source_table(subject_id)
+        self._run_selected_query()
         self._show_node(self.selected_node_id, render_graph=False)
 
     def _apply_layer_filter(self, graph_slice: GraphSlice) -> GraphSlice:
@@ -1076,6 +1170,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._show_edge(edge_index, from_slice=True)
 
     def _finding_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
+        row = item.row()
+        if 0 <= row < len(self.findings):
+            self._populate_finding_detail(self.findings[row])
         subject = item.data(QtCore.Qt.UserRole)
         if subject:
             self._navigate_to_node(str(subject), prefer_artifact=True)
@@ -1091,6 +1188,16 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self._navigate_to_node(str(node_id), prefer_artifact=False)
 
     def _evidence_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
+        node_id = item.data(QtCore.Qt.UserRole)
+        if node_id:
+            self._navigate_to_node(str(node_id), prefer_artifact=True)
+
+    def _source_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
+        node_id = item.data(QtCore.Qt.UserRole)
+        if node_id:
+            self._navigate_to_node(str(node_id), prefer_artifact=False)
+
+    def _query_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
         node_id = item.data(QtCore.Qt.UserRole)
         if node_id:
             self._navigate_to_node(str(node_id), prefer_artifact=True)
