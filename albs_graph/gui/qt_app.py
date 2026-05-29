@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import re
+import signal
 import sys
 
 from PyQt5 import QtCore, QtGui, QtSvg, QtWidgets
@@ -57,6 +58,14 @@ def _repo_root() -> Path:
 def _build_id_from_path(path: Path) -> str | None:
     match = re.search(r"build[-_](\d+)", path.name)
     return match.group(1) if match else None
+
+
+def _short_path_label(value: str) -> str:
+    path = Path(value).expanduser()
+    if path.name:
+        parent = path.parent.name
+        return f"{parent}/{path.name}" if parent and parent != "." else path.name
+    return value
 
 
 class AnalysisSignals(QtCore.QObject):
@@ -317,6 +326,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.include_tests = QtWidgets.QCheckBox("Tests")
         self.coverage_label = QtWidgets.QLabel("No graph loaded")
         self.progress_label = QtWidgets.QLabel("")
+        self.input_summary_label = QtWidgets.QLabel("")
+        self.input_summary_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
 
         self.artifact_header = QtWidgets.QLabel("Artifacts")
         self.artifact_filter = QtWidgets.QLineEdit()
@@ -459,6 +470,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._build_ui()
         self._connect_signals()
         self._apply_style()
+        self._update_input_summary()
 
         if initial_build_id is not None or (initial_source is not None and initial_source.exists()):
             QtCore.QTimer.singleShot(50, self.run_analysis)
@@ -503,6 +515,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         save_session_action.triggered.connect(self.save_session)
         load_session_action = QtWidgets.QAction("Load Session", self)
         load_session_action.triggered.connect(self.load_session)
+        reload_program_action = QtWidgets.QAction("Reload Program", self)
+        reload_program_action.triggered.connect(self.reload_program)
+        exit_action = QtWidgets.QAction("Exit", self)
+        exit_action.triggered.connect(self.close)
         zoom_in_action = QtWidgets.QAction("Zoom In", self)
         zoom_in_action.triggered.connect(self.zoom_in_graph)
         zoom_out_action = QtWidgets.QAction("Zoom Out", self)
@@ -512,20 +528,41 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         reset_action = QtWidgets.QAction("Reset", self)
         reset_action.triggered.connect(self.reset_graph_zoom)
 
-        toolbar.addAction(open_action)
-        toolbar.addAction(run_action)
-        toolbar.addAction(export_action)
-        toolbar.addAction(export_bundle_action)
-        toolbar.addAction(export_html_action)
-        toolbar.addAction(compare_action)
-        toolbar.addAction(save_session_action)
-        toolbar.addAction(load_session_action)
-        toolbar.addSeparator()
+        self._configure_actions(
+            open_action=open_action,
+            run_action=run_action,
+            save_session_action=save_session_action,
+            load_session_action=load_session_action,
+            reload_program_action=reload_program_action,
+            exit_action=exit_action,
+            zoom_in_action=zoom_in_action,
+            zoom_out_action=zoom_out_action,
+            fit_action=fit_action,
+            reset_action=reset_action,
+        )
+        self._build_menu_bar(
+            open_action=open_action,
+            run_action=run_action,
+            build_sbom_action=build_sbom_action,
+            export_action=export_action,
+            export_bundle_action=export_bundle_action,
+            export_html_action=export_html_action,
+            compare_action=compare_action,
+            save_session_action=save_session_action,
+            load_session_action=load_session_action,
+            reload_program_action=reload_program_action,
+            exit_action=exit_action,
+            zoom_in_action=zoom_in_action,
+            zoom_out_action=zoom_out_action,
+            fit_action=fit_action,
+            reset_action=reset_action,
+        )
+
         toolbar.addWidget(QtWidgets.QLabel("Source"))
-        self.source_edit.setMinimumWidth(360)
+        self.source_edit.setFixedWidth(320)
         toolbar.addWidget(self.source_edit)
         toolbar.addAction(build_sbom_action)
-        self.build_sbom_edit.setFixedWidth(210)
+        self.build_sbom_edit.setFixedWidth(240)
         toolbar.addWidget(self.build_sbom_edit)
         toolbar.addSeparator()
         toolbar.addWidget(QtWidgets.QLabel("Build id"))
@@ -536,10 +573,6 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         toolbar.addWidget(self.mode_combo)
         toolbar.addWidget(self.recipe_combo)
         toolbar.addWidget(self.layer_button)
-        toolbar.addAction(zoom_in_action)
-        toolbar.addAction(zoom_out_action)
-        toolbar.addAction(fit_action)
-        toolbar.addAction(reset_action)
         toolbar.addWidget(self.graph_search_edit)
         toolbar.addWidget(self.include_tests)
 
@@ -604,6 +637,75 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.output_dock = dock
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock)
         self.statusBar().addWidget(self.progress_label)
+        self.statusBar().addPermanentWidget(self.input_summary_label, 1)
+
+    def _configure_actions(
+        self,
+        *,
+        open_action: QtWidgets.QAction,
+        run_action: QtWidgets.QAction,
+        save_session_action: QtWidgets.QAction,
+        load_session_action: QtWidgets.QAction,
+        reload_program_action: QtWidgets.QAction,
+        exit_action: QtWidgets.QAction,
+        zoom_in_action: QtWidgets.QAction,
+        zoom_out_action: QtWidgets.QAction,
+        fit_action: QtWidgets.QAction,
+        reset_action: QtWidgets.QAction,
+    ) -> None:
+        open_action.setShortcut(QtGui.QKeySequence.Open)
+        run_action.setShortcut(QtGui.QKeySequence("Ctrl+R"))
+        save_session_action.setShortcut(QtGui.QKeySequence.Save)
+        load_session_action.setShortcut(QtGui.QKeySequence("Ctrl+L"))
+        reload_program_action.setShortcut(QtGui.QKeySequence("Ctrl+Shift+R"))
+        exit_action.setShortcut(QtGui.QKeySequence.Quit)
+        zoom_in_action.setShortcut(QtGui.QKeySequence.ZoomIn)
+        zoom_out_action.setShortcut(QtGui.QKeySequence.ZoomOut)
+        fit_action.setShortcut(QtGui.QKeySequence("Ctrl+0"))
+        reset_action.setShortcut(QtGui.QKeySequence("Ctrl+1"))
+
+    def _build_menu_bar(
+        self,
+        *,
+        open_action: QtWidgets.QAction,
+        run_action: QtWidgets.QAction,
+        build_sbom_action: QtWidgets.QAction,
+        export_action: QtWidgets.QAction,
+        export_bundle_action: QtWidgets.QAction,
+        export_html_action: QtWidgets.QAction,
+        compare_action: QtWidgets.QAction,
+        save_session_action: QtWidgets.QAction,
+        load_session_action: QtWidgets.QAction,
+        reload_program_action: QtWidgets.QAction,
+        exit_action: QtWidgets.QAction,
+        zoom_in_action: QtWidgets.QAction,
+        zoom_out_action: QtWidgets.QAction,
+        fit_action: QtWidgets.QAction,
+        reset_action: QtWidgets.QAction,
+    ) -> None:
+        file_menu = self.menuBar().addMenu("File")
+        file_menu.addAction(open_action)
+        file_menu.addAction(build_sbom_action)
+        file_menu.addSeparator()
+        file_menu.addAction(save_session_action)
+        file_menu.addAction(load_session_action)
+        export_menu = file_menu.addMenu("Export")
+        export_menu.addAction(export_action)
+        export_menu.addAction(export_bundle_action)
+        export_menu.addAction(export_html_action)
+        file_menu.addSeparator()
+        file_menu.addAction(reload_program_action)
+        file_menu.addAction(exit_action)
+
+        run_menu = self.menuBar().addMenu("Run")
+        run_menu.addAction(run_action)
+        run_menu.addAction(compare_action)
+
+        view_menu = self.menuBar().addMenu("View")
+        view_menu.addAction(zoom_in_action)
+        view_menu.addAction(zoom_out_action)
+        view_menu.addAction(fit_action)
+        view_menu.addAction(reset_action)
 
     def _relax_bottom_panel_minimums(self, bottom: QtWidgets.QTabWidget) -> None:
         for index in range(bottom.count()):
@@ -614,6 +716,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.timeline_panel.setMinimumHeight(BOTTOM_PAGE_MIN_HEIGHT)
 
     def _connect_signals(self) -> None:
+        self.source_edit.textChanged.connect(lambda _text: self._update_input_summary())
+        self.build_sbom_edit.textChanged.connect(lambda _text: self._update_input_summary())
+        self.build_id_edit.textChanged.connect(lambda _text: self._update_input_summary())
         self.artifact_list.currentItemChanged.connect(self._artifact_changed)
         self.artifact_filter.textChanged.connect(self._filter_artifacts)
         self.mode_combo.currentTextChanged.connect(lambda _text: self.render_current_slice())
@@ -647,6 +752,26 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.graph_search_edit.returnPressed.connect(self.search_current_graph)
         for action in self.layer_actions.values():
             action.triggered.connect(lambda _checked: self.render_current_slice())
+
+    def _update_input_summary(self) -> None:
+        source = self.source_edit.text().strip()
+        build_sbom = self.build_sbom_edit.text().strip()
+        build_id = self.build_id_edit.text().strip()
+        parts = []
+        tooltip = []
+        if source:
+            parts.append(f"Source: {_short_path_label(source)}")
+            tooltip.append(f"Source: {source}")
+        if build_sbom:
+            parts.append(f"SBOM: {_short_path_label(build_sbom)}")
+            tooltip.append(f"Build SBOM: {build_sbom}")
+        if build_id:
+            parts.append(f"Build id: {build_id}")
+            tooltip.append(f"Build id: {build_id}")
+        self.input_summary_label.setText("  |  ".join(parts) if parts else "No source selected")
+        self.input_summary_label.setToolTip("\n".join(tooltip))
+        self.source_edit.setToolTip(source)
+        self.build_sbom_edit.setToolTip(build_sbom)
 
     def _apply_style(self) -> None:
         self.dark_mode = self._is_dark_palette()
@@ -1631,6 +1756,19 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _show_error(self, message: str) -> None:
         QtWidgets.QMessageBox.warning(self, "Workbench", message)
 
+    def reload_program(self) -> None:
+        self._log("Reloading workbench process")
+        started = QtCore.QProcess.startDetached(sys.executable, sys.argv)
+        if not started:
+            self._show_error("Could not start a replacement workbench process.")
+            return
+        self.close()
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        self.thread_pool.clear()
+        self.thread_pool.waitForDone(100)
+        event.accept()
+
 
 def run(
     *,
@@ -1641,12 +1779,17 @@ def run(
 ) -> int:
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
     app.setApplicationName("ALBS Provenance Investigation Workbench")
+    signal.signal(signal.SIGINT, lambda _signum, _frame: app.quit())
+    signal_timer = QtCore.QTimer()
+    signal_timer.timeout.connect(lambda: None)
+    signal_timer.start(200)
     window = WorkbenchWindow(
         initial_source=source,
         initial_build_id=build_id,
         initial_build_sbom=build_sbom,
         base_url=base_url,
     )
+    window._signal_timer = signal_timer
     window.show()
     return int(app.exec_())
 

@@ -2302,6 +2302,27 @@ remains 296.
 
 ---
 
+## D87 - Workbench menu bar and compact run context
+
+After adding export, compare, session, zoom, layer, recipe, source and SBOM
+controls, the top toolbar no longer fit even on wide displays. It also made
+long source/SBOM paths compete with primary investigation controls.
+
+Fix: move file/run/export/session/compare/zoom/restart/exit commands into a
+normal menu bar. The toolbar is now a compact run-context strip: source, build
+SBOM, build id, mode, recipes, layers, graph search and tests. Full source and
+SBOM paths are still visible through tooltips and a selectable status-bar
+summary, while the visible fields stay bounded.
+
+The menu bar also adds Reload Program and Exit. Window close now clears pending
+Qt runnable work before accepting the close event, and terminal Ctrl+C is wired
+to `QApplication.quit()` through a lightweight signal timer so CLI-launched
+workbench sessions exit cleanly.
+
+Tests unchanged; this is a PyQt shell/layout lifecycle fix. Suite remains 296.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

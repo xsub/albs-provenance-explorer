@@ -269,6 +269,12 @@ when the real AlmaLinux build CycloneDX file is present. For common demo/cache
 names it can suggest `build-<id>.cyclonedx.json`, while rejecting obvious source
 vs. SBOM build-id mismatches.
 
+The top-level shell now keeps commands in a menu bar instead of crowding the
+toolbar. The toolbar is reserved for the active run context and investigation
+switches; full source/SBOM paths move to tooltips plus the selectable status-bar
+summary. Reload Program, Exit, window-close cleanup and terminal Ctrl+C handling
+are part of the application lifecycle rather than ad hoc toolbar buttons.
+
 ---
 
 ## 10. Recommended First Implementation Path
