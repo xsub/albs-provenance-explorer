@@ -116,6 +116,15 @@ class GraphSlices:
             metadata={"security_identity": self.graph.nodes[subject_id].metadata.get("security_identity")},
         )
 
+    def node_neighborhood(self, node_id: str, *, depth: int = 1) -> GraphSlice:
+        self._require_node(node_id)
+        return GraphSlice(
+            name="node_neighborhood",
+            graph=self.graph.neighborhood(node_id, depth=depth),
+            focus=node_id,
+            metadata={"depth": depth},
+        )
+
     def universe_neighborhood(self, selector: str, *, incoming: bool, depth: int = 1) -> GraphSlice:
         return GraphSlice(
             name="universe_neighborhood",

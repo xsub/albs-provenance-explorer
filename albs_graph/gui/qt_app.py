@@ -1,6 +1,7 @@
 # mypy: ignore-errors
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 
@@ -17,7 +18,12 @@ from albs_graph.services import (
     GraphQueries,
     GraphSlice,
     GraphSlices,
+    WorkbenchSession,
+    coverage_rows,
+    evidence_bundle,
     findings_for_analysis,
+    investigation_recipes,
+    timeline_rows,
 )
 
 
@@ -106,6 +112,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.thread_pool = QtCore.QThreadPool.globalInstance()
         self.result: AnalysisResult | None = None
         self.current_slice: GraphSlice | None = None
+        self.findings = []
+        self.pending_session: WorkbenchSession | None = None
         self.selected_node_id: str | None = None
         self.current_svg = ""
         self.dark_mode = False
@@ -114,7 +122,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.source_edit = QtWidgets.QLineEdit(str(initial_source or ""))
         self.build_id_edit = QtWidgets.QLineEdit(str(initial_build_id or ""))
         self.mode_combo = QtWidgets.QComboBox()
-        self.mode_combo.addItems(["Trust Path", "Dependency Evidence", "Security Context"])
+        self.mode_combo.addItems(
+            ["Trust Path", "Dependency Evidence", "Security Context", "Node Neighborhood"]
+        )
+        self.recipe_combo = QtWidgets.QComboBox()
+        self.recipe_combo.addItem("Recipes")
         self.include_tests = QtWidgets.QCheckBox("Tests")
         self.coverage_label = QtWidgets.QLabel("No graph loaded")
         self.progress_label = QtWidgets.QLabel("")
@@ -163,7 +175,18 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.findings_table = QtWidgets.QTableWidget(0, 4)
         self.findings_table.setHorizontalHeaderLabels(["Severity", "Code", "Subject", "Detail"])
         self.findings_table.horizontalHeader().setStretchLastSection(True)
+        self.findings_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.findings_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+
+        self.coverage_table = QtWidgets.QTableWidget(0, 5)
+        self.coverage_table.setHorizontalHeaderLabels(["Axis", "Covered", "Total", "Ratio", "Status"])
+        self.coverage_table.horizontalHeader().setStretchLastSection(True)
+        self.coverage_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.timeline_table = QtWidgets.QTableWidget(0, 5)
+        self.timeline_table.setHorizontalHeaderLabels(["Kind", "Label", "Status", "Node id", "Detail"])
+        self.timeline_table.horizontalHeader().setStretchLastSection(True)
+        self.timeline_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.timeline_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 
         self.log = QtWidgets.QPlainTextEdit()
         self.log.setReadOnly(True)
@@ -199,10 +222,23 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self,
         )
         export_action.triggered.connect(self.export_svg)
+        export_bundle_action = QtWidgets.QAction(
+            self.style().standardIcon(QtWidgets.QStyle.SP_DriveFDIcon),
+            "Export Bundle",
+            self,
+        )
+        export_bundle_action.triggered.connect(self.export_bundle)
+        save_session_action = QtWidgets.QAction("Save Session", self)
+        save_session_action.triggered.connect(self.save_session)
+        load_session_action = QtWidgets.QAction("Load Session", self)
+        load_session_action.triggered.connect(self.load_session)
 
         toolbar.addAction(open_action)
         toolbar.addAction(run_action)
         toolbar.addAction(export_action)
+        toolbar.addAction(export_bundle_action)
+        toolbar.addAction(save_session_action)
+        toolbar.addAction(load_session_action)
         toolbar.addSeparator()
         toolbar.addWidget(QtWidgets.QLabel("Source"))
         self.source_edit.setMinimumWidth(360)
@@ -214,6 +250,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         toolbar.addSeparator()
         toolbar.addWidget(QtWidgets.QLabel("Mode"))
         toolbar.addWidget(self.mode_combo)
+        toolbar.addWidget(self.recipe_combo)
         toolbar.addWidget(self.include_tests)
 
         left = QtWidgets.QWidget()
@@ -257,6 +294,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         bottom = QtWidgets.QTabWidget()
         bottom.addTab(self.findings_table, "Findings")
+        bottom.addTab(self.coverage_table, "Coverage")
+        bottom.addTab(self.timeline_table, "Timeline")
         bottom.addTab(self.log, "Log")
         dock = QtWidgets.QDockWidget("Investigation Output")
         dock.setWidget(bottom)
@@ -271,6 +310,13 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.include_tests.stateChanged.connect(lambda _state: self.render_current_slice())
         self.slice_nodes.itemSelectionChanged.connect(self._slice_node_changed)
         self.svg_widget.nodeClicked.connect(self._graph_node_clicked)
+        self.findings_table.itemActivated.connect(self._finding_activated)
+        self.findings_table.itemDoubleClicked.connect(self._finding_activated)
+        self.edges_table.itemActivated.connect(self._edge_activated)
+        self.edges_table.itemDoubleClicked.connect(self._edge_activated)
+        self.timeline_table.itemActivated.connect(self._timeline_activated)
+        self.timeline_table.itemDoubleClicked.connect(self._timeline_activated)
+        self.recipe_combo.activated.connect(self._recipe_activated)
 
     def _apply_style(self) -> None:
         self.dark_mode = self._is_dark_palette()
@@ -425,8 +471,14 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self._log(warning.message)
         self._populate_artifacts()
         self._populate_findings()
+        self._populate_coverage_table()
+        self._populate_timeline()
+        self._populate_recipes()
         self._update_coverage()
-        if self.artifact_list.count():
+        if self.pending_session is not None:
+            self._apply_session(self.pending_session)
+            self.pending_session = None
+        elif self.artifact_list.count():
             self.artifact_list.setCurrentRow(0)
 
     def _analysis_failed(self, message: str) -> None:
@@ -469,11 +521,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
     def _populate_findings(self) -> None:
         assert self.result is not None
-        findings = findings_for_analysis(
+        self.findings = findings_for_analysis(
             self.result.graph, self.result.coverage, self.result.reconciliation
         )
-        self.findings_table.setRowCount(len(findings))
-        for row, finding in enumerate(findings):
+        self.findings_table.setRowCount(len(self.findings))
+        for row, finding in enumerate(self.findings):
             values = [
                 finding.severity,
                 finding.code,
@@ -481,8 +533,47 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 finding.detail or "",
             ]
             for column, value in enumerate(values):
-                self.findings_table.setItem(row, column, QtWidgets.QTableWidgetItem(value))
+                item = QtWidgets.QTableWidgetItem(value)
+                item.setData(QtCore.Qt.UserRole, finding.subject or "")
+                self.findings_table.setItem(row, column, item)
         self.findings_table.resizeColumnsToContents()
+
+    def _populate_coverage_table(self) -> None:
+        assert self.result is not None
+        rows = coverage_rows(self.result.coverage)
+        self.coverage_table.setRowCount(len(rows))
+        for row, coverage in enumerate(rows):
+            values = [
+                coverage.axis,
+                str(coverage.covered),
+                str(coverage.total),
+                f"{coverage.ratio:.2f}",
+                coverage.status,
+            ]
+            for column, value in enumerate(values):
+                self.coverage_table.setItem(row, column, QtWidgets.QTableWidgetItem(value))
+        self.coverage_table.resizeColumnsToContents()
+
+    def _populate_timeline(self) -> None:
+        assert self.result is not None
+        rows = timeline_rows(self.result.graph)
+        self.timeline_table.setRowCount(len(rows))
+        for row, event in enumerate(rows):
+            values = [event.kind, event.label, event.status, event.node_id, event.detail]
+            for column, value in enumerate(values):
+                item = QtWidgets.QTableWidgetItem(value)
+                item.setData(QtCore.Qt.UserRole, event.node_id)
+                self.timeline_table.setItem(row, column, item)
+        self.timeline_table.resizeColumnsToContents()
+
+    def _populate_recipes(self) -> None:
+        assert self.result is not None
+        self.recipe_combo.blockSignals(True)
+        self.recipe_combo.clear()
+        self.recipe_combo.addItem("Recipes")
+        for recipe in investigation_recipes(self.result.graph, self.result.coverage, self.findings):
+            self.recipe_combo.addItem(recipe.title, recipe.to_dict())
+        self.recipe_combo.blockSignals(False)
 
     def _update_coverage(self) -> None:
         assert self.result is not None
@@ -495,6 +586,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _artifact_changed(self, current: QtWidgets.QListWidgetItem | None) -> None:
         if current is None:
             return
+        self.selected_node_id = str(current.data(QtCore.Qt.UserRole))
         self.render_current_slice()
 
     def render_current_slice(self) -> None:
@@ -511,6 +603,13 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 graph_slice = slices.dependency_evidence(subject_id)
             elif mode == "Security Context":
                 graph_slice = slices.security_context(subject_id)
+            elif mode == "Node Neighborhood":
+                focus_id = (
+                    self.selected_node_id
+                    if self.selected_node_id in self.result.graph.nodes
+                    else subject_id
+                )
+                graph_slice = slices.node_neighborhood(focus_id)
             else:
                 graph_slice = slices.trust_path(
                     subject_id,
@@ -520,16 +619,17 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self._show_error(str(exc))
             return
         self.current_slice = graph_slice
-        self.selected_node_id = subject_id
+        self.selected_node_id = graph_slice.focus or subject_id
         self._update_graph_header(graph_slice, subject_id)
         self._render_current_svg()
         self._populate_slice_nodes(graph_slice)
-        self._show_node(subject_id, render_graph=False)
+        self._show_node(self.selected_node_id, render_graph=False)
 
     def _update_graph_header(self, graph_slice: GraphSlice, subject_id: str) -> None:
         assert self.result is not None
-        node = self.result.graph.nodes.get(subject_id)
-        title = node.label if node is not None else subject_id
+        focus_id = graph_slice.focus or subject_id
+        node = self.result.graph.nodes.get(focus_id)
+        title = node.label if node is not None else focus_id
         self.graph_title.setText(f"{self.mode_combo.currentText()}: {title}")
         self.graph_meta.setText(f"{len(graph_slice.graph.nodes)} nodes / {len(graph_slice.graph.edges)} edges")
 
@@ -587,6 +687,38 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _graph_node_clicked(self, node_id: str) -> None:
         self._show_node(node_id)
 
+    def _finding_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
+        subject = item.data(QtCore.Qt.UserRole)
+        if subject:
+            self._navigate_to_node(str(subject), prefer_artifact=True)
+
+    def _edge_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
+        other = item.data(QtCore.Qt.UserRole)
+        if other:
+            self._navigate_to_node(str(other), prefer_artifact=False)
+
+    def _timeline_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
+        node_id = item.data(QtCore.Qt.UserRole)
+        if node_id:
+            self._navigate_to_node(str(node_id), prefer_artifact=False)
+
+    def _recipe_activated(self, index: int) -> None:
+        if index <= 0:
+            return
+        recipe = self.recipe_combo.itemData(index)
+        if not isinstance(recipe, dict):
+            return
+        mode = str(recipe.get("mode") or "Trust Path")
+        mode_index = self.mode_combo.findText(mode)
+        if mode_index >= 0:
+            self.mode_combo.setCurrentIndex(mode_index)
+        subject = recipe.get("subject")
+        if subject:
+            self._navigate_to_node(str(subject), prefer_artifact=True)
+        else:
+            self.render_current_slice()
+        self.recipe_combo.setCurrentIndex(0)
+
     def _show_node(self, node_id: str, *, render_graph: bool = True) -> None:
         if self.result is None:
             return
@@ -616,6 +748,35 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 self.slice_nodes.blockSignals(False)
                 return
 
+    def _navigate_to_node(self, node_id: str, *, prefer_artifact: bool) -> None:
+        if self.result is None or node_id not in self.result.graph.nodes:
+            return
+        if prefer_artifact and self._select_artifact(node_id):
+            return
+        if self.current_slice is not None and node_id in self.current_slice.graph.nodes:
+            self._show_node(node_id)
+            return
+        self.selected_node_id = node_id
+        mode_index = self.mode_combo.findText("Node Neighborhood")
+        if mode_index >= 0:
+            if self.mode_combo.currentIndex() == mode_index:
+                self.render_current_slice()
+            else:
+                self.mode_combo.setCurrentIndex(mode_index)
+        else:
+            self.render_current_slice()
+
+    def _select_artifact(self, node_id: str) -> bool:
+        for row in range(self.artifact_list.count()):
+            item = self.artifact_list.item(row)
+            if item.data(QtCore.Qt.UserRole) == node_id:
+                if self.artifact_list.currentItem() is item:
+                    self.render_current_slice()
+                else:
+                    self.artifact_list.setCurrentItem(item)
+                return True
+        return False
+
     def _populate_key_value_table(
         self, table: QtWidgets.QTableWidget, rows: list[tuple[str, str]]
     ) -> None:
@@ -636,7 +797,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 str(edge.index),
             ]
             for column, value in enumerate(values):
-                self.edges_table.setItem(row, column, QtWidgets.QTableWidgetItem(value))
+                item = QtWidgets.QTableWidgetItem(value)
+                item.setData(QtCore.Qt.UserRole, edge.other_id)
+                self.edges_table.setItem(row, column, item)
         self.edges_table.resizeColumnsToContents()
 
     def export_svg(self) -> None:
@@ -653,6 +816,86 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             return
         Path(path).write_text(self.current_svg, encoding="utf-8")
         self._log(f"Exported SVG to {path}")
+
+    def export_bundle(self) -> None:
+        if self.result is None:
+            self._show_error("No analysis result to export.")
+            return
+        path, _filter = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "Export investigation evidence bundle",
+            "investigation-bundle.json",
+            "JSON files (*.json);;All files (*)",
+        )
+        if not path:
+            return
+        data = evidence_bundle(
+            graph=self.result.graph,
+            graph_slice=self.current_slice,
+            coverage=self.result.coverage,
+            findings=self.findings,
+            selected_node_id=self.selected_node_id,
+            svg=self.current_svg,
+            session=self._current_session(),
+        )
+        Path(path).write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        self._log(f"Exported evidence bundle to {path}")
+
+    def save_session(self) -> None:
+        path, _filter = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "Save workbench session",
+            "investigation-session.json",
+            "JSON files (*.json);;All files (*)",
+        )
+        if not path:
+            return
+        self._current_session().save(Path(path))
+        self._log(f"Saved session to {path}")
+
+    def load_session(self) -> None:
+        path, _filter = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            "Load workbench session",
+            str(Path.cwd()),
+            "JSON files (*.json);;All files (*)",
+        )
+        if not path:
+            return
+        session = WorkbenchSession.load(Path(path))
+        self.pending_session = session
+        self.source_edit.setText(session.source)
+        self.build_id_edit.setText(session.build_id)
+        self.include_tests.setChecked(session.include_tests)
+        self.artifact_filter.setText(session.artifact_filter)
+        self.run_analysis()
+
+    def _current_session(self) -> WorkbenchSession:
+        current = self.artifact_list.currentItem()
+        return WorkbenchSession(
+            source=self.source_edit.text(),
+            build_id=self.build_id_edit.text(),
+            mode=self.mode_combo.currentText(),
+            include_tests=self.include_tests.isChecked(),
+            artifact_filter=self.artifact_filter.text(),
+            selected_artifact_id=(
+                str(current.data(QtCore.Qt.UserRole)) if current is not None else None
+            ),
+            selected_node_id=self.selected_node_id,
+        )
+
+    def _apply_session(self, session: WorkbenchSession) -> None:
+        mode_index = self.mode_combo.findText(session.mode)
+        if mode_index >= 0:
+            self.mode_combo.setCurrentIndex(mode_index)
+        self.include_tests.setChecked(session.include_tests)
+        self.artifact_filter.setText(session.artifact_filter)
+        if session.selected_artifact_id and self._select_artifact(session.selected_artifact_id):
+            if session.selected_node_id:
+                self._navigate_to_node(session.selected_node_id, prefer_artifact=False)
+            return
+        if self.artifact_list.count():
+            self.artifact_list.setCurrentRow(0)
 
     def _log(self, message: str) -> None:
         self.log.appendPlainText(message)

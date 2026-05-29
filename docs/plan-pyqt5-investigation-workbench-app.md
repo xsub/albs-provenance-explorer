@@ -222,9 +222,12 @@ or a live build id, runs `AnalysisService` in a background Qt worker, lists RPM
 artifacts, renders Trust Path / Dependency Evidence / Security Context slices as
 SVG, and shows node metadata plus findings. The inspector is split into Summary
 / Metadata / Edges / Raw tabs, the graph canvas shows the selected artifact and
-slice size, graph nodes are clickable, and the artifact list can be filtered.
-The workbench has its own light/dark-aware SVG renderer with wrapped graph
-labels; PyQt5 is installed via the optional `gui` extra.
+slice size, graph nodes are clickable, findings and inspector edges can drive
+navigation, and the artifact list can be filtered. The workbench has its own
+light/dark-aware SVG renderer with wrapped graph labels; PyQt5 is installed via
+the optional `gui` extra. It also now has a one-hop Node Neighborhood mode,
+coverage and timeline tabs, recipe shortcuts, JSON evidence-bundle export, and
+save/load support for lightweight workbench sessions.
 
 ---
 

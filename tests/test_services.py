@@ -10,9 +10,15 @@ from albs_graph.pipeline import AnalysisPipeline, EnrichmentContext, RunSpec
 from albs_graph.provenance.reconcile import DependencyClaim, add_dependency_claim
 from albs_graph.services import (
     AnalysisService,
+    WorkbenchSession,
+    compare_artifacts,
+    coverage_rows,
+    evidence_bundle,
     GraphQueries,
     GraphSlices,
     findings_for_analysis,
+    investigation_recipes,
+    timeline_rows,
 )
 
 
@@ -89,6 +95,17 @@ def test_graph_slices_return_focused_trust_and_security_views() -> None:
     assert "cve:CVE-2026-0001" in security.graph.nodes
 
 
+def test_graph_slices_can_focus_selected_node_neighborhood() -> None:
+    graph = build_synthetic_fixture_graph()
+
+    neighborhood = GraphSlices(graph).node_neighborhood(SYNTHETIC_RPM_ID)
+
+    assert neighborhood.name == "node_neighborhood"
+    assert neighborhood.focus == SYNTHETIC_RPM_ID
+    assert SYNTHETIC_RPM_ID in neighborhood.graph.nodes
+    assert len(neighborhood.graph.nodes) < len(graph.nodes)
+
+
 def test_dependency_evidence_slice_includes_claims_and_resolutions() -> None:
     graph = _tiny_graph()
     claim = DependencyClaim(
@@ -113,3 +130,66 @@ def test_findings_cover_incomplete_axes_and_conflicts() -> None:
 
     assert any(finding.code == "coverage.provenance" for finding in findings)
     assert any(finding.code == "trust.has_build_task" for finding in findings)
+
+
+def test_workbench_views_summarize_coverage_timeline_and_recipes() -> None:
+    result = AnalysisService(pipeline=AnalysisPipeline(steps=())).analyze_graph(
+        build_synthetic_fixture_graph(), RunSpec()
+    )
+    findings = findings_for_analysis(result.graph, result.coverage, result.reconciliation)
+
+    coverage = coverage_rows(result.coverage)
+    timeline = timeline_rows(result.graph)
+    recipes = investigation_recipes(result.graph, result.coverage, findings)
+
+    assert any(row.axis == "provenance" for row in coverage)
+    assert any(row.kind == "build_task" for row in timeline)
+    assert any(recipe.mode == "Node Neighborhood" for recipe in recipes)
+
+
+def test_workbench_session_round_trips_dict() -> None:
+    session = WorkbenchSession(
+        source="build.json",
+        mode="Node Neighborhood",
+        selected_artifact_id=SYNTHETIC_RPM_ID,
+        selected_node_id="build:albs:123456",
+    )
+
+    restored = WorkbenchSession.from_dict(session.to_dict())
+
+    assert restored == session
+
+
+def test_evidence_bundle_exports_current_slice_context() -> None:
+    result = AnalysisService(pipeline=AnalysisPipeline(steps=())).analyze_graph(
+        build_synthetic_fixture_graph(), RunSpec()
+    )
+    graph_slice = GraphSlices(result.graph).trust_path(SYNTHETIC_RPM_ID)
+    findings = findings_for_analysis(result.graph, result.coverage, result.reconciliation)
+
+    bundle = evidence_bundle(
+        graph=result.graph,
+        graph_slice=graph_slice,
+        coverage=result.coverage,
+        findings=findings,
+        selected_node_id=SYNTHETIC_RPM_ID,
+        svg="<svg/>",
+        session=WorkbenchSession(selected_node_id=SYNTHETIC_RPM_ID),
+    )
+
+    assert bundle["schema"].endswith("/v1")
+    assert bundle["selected_node"]["node"]["id"] == SYNTHETIC_RPM_ID
+    assert bundle["slice"]["name"] == "trust_path"
+    assert bundle["svg"] == "<svg/>"
+
+
+def test_compare_artifacts_reports_added_removed_and_changed_artifacts() -> None:
+    left = _tiny_graph()
+    right = _tiny_graph()
+    right.update_metadata("rpm:app:x86_64", {"version": "2"})
+    left.add_node(Node("rpm:old:x86_64", NodeType.BINARY_RPM, "old", {"name": "old", "arch": "x86_64"}))
+    right.add_node(Node("rpm:new:x86_64", NodeType.BINARY_RPM, "new", {"name": "new", "arch": "x86_64"}))
+
+    deltas = compare_artifacts(left, right)
+
+    assert {delta.change for delta in deltas} == {"added", "removed", "changed"}

@@ -2107,6 +2107,27 @@ URLs, and selected-node styling. Suite now 278.
 
 ---
 
+## D78 - Workbench investigation workflow features
+
+After node click selection, the next workbench step is making the surrounding UI
+drive investigation instead of passively displaying tables.
+
+Fix: add a small workbench service model for UI projections:
+`coverage_rows`, `timeline_rows`, `investigation_recipes`,
+`WorkbenchSession`, and `evidence_bundle`. The PyQt window now has finding
+navigation, double-click edge navigation in the inspector, double-click
+timeline navigation, a one-hop Node Neighborhood graph mode, recipe shortcuts,
+a coverage dashboard tab, a timeline tab, JSON evidence-bundle export, and
+save/load for lightweight sessions. A first build-comparison helper
+(`compare_artifacts`) records added, removed, and changed RPM artifacts by
+package/arch key, giving the later compare screen a tested backend entrypoint.
+
+Tests +5 cover node-neighborhood slices, workbench coverage/timeline/recipe
+models, session round-tripping, evidence-bundle shape, and artifact comparison.
+Suite now 283.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
