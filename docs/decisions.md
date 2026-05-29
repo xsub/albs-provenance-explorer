@@ -2264,6 +2264,21 @@ drill-down expansion. Suite now 296.
 
 ---
 
+## D85 - Workbench bottom dock shrink behavior
+
+The bottom Investigation Output dock became too tall after adding the Gantt
+timeline. `TimelineGanttView` had a 260px minimum height, and the bottom
+`QTabWidget` inherited the largest page minimum, so users could not shrink the
+bottom table enough to give the center graph/slice area more room.
+
+Fix: lower the Gantt view minimum and mark the bottom dock, tab widget, and tab
+pages with a shrink-friendly vertical size policy. The Gantt remains scrollable,
+but it no longer dictates the minimum height of every bottom tab.
+
+Tests unchanged; this is a PyQt layout sizing fix. Suite remains 296.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

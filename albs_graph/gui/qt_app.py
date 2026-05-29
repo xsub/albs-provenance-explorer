@@ -44,6 +44,9 @@ from albs_graph.services import (
 
 RECIPE_COMBO_WIDTH = 136
 RECIPE_POPUP_MIN_WIDTH = 460
+BOTTOM_DOCK_MIN_HEIGHT = 96
+BOTTOM_PAGE_MIN_HEIGHT = 0
+GANTT_MIN_HEIGHT = 48
 
 
 class AnalysisSignals(QtCore.QObject):
@@ -146,7 +149,8 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
         self.setScene(self._scene)
         self.setRenderHint(QtGui.QPainter.Antialiasing, True)
         self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
-        self.setMinimumHeight(260)
+        self.setMinimumHeight(GANTT_MIN_HEIGHT)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Ignored)
 
     def set_events(self, graph, build_analysis, *, dark: bool) -> None:
         rows = timeline_gantt_rows(graph, build_analysis)
@@ -558,6 +562,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(split)
 
         bottom = QtWidgets.QTabWidget()
+        bottom.setMinimumHeight(BOTTOM_DOCK_MIN_HEIGHT)
+        bottom.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Ignored)
         bottom.addTab(self.findings_table, "Findings")
         bottom.addTab(self.coverage_table, "Coverage")
         bottom.addTab(self.evidence_table, "Evidence")
@@ -567,11 +573,24 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         bottom.addTab(self.timeline_panel, "Timeline")
         bottom.addTab(self.compare_table, "Compare")
         bottom.addTab(self.log, "Log")
+        self._relax_bottom_panel_minimums(bottom)
         dock = QtWidgets.QDockWidget("Investigation Output")
+        dock.setMinimumHeight(BOTTOM_DOCK_MIN_HEIGHT)
+        dock.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Ignored)
         dock.setWidget(bottom)
         dock.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
+        self.output_tabs = bottom
+        self.output_dock = dock
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock)
         self.statusBar().addWidget(self.progress_label)
+
+    def _relax_bottom_panel_minimums(self, bottom: QtWidgets.QTabWidget) -> None:
+        for index in range(bottom.count()):
+            page = bottom.widget(index)
+            page.setMinimumHeight(BOTTOM_PAGE_MIN_HEIGHT)
+            page.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Ignored)
+        self.timeline_stack.setMinimumHeight(BOTTOM_PAGE_MIN_HEIGHT)
+        self.timeline_panel.setMinimumHeight(BOTTOM_PAGE_MIN_HEIGHT)
 
     def _connect_signals(self) -> None:
         self.artifact_list.currentItemChanged.connect(self._artifact_changed)
