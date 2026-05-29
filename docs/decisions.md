@@ -2088,6 +2088,25 @@ Tests +2 cover the inspector view model and stable raw JSON output. Suite now
 
 ---
 
+## D77 - Workbench graph node hit-testing
+
+The workbench needs graph-driven selection: a user should be able to click a
+node in the central graph and inspect that exact object, instead of using only
+the artifact list or the node table.
+
+Fix: keep the lightweight SVG renderer, but emit Graphviz `cmapx` image-map
+coordinates beside the SVG. `albs_graph.gui.hitmap` parses the map into typed
+node hit regions, and the PyQt `GraphSvgWidget` maps mouse coordinates back to
+the SVG's natural coordinate space. Clicking a node now updates the inspector,
+selects the matching row in the slice table, and re-renders the graph with the
+selected node highlighted. The fallback SVG path also exposes rectangular node
+regions, so the app still has basic click behavior when Graphviz is absent.
+
+Tests +3 cover Graphviz image-map parsing, geometric hit-testing, clickable DOT
+URLs, and selected-node styling. Suite now 278.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

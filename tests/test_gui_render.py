@@ -16,3 +16,13 @@ def test_workbench_dot_wraps_long_rpm_labels() -> None:
 
     assert "binary rpm\\nsynthetic-core" in dot
     assert ".x86_64.rpm" not in dot
+
+
+def test_workbench_dot_marks_nodes_clickable_and_highlights_selection() -> None:
+    graph = build_synthetic_fixture_graph()
+    selected = next(iter(graph.nodes))
+
+    dot = workbench_graph_to_dot(graph, selected_node_id=selected)
+
+    assert 'URL="node:' in dot
+    assert 'color="#2F6FED", penwidth=3.0' in dot

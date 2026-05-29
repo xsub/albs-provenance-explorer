@@ -8,7 +8,8 @@ from PyQt5 import QtCore, QtGui, QtSvg, QtWidgets
 
 from albs_graph.gui.inspect import InspectorEdge, inspector_view, raw_json
 from albs_graph.pipeline import RunSpec
-from albs_graph.gui.render import workbench_graph_to_svg
+from albs_graph.gui.hitmap import NodeRegion, node_at
+from albs_graph.gui.render import workbench_graph_rendering
 from albs_graph.services import (
     AnalysisResult,
     AnalysisService,
@@ -46,6 +47,50 @@ class AnalysisWorker(QtCore.QRunnable):
         self.signals.finished.emit(result)
 
 
+class GraphSvgWidget(QtSvg.QSvgWidget):
+    nodeClicked = QtCore.pyqtSignal(str)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._node_regions: tuple[NodeRegion, ...] = ()
+        self.setMouseTracking(True)
+
+    def set_node_regions(self, regions: tuple[NodeRegion, ...]) -> None:
+        self._node_regions = regions
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        if event.button() == QtCore.Qt.LeftButton:
+            node_id = self._node_id_at(event.pos())
+            if node_id is not None:
+                self.nodeClicked.emit(node_id)
+                event.accept()
+                return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        cursor = (
+            QtCore.Qt.PointingHandCursor
+            if self._node_id_at(event.pos()) is not None
+            else QtCore.Qt.ArrowCursor
+        )
+        self.setCursor(cursor)
+        super().mouseMoveEvent(event)
+
+    def leaveEvent(self, event: QtCore.QEvent) -> None:
+        self.unsetCursor()
+        super().leaveEvent(event)
+
+    def _node_id_at(self, point: QtCore.QPoint) -> str | None:
+        if not self._node_regions:
+            return None
+        size = self.renderer().defaultSize()
+        if not size.isValid() or self.width() <= 0 or self.height() <= 0:
+            return None
+        x = point.x() * size.width() / self.width()
+        y = point.y() * size.height() / self.height()
+        return node_at(self._node_regions, x, y)
+
+
 class WorkbenchWindow(QtWidgets.QMainWindow):
     def __init__(
         self,
@@ -61,6 +106,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.thread_pool = QtCore.QThreadPool.globalInstance()
         self.result: AnalysisResult | None = None
         self.current_slice: GraphSlice | None = None
+        self.selected_node_id: str | None = None
         self.current_svg = ""
         self.dark_mode = False
         self.base_url = base_url
@@ -84,7 +130,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.slice_nodes.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.slice_nodes.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 
-        self.svg_widget = QtSvg.QSvgWidget()
+        self.svg_widget = GraphSvgWidget()
         self.svg_widget.setMinimumSize(720, 520)
         self.svg_scroll = QtWidgets.QScrollArea()
         self.svg_scroll.setWidget(self.svg_widget)
@@ -224,6 +270,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.mode_combo.currentTextChanged.connect(lambda _text: self.render_current_slice())
         self.include_tests.stateChanged.connect(lambda _state: self.render_current_slice())
         self.slice_nodes.itemSelectionChanged.connect(self._slice_node_changed)
+        self.svg_widget.nodeClicked.connect(self._graph_node_clicked)
 
     def _apply_style(self) -> None:
         self.dark_mode = self._is_dark_palette()
@@ -473,11 +520,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self._show_error(str(exc))
             return
         self.current_slice = graph_slice
+        self.selected_node_id = subject_id
         self._update_graph_header(graph_slice, subject_id)
-        self.current_svg = workbench_graph_to_svg(graph_slice.graph, dark=self.dark_mode)
-        self._load_svg(self.current_svg)
+        self._render_current_svg()
         self._populate_slice_nodes(graph_slice)
-        self._show_node(subject_id)
+        self._show_node(subject_id, render_graph=False)
 
     def _update_graph_header(self, graph_slice: GraphSlice, subject_id: str) -> None:
         assert self.result is not None
@@ -486,8 +533,20 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.graph_title.setText(f"{self.mode_combo.currentText()}: {title}")
         self.graph_meta.setText(f"{len(graph_slice.graph.nodes)} nodes / {len(graph_slice.graph.edges)} edges")
 
-    def _load_svg(self, svg: str) -> None:
+    def _render_current_svg(self) -> None:
+        if self.current_slice is None:
+            return
+        rendering = workbench_graph_rendering(
+            self.current_slice.graph,
+            dark=self.dark_mode,
+            selected_node_id=self.selected_node_id,
+        )
+        self.current_svg = rendering.svg
+        self._load_svg(self.current_svg, rendering.node_regions)
+
+    def _load_svg(self, svg: str, node_regions: tuple[NodeRegion, ...]) -> None:
         self.svg_widget.load(QtCore.QByteArray(svg.encode("utf-8")))
+        self.svg_widget.set_node_regions(node_regions)
         renderer = self.svg_widget.renderer()
         size = renderer.defaultSize()
         if not size.isValid() or size.width() <= 0 or size.height() <= 0:
@@ -525,7 +584,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         if node_id:
             self._show_node(str(node_id))
 
-    def _show_node(self, node_id: str) -> None:
+    def _graph_node_clicked(self, node_id: str) -> None:
+        self._show_node(node_id)
+
+    def _show_node(self, node_id: str, *, render_graph: bool = True) -> None:
         if self.result is None:
             return
         try:
@@ -538,6 +600,21 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._populate_key_value_table(self.metadata_table, view.metadata)
         self._populate_edges_table(view.incoming + view.outgoing)
         self.raw_inspector.setPlainText(raw_json(view))
+        self._select_slice_node(node_id)
+        if self.current_slice is not None and node_id in self.current_slice.graph.nodes:
+            previous = self.selected_node_id
+            self.selected_node_id = node_id
+            if render_graph and previous != node_id:
+                self._render_current_svg()
+
+    def _select_slice_node(self, node_id: str) -> None:
+        for row in range(self.slice_nodes.rowCount()):
+            item = self.slice_nodes.item(row, 0)
+            if item is not None and item.data(QtCore.Qt.UserRole) == node_id:
+                self.slice_nodes.blockSignals(True)
+                self.slice_nodes.selectRow(row)
+                self.slice_nodes.blockSignals(False)
+                return
 
     def _populate_key_value_table(
         self, table: QtWidgets.QTableWidget, rows: list[tuple[str, str]]

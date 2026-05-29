@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import subprocess
 import textwrap
 from xml.sax.saxutils import escape
+from urllib.parse import quote
 
+from albs_graph.gui.hitmap import NodeRegion, node_regions_from_cmap
 from albs_graph.model import Node, NodeType, ProvenanceGraph
 
 
@@ -46,26 +49,43 @@ DARK_NODE_COLORS = {
 }
 
 
-def workbench_graph_to_svg(graph: ProvenanceGraph, *, dark: bool = False) -> str:
-    dot = workbench_graph_to_dot(graph, dark=dark)
+@dataclass(frozen=True)
+class WorkbenchGraphRendering:
+    svg: str
+    node_regions: tuple[NodeRegion, ...]
+
+
+def workbench_graph_to_svg(
+    graph: ProvenanceGraph, *, dark: bool = False, selected_node_id: str | None = None
+) -> str:
+    return workbench_graph_rendering(
+        graph, dark=dark, selected_node_id=selected_node_id
+    ).svg
+
+
+def workbench_graph_rendering(
+    graph: ProvenanceGraph, *, dark: bool = False, selected_node_id: str | None = None
+) -> WorkbenchGraphRendering:
+    dot = workbench_graph_to_dot(graph, dark=dark, selected_node_id=selected_node_id)
     try:
-        result = subprocess.run(
-            ["dot", "-Tsvg"],
-            input=dot,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        svg_result = _run_dot(dot, "svg")
     except FileNotFoundError as exc:
-        return _fallback_svg(graph, dark=dark, note=f"Graphviz unavailable: {exc}")
+        return _fallback_rendering(graph, dark=dark, note=f"Graphviz unavailable: {exc}")
 
-    if result.returncode != 0:
-        note = result.stderr.strip() or "Graphviz failed to render SVG"
-        return _fallback_svg(graph, dark=dark, note=note)
-    return result.stdout
+    if svg_result.returncode != 0:
+        note = svg_result.stderr.strip() or "Graphviz failed to render SVG"
+        return _fallback_rendering(graph, dark=dark, note=note)
+
+    cmap_result = _run_dot(dot, "cmapx")
+    regions = (
+        node_regions_from_cmap(cmap_result.stdout) if cmap_result.returncode == 0 else ()
+    )
+    return WorkbenchGraphRendering(svg=svg_result.stdout, node_regions=regions)
 
 
-def workbench_graph_to_dot(graph: ProvenanceGraph, *, dark: bool = False) -> str:
+def workbench_graph_to_dot(
+    graph: ProvenanceGraph, *, dark: bool = False, selected_node_id: str | None = None
+) -> str:
     theme = _theme(dark)
     colors = DARK_NODE_COLORS if dark else LIGHT_NODE_COLORS
     lines = [
@@ -87,10 +107,14 @@ def workbench_graph_to_dot(graph: ProvenanceGraph, *, dark: bool = False) -> str
     for node in graph.nodes.values():
         node_type = str(node.type)
         fill = colors.get(node_type, theme["node_fill"])
+        border = theme["selected"] if node.id == selected_node_id else theme["node_border"]
+        penwidth = "3.0" if node.id == selected_node_id else "1.4"
         label = _escape_label(_node_label(node))
         tooltip = _escape(f"{node_type}: {node.id}")
+        url = _escape_url(f"node:{quote(node.id, safe='')}")
         lines.append(
-            f'  "{_escape(node.id)}" [label="{label}", fillcolor="{fill}", tooltip="{tooltip}"];'
+            f'  "{_escape(node.id)}" [label="{label}", fillcolor="{fill}", '
+            f'color="{border}", penwidth={penwidth}, tooltip="{tooltip}", URL="{url}"];'
         )
     for edge in graph.edges:
         relation = _edge_label(str(edge.relation))
@@ -99,6 +123,16 @@ def workbench_graph_to_dot(graph: ProvenanceGraph, *, dark: bool = False) -> str
         )
     lines.append("}")
     return "\n".join(lines) + "\n"
+
+
+def _run_dot(dot: str, output_format: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["dot", f"-T{output_format}"],
+        input=dot,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
 
 
 def _node_label(node: Node) -> str:
@@ -198,6 +232,7 @@ def _theme(dark: bool) -> dict[str, str]:
             "edge": "#7E94A3",
             "node_border": "#8EA0AD",
             "node_fill": "#2A3038",
+            "selected": "#66A3FF",
         }
     return {
         "background": "#FFFFFF",
@@ -206,6 +241,7 @@ def _theme(dark: bool) -> dict[str, str]:
         "edge": "#607D8B",
         "node_border": "#2F3B45",
         "node_fill": "#FFFFFF",
+        "selected": "#2F6FED",
     }
 
 
@@ -213,8 +249,19 @@ def _escape(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', "'")
 
 
+def _escape_url(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', "%22")
+
+
 def _escape_label(value: str) -> str:
     return value.replace('"', "'")
+
+
+def _fallback_rendering(graph: ProvenanceGraph, *, dark: bool, note: str) -> WorkbenchGraphRendering:
+    return WorkbenchGraphRendering(
+        svg=_fallback_svg(graph, dark=dark, note=note),
+        node_regions=_fallback_node_regions(graph),
+    )
 
 
 def _fallback_svg(graph: ProvenanceGraph, *, dark: bool, note: str) -> str:
@@ -255,3 +302,12 @@ def _fallback_svg(graph: ProvenanceGraph, *, dark: bool, note: str) -> str:
         )
     lines.append("</svg>")
     return "\n".join(lines) + "\n"
+
+
+def _fallback_node_regions(graph: ProvenanceGraph) -> tuple[NodeRegion, ...]:
+    regions: list[NodeRegion] = []
+    for index, edge in enumerate(graph.edges):
+        y = 92 + index * 92
+        regions.append(NodeRegion(edge.source, "rect", (36, y, 321, y + 56)))
+        regions.append(NodeRegion(edge.target, "rect", (524, y, 809, y + 56)))
+    return tuple(regions)

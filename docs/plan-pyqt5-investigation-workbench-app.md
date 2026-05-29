@@ -192,6 +192,11 @@ The SVG-first route reuses existing rendering code and keeps visual output
 consistent with CLI demos. A richer HTML/JS graph view or Qt graphics scene can
 come later if SVG interaction becomes too limiting.
 
+The current SVG path also emits Graphviz image-map coordinates for every node,
+so the Qt widget can hit-test clicks without embedding browser technology. This
+keeps the first implementation lightweight while still allowing graph-driven
+selection in the inspector and node table.
+
 ---
 
 ## 9. MVP Scope
@@ -217,9 +222,9 @@ or a live build id, runs `AnalysisService` in a background Qt worker, lists RPM
 artifacts, renders Trust Path / Dependency Evidence / Security Context slices as
 SVG, and shows node metadata plus findings. The inspector is split into Summary
 / Metadata / Edges / Raw tabs, the graph canvas shows the selected artifact and
-slice size, and the artifact list can be filtered. The workbench has its own
-light/dark-aware SVG renderer with wrapped graph labels; PyQt5 is installed via
-the optional `gui` extra.
+slice size, graph nodes are clickable, and the artifact list can be filtered.
+The workbench has its own light/dark-aware SVG renderer with wrapped graph
+labels; PyQt5 is installed via the optional `gui` extra.
 
 ---
 
