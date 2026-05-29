@@ -1,13 +1,12 @@
 # mypy: ignore-errors
 from __future__ import annotations
 
-import json
 from pathlib import Path
 import sys
-from typing import Any
 
 from PyQt5 import QtCore, QtGui, QtSvg, QtWidgets
 
+from albs_graph.gui.inspect import InspectorEdge, inspector_view, raw_json
 from albs_graph.pipeline import RunSpec
 from albs_graph.gui.render import workbench_graph_to_svg
 from albs_graph.services import (
@@ -74,7 +73,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.coverage_label = QtWidgets.QLabel("No graph loaded")
         self.progress_label = QtWidgets.QLabel("")
 
+        self.artifact_header = QtWidgets.QLabel("Artifacts")
+        self.artifact_filter = QtWidgets.QLineEdit()
+        self.artifact_filter.setPlaceholderText("Filter artifacts")
         self.artifact_list = QtWidgets.QListWidget()
+        self.artifact_list.setSpacing(2)
         self.slice_nodes = QtWidgets.QTableWidget(0, 3)
         self.slice_nodes.setHorizontalHeaderLabels(["Type", "Label", "Node id"])
         self.slice_nodes.horizontalHeader().setStretchLastSection(True)
@@ -87,8 +90,30 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.svg_scroll.setWidget(self.svg_widget)
         self.svg_scroll.setWidgetResizable(False)
 
-        self.inspector = QtWidgets.QPlainTextEdit()
-        self.inspector.setReadOnly(True)
+        self.graph_title = QtWidgets.QLabel("No artifact selected")
+        self.graph_title.setObjectName("GraphTitle")
+        self.graph_meta = QtWidgets.QLabel("")
+        self.graph_meta.setObjectName("GraphMeta")
+
+        self.inspector_tabs = QtWidgets.QTabWidget()
+        self.summary_table = QtWidgets.QTableWidget(0, 2)
+        self.summary_table.setHorizontalHeaderLabels(["Field", "Value"])
+        self.metadata_table = QtWidgets.QTableWidget(0, 2)
+        self.metadata_table.setHorizontalHeaderLabels(["Key", "Value"])
+        self.edges_table = QtWidgets.QTableWidget(0, 5)
+        self.edges_table.setHorizontalHeaderLabels(["Dir", "Relation", "Other node", "Label", "Index"])
+        self.raw_inspector = QtWidgets.QPlainTextEdit()
+        self.raw_inspector.setReadOnly(True)
+        for table in (self.summary_table, self.metadata_table, self.edges_table):
+            table.horizontalHeader().setStretchLastSection(True)
+            table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+            table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+            table.setAlternatingRowColors(True)
+        self.inspector_tabs.addTab(self.summary_table, "Summary")
+        self.inspector_tabs.addTab(self.metadata_table, "Metadata")
+        self.inspector_tabs.addTab(self.edges_table, "Edges")
+        self.inspector_tabs.addTab(self.raw_inspector, "Raw")
+
         self.findings_table = QtWidgets.QTableWidget(0, 4)
         self.findings_table.setHorizontalHeaderLabels(["Severity", "Code", "Subject", "Detail"])
         self.findings_table.horizontalHeader().setStretchLastSection(True)
@@ -148,12 +173,23 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         left = QtWidgets.QWidget()
         left_layout = QtWidgets.QVBoxLayout(left)
         left_layout.setContentsMargins(8, 8, 8, 8)
-        left_layout.addWidget(QtWidgets.QLabel("Artifacts"))
+        left_layout.addWidget(self.artifact_header)
+        left_layout.addWidget(self.artifact_filter)
         left_layout.addWidget(self.artifact_list)
         left_layout.addWidget(self.coverage_label)
 
         center = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-        center.addWidget(self.svg_scroll)
+        graph_panel = QtWidgets.QWidget()
+        graph_layout = QtWidgets.QVBoxLayout(graph_panel)
+        graph_layout.setContentsMargins(0, 0, 0, 0)
+        header = QtWidgets.QWidget()
+        header_layout = QtWidgets.QHBoxLayout(header)
+        header_layout.setContentsMargins(8, 6, 8, 6)
+        header_layout.addWidget(self.graph_title, 1)
+        header_layout.addWidget(self.graph_meta)
+        graph_layout.addWidget(header)
+        graph_layout.addWidget(self.svg_scroll)
+        center.addWidget(graph_panel)
         center.addWidget(self.slice_nodes)
         center.setStretchFactor(0, 4)
         center.setStretchFactor(1, 1)
@@ -162,7 +198,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         right_layout = QtWidgets.QVBoxLayout(right)
         right_layout.setContentsMargins(8, 8, 8, 8)
         right_layout.addWidget(QtWidgets.QLabel("Inspector"))
-        right_layout.addWidget(self.inspector)
+        right_layout.addWidget(self.inspector_tabs)
 
         split = QtWidgets.QSplitter()
         split.addWidget(left)
@@ -184,6 +220,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
     def _connect_signals(self) -> None:
         self.artifact_list.currentItemChanged.connect(self._artifact_changed)
+        self.artifact_filter.textChanged.connect(self._filter_artifacts)
         self.mode_combo.currentTextChanged.connect(lambda _text: self.render_current_slice())
         self.include_tests.stateChanged.connect(lambda _state: self.render_current_slice())
         self.slice_nodes.itemSelectionChanged.connect(self._slice_node_changed)
@@ -199,6 +236,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             muted = "#AAB5C2"
             selection = "#2F6FED"
             selection_text = "#FFFFFF"
+            alternate = "#22272E"
         else:
             window = "#F6F7F9"
             panel = "#FFFFFF"
@@ -208,6 +246,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             muted = "#52616F"
             selection = "#DCEBFF"
             selection_text = "#17212B"
+            alternate = "#F7F9FC"
         self.setStyleSheet(
             f"""
             QMainWindow, QWidget {{
@@ -237,12 +276,26 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 selection-background-color: {selection};
                 selection-color: {selection_text};
             }}
+            QListWidget::item {{
+                padding: 3px 6px;
+            }}
+            QTableWidget {{
+                alternate-background-color: {alternate};
+            }}
             QPlainTextEdit {{
                 font-family: Menlo, Monaco, Consolas, monospace;
                 font-size: 12px;
             }}
             QLabel {{
                 color: {text};
+            }}
+            QLabel#GraphTitle {{
+                font-size: 14px;
+                font-weight: 700;
+            }}
+            QLabel#GraphMeta {{
+                color: {muted};
+                font-size: 12px;
             }}
             QHeaderView::section {{
                 background: {panel_alt};
@@ -337,13 +390,35 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _populate_artifacts(self) -> None:
         self.artifact_list.clear()
         assert self.result is not None
-        for summary in GraphQueries(self.result.graph).artifacts():
+        artifacts = GraphQueries(self.result.graph).artifacts()
+        self.artifact_header.setText(f"Artifacts ({len(artifacts)})")
+        for summary in artifacts:
             name = summary.metadata.get("name") or summary.label
             arch = summary.metadata.get("arch") or "?"
             item = QtWidgets.QListWidgetItem(f"{name}  [{arch}]")
             item.setData(QtCore.Qt.UserRole, summary.id)
+            item.setData(QtCore.Qt.UserRole + 1, f"{name} {arch} {summary.id}".casefold())
             item.setToolTip(summary.id)
             self.artifact_list.addItem(item)
+
+    def _filter_artifacts(self, text: str) -> None:
+        needle = text.casefold().strip()
+        visible = 0
+        first_visible: QtWidgets.QListWidgetItem | None = None
+        for index in range(self.artifact_list.count()):
+            item = self.artifact_list.item(index)
+            haystack = str(item.data(QtCore.Qt.UserRole + 1))
+            hidden = bool(needle) and needle not in haystack
+            item.setHidden(hidden)
+            if not hidden:
+                visible += 1
+                if first_visible is None:
+                    first_visible = item
+        total = self.artifact_list.count()
+        self.artifact_header.setText(f"Artifacts ({visible}/{total})" if needle else f"Artifacts ({total})")
+        current = self.artifact_list.currentItem()
+        if current is not None and current.isHidden() and first_visible is not None:
+            self.artifact_list.setCurrentItem(first_visible)
 
     def _populate_findings(self) -> None:
         assert self.result is not None
@@ -398,10 +473,18 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self._show_error(str(exc))
             return
         self.current_slice = graph_slice
+        self._update_graph_header(graph_slice, subject_id)
         self.current_svg = workbench_graph_to_svg(graph_slice.graph, dark=self.dark_mode)
         self._load_svg(self.current_svg)
         self._populate_slice_nodes(graph_slice)
         self._show_node(subject_id)
+
+    def _update_graph_header(self, graph_slice: GraphSlice, subject_id: str) -> None:
+        assert self.result is not None
+        node = self.result.graph.nodes.get(subject_id)
+        title = node.label if node is not None else subject_id
+        self.graph_title.setText(f"{self.mode_combo.currentText()}: {title}")
+        self.graph_meta.setText(f"{len(graph_slice.graph.nodes)} nodes / {len(graph_slice.graph.edges)} edges")
 
     def _load_svg(self, svg: str) -> None:
         self.svg_widget.load(QtCore.QByteArray(svg.encode("utf-8")))
@@ -445,24 +528,39 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _show_node(self, node_id: str) -> None:
         if self.result is None:
             return
-        queries = GraphQueries(self.result.graph)
         try:
-            summary = queries.node_summary(node_id)
+            view = inspector_view(self.result.graph, node_id)
         except ValueError:
             if self.current_slice is None:
                 return
-            summary = GraphQueries(self.current_slice.graph).node_summary(node_id)
-            incoming = []
-            outgoing = []
-        else:
-            incoming = [edge.to_dict() for edge in queries.incoming(node_id)]
-            outgoing = [edge.to_dict() for edge in queries.outgoing(node_id)]
-        payload: dict[str, Any] = {
-            "node": summary.to_dict(),
-            "incoming": incoming,
-            "outgoing": outgoing,
-        }
-        self.inspector.setPlainText(json.dumps(payload, indent=2, sort_keys=True))
+            view = inspector_view(self.current_slice.graph, node_id)
+        self._populate_key_value_table(self.summary_table, view.summary)
+        self._populate_key_value_table(self.metadata_table, view.metadata)
+        self._populate_edges_table(view.incoming + view.outgoing)
+        self.raw_inspector.setPlainText(raw_json(view))
+
+    def _populate_key_value_table(
+        self, table: QtWidgets.QTableWidget, rows: list[tuple[str, str]]
+    ) -> None:
+        table.setRowCount(len(rows))
+        for row, (key, value) in enumerate(rows):
+            table.setItem(row, 0, QtWidgets.QTableWidgetItem(key))
+            table.setItem(row, 1, QtWidgets.QTableWidgetItem(value))
+        table.resizeColumnsToContents()
+
+    def _populate_edges_table(self, edges: list[InspectorEdge]) -> None:
+        self.edges_table.setRowCount(len(edges))
+        for row, edge in enumerate(edges):
+            values = [
+                edge.direction,
+                edge.relation,
+                edge.other_id,
+                edge.other_label,
+                str(edge.index),
+            ]
+            for column, value in enumerate(values):
+                self.edges_table.setItem(row, column, QtWidgets.QTableWidgetItem(value))
+        self.edges_table.resizeColumnsToContents()
 
     def export_svg(self) -> None:
         if not self.current_svg:

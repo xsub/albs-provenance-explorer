@@ -2064,6 +2064,30 @@ Tests +2 cover the dark DOT theme and line-broken workbench labels. Suite now
 
 ---
 
+## D76 - Workbench inspector tabs, graph header, and artifact filtering
+
+The first showable workbench still had three rough edges:
+
+- The inspector was one large raw JSON pane, useful for debugging but too
+  noisy for investigation.
+- The graph canvas had no local context beyond the global toolbar mode.
+- The artifact list was dense and hard to narrow once a build had hundreds of
+  RPMs.
+
+Fix: split inspection into a small GUI view model (``albs_graph.gui.inspect``)
+and four tabs in the PyQt pane: ``Summary``, ``Metadata``, ``Edges`` and
+``Raw``. The raw JSON remains available, but common node fields and
+incoming/outgoing edges are now scannable tables. The graph canvas also gains
+a compact header with the selected artifact, active mode, and node/edge counts
+for the focused slice. The left panel gets a filter box and slightly roomier
+artifact rows; the header reports visible/total artifact counts while
+filtering.
+
+Tests +2 cover the inspector view model and stable raw JSON output. Suite now
+275.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

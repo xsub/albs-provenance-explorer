@@ -215,7 +215,9 @@ Current branch status: the first runnable shell exists as
 `albs-graph-workbench` / `python -m albs_graph.gui`. It opens ALBS metadata JSON
 or a live build id, runs `AnalysisService` in a background Qt worker, lists RPM
 artifacts, renders Trust Path / Dependency Evidence / Security Context slices as
-SVG, and shows node metadata plus findings. The workbench has its own
+SVG, and shows node metadata plus findings. The inspector is split into Summary
+/ Metadata / Edges / Raw tabs, the graph canvas shows the selected artifact and
+slice size, and the artifact list can be filtered. The workbench has its own
 light/dark-aware SVG renderer with wrapped graph labels; PyQt5 is installed via
 the optional `gui` extra.
 
