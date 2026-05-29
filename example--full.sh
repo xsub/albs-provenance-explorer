@@ -162,7 +162,7 @@ main() {
   opt "$PYTHON_BIN" -m albs_graph.cli.demo_verbose \
     --build-id "$BUILD_ID" --rpm "$PACKAGE" --arch "$ARCH" \
     --out-dir "$OUT_DIR" --live-dir "$LIVE_DIR" --cache "$CACHE" --cache-ttl 86400 --verify-git 0 \
-    "${sbom_args[@]}"
+    ${sbom_args[@]+"${sbom_args[@]}"}
 
   step "12. Render graphs to SVG (full build, focused trust path, whole-source fan-out)"
   if have dot; then

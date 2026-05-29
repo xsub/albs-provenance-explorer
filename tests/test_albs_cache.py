@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from types import ModuleType
@@ -10,13 +11,22 @@ from albs_graph.adapters.albs import fetch_build_metadata
 
 class FakeResponse:
     ok = True
-    headers = {"content-type": "application/json"}
-    text = ""
 
-    def __init__(self, data: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        data: dict[str, Any] | None = None,
+        *,
+        ok: bool = True,
+        content_type: str = "application/json",
+        text: str = "",
+    ) -> None:
         self._data = data
+        self.ok = ok
+        self.headers = {"content-type": content_type}
+        self.text = text
 
     def json(self) -> dict[str, Any]:
+        assert self._data is not None
         return self._data
 
     def raise_for_status(self) -> None:
@@ -32,6 +42,17 @@ class FakeRequests(ModuleType):
     def get(self, url: str, timeout: int) -> FakeResponse:
         self.calls.append(url)
         return FakeResponse(self._data)
+
+
+class FakeSequenceRequests(ModuleType):
+    def __init__(self, responses: list[FakeResponse]) -> None:
+        super().__init__("requests")
+        self.calls: list[str] = []
+        self._responses = responses
+
+    def get(self, url: str, timeout: int) -> FakeResponse:
+        self.calls.append(url)
+        return self._responses.pop(0)
 
 
 def test_fetch_build_metadata_reuses_fresh_local_cache(tmp_path: Path, monkeypatch: Any) -> None:
@@ -60,6 +81,41 @@ def test_fetch_build_metadata_reuses_fresh_local_cache(tmp_path: Path, monkeypat
     assert second.source_cas_hash == "cas123"
     assert cache.exists()
     assert len(fake_requests.calls) == 1
+
+
+def test_fetch_build_metadata_caches_html_fallback(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    html = """
+    <html>
+      <head><title>ALBS build 57811</title></head>
+      <body>
+        <p>Package: almalinux-release</p>
+        <p>Commit: abc123</p>
+        <p>Repository: https://git.almalinux.org/rpms/almalinux-release.git</p>
+        <a>almalinux-release-10.0-1.el10.x86_64.rpm</a>
+      </body>
+    </html>
+    """
+    fake_requests = FakeSequenceRequests(
+        [
+            FakeResponse(ok=False, content_type="text/html"),
+            FakeResponse(content_type="text/html", text=html),
+        ]
+    )
+    monkeypatch.setitem(__import__("sys").modules, "requests", fake_requests)
+    cache = tmp_path / "build-57811.albs.json"
+
+    first = fetch_build_metadata(57811, cache_path=cache)
+    cached = json.loads(cache.read_text(encoding="utf-8"))
+    second = fetch_build_metadata(57811, cache_path=cache)
+
+    assert first.package == "almalinux-release"
+    assert cached["build_id"] == "57811"
+    assert cached["package"] == "almalinux-release"
+    assert cached["binary_rpms"] == ["almalinux-release-10.0-1.el10.x86_64.rpm"]
+    assert second.commit == "abc123"
+    assert len(fake_requests.calls) == 2
 
 
 def test_fetch_build_metadata_ignores_cache_for_a_different_build(

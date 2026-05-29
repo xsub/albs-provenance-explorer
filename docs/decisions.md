@@ -2308,7 +2308,7 @@ written and reused. The same verification run exposed an `example--full.sh`
 macOS/bash `set -u` failure when `SBOM_FILE` is absent: step 11 expanded an
 empty `sbom_args` array directly. It now uses the same guarded expansion as the
 earlier CLI steps, so builds without a committed SBOM keep running best-effort.
-Suite now 264.
+Full suite passed locally.
 
 ---
 
