@@ -45,6 +45,7 @@ from albs_graph.adapters.rpmgraph import (
     run_repograph,
 )
 from albs_graph.adapters.sbom import (
+    discover_build_sbom,
     import_sbom,
 )
 from albs_graph.adapters.source_imports import attach_source_tree_imports
@@ -463,6 +464,12 @@ def coverage_command(
         help="CycloneDX build SBOM (e.g. from alma-sbom) matched to the build's own RPMs: "
         "attaches each RPM's vendor CPE (moves the identity axis) + PURL/hash + an SBOM link.",
     ),
+    auto_sbom: bool = typer.Option(
+        True,
+        "--auto-sbom/--no-auto-sbom",
+        help="When --build-sbom is not given and --build-id is, auto-discover "
+        "build-<id>.cyclonedx.json next to --cache (or under examples/). D78.",
+    ),
     requirements: Optional[Path] = typer.Option(
         None, "--requirements", help="Python requirements.txt to attach as PyPI dependency claims."
     ),
@@ -569,6 +576,13 @@ def coverage_command(
         raise ValueError("coverage requires --build-id or --source")
     _log_graph_stats(verbose, graph)
     _ = all_packages  # default behavior; flag documents intent and pairs with --all-archs
+
+    # D78: when --build-sbom is not given but --build-id is, look for the
+    # conventionally-named CycloneDX file (alma-sbom's output, written by
+    # example--full.sh next to the cache).
+    build_sbom = _resolve_build_sbom(
+        build_sbom, build_id, cache=cache, auto=auto_sbom, verbose=verbose
+    )
 
     # The repograph dot is resolved here (file read / live run + its warning are
     # I/O and presentation); the rest of the enrichment flow is the pipeline's job.
@@ -839,6 +853,12 @@ def identify_command(
     build_sbom: Optional[Path] = typer.Option(
         None, "--build-sbom", help="CycloneDX build SBOM (alma-sbom) to attach to the build's RPMs."
     ),
+    auto_sbom: bool = typer.Option(
+        True,
+        "--auto-sbom/--no-auto-sbom",
+        help="Auto-discover build-<id>.cyclonedx.json near --cache when --build-sbom is "
+        "not given (D78).",
+    ),
     output_format: str = typer.Option("summary", "--format", "-f", help="summary or json."),
     base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
     cache: Optional[Path] = typer.Option(None, "--cache", help="ALBS metadata cache JSON."),
@@ -861,6 +881,9 @@ def identify_command(
     else:
         raise ValueError("identify requires --build-id or --source")
 
+    build_sbom = _resolve_build_sbom(
+        build_sbom, build_id, cache=cache, auto=auto_sbom, verbose=verbose
+    )
     # The single load -> enrich -> reconcile -> render pipeline (D57). Identify
     # uses just the build_sbom step today; new pipeline steps reach this command
     # automatically when they apply.
@@ -948,6 +971,12 @@ def trust_path_command(
         "--build-sbom",
         help="CycloneDX build SBOM (alma-sbom) to attach, so the trust path's has_sbom check passes.",
     ),
+    auto_sbom: bool = typer.Option(
+        True,
+        "--auto-sbom/--no-auto-sbom",
+        help="Auto-discover build-<id>.cyclonedx.json near --cache when --build-sbom is "
+        "not given (D78).",
+    ),
     errata: Optional[Path] = typer.Option(
         None,
         "--errata",
@@ -979,6 +1008,9 @@ def trust_path_command(
         raise ValueError("trust-path requires --build-id or --source")
     _log_graph_stats(verbose, graph)
 
+    build_sbom = _resolve_build_sbom(
+        build_sbom, build_id, cache=cache, auto=auto_sbom, verbose=verbose
+    )
     # The single load -> enrich -> reconcile -> render pipeline (D57). Errata
     # defaults to the selected RPM (preserving prior behaviour) by promoting
     # the RPM selector to errata_subject when --errata-subject is not given.
@@ -1199,6 +1231,12 @@ def vuln_command(
         "--build-sbom",
         help="CycloneDX build SBOM (alma-sbom): set each RPM's vendor CPE so identities resolve.",
     ),
+    auto_sbom: bool = typer.Option(
+        True,
+        "--auto-sbom/--no-auto-sbom",
+        help="Auto-discover build-<id>.cyclonedx.json near --cache when --build-sbom is "
+        "not given (D78).",
+    ),
     cve_feed: Optional[Path] = typer.Option(
         None,
         "--cve-feed",
@@ -1245,6 +1283,9 @@ def vuln_command(
     else:
         raise ValueError("vuln requires --build-id or --source")
 
+    build_sbom = _resolve_build_sbom(
+        build_sbom, build_id, cache=cache, auto=auto_sbom, verbose=verbose
+    )
     # The single load -> enrich -> reconcile -> render pipeline (D57). The
     # pipeline runs build_sbom *before* verify_cpe, so an NVD match upgrades a
     # vendor-asserted CPE rather than the other way round -- the order the
@@ -1778,6 +1819,32 @@ def _progress(verbose: bool) -> Callable[[str], None] | None:
 def _log_step(verbose: bool, message: str) -> None:
     if verbose:
         verbose_console.print(f"[cyan]step[/cyan] {message}")
+
+
+def _resolve_build_sbom(
+    explicit: Path | None,
+    build_id: int | None,
+    *,
+    cache: Path | None,
+    auto: bool,
+    verbose: bool,
+) -> Path | None:
+    """Choose the build SBOM: explicit --build-sbom wins; else discover by convention.
+
+    The discovery walks the same paths ``example--full.sh`` writes to (sibling of
+    the ALBS metadata cache, then ``examples/``); a hit is logged on --verbose so
+    the user sees what was picked, a miss returns None and the command runs
+    without an SBOM (the prior behaviour). ``auto=False`` skips discovery entirely.
+    """
+
+    if explicit is not None:
+        return explicit
+    if not auto or build_id is None:
+        return None
+    found = discover_build_sbom(build_id, cache_path=cache)
+    if found is not None:
+        _log_step(verbose, f"Auto-discovered build SBOM at {found} (D78)")
+    return found
 
 
 def _log_package_metadata(verbose: bool, package: str, source: str) -> None:

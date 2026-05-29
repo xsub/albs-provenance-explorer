@@ -1961,6 +1961,58 @@ Coverage golden byte-identical. Suite stays 263.
 
 ---
 
+## D78 - Auto-discover the build SBOM from --build-id (file convention)
+
+User-spotted: "--build-sbom should be discoverable from build.json since
+there's a way to identify the SBOM file there?" The honest answer is *no*
+-- ALBS build.json does not carry an SBOM URL or artifact entry. Confirmed
+by inspecting ``examples/live-build-17812/build-17812.albs.json``: artifact
+types are ``rpm`` and ``build_log`` only, no SBOM. The SBOM is produced
+*separately* by ``alma-sbom``:
+
+    alma-sbom --file-format cyclonedx-json build --build-id N -o build-N.cyclonedx.json
+
+``example--full.sh`` has used the convention ``examples/build-N.cyclonedx.json``
+for a while. This decision lifts that convention into the CLI so a user
+with ``--build-id N`` doesn't have to remember ``--build-sbom``.
+
+New helper ``albs_graph/adapters/sbom.discover_build_sbom(build_id, *,
+cache_path=None, search_dirs=("examples",))``:
+
+- Sibling of the ALBS metadata cache (``<cache_dir>/build-N.cyclonedx.json``)
+  -- the layout ``example--full.sh`` writes first.
+- One level up from the cache (``<cache_dir>/../build-N.cyclonedx.json``) --
+  the other shape ``example--full.sh`` produces.
+- Then each ``search_dirs`` entry (default: ``examples/``).
+- First existing **file** wins (``is_file()`` rules out a directory with the
+  same name); none found returns ``None`` -- never raises.
+
+CLI wiring across the four SBOM-aware commands (coverage / identify /
+trust-path / vuln) via a small ``_resolve_build_sbom`` helper:
+
+- ``--build-sbom FILE`` (explicit) **wins** -- discovery never runs.
+- ``--no-auto-sbom`` opts out of discovery entirely (returns None).
+- ``--build-id N`` without ``--build-sbom`` triggers discovery; a hit is
+  logged on ``--verbose`` so the user sees what was picked.
+- ``--source FILE`` only (no build_id) returns None as before.
+
+Out of scope (deliberately, per the user's "ok ale bez casa"): no
+``cas authenticate`` path. The CAS-hash flow exists (``alma_commit_sbom_hash``
+sits in build.json metadata, addressing the SBOM by content hash in CAS),
+but it depends on the ``cas`` CLI and an external CAS endpoint -- the same
+opt-in posture as ``--use-cas``. File discovery solves the common case
+without that dependency.
+
++11 test cases for the discovery module: sibling wins, parent fallback,
+sibling-wins-over-parent precedence, custom search dirs, no-cache call,
+none-found returns None, filename keyed on build_id (no collisions across
+runs), directories with the matching name are skipped, plus three for the
+``_resolve_build_sbom`` CLI helper (explicit-wins, ``--no-auto-sbom``
+disables, missing ``build_id`` returns None). Suite 306 -> 317. ruff +
+mypy --strict clean.
+
+---
+
 ## D77 - Live arch builder: one command for the whole-arch universe
 
 D32 added ``universe_from_dot`` (parse one repograph dot); D74 added merge
@@ -2233,6 +2285,30 @@ before the internal ``trust_path``. ``example--full.sh`` step 11 passes
 trust-path's ``has_sbom`` check now matches the outer one whenever the SBOM
 file exists. Regenerated console.txt confirms: ``has_sbom`` now reads ``ok``
 on both trust-path tables (lines 31 and 530). Suite unchanged at 263.
+
+---
+
+## D73 - HTML fallback metadata is cacheable
+
+The live ALBS API can return non-JSON or unavailable responses for some builds
+while the human build page still contains enough fallback evidence to build a
+minimal graph. `fetch_build_metadata(..., cache_path=...)` only wrote the raw
+cache on the JSON API path, so `example--full.sh` could print a successful
+fallback fetch, write the rendered graph JSON, and immediately fail because
+`build-<id>.albs.json` was missing.
+
+Fix: after parsing the HTML fallback, write a parseable synthetic raw metadata
+cache to `cache_path`. The fallback raw payload now carries `build_id`,
+`package`, source repository, commit, CAS, source RPM, binary RPMs, release
+repository, arch, source URL and title. A later run can load that cache through
+the same `parse_build_metadata` path instead of hitting the network again.
+
+Tests add a fake API-miss/HTML-hit sequence and verify the fallback cache is
+written and reused. The same verification run exposed an `example--full.sh`
+macOS/bash `set -u` failure when `SBOM_FILE` is absent: step 11 expanded an
+empty `sbom_args` array directly. It now uses the same guarded expansion as the
+earlier CLI steps, so builds without a committed SBOM keep running best-effort.
+Suite now 264.
 
 ---
 

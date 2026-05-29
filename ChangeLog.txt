@@ -19,7 +19,28 @@ Conventions:
 2026-05-29
 ----------------------------------------------------------------------
 
-- (this)   feat(cli): arch-universe -- one command to fetch + repograph
+- (this)   feat(cli): auto-discover the build SBOM from --build-id
+           (file convention). User noted that passing --build-sbom is
+           redundant when the SBOM file already lives next to the cache.
+           ALBS build.json itself does NOT carry an SBOM URL (verified on
+           17812: only `rpm` and `build_log` artifact types) -- the SBOM
+           is produced separately by `alma-sbom` and dropped near the
+           cache by convention. New `discover_build_sbom(build_id, *,
+           cache_path=, search_dirs=)` walks: sibling of --cache, one
+           level up, then each search dir (default `examples/`); first
+           existing FILE wins (`is_file()` rules out a same-named dir).
+           Wired into coverage / identify / trust-path / vuln via a small
+           `_resolve_build_sbom` CLI helper: explicit --build-sbom always
+           wins; --no-auto-sbom opts out; without --build-id discovery
+           is a no-op. Hit is logged on --verbose so the user sees what
+           was picked. NO cas path (user explicitly excluded;
+           alma_commit_sbom_hash + `cas authenticate` stays an opt-in
+           future). example--full.sh keeps its explicit --build-sbom
+           (explicit wins, no change). +11 test cases (8 for the
+           discovery module, 3 for the CLI helper). Suite 306 → 317.
+           ruff + mypy --strict clean. (D78)
+
+- 08b7ead  feat(cli): arch-universe -- one command to fetch + repograph
            every repo of an arch + merge. New
            `albs_graph/adapters/arch_builder.py` enumerates the well-known
            per-release repos (baseos / appstream / crb / extras / plus),
