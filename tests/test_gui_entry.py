@@ -9,12 +9,22 @@ def test_default_workbench_source_exists() -> None:
     assert default_source_path().exists()
 
 
-def test_workbench_parser_accepts_source_and_build_id() -> None:
+def test_workbench_parser_accepts_source_build_id_and_build_sbom() -> None:
     parser = build_parser()
 
     source_args = parser.parse_args(["--source", "fixture.json"])
-    build_args = parser.parse_args(["--build-id", "57810", "--base-url", "https://example.test"])
+    build_args = parser.parse_args(
+        [
+            "--build-id",
+            "57810",
+            "--build-sbom",
+            "build-57810.cyclonedx.json",
+            "--base-url",
+            "https://example.test",
+        ]
+    )
 
     assert source_args.source == Path("fixture.json")
     assert build_args.build_id == 57810
+    assert build_args.build_sbom == Path("build-57810.cyclonedx.json")
     assert build_args.base_url == "https://example.test"

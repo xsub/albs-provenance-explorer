@@ -262,6 +262,13 @@ dependency conflicts. Activating a finding now also fills a Finding Detail tab
 with the failed trust checks and related source evidence for the selected
 subject.
 
+The workbench also carries the CLI's build-SBOM enrichment path. A toolbar field
+and `--build-sbom` startup flag feed `RunSpec(build_sbom=...)`, so the Evidence
+matrix can show the same per-RPM `SBOM ok` status as `coverage` / `trust-path`
+when the real AlmaLinux build CycloneDX file is present. For common demo/cache
+names it can suggest `build-<id>.cyclonedx.json`, while rejecting obvious source
+vs. SBOM build-id mismatches.
+
 ---
 
 ## 10. Recommended First Implementation Path

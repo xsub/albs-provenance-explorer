@@ -27,6 +27,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Fetch and open a live ALBS build id on startup.",
     )
     parser.add_argument(
+        "--build-sbom",
+        type=Path,
+        default=None,
+        help="CycloneDX build SBOM JSON to enrich per-RPM evidence.",
+    )
+    parser.add_argument(
         "--base-url",
         default="https://build.almalinux.org",
         help="ALBS API base URL for --build-id.",
@@ -47,4 +53,9 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 2
         raise
-    return run(source=args.source, build_id=args.build_id, base_url=args.base_url)
+    return run(
+        source=args.source,
+        build_id=args.build_id,
+        build_sbom=args.build_sbom,
+        base_url=args.base_url,
+    )

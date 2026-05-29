@@ -11,6 +11,8 @@ evidence and findings without leaving the graph.
 ```bash
 pip install -e '.[dev,gui]'
 albs-graph-workbench
+# For full per-RPM SBOM evidence, use the same build SBOM input as the CLI:
+albs-graph-workbench --build-id 57810 --build-sbom examples/build-57810.cyclonedx.json
 ```
 
 ---

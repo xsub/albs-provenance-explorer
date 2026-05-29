@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 import sys
 
 from PyQt5 import QtCore, QtGui, QtSvg, QtWidgets
@@ -49,6 +50,15 @@ BOTTOM_PAGE_MIN_HEIGHT = 0
 GANTT_MIN_HEIGHT = 48
 
 
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _build_id_from_path(path: Path) -> str | None:
+    match = re.search(r"build[-_](\d+)", path.name)
+    return match.group(1) if match else None
+
+
 class AnalysisSignals(QtCore.QObject):
     progress = QtCore.pyqtSignal(str)
     finished = QtCore.pyqtSignal(object)
@@ -56,9 +66,10 @@ class AnalysisSignals(QtCore.QObject):
 
 
 class AnalysisWorker(QtCore.QRunnable):
-    def __init__(self, load_spec: GraphLoadSpec) -> None:
+    def __init__(self, load_spec: GraphLoadSpec, run_spec: RunSpec) -> None:
         super().__init__()
         self.load_spec = load_spec
+        self.run_spec = run_spec
         self.signals = AnalysisSignals()
 
     @QtCore.pyqtSlot()
@@ -66,7 +77,7 @@ class AnalysisWorker(QtCore.QRunnable):
         try:
             result = AnalysisService().analyze(
                 self.load_spec,
-                RunSpec(),
+                self.run_spec,
                 on_progress=self.signals.progress.emit,
             )
         except Exception as exc:
@@ -250,6 +261,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         *,
         initial_source: Path | None = None,
         initial_build_id: int | None = None,
+        initial_build_sbom: Path | None = None,
         base_url: str = "https://build.almalinux.org",
     ) -> None:
         super().__init__()
@@ -272,6 +284,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         self.source_edit = QtWidgets.QLineEdit(str(initial_source or ""))
         self.build_id_edit = QtWidgets.QLineEdit(str(initial_build_id or ""))
+        self.build_sbom_edit = QtWidgets.QLineEdit(str(initial_build_sbom or ""))
+        self.build_sbom_edit.setPlaceholderText("Build SBOM")
+        self.build_sbom_edit.setClearButtonEnabled(True)
         self.mode_combo = QtWidgets.QComboBox()
         self.mode_combo.addItems(
             ["Trust Path", "Dependency Evidence", "Security Context", "Node Neighborhood"]
@@ -481,6 +496,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         export_html_action.triggered.connect(self.export_html_report)
         compare_action = QtWidgets.QAction("Compare", self)
         compare_action.triggered.connect(self.compare_with_source)
+        build_sbom_action = QtWidgets.QAction("SBOM", self)
+        build_sbom_action.setToolTip("Choose a build CycloneDX SBOM")
+        build_sbom_action.triggered.connect(self.open_build_sbom)
         save_session_action = QtWidgets.QAction("Save Session", self)
         save_session_action.triggered.connect(self.save_session)
         load_session_action = QtWidgets.QAction("Load Session", self)
@@ -506,6 +524,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         toolbar.addWidget(QtWidgets.QLabel("Source"))
         self.source_edit.setMinimumWidth(360)
         toolbar.addWidget(self.source_edit)
+        toolbar.addAction(build_sbom_action)
+        self.build_sbom_edit.setFixedWidth(210)
+        toolbar.addWidget(self.build_sbom_edit)
         toolbar.addSeparator()
         toolbar.addWidget(QtWidgets.QLabel("Build id"))
         self.build_id_edit.setFixedWidth(100)
@@ -737,16 +758,40 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         path, _filter = QtWidgets.QFileDialog.getOpenFileName(
             self,
             "Open ALBS build metadata",
-            str(Path.cwd()),
+            self._dialog_start_dir(),
             "JSON files (*.json);;All files (*)",
         )
         if path:
             self.source_edit.setText(path)
             self.build_id_edit.clear()
 
+    def open_build_sbom(self) -> None:
+        path, _filter = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            "Open build CycloneDX SBOM",
+            self._dialog_start_dir(),
+            "JSON files (*.json);;All files (*)",
+        )
+        if path:
+            self.build_sbom_edit.setText(path)
+
+    def _dialog_start_dir(self) -> str:
+        source = self.source_edit.text().strip()
+        if source:
+            path = Path(source).expanduser()
+            if path.exists():
+                return str(path.parent if path.is_file() else path)
+        sbom = self.build_sbom_edit.text().strip()
+        if sbom:
+            path = Path(sbom).expanduser()
+            if path.exists():
+                return str(path.parent if path.is_file() else path)
+        return str(Path.cwd())
+
     def run_analysis(self) -> None:
         try:
             load_spec = self._load_spec()
+            run_spec = self._run_spec(load_spec)
         except ValueError as exc:
             self._show_error(str(exc))
             return
@@ -754,7 +799,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.progress_label.setText("Analyzing...")
         self.log.clear()
         self._log("Starting analysis")
-        worker = AnalysisWorker(load_spec)
+        if run_spec.build_sbom is not None:
+            self._log(f"Using build SBOM {run_spec.build_sbom}")
+        worker = AnalysisWorker(load_spec, run_spec)
         worker.signals.progress.connect(self._log)
         worker.signals.failed.connect(self._analysis_failed)
         worker.signals.finished.connect(self._analysis_finished)
@@ -771,6 +818,64 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         if not path.exists():
             raise ValueError(f"Source JSON does not exist: {path}")
         return GraphLoadSpec(source=path)
+
+    def _run_spec(self, load_spec: GraphLoadSpec) -> RunSpec:
+        self._autofill_build_sbom(load_spec)
+        build_sbom = self.build_sbom_edit.text().strip()
+        if not build_sbom:
+            return RunSpec()
+        path = Path(build_sbom).expanduser()
+        if not path.exists():
+            raise ValueError(f"Build SBOM JSON does not exist: {path}")
+        expected_build_id = self._build_id_for_spec(load_spec)
+        sbom_build_id = _build_id_from_path(path)
+        if expected_build_id and sbom_build_id and expected_build_id != sbom_build_id:
+            raise ValueError(
+                f"Build SBOM appears to be for build {sbom_build_id}, "
+                f"but the current source is build {expected_build_id}."
+            )
+        return RunSpec(build_sbom=path)
+
+    def _autofill_build_sbom(self, load_spec: GraphLoadSpec) -> None:
+        if self.build_sbom_edit.text().strip():
+            return
+        candidate = self._suggest_build_sbom(load_spec)
+        if candidate is not None:
+            self.build_sbom_edit.setText(str(candidate))
+
+    def _suggest_build_sbom(self, load_spec: GraphLoadSpec) -> Path | None:
+        for candidate in self._build_sbom_candidates(load_spec):
+            if candidate.exists():
+                return candidate
+        return None
+
+    def _build_sbom_candidates(self, load_spec: GraphLoadSpec) -> list[Path]:
+        candidates: list[Path] = []
+        build_id = self._build_id_for_spec(load_spec)
+        if load_spec.source is not None:
+            source = load_spec.source.expanduser()
+            stem = source.stem
+            if stem.endswith(".albs"):
+                stem = stem.removesuffix(".albs")
+            candidates.append(source.with_name(f"{stem}.cyclonedx.json"))
+        if build_id:
+            examples = _repo_root() / "examples"
+            candidates.append(examples / f"build-{build_id}.cyclonedx.json")
+        seen: set[Path] = set()
+        unique: list[Path] = []
+        for candidate in candidates:
+            resolved = candidate.expanduser()
+            if resolved not in seen:
+                seen.add(resolved)
+                unique.append(resolved)
+        return unique
+
+    def _build_id_for_spec(self, load_spec: GraphLoadSpec) -> str | None:
+        if load_spec.build_id is not None:
+            return str(load_spec.build_id)
+        if load_spec.source is not None:
+            return _build_id_from_path(load_spec.source)
+        return None
 
     def _analysis_finished(self, result: AnalysisResult) -> None:
         self.result = result
@@ -1483,6 +1588,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.pending_session = session
         self.source_edit.setText(session.source)
         self.build_id_edit.setText(session.build_id)
+        self.build_sbom_edit.setText(session.build_sbom)
         self.include_tests.setChecked(session.include_tests)
         self.artifact_filter.setText(session.artifact_filter)
         self.run_analysis()
@@ -1492,6 +1598,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         return WorkbenchSession(
             source=self.source_edit.text(),
             build_id=self.build_id_edit.text(),
+            build_sbom=self.build_sbom_edit.text(),
             mode=self.mode_combo.currentText(),
             include_tests=self.include_tests.isChecked(),
             artifact_filter=self.artifact_filter.text(),
@@ -1503,6 +1610,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         )
 
     def _apply_session(self, session: WorkbenchSession) -> None:
+        self.build_sbom_edit.setText(session.build_sbom)
         mode_index = self.mode_combo.findText(session.mode)
         if mode_index >= 0:
             self.mode_combo.setCurrentIndex(mode_index)
@@ -1528,6 +1636,7 @@ def run(
     *,
     source: Path | None = None,
     build_id: int | None = None,
+    build_sbom: Path | None = None,
     base_url: str = "https://build.almalinux.org",
 ) -> int:
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
@@ -1535,6 +1644,7 @@ def run(
     window = WorkbenchWindow(
         initial_source=source,
         initial_build_id=build_id,
+        initial_build_sbom=build_sbom,
         base_url=base_url,
     )
     window.show()

@@ -259,6 +259,7 @@ class InvestigationRecipe:
 class WorkbenchSession:
     source: str = ""
     build_id: str = ""
+    build_sbom: str = ""
     mode: str = "Trust Path"
     include_tests: bool = False
     artifact_filter: str = ""
@@ -270,6 +271,7 @@ class WorkbenchSession:
         return {
             "source": self.source,
             "build_id": self.build_id,
+            "build_sbom": self.build_sbom,
             "mode": self.mode,
             "include_tests": self.include_tests,
             "artifact_filter": self.artifact_filter,
@@ -283,6 +285,7 @@ class WorkbenchSession:
         return cls(
             source=str(data.get("source") or ""),
             build_id=str(data.get("build_id") or ""),
+            build_sbom=str(data.get("build_sbom") or ""),
             mode=str(data.get("mode") or "Trust Path"),
             include_tests=bool(data.get("include_tests")),
             artifact_filter=str(data.get("artifact_filter") or ""),

@@ -2279,6 +2279,29 @@ Tests unchanged; this is a PyQt layout sizing fix. Suite remains 296.
 
 ---
 
+## D86 - Workbench build SBOM parity with CLI evidence reports
+
+The Evidence matrix uses `trust_path_report`, so an RPM only reports `SBOM ok`
+when the graph has an SBOM `DESCRIBED_BY` edge. The CLI already creates those
+edges when `--build-sbom FILE` is supplied, but the PyQt worker was always
+running with an empty `RunSpec()`. That made the workbench look inconsistent
+with `example--full.sh`: the base ALBS graph was loaded correctly, while the
+build SBOM enrichment step never ran.
+
+Fix: give the workbench a build-SBOM input path, persist it in saved sessions,
+accept `albs-graph-workbench --build-sbom FILE`, and pass it through to
+`AnalysisService.analyze(..., RunSpec(build_sbom=...))`. When the field is
+empty, the UI cautiously looks for `build-<id>.cyclonedx.json` next to the
+opened ALBS JSON and then in the repository `examples/` directory. If both the
+source and SBOM filenames expose build ids, mismatches are rejected before
+analysis starts.
+
+Tests extend the workbench parser/session checks and assert the service Evidence
+matrix reports `SBOM ok` for a graph that already has SBOM evidence. Suite
+remains 296.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

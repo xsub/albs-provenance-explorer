@@ -206,6 +206,8 @@ def test_workbench_evidence_matrix_reports_per_artifact_completeness() -> None:
     assert row.provenance == "complete"
     assert row.security_context == "complete"
     assert row.signature == "ok"
+    assert row.sbom == "ok"
+    assert "has_sbom" not in row.missing
     assert row.completeness > 0.75
 
 
@@ -302,6 +304,7 @@ def test_finding_drilldown_expands_artifact_checks() -> None:
 def test_workbench_session_round_trips_dict() -> None:
     session = WorkbenchSession(
         source="build.json",
+        build_sbom="build.cyclonedx.json",
         mode="Node Neighborhood",
         selected_artifact_id=SYNTHETIC_RPM_ID,
         selected_node_id="build:albs:123456",
