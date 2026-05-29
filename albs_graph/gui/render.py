@@ -11,7 +11,7 @@ from albs_graph.model import Node, NodeType, ProvenanceGraph
 
 
 GRAPH_FONT = "Arial"
-SVG_FONT_STACK = "Arial,Helvetica,sans-serif"
+SVG_FONT_STACK = "Arial"
 
 LIGHT_NODE_COLORS = {
     "source_package": "#E8F5E9",

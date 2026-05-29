@@ -11,6 +11,7 @@ def test_dot_output_is_human_readable() -> None:
     assert "released_to" in dot
     assert "synthetic-core-1.0.0-1.el9.x86_64.rpm" in dot
     assert "Inter" not in dot
+    assert "Helvetica" not in dot
 
 
 def test_json_export_contains_schema() -> None:

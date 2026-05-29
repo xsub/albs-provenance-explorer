@@ -2355,6 +2355,19 @@ offscreen construction plus the existing service/pipeline tests. Suite remains
 
 ---
 
+## D89 - Qt-safe SVG font family
+
+The full offscreen workbench smoke test exposed another startup/render warning:
+Qt's SVG renderer treated the CSS fallback stack `Arial,Helvetica,sans-serif`
+as one missing family (`Arial,,Helvetica,,sans-serif`). DOT rendering already
+uses a single available family, so SVG output now does the same and emits
+`font-family: Arial`.
+
+Tests extend the renderer assertions to reject both `Inter` and `Helvetica`
+fallback-stack output. Suite remains 296.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

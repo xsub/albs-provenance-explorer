@@ -8,7 +8,7 @@ from .dot import graph_to_dot
 from albs_graph.model import ProvenanceGraph
 
 
-SVG_FONT_STACK = "Arial,Helvetica,sans-serif"
+SVG_FONT_STACK = "Arial"
 
 class SvgRenderError(RuntimeError):
     pass
