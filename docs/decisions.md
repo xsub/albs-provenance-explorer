@@ -2311,8 +2311,8 @@ long source/SBOM paths compete with primary investigation controls.
 Fix: move file/run/export/session/compare/zoom/restart/exit commands into a
 normal menu bar. The toolbar is now a compact run-context strip: source, build
 SBOM, build id, mode, recipes, layers, graph search and tests. Full source and
-SBOM paths are still visible through tooltips and a selectable status-bar
-summary, while the visible fields stay bounded.
+SBOM paths are available through the fields themselves and their tooltips, while
+the status bar is reserved for run state.
 
 The menu bar also adds Reload Program and Exit. Window close now clears pending
 Qt runnable work before accepting the close event, and terminal Ctrl+C is wired

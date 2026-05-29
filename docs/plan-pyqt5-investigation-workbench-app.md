@@ -271,9 +271,10 @@ vs. SBOM build-id mismatches.
 
 The top-level shell now keeps commands in a menu bar instead of crowding the
 toolbar. The toolbar is reserved for the active run context and investigation
-switches; full source/SBOM paths move to tooltips plus the selectable status-bar
-summary. Reload Program, Exit, window-close cleanup and terminal Ctrl+C handling
-are part of the application lifecycle rather than ad hoc toolbar buttons.
+switches; full source/SBOM paths remain in the fields and their tooltips, while
+the status bar only reports run state. Reload Program, Exit, window-close
+cleanup and terminal Ctrl+C handling are part of the application lifecycle
+rather than ad hoc toolbar buttons.
 
 Entering a build id and pressing Enter now delegates acquisition to the classic
 CLI workflow: the workbench runs the sibling `max` checkout's `example--full.sh`

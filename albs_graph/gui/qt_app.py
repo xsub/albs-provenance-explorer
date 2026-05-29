@@ -63,14 +63,6 @@ def _build_id_from_path(path: Path) -> str | None:
     return match.group(1) if match else None
 
 
-def _short_path_label(value: str) -> str:
-    path = Path(value).expanduser()
-    if path.name:
-        parent = path.parent.name
-        return f"{parent}/{path.name}" if parent and parent != "." else path.name
-    return value
-
-
 def _prepend_env_path(path: Path, existing: str) -> str:
     prefix = str(path)
     return f"{prefix}{os.pathsep}{existing}" if existing else prefix
@@ -425,8 +417,6 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.include_tests = QtWidgets.QCheckBox("Tests")
         self.coverage_label = QtWidgets.QLabel("No graph loaded")
         self.progress_label = QtWidgets.QLabel("")
-        self.input_summary_label = QtWidgets.QLabel("")
-        self.input_summary_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
 
         self.artifact_header = QtWidgets.QLabel("Artifacts")
         self.artifact_filter = QtWidgets.QLineEdit()
@@ -569,7 +559,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._build_ui()
         self._connect_signals()
         self._apply_style()
-        self._update_input_summary()
+        self._update_input_tooltips()
 
         if initial_build_id is not None or (initial_source is not None and initial_source.exists()):
             QtCore.QTimer.singleShot(50, self.run_analysis)
@@ -736,7 +726,6 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.output_dock = dock
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock)
         self.statusBar().addWidget(self.progress_label)
-        self.statusBar().addPermanentWidget(self.input_summary_label, 1)
 
     def _configure_actions(
         self,
@@ -815,9 +804,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.timeline_panel.setMinimumHeight(BOTTOM_PAGE_MIN_HEIGHT)
 
     def _connect_signals(self) -> None:
-        self.source_edit.textChanged.connect(lambda _text: self._update_input_summary())
-        self.build_sbom_edit.textChanged.connect(lambda _text: self._update_input_summary())
-        self.build_id_edit.textChanged.connect(lambda _text: self._update_input_summary())
+        self.source_edit.textChanged.connect(lambda _text: self._update_input_tooltips())
+        self.build_sbom_edit.textChanged.connect(lambda _text: self._update_input_tooltips())
+        self.build_id_edit.textChanged.connect(lambda _text: self._update_input_tooltips())
         self.build_id_edit.returnPressed.connect(self.run_classic_build_pipeline)
         self.artifact_list.currentItemChanged.connect(self._artifact_changed)
         self.artifact_filter.textChanged.connect(self._filter_artifacts)
@@ -853,25 +842,13 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         for action in self.layer_actions.values():
             action.triggered.connect(lambda _checked: self.render_current_slice())
 
-    def _update_input_summary(self) -> None:
+    def _update_input_tooltips(self) -> None:
         source = self.source_edit.text().strip()
         build_sbom = self.build_sbom_edit.text().strip()
         build_id = self.build_id_edit.text().strip()
-        parts = []
-        tooltip = []
-        if source:
-            parts.append(f"Source: {_short_path_label(source)}")
-            tooltip.append(f"Source: {source}")
-        if build_sbom:
-            parts.append(f"SBOM: {_short_path_label(build_sbom)}")
-            tooltip.append(f"Build SBOM: {build_sbom}")
-        if build_id:
-            parts.append(f"Build id: {build_id}")
-            tooltip.append(f"Build id: {build_id}")
-        self.input_summary_label.setText("  |  ".join(parts) if parts else "No source selected")
-        self.input_summary_label.setToolTip("\n".join(tooltip))
         self.source_edit.setToolTip(source)
         self.build_sbom_edit.setToolTip(build_sbom)
+        self.build_id_edit.setToolTip(f"Build id: {build_id}" if build_id else "")
 
     def _apply_style(self) -> None:
         self.dark_mode = self._is_dark_palette()
