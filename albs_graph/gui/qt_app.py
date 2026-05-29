@@ -34,6 +34,10 @@ from albs_graph.services import (
 )
 
 
+RECIPE_COMBO_WIDTH = 136
+RECIPE_POPUP_MIN_WIDTH = 460
+
+
 class AnalysisSignals(QtCore.QObject):
     progress = QtCore.pyqtSignal(str)
     finished = QtCore.pyqtSignal(object)
@@ -159,6 +163,13 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         )
         self.recipe_combo = QtWidgets.QComboBox()
         self.recipe_combo.addItem("Recipes")
+        self.recipe_combo.setFixedWidth(RECIPE_COMBO_WIDTH)
+        self.recipe_combo.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed,
+            QtWidgets.QSizePolicy.Fixed,
+        )
+        self.recipe_combo.view().setTextElideMode(QtCore.Qt.ElideNone)
+        self.recipe_combo.view().setMinimumWidth(RECIPE_POPUP_MIN_WIDTH)
         self.graph_search_edit = QtWidgets.QLineEdit()
         self.graph_search_edit.setPlaceholderText("Search graph")
         self.graph_search_edit.setFixedWidth(160)
@@ -653,7 +664,19 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.recipe_combo.addItem("Recipes")
         for recipe in investigation_recipes(self.result.graph, self.result.coverage, self.findings):
             self.recipe_combo.addItem(recipe.title, recipe.to_dict())
+        self._resize_recipe_popup()
         self.recipe_combo.blockSignals(False)
+
+    def _resize_recipe_popup(self) -> None:
+        metrics = QtGui.QFontMetrics(self.recipe_combo.font())
+        widest_item = max(
+            (
+                metrics.horizontalAdvance(self.recipe_combo.itemText(index))
+                for index in range(self.recipe_combo.count())
+            ),
+            default=0,
+        )
+        self.recipe_combo.view().setMinimumWidth(max(RECIPE_POPUP_MIN_WIDTH, widest_item + 72))
 
     def _update_coverage(self) -> None:
         assert self.result is not None

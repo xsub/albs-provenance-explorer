@@ -2169,6 +2169,21 @@ construction from the committed ALBS metadata fixture. Suite now 289.
 
 ---
 
+## D81 - Workbench recipe menu sizing
+
+The recipe selector was visually clipped in the toolbar on dark-mode macOS, and
+the dropdown inherited the narrow combo-box width, so longer recipe titles were
+cut off before the user could read them.
+
+Fix: treat the recipe selector as a fixed-width toolbar control and size its
+popup view independently from the button. The button now has enough room for the
+`Recipes` label, while the popup width is computed from the longest recipe title
+with a minimum width for stable dark-mode rendering. No service behavior changed.
+
+Tests unchanged; this is a PyQt presentation fix. Suite remains 289.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
