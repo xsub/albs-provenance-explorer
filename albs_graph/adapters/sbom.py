@@ -33,18 +33,29 @@ def discover_build_sbom(
     cache_path: str | Path | None = None,
     search_dirs: tuple[str | Path, ...] = ("examples",),
 ) -> Path | None:
-    """Find a conventionally-named CycloneDX SBOM file for an ALBS build.
+    """Find a conventionally-named CycloneDX SBOM file for an ALBS build (D78).
 
-    ALBS build metadata does not carry an SBOM URL. The build SBOM is produced
-    separately by alma-sbom as ``build-N.cyclonedx.json``; this helper applies
-    the same file convention used by ``example--full.sh``.
+    ALBS metadata (``build.json``) does not carry an SBOM URL: the SBOM is
+    produced separately by ``alma-sbom`` (``alma-sbom --file-format
+    cyclonedx-json build --build-id N -o build-N.cyclonedx.json``). The
+    convention ``example--full.sh`` uses is to drop that file next to the
+    build cache. This helper applies the same convention from the CLI so a
+    user with ``--build-id N`` does not have to also pass ``--build-sbom`` --
+    we look in the cache file's directory first (where ``example--full.sh``
+    writes), then in any extra search dirs (default: ``examples/``).
+
+    Returns the first existing path or ``None`` (the caller treats that as
+    "user did not supply an SBOM" -- no error, no exception).
     """
 
     candidates: list[Path] = []
     filename = f"build-{build_id}.cyclonedx.json"
     if cache_path is not None:
         cache = Path(cache_path)
+        # Sibling of the cache file (e.g. examples/live-build-N/build-N.cyclonedx.json).
         candidates.append(cache.parent / filename)
+        # And one level up (e.g. examples/build-N.cyclonedx.json sits next to the
+        # live-build-N/ subdir).
         candidates.append(cache.parent.parent / filename)
     for directory in search_dirs:
         candidates.append(Path(directory) / filename)

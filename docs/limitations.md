@@ -43,11 +43,11 @@ The `identity` axis counts binaries with a verified CPE. Two paths populate it:
   `cpe_source=almalinux_sbom`. On build 57810 this lifts identity to 1.00. This
   is the vendor's own assertion (the authority for its artifact), labelled as
   such and never overriding a stronger prior match.
-- **NVD dictionary (`coverage --verify-cpe FILE`).** Matches `cpe_candidates`
-  against a supplied cpe:2.3 dictionary, but:
-- **Dictionary is supplied, not fetched** - point it at an NVD cpe:2.3 export.
-  Without it (and without a build SBOM) the axis stays 0.00 (candidates remain
-  unverified, by design).
+- **NVD dictionary (`coverage --verify-cpe FILE` or `--verify-cpe-url URL`).**
+  Matches `cpe_candidates` against a cpe:2.3 dictionary. The file path is fully
+  offline; the URL path uses the HTTP cache and TTL, and degrades gracefully on
+  network/tooling failure. Without it (and without a build SBOM) the axis stays
+  0.00 (candidates remain unverified, by design).
 - **Ambiguous vendors are not asserted.** A product mapping to several vendors is
   recorded as `ambiguous_vendor`, not verified - honest, but uncounted.
 - **Backport flag, not CVE math.** `.elN` releases are flagged `distro_backport`;
@@ -87,12 +87,13 @@ Implemented: full RPM download → cpio payload → ELF parse of confirmed
 
 ### Rung 5 - real per-ecosystem resolvers
 RPM resolution is available via `dnf repograph` / `rpmgraph`; **Go**
-(`go list -m all`) and **Cargo** (`cargo metadata`) now have real resolvers
-behind the contract (`resolve` command, decisions.md D32). Still on
-`NullResolver`: **pip/uv**, **Maven/Gradle**, **npm** - the contract is in place,
-they just need wiring the same way. All resolvers are host tools: they run
-against a checked-out project on the host (the `resolve` CLI is host-side; the
-adapters are tested offline with injected runners).
+(`go list -m all`), **Cargo** (`cargo metadata`), **PyPI**
+(`pip install --dry-run --report`), **Maven** (`mvn dependency:list`) and
+**npm** (`npm ls --json --all`) now have real resolvers behind the contract
+(`resolve` command, decisions.md D32/D92). Still on `NullResolver`: **Gradle**
+and higher-level frontends such as Poetry/uv. All resolvers are host tools: they
+run against a checked-out project on the host (the `resolve` CLI is host-side);
+the adapters are tested offline with injected runners.
 
 ### `dnf repoquery` caveats
 - **Host tool, many subprocess calls.** `coverage --use-dnf` runs several
@@ -213,9 +214,10 @@ into PyPI claims, but:
   to its distribution (e.g. `cv2` -> `opencv-python`) is not done.
 - **Markers are recorded, not evaluated.** A `; python_version < "3.8"` marker is
   kept in the claim's raw but does not gate the claim by context.
-- **requirements.txt + imports only.** `pyproject.toml`/Poetry/Pipfile and other
-  languages (npm/Cargo/Go/Maven manifests) are not parsed yet; and no real
-  pip/uv resolve runs (that is rung 5 for PyPI, behind the resolver contract).
+- **requirements.txt + imports only for static PyPI claims.** `pyproject.toml` /
+  Poetry / Pipfile are still not parsed as manifests here. For concrete PyPI
+  resolution, use the separate rung-5 `resolve --ecosystem pypi --manifest
+  requirements.txt` path, which shells out to pip's dry-run report.
 
 ## `identify` ownership resolution
 `identify <filepath>` walks the provenance graph fully offline, but mapping a
@@ -231,10 +233,11 @@ file to its owning package depends on:
 
 ## Vulnerability-applicability report (`vuln`)
 The `vuln` command reports CVEs a build **addresses via errata** and, with
-`--cve-feed`, **potentially-affected** CVEs (verified CPE + version matched
-against the feed's affected ranges). Remaining limits:
-- **Feed is supplied, not fetched.** `--cve-feed FILE` takes a JSON feed; wiring
-  a live NVD/OSV pull is the next step (the matcher is a drop-in).
+`--cve-feed` or `--cve-feed-url`, **potentially-affected** CVEs (verified CPE +
+version matched against the feed's affected ranges). Remaining limits:
+- **Live feed fetch is best-effort.** `--cve-feed FILE` is the deterministic
+  offline path; `--cve-feed-url URL` uses the HTTP cache and TTL, and returns no
+  live feed when fetching or parsing fails.
 - **Backport matches are advisory.** A `distro_backport` package keeps its
   upstream version, so a range match is flagged "verify" rather than asserted -
   it may be a false positive (fix backported without a version bump).
@@ -250,9 +253,9 @@ positional argument (`dnf repograph appstream` is rejected). `run_repograph` and
 ## Dependency universe
 `universe_from_dot` / `build_universe` / `build_arch_universe` + traversal exist,
 but:
-- **Sources are supplied, not fetched.** `build_arch_universe` merges many
-  repograph dots / builds you provide, but there is no one-command "fetch +
-  repograph every repo of an arch" yet - you generate the dots on a host.
+- **Live fetching needs host tooling.** `arch-universe` can run `dnf repograph`
+  for every known repo of an arch, but it needs `dnf` on the host. Missing or
+  failing repos are recorded as skips, not fatal errors.
 - **First definition wins on merge.** When the same `pkg:<name>` appears in
   several sources, `merge_graphs` keeps the first node's metadata (e.g. arch);
   edges from all sources are unioned.
@@ -267,14 +270,20 @@ but:
   on PATH; `dot`/`json` are dependency-free.
 
 ## SQLite store
-The `albs_graph/store.py` persistence is intentionally minimal:
-- **One-hop SQL only.** `sql_dependents` / `sql_dependencies` run without loading
-  the graph, but multi-hop paths and rendering still `load_graph` the whole
-  store into memory.
+The `albs_graph/store.py` persistence is intentionally lightweight:
+- **One- and multi-hop SQL.** `sql_dependents` / `sql_dependencies` (one hop)
+  plus `sql_reachable_dependencies` / `sql_dependency_paths` (recursive CTE)
+  run without loading the graph, so a repo-wide universe is walkable from the
+  persisted store. Rendering still `load_graph`s the whole store into memory.
 - **Substring/exact name matching** (label / `pkg:<name>` / `cap:%<name>`), same
   trade-off as the in-memory traversal.
-- **Single-writer, replace-on-save.** `save_graph` rewrites the file; there is no
-  incremental update, concurrency control, or migration story.
+- **Replace and merge modes.** `save_graph(..., mode="replace")` is the original
+  behaviour; `mode="merge"` upserts and deep-merges node + edge metadata so
+  multi-build / multi-arch accumulation does not lose claims. There is still no
+  concurrency control: treat it as single-writer.
+- **Versioned schema and snapshots.** In-place migrations are idempotent, and
+  `save_analysis_snapshot` / `load_analysis_snapshot` persist coverage / vuln /
+  license reports as JSON payloads keyed by `(kind, subject_id)`.
 - **No vector/similarity.** A `sqlite-vec` overlay is noted in the plan but not
   implemented.
 
@@ -282,14 +291,15 @@ The `albs_graph/store.py` persistence is intentionally minimal:
 
 The current implementation targets correctness and demonstrability, not the
 stated "thousands of applications":
-- Beyond the SQLite store, there is **no heavier query backend**; multi-hop
-  traversal still happens in memory after a full load.
-- Header fetches are **sequential and uncached** - each `coverage --with-rpm-
-  headers` run refetches; there is no on-disk header cache and no parallelism.
+- Beyond the SQLite store, there is **no heavier query backend**; rendering and
+  some focused graph operations still load the full store into memory.
+- Header/payload/signature fetches have content-addressed caching and bounded
+  concurrency, but cache invalidation is still age/config driven rather than
+  registry-state driven.
 - Reconciliation is a single full pass; there is no incremental re-reconciliation
   as new evidence arrives.
-- Cache invalidation for resolver results is specified (registry-state driven,
-  not age) but not implemented, since no resolver runs.
+- Native resolver runs are host-tool executions; there is no sandboxing layer or
+  persistent resolver-result cache yet.
 
 ---
 

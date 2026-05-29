@@ -6,9 +6,8 @@ it serves), a rough effort, and dependencies. The most honest place to aim is
 the coverage report itself: two axes (`identity`, `security_context`) currently
 sit at a flat **0.00**.
 
-(The **live arch builder** - one command that runs `dnf repograph --repo X` for
-every repo of an arch, merges, and persists - remains an option too; it is
-tracked in `plan.md` §7. This file collects the *alternatives* to it.)
+(The **live arch builder** is now implemented as `arch-universe`; this file
+tracks the remaining alternatives and deferred extensions.)
 
 ---
 
@@ -55,10 +54,12 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
 
 ## E. Real resolvers behind the existing contract (rung 5, non-RPM)
 
-- **E1 - Native language resolvers.** ✅ Done for **Go** (`go list -m all`) and
-  **Cargo** (`cargo metadata`) via `resolver_for` + the `resolve` command;
-  injectable runner, UNRESOLVABLE on failure. *(decisions.md D32)* pip/Maven/npm
-  remain `NullResolver` until wired the same way.
+- **E1 - Native language resolvers.** ✅ Done for **Go** (`go list -m all`),
+  **Cargo** (`cargo metadata`), **PyPI** (`pip install --dry-run --report`),
+  **Maven** (`mvn dependency:list`) and **npm** (`npm ls --json --all`) via
+  `resolver_for` + the `resolve` command; injectable runner, UNRESOLVABLE on
+  failure. *(decisions.md D32, D92)* Gradle remains `NullResolver` until its
+  larger tooling surface is handled.
 
 ## F. The "why does this exist" payoff - a consumer report
 
@@ -87,8 +88,14 @@ tracked in `plan.md` §7. This file collects the *alternatives* to it.)
   the graph. CLI: `--max-concurrency`, `--http-cache/--no-http-cache`,
   `--cache-payloads`. VPS-verified: cold 1230 ms vs warm 740 ms on a single
   RPM; output byte-identical. *(decisions.md D63, D64)*
-- **G2 - Incremental store updates** instead of replace-on-save in
-  `albs_graph/store.py`.
+- **G2 - Incremental store updates.** ✅ Done -- `save_graph(.., mode="merge")`
+  upserts and deep-merges node + edge metadata; multi-build / multi-arch
+  accumulation no longer wipes prior claims. Versioned schema + in-place
+  migrations land alongside; multi-hop SQL queries (recursive CTE) come for
+  free (`sql_reachable_dependencies`, `sql_dependency_paths`). Plus
+  materialized analysis snapshots (`save_analysis_snapshot` /
+  `load_analysis_snapshot`) so a coverage / vuln / license run can be cached
+  per `(kind, subject_id)`. *(decisions.md D92)*
 - **G3 - `sqlite-vec` similarity overlay** ("find packages like this") - optional,
   adds a loadable-extension dependency, so deliberately deferred.
 
@@ -113,16 +120,14 @@ identifiable, drift/range conflicts are version-semantic, RPM signatures are
 verifiable, and the `vuln` command (with `--cve-feed`) is the consumer
 deliverable. Subsequent waves landed everything else flagged here: **B3** (py
 module→package, D28), **C1** (Go static BOM via `.go.buildinfo`, D29), **F2**
-(license rollup, D31), **F3** (SLSA / in-toto export, D30), **E1** for **Go**
-and **Cargo** (D32; pip/Maven/npm still pending the same pattern), and **G1**
+(license rollup, D31), **F3** (SLSA / in-toto export, D30), **E1** for **Go**,
+**Cargo**, **PyPI**, **Maven** and **npm** (D32, D92), **G1**
 (content-addressed HTTP cache + bounded concurrency on
-`rpm_remote`/`rpm_payload`/`rpmsig`, D63 + D64; VPS-verified).
+`rpm_remote`/`rpm_payload`/`rpmsig`, D63 + D64; VPS-verified), **G2** store
+merge/recursive queries/snapshots, live CPE/CVE feed fetch, and the live
+`arch-universe` builder.
 
-Remaining genuinely open: **E1** for **pip/Maven/npm** (same `resolver_for`
-contract, awaits sandboxed runners); **G2** (incremental store updates in
-`albs_graph/store.py`); **G3** (`sqlite-vec` similarity overlay, optional);
-**live CVE/NVD feed fetch** (today the dictionary/feed are supplied files);
-and the **live arch builder** tracked in `plan.md` §7. These are mostly
-network-/host-heavy (live feeds, language resolver tools, live arch builder)
-or infra-heavy (G2/G3), so they need recorded fixtures or an AlmaLinux host
-to exercise.
+Remaining genuinely open: **E1** for **Gradle** only (bigger tooling surface)
+and **G3** (`sqlite-vec` similarity overlay, optional). The remaining items are
+host-/tool-heavy or infra-heavy, so they need recorded fixtures or an AlmaLinux
+host to exercise.

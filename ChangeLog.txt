@@ -19,6 +19,16 @@ Conventions:
 2026-05-29
 ----------------------------------------------------------------------
 
+- (this)   feat(backend): port the remaining backend work from max into the
+           InvestigationWorkbenchApp branch. Backend file contents now match
+           max for the pipeline/CLI, SQLite store, native resolvers, live
+           CPE/CVE feeds, arch-universe builder, render helpers, and their
+           tests while keeping the PyQt GUI/service layer and project entry
+           points intact. This brings over pipeline-backed identify/trust/vuln/
+           license, store merge + recursive CTEs + snapshots, pip/Maven/npm
+           resolvers, cached live NVD feed fetch, and `arch-universe`.
+           Suite now 350. (D92.)
+
 - (this)   feat(cli): port build-SBOM auto-discovery from max. `coverage`,
            `identify`, `trust-path`, and `vuln` now find
            `build-<id>.cyclonedx.json` next to the cache or under examples

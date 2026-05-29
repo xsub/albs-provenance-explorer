@@ -3,8 +3,6 @@ from __future__ import annotations
 from albs_graph.model import ProvenanceGraph
 
 
-GRAPH_FONT = "Arial"
-
 NODE_COLORS = {
     "source_package": "#E8F5E9",
     "git_repository": "#E3F2FD",
@@ -27,9 +25,9 @@ NODE_COLORS = {
 def graph_to_dot(graph: ProvenanceGraph) -> str:
     lines = [
         "digraph albs_provenance {",
-        f'  graph [rankdir=LR, bgcolor="white", fontname="{GRAPH_FONT}"];',
-        f'  node [shape=box, style="rounded,filled", fontname="{GRAPH_FONT}", fontsize=10, margin="0.08,0.06"];',
-        f'  edge [fontname="{GRAPH_FONT}", fontsize=9, color="#546E7A", arrowsize=0.7];',
+        '  graph [rankdir=LR, bgcolor="white", fontname="Inter"];',
+        '  node [shape=box, style="rounded,filled", fontname="Inter", fontsize=10, margin="0.08,0.06"];',
+        '  edge [fontname="Inter", fontsize=9, color="#546E7A", arrowsize=0.7];',
     ]
     for node in graph.nodes.values():
         node_type = str(node.type)

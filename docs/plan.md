@@ -47,7 +47,8 @@ No axis may be sacrificed for another ("design for the union").
    one `DependencyClaim` per evidence source, reconciled into a
    `DEPENDENCY_RESOLUTION` verdict without collapsing the claims. *(Built.)*
 3. **Resolver outputs** (per ecosystem, per context, cached): the concrete tree
-   the authoritative tool produces. *(Contract built; real resolvers are a seam.)*
+   the authoritative tool produces. *(Contract built; real resolvers are wired
+   for RPM, Go, Cargo, PyPI, Maven and npm; Gradle remains a seam.)*
 
 The handoff between layers is typed (`ResolverRequest`/`ResolverResult`), so
 adapters and consumers depend on the contract, not on each other.
@@ -64,7 +65,7 @@ Acquire only as much as a question needs; climb when the objective rewards it.
 | 2 | git checkout: spec + manifests | cheap | declared deps, BuildRequires | done (pre-existing) |
 | 3 | RPM header via HTTP Range | tens of KB | **dynamic-linkage claims** | **done** |
 | 4 | full payload ELF | MBs | **RPATH/RUNPATH, dlopen, static, toolchain, Go module BOM** | **done** (Rust module BOM n/a) |
-| 5 | resolver execution (uv/mvn/cargo/go/libsolv) | compute + sandbox | resolved trees | **RPM done via `dnf repograph`/`rpmgraph`**; other ecosystems contract-only |
+| 5 | resolver execution (pip/mvn/npm/cargo/go/libsolv) | compute + sandbox | resolved trees | **RPM, Go, Cargo, PyPI, Maven and npm done**; Gradle deferred |
 
 Rung 3 is the maximal rung reachable with **current public access** because the
 RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed.
@@ -89,6 +90,10 @@ RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed
 - ✅ Optional, crash-proof CAS verification (`adapters/cas.py`, `--use-cas`).
 - ✅ AlmaLinux-native RPM resolution: `dnf repograph` / `rpmgraph` dot ingest
   (`adapters/rpmgraph.py`) emits resolved RPM dependency claims (rung 5 for RPM).
+- ✅ Native non-RPM resolvers behind the same contract: Go (`go list -m all`),
+  Cargo (`cargo metadata`), PyPI (`pip install --dry-run --report`), Maven
+  (`mvn dependency:list`) and npm (`npm ls --json --all`). Tools are optional
+  and failures become `UNRESOLVABLE` evidence rather than command crashes.
 - ✅ Deep `dnf repoquery` extraction (`adapters/dnf.py`): versioned RUNTIME
   deps, weak (recommends/suggests) deps as OPTIONAL, conflicts/obsoletes facts,
   and `--whatprovides` for the soname->package mapping. `coverage --use-dnf`.
@@ -118,22 +123,27 @@ RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed
   manifest-file discovery that `source.py` does.
 - ✅ Arch-wide universe merge (`merge_graphs` / `build_arch_universe`; repeatable
   `universe --repograph-dot` + `--source`): canonical `pkg:<name>` ids let many
-  repograph dots / builds merge into one cross-repo universe.
+  repograph dots / builds merge into one cross-repo universe. `arch-universe`
+  also fetches each well-known repo for an arch, merges per-repo `dnf repograph`
+  output, records skip reasons, and can persist the result.
 - ✅ Traversal visualization: `universe --path-from/--path-to` (or
   `--dependents-of` / `--dependencies-of`) with `--format dot|svg|json` renders
   the focused subgraph (`path_subgraph` / `neighborhood_subgraph`).
 - ✅ Low-footprint SQLite persistence (`albs_graph/store.py`,
-  `universe --save` / `--db`): build once, query later; one-hop queries run in
-  SQL without loading the whole graph. Stdlib only, no graph DB.
+  `universe --save` / `--db`): build once, query later; one-hop and recursive
+  multi-hop queries run in SQL without loading the whole graph. The store has
+  versioned migrations, replace/merge save modes, deep metadata merge, and
+  materialized analysis snapshots. Stdlib only, no graph DB.
 - ✅ Full cpio file lists (`identify` works for any file); errata ingest
   (`coverage --errata`, `security_context` axis); CPE verification +
-  distro-backport flag (`coverage --verify-cpe`, `identity` axis); the **`vuln`**
-  vulnerability-applicability report; and **CVE-feed matching** (`vuln
-  --cve-feed`) with rpmvercmp version ranges.
+  distro-backport flag (`coverage --verify-cpe` or cached `--verify-cpe-url`,
+  `identity` axis); the **`vuln`** vulnerability-applicability report; and
+  **CVE-feed matching** (`vuln --cve-feed` or cached `--cve-feed-url`) with
+  rpmvercmp version ranges.
 - ✅ Semantic version comparison in the reconciler (`VERSION_DRIFT` /
   `RANGE_VIOLATION` via rpmvercmp) and **GPG signature verification**
   (`coverage --verify-signatures`, real provenance verification now CAS is gone).
-- ✅ Offline tests for all of the above (308 tests; ruff + mypy --strict clean),
+- ✅ Offline tests for all of the above (350 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not specific to any
   single build.
 
@@ -191,11 +201,12 @@ Ordered by value-per-effort and tractability under public access.
    `.go.buildinfo` so a static Go binary contributes a real module BOM
    (`go_static_claims` emits STATIC RESOLVED claims). Rust has no comparable
    embedded BOM, so it stays toolchain-detected.
-5. **Rung 5 - real resolvers behind the contract.** RPM via
-   `dnf repograph`/`rpmgraph`; **Go** (`go list -m all`) and **Cargo**
-   (`cargo metadata`) via `resolver_for` + the `resolve` command. Next: wire
-   **pip/uv**, **Maven/Gradle**, **npm** the same way; feed repograph results
-   through `ResolverResult` rather than direct dot ingest; sandbox + cache on
+5. ✅ **Rung 5 - real resolvers behind the contract.** RPM via
+   `dnf repograph`/`rpmgraph`; **Go** (`go list -m all`), **Cargo**
+   (`cargo metadata`), **PyPI** (`pip install --dry-run --report`), **Maven**
+   (`mvn dependency:list`) and **npm** (`npm ls --json --all`) via
+   `resolver_for` + the `resolve` command. Remaining: Gradle, repograph results
+   through `ResolverResult` rather than direct dot ingest, and sandbox/cache on
    `(ecosystem, manifest, lockfile, context)`.
 6. ✅ **CPE verification adapter.** `coverage --verify-cpe FILE` matches
    `cpe_candidates` against a supplied NVD cpe:2.3 dictionary and populates `cpe`
@@ -203,21 +214,23 @@ Ordered by value-per-effort and tractability under public access.
    vendors stays `ambiguous_vendor`, uncounted); a vendor build SBOM sets
    `vendor_asserted` CPEs. Either lifts `identity` off 0.00, and the AlmaLinux
    backport case is handled (shipped version below the upstream range but patched
-   → `RANGE_VIOLATION`, not "vulnerable"). Remaining: the dictionary is supplied,
-   not fetched live from NVD.
+   → `RANGE_VIOLATION`, not "vulnerable"). The dictionary/feed can be supplied as
+   files or fetched live with TTL through the HTTP cache; live failure degrades
+   gracefully.
 
 ### Scale
 7. **Thousands-of-apps scale.** The dependency **universe** is built,
    traversable, mergeable across repos, and now **persistable** via a
-   low-footprint SQLite store (`--save` / `--db`, one-hop SQL queries without a
-   full load). ✅ **Header/payload/sig fetches now cached + parallelised**
+   low-footprint SQLite store (`--save` / `--db`, one-hop and recursive SQL
+   queries without a full load). ✅ **Header/payload/sig fetches now cached +
+   parallelised**
    (D63/D64): content-addressed disk cache shared by `rpm_remote` /
    `rpm_payload` / `rpmsig` (one download serves both ELF analysis and
    `rpmkeys --checksig`), with bounded concurrency via
-   `ThreadPoolExecutor(max_workers=spec.max_concurrency)`. Still to do: drive
-   the universe from *live* repos (fetch + repograph every repo of an arch in
-   one command) rather than supplied dots; a heavier backend only if the
-   SQLite store is outgrown (Postgres recursive CTEs / a graph store, or a
+   `ThreadPoolExecutor(max_workers=spec.max_concurrency)`. ✅ **Live arch
+   universe** is available through `arch-universe`, which fetches + repographs
+   every known repo for an arch and merges the result. Still to do: a heavier
+   backend only if the SQLite store is outgrown (Postgres / graph store, or a
    `sqlite-vec` similarity overlay); incremental re-reconciliation; SBOM-fetch
    batching; registry-state cache invalidation (yanks/deletions), not age.
 

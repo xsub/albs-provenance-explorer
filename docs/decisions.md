@@ -2414,6 +2414,40 @@ helper. Suite now 308.
 
 ---
 
+## D92 - Port the remaining max backend into the workbench branch
+
+After the focused D91 SBOM port, the backend subset of
+`InvestigationWorkbenchApp` still lagged behind `max`: pipeline-backed CLI
+commands, the richer SQLite store, native language resolvers, live security
+feed fetch, and the arch-universe command were present only on `max`.
+
+Decision: port the backend file contents from `max` into the workbench branch
+while keeping the branch-specific PyQt GUI, service layer, `pyproject.toml`
+entry point, and workbench ignore rules intact.
+
+Ported backend areas:
+
+- CLI orchestration: `identify`, `trust-path`, `vuln`, and `license` share the
+  `AnalysisPipeline` path instead of duplicating enrichment logic in each
+  command.
+- SQLite store: versioned schema migrations, `save_graph(..., mode="merge")`,
+  recursive CTE queries (`sql_reachable_dependencies`,
+  `sql_dependency_paths`), and materialized analysis snapshots.
+- Native resolvers: pip, Maven, and npm join the existing Go/Cargo resolver
+  contract; Gradle remains intentionally deferred.
+- Security feeds: live NVD CPE dictionary and CVE feed fetching through the
+  HTTP cache with TTL and graceful fallback; explicit local files still win.
+- Arch universe: `arch-universe` enumerates per-release repositories, runs
+  `dnf repograph` per repo, merges the resulting universes, records per-repo
+  failures, and can persist through the store.
+
+Backend equality check: after the port, the non-GUI/non-service backend paths
+and their tests match `max` for the targeted files. The combined workbench
+branch now has the max backend plus the PyQt workbench additions. Full suite:
+350 tests; ruff and mypy clean.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

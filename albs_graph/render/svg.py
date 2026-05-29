@@ -8,8 +8,6 @@ from .dot import graph_to_dot
 from albs_graph.model import ProvenanceGraph
 
 
-SVG_FONT_STACK = "Arial"
-
 class SvgRenderError(RuntimeError):
     pass
 
@@ -46,7 +44,7 @@ def _fallback_svg(graph: ProvenanceGraph, note: str) -> str:
     height = max(220, 120 + row_height * max(1, len(graph.edges)))
     lines = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
-        f"<style>text{{font-family:{SVG_FONT_STACK};font-size:13px}}.meta{{fill:#607D8B;font-size:11px}}.node{{fill:#F8FAFC;stroke:#90A4AE;rx:6}}.edge{{stroke:#546E7A;stroke-width:1.4;marker-end:url(#arrow)}}</style>",
+        "<style>text{font-family:Inter,Arial,sans-serif;font-size:13px}.meta{fill:#607D8B;font-size:11px}.node{fill:#F8FAFC;stroke:#90A4AE;rx:6}.edge{stroke:#546E7A;stroke-width:1.4;marker-end:url(#arrow)}</style>",
         '<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#546E7A"/></marker></defs>',
         '<rect width="100%" height="100%" fill="white"/>',
         '<text x="40" y="34" font-size="18" font-weight="700">ALBS provenance graph</text>',
