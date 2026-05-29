@@ -2368,6 +2368,28 @@ fallback-stack output. Suite remains 296.
 
 ---
 
+## D90 - Cache ALBS HTML fallback metadata
+
+Build-id acquisition through the classic runner exposed a backend cache gap:
+for builds where `/api/v1/builds/<id>/` is unavailable as JSON but the HTML
+build page can still be parsed, `fetch_build_metadata(..., cache_path=...)`
+returned usable fallback metadata without writing the requested `.albs.json`
+cache. `example--full.sh` then failed immediately after the fetch step because
+the cache file it expected was absent.
+
+Fix: the HTML fallback path now writes a parseable synthetic raw metadata cache.
+`parse_build_page` includes `build_id`, `package`, source repository, commit,
+CAS, source RPM, binary RPMs, release repository, arch, source URL and title in
+`metadata.raw`, so later commands can load the same fallback evidence through
+`parse_build_metadata`.
+
+Tests add an API-miss/HTML-hit sequence that verifies the fallback cache is
+written and reused. The same end-to-end run exposed a macOS/bash `set -u`
+failure in `example--full.sh` when no `SBOM_FILE` exists; step 11 now uses the
+same guarded `sbom_args` expansion as the earlier CLI steps. Suite now 297.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

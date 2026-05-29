@@ -206,7 +206,16 @@ def fetch_build_metadata(
     response.raise_for_status()
     if progress:
         progress("Parsing ALBS build HTML fallback")
-    return parse_build_page(build_id=str(build_id), html=response.text, url=url)
+    metadata = parse_build_page(build_id=str(build_id), html=response.text, url=url)
+    if cache:
+        if progress:
+            progress(f"Writing ALBS build metadata cache to {cache}")
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(
+            json.dumps(metadata.raw, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    return metadata
 
 
 def parse_build_metadata(data: dict[str, Any]) -> AlbsBuildMetadata:
@@ -275,7 +284,23 @@ def parse_build_page(build_id: str, html: str, url: str) -> AlbsBuildMetadata:
         binary_rpms=binaries,
         release_repository=_extract_after(text, ("Release repository", "Repository release")),
         arch=_extract_after(text, ("Architecture", "Arch")),
-        raw={"source_url": url, "title": title},
+        raw={
+            "build_id": build_id,
+            "package": package,
+            "source_repository": repository or f"unknown-albs-source:{package}",
+            "commit": commit,
+            "source_cas_hash": _extract_after(
+                text, ("Codenotary CAS", "CAS hash", "Source CAS hash")
+            ),
+            "source_rpm": source_rpm,
+            "binary_rpms": binaries,
+            "release_repository": _extract_after(
+                text, ("Release repository", "Repository release")
+            ),
+            "arch": _extract_after(text, ("Architecture", "Arch")),
+            "source_url": url,
+            "title": title,
+        },
     )
 
 
