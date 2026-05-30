@@ -1,4 +1,4 @@
-# PyQt investigation workbench
+# ALBS Provenance Explorer — Investigation Workbench (GUI)
 
 [![CI](https://github.com/xsub/albs-provenance-explorer/actions/workflows/python-app.yml/badge.svg?branch=InvestigationWorkbenchApp)](https://github.com/xsub/albs-provenance-explorer/actions/workflows/python-app.yml)
 [![CodeQL](https://github.com/xsub/albs-provenance-explorer/actions/workflows/codeql.yml/badge.svg?branch=InvestigationWorkbenchApp)](https://github.com/xsub/albs-provenance-explorer/actions/workflows/codeql.yml)
@@ -14,11 +14,60 @@
 
 ![PyQt investigation workbench showing dependency evidence for build 57810](examples/demo-build-57810/pyqt-investigation-workbench.png)
 
-The `InvestigationWorkbenchApp` branch exposes the same provenance backend
-through a desktop investigation workbench. It opens cached ALBS metadata or a
-live build id, runs the shared `AnalysisService`, lists RPM artifacts, renders
-focused graph slices, and lets you inspect node metadata, incoming/outgoing
-evidence and findings without leaving the graph.
+The **`InvestigationWorkbenchApp` branch is the GUI version of
+[`albs-provenance-explorer`](#albs-provenance-explorer).** It builds on the same
+analysis backend as the command-line tool — the shared `AnalysisPipeline` — and
+adds **live data inspection**, hence *Investigation Workbench*: a desktop app for
+navigating the many combined data sources (ALBS build metadata, RPM
+headers/payloads, SBOMs, errata/CVE, CAS, dependency reconciliation, the
+arch-wide universe store) in one place, searching them, and identifying the
+build-process tasks, actions, artifacts and metadata recorded across the
+AlmaLinux Build System ecosystem.
+
+Open a cached build or a live build id, the workbench runs the shared backend,
+then lets you explore the result without leaving the graph:
+
+- **Artifacts + focused slices** — trust path, dependency evidence, security
+  context, node neighborhood (clickable SVG with Graphviz hit-testing).
+- **Inspector** — node/edge metadata, incoming/outgoing evidence, raw JSON.
+- **Coverage** and the **evidence matrix** — the provenance / security-context
+  axes and the per-RPM completeness grid (with the errata three-state).
+- **Security panel** — CPE identity (verified vs vendor-asserted vs unverified
+  candidate), errata posture, addressed/potential CVEs, distro-backport caveat.
+- **Dependency panel** — reconciled groups with verdicts + conflict kinds, and
+  scope / only-conflicts / only-unresolved filters.
+- **Universe panel** — open a SQLite universe store, search packages, walk
+  dependents / dependencies / reachable, render dependency paths, save
+  favourites.
+- **Timeline** (tree + Gantt), **graph queries**, **finding drill-down**,
+  **build compare**, a classic full-pipeline runner, and session save/load.
+- **Export** — a slice as SVG/PNG, plus a JSON evidence bundle / HTML / Markdown
+  report with a reproducibility appendix.
+
+### Backend parity and direction
+
+The workbench is a **frontend over the same backend, not a second
+implementation**: the CLI calls `AnalysisPipeline().run(...)` directly and the
+GUI calls it through the thin [`albs_graph/services`](albs_graph/services)
+facade, so enrichment, reconciliation, coverage, vulnerability and identity
+logic are shared.
+
+The working rule is **develop new logic in the CLI first, then backport it to the
+GUI when it is ready**, so the two always stay backed by an identical engine.
+Today the GUI surfaces the core investigation surface listed above; a few
+commands remain CLI-only and are not yet wired into a panel — `license`
+(compliance rollup), `slsa` (in-toto / SLSA export), `resolve` (triggering the
+native go/cargo/pip/maven/npm resolvers), `inspect-rpm` (an arbitrary local
+`.rpm`), **building** a universe store (`arch-universe`; the panel only *opens*
+one), and live CVE-feed matching. So the GUI is **not yet a 1:1 superset of the
+CLI**, but the backend underneath is the same.
+
+The end goal is **one application** with that backend exposed through an API that
+a frontend consumes — collapsing the current "CLI + desktop facade" into a single
+backend so there is no redundant logic to keep in sync between two front ends.
+
+The full CLI reference — every command, the provenance backbone, and the live
+demo — follows below.
 
 Install once (the `gui` extra pulls in PyQt5):
 

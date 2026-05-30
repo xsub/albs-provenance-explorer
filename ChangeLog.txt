@@ -19,7 +19,18 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   feat(workbench): session + report export -- Markdown, PNG,
+- (this)   docs(readme): reframe the workbench README as the GUI *version* of
+           albs-provenance-explorer (not a screenshot bolted onto the CLI
+           README). States the shared-backend fact (CLI runs AnalysisPipeline
+           directly, GUI via the services facade -- one engine), lists what the
+           GUI surfaces natively, and is honest that parity is partial (license /
+           slsa / resolve / inspect-rpm / arch-universe build / live CVE-feed
+           remain CLI-only). Records the direction: develop in the CLI first +
+           backport to the GUI so the backend stays identical, with the end goal
+           of one app exposing the backend through an API for the frontend. No
+           code.
+
+- e3debeb  feat(workbench): session + report export -- Markdown, PNG,
            reproducibility (plan milestone M5, completes M2-M5). evidence_bundle
            gains a reproducibility appendix (inputs + graph size + tool/python/
            timestamp, injectable for tests) that rides the JSON bundle and
