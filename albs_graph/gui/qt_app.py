@@ -34,7 +34,6 @@ from albs_graph.services import (
     WorkbenchSession,
     compare_builds,
     coverage_rows,
-    dependency_rows,
     evidence_bundle,
     evidence_matrix_rows,
     filter_graph_layers,
@@ -48,6 +47,7 @@ from albs_graph.services import (
     timeline_gantt_rows,
     timeline_tree,
 )
+from albs_graph.gui.dependency_panel import DependencyPanel
 from albs_graph.gui.security_panel import SecurityPanel
 from albs_graph.gui.universe_panel import UniversePanel
 
@@ -528,49 +528,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.security_panel = SecurityPanel(
             navigate=lambda node_id: self._navigate_to_node(node_id, prefer_artifact=True)
         )
-        self.dependency_table = QtWidgets.QTableWidget(0, 11)
-        self.dependency_table.setHorizontalHeaderLabels(
-            [
-                "Subject",
-                "Coordinate",
-                "Ecosystem",
-                "Scope",
-                "Linkage",
-                "State",
-                "Verdict",
-                "Conflict",
-                "Context",
-                "Versions",
-                "Evidence",
-            ]
+        self.dependency_panel = DependencyPanel(
+            navigate=lambda node_id: self._navigate_to_node(node_id, prefer_artifact=True)
         )
-        self.dependency_table.horizontalHeader().setStretchLastSection(True)
-        self.dependency_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.dependency_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.dependency_table.setAlternatingRowColors(True)
-        self.dep_scope_combo = QtWidgets.QComboBox()
-        for label, facet in (
-            ("All scopes", ""),
-            ("Runtime", "runtime"),
-            ("Build", "build"),
-            ("Static", "static"),
-            ("Test", "test"),
-        ):
-            self.dep_scope_combo.addItem(label, facet)
-        self.dep_only_conflicts = QtWidgets.QCheckBox("Only conflicts")
-        self.dep_only_unresolved = QtWidgets.QCheckBox("Only unresolved")
-        self.dependency_panel = QtWidgets.QWidget()
-        dependency_layout = QtWidgets.QVBoxLayout(self.dependency_panel)
-        dependency_layout.setContentsMargins(0, 0, 0, 0)
-        dependency_header = QtWidgets.QHBoxLayout()
-        dependency_header.setContentsMargins(6, 4, 6, 4)
-        dependency_header.addWidget(QtWidgets.QLabel("Scope"))
-        dependency_header.addWidget(self.dep_scope_combo)
-        dependency_header.addWidget(self.dep_only_conflicts)
-        dependency_header.addWidget(self.dep_only_unresolved)
-        dependency_header.addStretch(1)
-        dependency_layout.addLayout(dependency_header)
-        dependency_layout.addWidget(self.dependency_table)
         self.source_table = QtWidgets.QTableWidget(0, 4)
         self.source_table.setHorizontalHeaderLabels(["Category", "Label", "Node id", "Detail"])
         self.source_table.horizontalHeader().setStretchLastSection(True)
@@ -926,11 +886,6 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.evidence_table.itemActivated.connect(self._evidence_activated)
         self.evidence_table.itemDoubleClicked.connect(self._evidence_activated)
         self.cve_feed_edit.editingFinished.connect(self._refresh_security_table)
-        self.dependency_table.itemActivated.connect(self._dependency_activated)
-        self.dependency_table.itemDoubleClicked.connect(self._dependency_activated)
-        self.dep_scope_combo.currentIndexChanged.connect(lambda _index: self._populate_dependency_table())
-        self.dep_only_conflicts.toggled.connect(lambda _checked: self._populate_dependency_table())
-        self.dep_only_unresolved.toggled.connect(lambda _checked: self._populate_dependency_table())
         self.source_table.itemActivated.connect(self._source_activated)
         self.source_table.itemDoubleClicked.connect(self._source_activated)
         self.query_run_button.clicked.connect(self._run_selected_query)
@@ -1490,57 +1445,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.security_panel.populate(self.result.graph, cve_feed=self._ensure_cve_feed())
 
     def _populate_dependency_table(self) -> None:
-        if self.result is None:
-            return
-        facet = str(self.dep_scope_combo.currentData() or "")
-        rows = dependency_rows(
-            self.result.graph,
-            scope_facets={facet} if facet else None,
-            only_conflicts=self.dep_only_conflicts.isChecked(),
-            only_unresolved=self.dep_only_unresolved.isChecked(),
-        )
-        self.dependency_table.setRowCount(len(rows))
-        for row, entry in enumerate(rows):
-            values = [
-                entry.subject,
-                entry.coordinate,
-                entry.ecosystem,
-                entry.scope,
-                entry.linkage,
-                entry.resolution_state,
-                entry.verdict,
-                entry.conflict_kinds,
-                entry.context_issue,
-                entry.versions,
-                entry.evidence,
-            ]
-            for column, value in enumerate(values):
-                item = QtWidgets.QTableWidgetItem(value)
-                item.setData(QtCore.Qt.UserRole, entry.subject_id)
-                self._tint_dependency_cell(item, column, value)
-                self.dependency_table.setItem(row, column, item)
-        self.dependency_table.resizeColumnsToContents()
-
-    def _tint_dependency_cell(self, item: QtWidgets.QTableWidgetItem, column: int, value: str) -> None:
-        good = QtGui.QBrush(QtGui.QColor("#87D37C"))
-        warn = QtGui.QBrush(QtGui.QColor("#E6B85C"))
-        bad = QtGui.QBrush(QtGui.QColor("#F08A8A"))
-        if column == 6:  # Verdict
-            if value in ("consensus", "compatible"):
-                item.setForeground(good)
-            elif value == "conflict":
-                item.setForeground(bad)
-            elif value == "insufficient_evidence":
-                item.setForeground(warn)
-        elif column == 7 and value not in ("", "-"):  # Conflict kinds present
-            item.setForeground(bad)
-        elif column == 8 and value not in ("", "-"):  # Context issue present
-            item.setForeground(warn)
-
-    def _dependency_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
-        node_id = item.data(QtCore.Qt.UserRole)
-        if node_id:
-            self._navigate_to_node(str(node_id), prefer_artifact=True)
+        if self.result is not None:
+            self.dependency_panel.populate(self.result.graph)
 
     def _populate_source_table(self, subject_id: str | None = None) -> None:
         if self.result is None:
@@ -2165,18 +2071,15 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.errata_feed_edit.setText(session.errata_feed)
         self.cpe_dict_edit.setText(session.verify_cpe)
         self.cve_feed_edit.setText(session.cve_feed)
-        self._set_dep_scope(session.dep_scope)
-        self.dep_only_conflicts.setChecked(session.dep_only_conflicts)
-        self.dep_only_unresolved.setChecked(session.dep_only_unresolved)
+        self.dependency_panel.restore(
+            session.dep_scope, session.dep_only_conflicts, session.dep_only_unresolved
+        )
         self.universe_panel.restore(session.universe_store, session.universe_favourites)
         self.run_analysis()
 
-    def _set_dep_scope(self, value: str) -> None:
-        index = self.dep_scope_combo.findData(value or "")
-        self.dep_scope_combo.setCurrentIndex(max(index, 0))
-
     def _current_session(self) -> WorkbenchSession:
         current = self.artifact_list.currentItem()
+        dep_scope, dep_only_conflicts, dep_only_unresolved = self.dependency_panel.filters()
         return WorkbenchSession(
             source=self.source_edit.text(),
             build_id=self.build_id_edit.text(),
@@ -2188,9 +2091,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             errata_feed=self.errata_feed_edit.text(),
             verify_cpe=self.cpe_dict_edit.text(),
             cve_feed=self.cve_feed_edit.text(),
-            dep_scope=str(self.dep_scope_combo.currentData() or ""),
-            dep_only_conflicts=self.dep_only_conflicts.isChecked(),
-            dep_only_unresolved=self.dep_only_unresolved.isChecked(),
+            dep_scope=dep_scope,
+            dep_only_conflicts=dep_only_conflicts,
+            dep_only_unresolved=dep_only_unresolved,
             universe_store=self.universe_panel.store_path(),
             universe_favourites=tuple(self.universe_panel.favourites()),
             selected_artifact_id=(

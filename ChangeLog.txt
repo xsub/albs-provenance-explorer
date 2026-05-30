@@ -19,7 +19,22 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   refactor(gui): extract the Security panel into a typed module
+- (this)   refactor(gui): extract the Dependency panel into a typed module
+           (god-object split #3; quality follow-up). New gui/dependency_panel.py
+           -- a DependencyPanel(QWidget) owning the scope / only-conflicts /
+           only-unresolved filters AND the 11-col table; it caches the last
+           graph so a filter change re-renders itself (host calls populate(graph)
+           once). Session coupling via filters()/restore(); qt_app drops the
+           table + 3 filter widgets + the panel assembly + _populate_dependency_
+           table body (now a delegate) + _tint_dependency_cell +
+           _dependency_activated + _set_dep_scope + the now-unused dependency_rows
+           import, and unpacks filters() in _current_session. Typed under mypy
+           strict, no ignore. No behaviour/test-count change (3 GUI tests
+           repointed at window.dependency_panel.* scope_combo/only_conflicts/
+           table/restore). mypy now checks 88 files. 3/4 panels extracted.
+           decisions.md D104.
+
+- cbfee8b  refactor(gui): extract the Security panel into a typed module
            (god-object split #2; quality follow-up). New gui/security_panel.py
            -- a SecurityPanel(QWidget) owning the 9-col table + colour-tinting,
            rendering the per-RPM security posture (security_rows) via a single

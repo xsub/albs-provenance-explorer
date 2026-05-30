@@ -66,12 +66,13 @@ def test_workbench_window_constructs_and_handles_a_result(
         assert window.security_panel.table.rowCount() > 0  # M3 security panel populated
         assert window.current_svg                      # an SVG string was produced
 
-        # M2 dependency panel: toggling the filters re-runs _populate without
-        # crashing (the synthetic fixture has no resolved deps, so 0 rows is OK).
-        window.dep_only_conflicts.setChecked(True)
-        window.dep_scope_combo.setCurrentIndex(1)
+        # M2 dependency panel: toggling the filters re-renders without crashing
+        # (the synthetic fixture has no resolved deps, so 0 rows is OK).
+        window.dependency_panel.populate(result.graph)
+        window.dependency_panel.only_conflicts.setChecked(True)
+        window.dependency_panel.scope_combo.setCurrentIndex(1)
         qapp.processEvents()
-        assert window.dependency_table.rowCount() >= 0
+        assert window.dependency_panel.table.rowCount() >= 0
     finally:
         window.close()
 
@@ -187,8 +188,7 @@ def test_workbench_session_captures_dependency_and_universe_state(
 
     window = WorkbenchWindow()
     try:
-        window.dep_scope_combo.setCurrentIndex(window.dep_scope_combo.findData("build"))
-        window.dep_only_conflicts.setChecked(True)
+        window.dependency_panel.restore("build", True, False)
         window.universe_panel.open_store(str(db))
         window.universe_panel.focus = "nginx-core"
         window.universe_panel._save_favourite()
@@ -200,10 +200,10 @@ def test_workbench_session_captures_dependency_and_universe_state(
         assert session.universe_favourites  # the saved favourite round-trips
 
         # Restoring a session rebuilds the favourites combo + dependency filters.
-        window.dep_only_conflicts.setChecked(False)
-        window._set_dep_scope(session.dep_scope)
+        window.dependency_panel.restore("", False, False)
+        window.dependency_panel.restore(session.dep_scope, session.dep_only_conflicts, False)
         window.universe_panel.restore(session.universe_store, session.universe_favourites)
-        assert str(window.dep_scope_combo.currentData() or "") == "build"
+        assert str(window.dependency_panel.scope_combo.currentData() or "") == "build"
         assert window.universe_panel.fav_combo.count() >= 2
     finally:
         window.close()
@@ -408,7 +408,7 @@ def test_workbench_save_session_writes_a_loadable_file(
         qapp.processEvents()
         window._select_artifact(SYNTHETIC_RPM_ID)
         window.errata_feed_edit.setText("feed.json")
-        window.dep_scope_combo.setCurrentIndex(window.dep_scope_combo.findData("build"))
+        window.dependency_panel.restore("build", False, False)
 
         session_file = tmp_path / "session.json"
         monkeypatch.setattr(

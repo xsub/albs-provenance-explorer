@@ -2805,6 +2805,36 @@ timeline / inspector remain before the blanket ignore on `qt_app.py` can go.
 
 ---
 
+## D104 - Extract the Dependency panel into a typed module (god-object split #3)
+
+Third cut, applying the D102 template to the M2 Dependency panel.
+`gui/dependency_panel.py` is a `DependencyPanel(QWidget)` that owns the scope /
+only-conflicts / only-unresolved **filters** as well as its 11-column table.
+Unlike the Security panel (which is re-driven by the host on each populate), the
+Dependency panel caches the last graph it was given so a *filter change
+re-renders itself* -- the host only calls `populate(graph)` once per analysis
+and the filter signals are wired internally.
+
+Its session coupling is handled with a small symmetric API: `filters() ->
+(scope, only_conflicts, only_unresolved)` for capture and `restore(scope,
+only_conflicts, only_unresolved)` for load (mirroring the universe panel's
+`store_path` / `restore`). The host's `_set_dep_scope` helper and the three
+`dep_*` widget attributes are gone; `_current_session` unpacks `filters()` and
+`load_session` calls `restore()`. `qt_app.py` drops the table + three filter
+widgets + the panel assembly + `_populate_dependency_table`'s body (now a
+one-line delegate) + `_tint_dependency_cell` + `_dependency_activated` + the
+now-unused `dependency_rows` import. The new module type-checks under mypy
+strict with no ignore.
+
+No behaviour change, no test-count change -- the three GUI tests that poked
+`window.dep_scope_combo` / `dep_only_conflicts` / `dependency_table` /
+`_set_dep_scope` were repointed at `window.dependency_panel.*` (`scope_combo`,
+`only_conflicts`, `table`, `restore`). Suite stays 386; mypy now checks 88 files.
+Three of four panels extracted -- only the timeline/inspector cluster remains
+before the blanket ignore on `qt_app.py` can be retired.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
