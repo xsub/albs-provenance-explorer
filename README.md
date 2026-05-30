@@ -1,5 +1,7 @@
 # albs-provenance-explorer
 
+[![CI](https://github.com/xsub/albs-provenance-explorer/actions/workflows/python-app.yml/badge.svg)](https://github.com/xsub/albs-provenance-explorer/actions/workflows/python-app.yml)
+
 `albs-provenance-explorer` is a read-only Python PoC that builds a provenance-aware graph over AlmaLinux Build System (ALBS), RPM, SBOM, CAS and errata data.
 
 It traces Enterprise Linux supply-chain lineage from source package to shipped artifact and layers a conflict-aware dependency model on top. Release context, errata linkage and build provenance sit next to the raw package relationships, so backported security fixes stay visible - a version that looks older than upstream can still carry the patch.

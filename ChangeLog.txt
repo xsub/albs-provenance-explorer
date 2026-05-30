@@ -19,7 +19,17 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   docs(demo): refresh examples/demo-build-57810/console.txt from a
+- (this)   ci(github): replace the generic starter workflow with one that
+           matches the project. The web-UI template used Python 3.10 (project
+           requires >=3.11, so `pip install .` failed outright), flake8 (project
+           lints with ruff), and no mypy. New python-app.yml: matrix 3.11/3.12/
+           3.13, installs graphviz (SVG rendering needs `dot`) + `pip install -e
+           '.[dev]'`, runs `ruff check` + `mypy --strict` + `pytest` +
+           check-test-count.sh (lint/type/count once on 3.11), triggers on push/
+           PR to main+max plus manual workflow_dispatch. Added a CI status badge
+           to the README header. No app-code change.
+
+- f72abc0  docs(demo): refresh examples/demo-build-57810/console.txt from a
            fresh el10 VPS run of example--full.sh (build 57810, nginx-core).
            Reflects the D79 errata three-state in step 1's trust-path table --
            `has_errata_link │ missing (not checked)` instead of a bare
