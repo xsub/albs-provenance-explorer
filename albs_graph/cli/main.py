@@ -491,6 +491,18 @@ def coverage_command(
     errata_subject: Optional[str] = typer.Option(
         None, "--errata-subject", help="Binary RPM the errata applies to."
     ),
+    errata_source: Optional[str] = typer.Option(
+        None,
+        "--errata-source",
+        help="Live errata source 'http' or 'dnf' (D79): queries every RPM for advisories. "
+        "A confirmed-no-advisory result satisfies has_errata_link (clean != missing).",
+    ),
+    errata_feed: Optional[Path] = typer.Option(
+        None, "--errata-feed", help="Offline AlmaLinux errata feed JSON for --errata-source http."
+    ),
+    errata_url: Optional[str] = typer.Option(
+        None, "--errata-url", help="URL of a live errata feed JSON (cached; --errata-feed wins)."
+    ),
     verify_cpe: Optional[Path] = typer.Option(
         None,
         "--verify-cpe",
@@ -614,6 +626,9 @@ def coverage_command(
         module_map=module_map,
         errata=errata,
         errata_subject=errata_subject,
+        errata_source=errata_source,
+        errata_feed=errata_feed,
+        errata_url=errata_url,
         verify_cpe=verify_cpe,
         verify_cpe_url=verify_cpe_url,
         with_rpm_headers=with_rpm_headers,
@@ -639,6 +654,7 @@ def coverage_command(
     python_result = result.result("python")
     import_result = result.result("python_imports")
     errata_id = result.result("errata")
+    errata_source_result = result.result("errata_source")
     cpe_result = result.result("verify_cpe")
     enrichment = result.result("rpm_headers")
     payload_result = result.result("rpm_payloads")
@@ -678,6 +694,8 @@ def coverage_command(
             payload["python_imports"] = import_result.to_dict()
         if errata_id is not None:
             payload["errata"] = errata_id
+        if errata_source_result is not None:
+            payload["errata_source"] = errata_source_result.to_dict()
         if cpe_result is not None:
             payload["cpe_verification"] = cpe_result.to_dict()
         sys.stdout.write(json.dumps(payload, indent=2) + "\n")
@@ -731,6 +749,16 @@ def coverage_command(
         )
     if errata_id is not None:
         console.print(f"Errata: attached {errata_id} (security context)")
+    if errata_source_result is not None:
+        esr = errata_source_result
+        if not esr.consulted:
+            console.print(f"Errata source ({esr.source}): not consulted (unavailable)")
+        else:
+            console.print(
+                f"Errata source ({esr.source}): {esr.with_advisory} with advisory, "
+                f"{esr.clean} confirmed clean of {esr.queried} RPMs "
+                f"({esr.advisories_added} advisory links)"
+            )
     if cpe_result is not None:
         console.print(
             f"CPE: {cpe_result.verified} verified, {cpe_result.ambiguous} ambiguous, "
@@ -988,6 +1016,19 @@ def trust_path_command(
         "--errata-subject",
         help="Binary RPM the errata applies to (defaults to the selected RPM).",
     ),
+    errata_source: Optional[str] = typer.Option(
+        None,
+        "--errata-source",
+        help="Live errata source: 'http' (AlmaLinux errata feed via --errata-feed/--errata-url) "
+        "or 'dnf' (updateinfo on an AlmaLinux host). A confirmed-no-advisory result satisfies "
+        "has_errata_link (a clean package is not 'missing'). D79.",
+    ),
+    errata_feed: Optional[Path] = typer.Option(
+        None, "--errata-feed", help="Offline AlmaLinux errata feed JSON for --errata-source http."
+    ),
+    errata_url: Optional[str] = typer.Option(
+        None, "--errata-url", help="URL of a live errata feed JSON (cached on disk; --errata-feed wins)."
+    ),
 ) -> None:
     if build_id is not None:
         metadata = fetch_build_metadata(
@@ -1022,6 +1063,9 @@ def trust_path_command(
         build_sbom=build_sbom,
         errata=errata,
         errata_subject=effective_errata_subject,
+        errata_source=errata_source,
+        errata_feed=errata_feed,
+        errata_url=errata_url,
     )
     result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
     graph = result.graph
@@ -1052,8 +1096,18 @@ def trust_path_command(
     table = Table(title=f"Trust path: {rpm_node.label}")
     table.add_column("Check")
     table.add_column("Result")
+    # The errata check is three-state (D79): show *why* it's ok/missing so a
+    # clean package reads as "no advisory" rather than a bare "missing".
+    errata_label = {
+        "advisory_present": "ok (advisory)",
+        "confirmed_clean": "ok (no advisory)",
+        "not_checked": "missing (not checked)",
+    }
     for name, value in report["checks"].items():
-        table.add_row(name, "ok" if value else "missing")
+        if name == "has_errata_link":
+            table.add_row(name, errata_label.get(report["errata_status"], "ok" if value else "missing"))
+        else:
+            table.add_row(name, "ok" if value else "missing")
     console.print(table)
     console.print(f"Provenance complete: {report['provenance_complete']}")
     console.print(f"Security context complete: {report['security_context_complete']}")
@@ -1218,6 +1272,18 @@ def vuln_command(
     errata_subject: Optional[str] = typer.Option(
         None, "--errata-subject", help="Binary RPM the errata applies to (defaults to --package)."
     ),
+    errata_source: Optional[str] = typer.Option(
+        None,
+        "--errata-source",
+        help="Live errata source 'http' or 'dnf' (D79): which advisories ship each RPM. "
+        "Confirmed-clean satisfies has_errata_link (a package with no advisory is not 'missing').",
+    ),
+    errata_feed: Optional[Path] = typer.Option(
+        None, "--errata-feed", help="Offline AlmaLinux errata feed JSON for --errata-source http."
+    ),
+    errata_url: Optional[str] = typer.Option(
+        None, "--errata-url", help="URL of a live errata feed JSON (cached; --errata-feed wins)."
+    ),
     verify_cpe: Optional[Path] = typer.Option(
         None, "--verify-cpe", help="CPE dictionary JSON to verify candidates against."
     ),
@@ -1300,6 +1366,9 @@ def vuln_command(
         verify_cpe_url=verify_cpe_url,
         errata=errata,
         errata_subject=errata_subject or package,
+        errata_source=errata_source,
+        errata_feed=errata_feed,
+        errata_url=errata_url,
         with_rpm_payloads=with_rpm_payloads,
         feed_ttl_seconds=feed_ttl,
     )

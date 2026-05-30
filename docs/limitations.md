@@ -30,11 +30,16 @@ Two distinct facts here:
   consume a *provided* CycloneDX file when one carries licenses; `import-sbom`
   ingests the real `alma-sbom` SBOM for its PURL/CPE/provenance.
 - **The axis is binary-complete and needs errata too.** `security_context_complete`
-  requires *both* an attached SBOM **and** an errata/CVE link. `coverage --errata
-  FILE` now attaches errata, so SBOM + errata on the same subject completes the
-  axis. Remaining: errata is ingested from a **provided file** and attached to a
-  **single subject** (a live errata.almalinux.org fetch, and per-package
-  attachment across all of a build's binaries, are future work).
+  requires *both* an attached SBOM **and** an errata check. Two errata paths now
+  exist: `--errata FILE` (a single provided advisory on one subject) and a
+  **live errata source** (D79) `--errata-source http|dnf` that queries advisories
+  for **every** RPM. The errata check is **three-state**: `advisory_present` (an
+  advisory ships this exact NEVRA), `confirmed_clean` (a source was consulted and
+  found none -- this satisfies `has_errata_link`, because a package with no
+  advisory is normal, not incomplete), or `not_checked` (no source consulted --
+  the only genuinely-open case). Remaining: the AlmaLinux errata feed schema is
+  matched leniently (point `--errata-url` at the real `errata.full.json`); CAS
+  addressing of the SBOM by `alma_commit_sbom_hash` stays opt-in future work.
 
 ### `identity` - two real CPE sources, both honest
 The `identity` axis counts binaries with a verified CPE. Two paths populate it:

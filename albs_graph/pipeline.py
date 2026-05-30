@@ -40,6 +40,7 @@ from albs_graph.adapters.dnf import (
     resolve_soname_claims,
 )
 from albs_graph.adapters.errata import attach_errata_file
+from albs_graph.adapters.errata_source import attach_errata_from_source, errata_source_for
 from albs_graph.adapters.pylang import attach_python_imports, attach_python_requirements
 from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
@@ -80,6 +81,11 @@ class RunSpec:
     module_map: Path | None = None
     errata: Path | None = None
     errata_subject: str | None = None
+    # Live errata source (D79): query advisories for *every* RPM (not a single
+    # subject). "http" reads errata_feed / errata_url; "dnf" runs updateinfo.
+    errata_source: str | None = None
+    errata_feed: Path | None = None
+    errata_url: str | None = None
     verify_cpe: Path | None = None
     verify_cpe_url: str | None = None  # live NVD CPE dictionary (D76)
     with_rpm_headers: bool = False
@@ -236,6 +242,31 @@ class ErrataStep:
 
 
 @dataclass(frozen=True)
+class ErrataSourceStep:
+    name: str = "errata_source"
+
+    def applies(self, spec: RunSpec) -> bool:
+        return spec.errata_source is not None or spec.errata_feed is not None
+
+    def run(self, ctx: EnrichmentContext) -> Any:
+        # Errata is measured across every (selected) RPM, not one subject -- a
+        # build's security context is "which of my artifacts carry advisories",
+        # so this uses the binary-RPM selector, not ctx.subject().
+        source = errata_source_for(
+            ctx.spec.errata_source,
+            feed_file=ctx.spec.errata_feed,
+            url=ctx.spec.errata_url,
+            ttl_seconds=ctx.spec.feed_ttl_seconds,
+            on_progress=ctx.on_progress,
+        )
+        if source is None:
+            ctx.log("Errata source requested but could not be built; skipping")
+            return None
+        ctx.log(f"Querying errata source {source.name} for advisory coverage")
+        return attach_errata_from_source(ctx.graph, source, node_selector=ctx.selector)
+
+
+@dataclass(frozen=True)
 class VerifyCpeStep:
     name: str = "verify_cpe"
 
@@ -356,6 +387,7 @@ DEFAULT_STEPS: tuple[EnrichmentStep, ...] = (
     RequirementsStep(),
     ImportsStep(),
     ErrataStep(),
+    ErrataSourceStep(),
     VerifyCpeStep(),
     HeadersStep(),
     PayloadStep(),

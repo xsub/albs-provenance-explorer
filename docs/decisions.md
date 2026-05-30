@@ -2479,6 +2479,42 @@ links still cache and reload. Suite now 352.
 
 ---
 
+## D94 - Port the live errata source + three-state errata status from max
+
+The backend port (D92) predated max's errata work, so the workbench branch was
+missing it. Ported here from max `527f471` so both branches share the backend.
+
+The problem it fixes (max-side observation, equally true here): the trust path's
+`has_errata_link` reading "missing" is misleading. Errata is a *queryable* fact,
+and for most packages **having no advisory is the normal, complete state** -- a
+clean package was being penalised for not being vulnerable. The graph conflated
+"never looked" with "no advisory" into one boolean.
+
+Ported pieces:
+
+- `adapters/errata_source.py` -- an `ErrataSource` Protocol with two
+  implementations behind `errata_source_for`: `HttpErrataSource` (the AlmaLinux
+  errata feed file/URL, through `HttpCache` + TTL, reusing
+  `live_feeds._cached_get`) and `DnfErrataSource` (`dnf -q updateinfo list
+  --all`, degrades to "not consulted" when dnf is absent). Both expose
+  `consulted: bool`.
+- `TrustPathReport.errata_status` three-state: `advisory_present` /
+  `confirmed_clean` / `not_checked`. `has_errata_link` is satisfied by the first
+  two, so a confirmed-clean package with an SBOM is `security_context_complete`;
+  only `not_checked` leaves it open.
+- Pipeline `ErrataSourceStep` (binary-RPM selector, not one subject) + `RunSpec`
+  `errata_source` / `errata_feed` / `errata_url`, and `--errata-source {http,dnf}`
+  / `--errata-feed` / `--errata-url` on `coverage` / `vuln` / `trust-path`.
+
+Workbench relevance: the Security Context slice and the Evidence matrix can now
+distinguish a package with a real advisory from one that is confirmed clean,
+instead of showing a blanket "errata missing" that the running implementation
+notes already complained about. The cherry-pick was clean on the backend
+(including `cli/main.py`); only max-numbered doc churn was dropped in favour of
+this branch-numbered entry. +15 test cases. Suite now 367.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

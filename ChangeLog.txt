@@ -16,10 +16,31 @@ Conventions:
     via `git log main --oneline` if needed.
 
 ----------------------------------------------------------------------
+2026-05-30
+----------------------------------------------------------------------
+
+- (this)   feat(errata): port the live errata source + three-state errata
+           status from max (527f471). The backend port (D92) predated max's
+           errata work, so the branch lacked it. Brings adapters/
+           errata_source.py (ErrataSource Protocol; HttpErrataSource via
+           HttpCache+TTL + DnfErrataSource; both expose consulted:bool),
+           TrustPathReport.errata_status three-state (advisory_present /
+           confirmed_clean / not_checked; has_errata_link satisfied by
+           present OR clean, so a clean package with an SBOM is
+           security_context_complete), pipeline ErrataSourceStep + RunSpec
+           errata_source/feed/url + CLI flags on coverage/vuln/trust-path.
+           Workbench: the Security Context slice + Evidence matrix can now
+           distinguish real-advisory from confirmed-clean instead of a
+           blanket "errata missing". Cherry-pick clean on the backend
+           (incl. cli/main.py); max-numbered doc churn dropped for this
+           branch-numbered entry. +15 test cases. Suite 352 → 367. ruff +
+           mypy --strict clean. (D94.)
+
+----------------------------------------------------------------------
 2026-05-29
 ----------------------------------------------------------------------
 
-- (this)   fix(albs): reject empty ALBS SPA-shell HTML fallback caches. Build
+- 15196c1  fix(albs): reject empty ALBS SPA-shell HTML fallback caches. Build
            57811 returns API 404 plus the generic frontend shell at `/build/57811`;
            the old parser cached that as package `AlmaLinux` with zero RPMs,
            making the workbench open a useless 5-node graph. Empty fallback
