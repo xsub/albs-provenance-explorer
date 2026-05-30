@@ -1,0 +1,60 @@
+# CI: lint (ruff), type-check (mypy --strict), and the offline test suite.
+# Matches the project's real toolchain (pyproject [project.optional-dependencies].dev)
+# rather than the generic starter template. See CLAUDE.md "Environment / commands".
+#
+# Tests never hit the network (repo rule), so no secrets or services are needed.
+# Graphviz is installed because SVG rendering shells out to `dot` (CLAUDE.md).
+name: CI
+
+on:
+  push:
+    branches: ["main", "max"]
+  pull_request:
+    branches: ["main", "max"]
+  workflow_dispatch: {}   # allow a manual "Run workflow" from the Actions tab
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The project requires Python >=3.11 (pyproject requires-python).
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install Graphviz (SVG rendering shells out to `dot`)
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+
+      - name: Install package + dev extras (editable)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[dev]'
+
+      # Lint and type-check are Python-version-independent (mypy is pinned to
+      # python_version = "3.11" in pyproject), so run them once, on 3.11.
+      - name: Lint (ruff)
+        if: matrix.python-version == '3.11'
+        run: ruff check albs_graph tests
+
+      - name: Type-check (mypy --strict)
+        if: matrix.python-version == '3.11'
+        run: mypy albs_graph
+
+      - name: Test (pytest)
+        run: pytest
+
+      - name: Cross-check the documented test count
+        if: matrix.python-version == '3.11'
+        run: bash scripts/check-test-count.sh
