@@ -19,7 +19,16 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   docs(decisions): fix duplicate D73. The "HTML fallback metadata is
+- (this)   docs(demo): refresh examples/demo-build-57810/console.txt from a
+           fresh el10 VPS run of example--full.sh (build 57810, nginx-core).
+           Reflects the D79 errata three-state in step 1's trust-path table --
+           `has_errata_link │ missing (not checked)` instead of a bare
+           "missing" -- so the committed demo output matches the current code.
+           Step 11's demo_verbose table still renders the bare "missing"
+           (it has its own renderer). SCP'd byte-for-byte from the VPS, not
+           hand-edited. No code change.
+
+- 00dfa01  docs(decisions): fix duplicate D73. The "HTML fallback metadata is
            cacheable" entry (documenting fd579de) was accidentally swept into
            the D78 commit f7409be from an in-progress working tree and reused
            the D73 number already taken by "Finish D57". Renumbered to D81

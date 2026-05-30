@@ -3,7 +3,10 @@ build=57810  package=nginx-core  arch=x86_64  file=/usr/sbin/nginx  repo=appstre
 tools: dnf=yes rpmkeys=yes cas=no dot=yes git=yes zstandard=yes
 
 ========== Fetch ALBS build metadata (cached examples/live-build-57810/build-57810.albs.json) ==========
-step Loading ALBS build metadata from fresh cache examples/live-build-57810/build-57810.albs.json
+step Ignoring stale ALBS metadata cache examples/live-build-57810/build-57810.albs.json (217519s old, ttl 86400s)
+step Fetching ALBS build metadata from https://build.almalinux.org/api/v1/builds/57810/
+step Writing ALBS build metadata cache to examples/live-build-57810/build-57810.albs.json
+step Parsing ALBS API JSON response
 step Source package: nghttp2 (from ALBS srpm_artifact)
 step Building provenance graph from ALBS metadata
 step Graph: 1613 nodes, 2775 edges, 470 CAS attestations
@@ -13,24 +16,24 @@ step Writing json output to examples/live-build-57810/build-57810.json
 ========== 1. Provenance: source-to-artifact trust path for nginx-core ==========
 step Loading synthetic ALBS build metadata from examples/live-build-57810/build-57810.albs.json
 step Graph: 1613 nodes, 2775 edges, 470 CAS attestations
-step Attaching build SBOM examples/build-57810.cyclonedx.json to the build's RPMs
+step Enriching the build's RPMs from build SBOM examples/build-57810.cyclonedx.json
 step build SBOM matched 456 RPMs, set 456 vendor CPEs from build-57810.cyclonedx.json
+step Reconciling dependency claims
 step Resolving binary RPM selector: nginx-core
 step Selected RPM node: rpm:6901620:nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
 step Analyzing source-to-artifact trust path
-               Trust path:                
- nginx-core-1.26.3-6.el10_2.3.x86_64.rpm  
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
-┃ Check                        ┃ Result  ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
-│ has_build_task               │ ok      │
-│ has_signature                │ ok      │
-│ has_release                  │ ok      │
-│ has_source_cas_attestation   │ ok      │
-│ has_artifact_cas_attestation │ ok      │
-│ has_sbom                     │ ok      │
-│ has_errata_link              │ missing │
-└──────────────────────────────┴─────────┘
+  Trust path: nginx-core-1.26.3-6.el10_2.3.x86_64.rpm   
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Check                        ┃ Result                ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━┩
+│ has_build_task               │ ok                    │
+│ has_signature                │ ok                    │
+│ has_release                  │ ok                    │
+│ has_source_cas_attestation   │ ok                    │
+│ has_artifact_cas_attestation │ ok                    │
+│ has_sbom                     │ ok                    │
+│ has_errata_link              │ missing (not checked) │
+└──────────────────────────────┴───────────────────────┘
 Provenance complete: True
 Security context complete: False
 Complete: False
@@ -73,14 +76,21 @@ step Resolving dependencies per package with dnf repoquery
 step dnf repoquery resolved dependencies for nginx-core
 step dnf repoquery resolved dependencies for nginx-core-debuginfo
 step Range-reading RPM headers for dynamic-linkage claims
-step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from https://repo.almalinux.org/almalinux/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from https://repo.almalinux.org/vault/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step parsed header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
+step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
+https://repo.almalinux.org/almalinux/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
+step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
+https://repo.almalinux.org/vault/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
+step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
+https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
+step parsed header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
+https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
 step Downloading RPM payloads and parsing ELF objects (rung 4)
-step downloading payload for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from https://repo.almalinux.org/almalinux/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step downloading payload for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from https://repo.almalinux.org/vault/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step downloading payload for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
+step downloading payload for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
+https://repo.almalinux.org/almalinux/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
+step downloading payload for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
+https://repo.almalinux.org/vault/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
+step downloading payload for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
+https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
 step analyzed 1 ELF objects in nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
 step Resolving sonames to packages via dnf --whatprovides
 step Verifying RPM GPG signatures (download + rpmkeys --checksig)
@@ -123,25 +133,32 @@ Reconciled dependencies: 14; conflicts: 1
   [version_drift] rpm:almalinux/glibc: versions=0:2.39-121.el10_2.alma.1, 0:2.39-124.el10_2.alma.1
 
 ========== 4. License rollup (real RPM licenses: subject from header in step 3, deps via dnf) ==========
-step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from https://repo.almalinux.org/almalinux/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from https://repo.almalinux.org/vault/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
-step parsed header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
+step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
+https://repo.almalinux.org/almalinux/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
+step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
+https://repo.almalinux.org/vault/10.2/BaseOS/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
+step range-fetching header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
+https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
+step parsed header for nginx-core-1.26.3-6.el10_2.3.x86_64.rpm from 
+https://repo.almalinux.org/almalinux/10.2/AppStream/x86_64/os/Packages/nginx-core-1.26.3-6.el10_2.3.x86_64.rpm
 step dnf: 6 resolved runtime providers for nginx-core
-                                                          License rollup (7 packages, RPM header (subject) + dnf repoquery %{license} (deps))                                                           
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┓
-┃ License                                                                                                                                                                                   ┃ Packages ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━┩
-│ Apache-2.0                                                                                                                                                                                │        1 │
-│ BSD-2-Clause                                                                                                                                                                              │        2 │
-│ BSD-3-Clause AND FSFULLR AND X11 AND GPL-2.0-or-later AND FSFAP AND FSFUL AND GPL-3.0-or-later                                                                                            │        1 │
-│ LGPL-2.1-or-later AND BSD-3-Clause AND BSD-2-Clause AND BSD-2-Clause-FreeBSD AND 0BSD AND CC0-1.0 AND LicenseRef-Fedora-Public-Domain                                                     │        1 │
-│ LGPL-2.1-or-later AND SunPro AND LGPL-2.1-or-later WITH GCC-exception-2.0 AND BSD-3-Clause AND GPL-2.0-or-later AND LGPL-2.1-or-later WITH GNU-compiler-exception AND GPL-2.0-only AND    │        1 │
-│ ISC AND LicenseRef-Fedora-Public-Domain AND HPND AND CMU-Mach AND LGPL-2.1-only AND LGPL-2.0-or-later AND Unicode-DFS-2015 AND GFDL-1.1-or-later AND GPL-1.0-or-later AND FSFUL AND MIT   │          │
-│ AND Inner-Net-2.0 AND X11 AND GPL-2.0-or-later WITH GCC-exception-2.0 AND GFDL-1.3-only AND GFDL-1.1-only AND GPL-3.0-or-later AND GPL-3.0-or-later WITH Autoconf-exception-generic-3.0   │          │
-│ AND GPL-3.0-or-later WITH Texinfo-exception                                                                                                                                               │          │
-│ Zlib                                                                                                                                                                                      │        1 │
-└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┴──────────┘
+                          License rollup (7 packages, RPM header (subject) + dnf repoquery %{license} (deps))                          
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┓
+┃ License                                                                                                                  ┃ Packages ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━┩
+│ Apache-2.0                                                                                                               │        1 │
+│ BSD-2-Clause                                                                                                             │        2 │
+│ BSD-3-Clause AND FSFULLR AND X11 AND GPL-2.0-or-later AND FSFAP AND FSFUL AND GPL-3.0-or-later                           │        1 │
+│ LGPL-2.1-or-later AND BSD-3-Clause AND BSD-2-Clause AND BSD-2-Clause-FreeBSD AND 0BSD AND CC0-1.0 AND                    │        1 │
+│ LicenseRef-Fedora-Public-Domain                                                                                          │          │
+│ LGPL-2.1-or-later AND SunPro AND LGPL-2.1-or-later WITH GCC-exception-2.0 AND BSD-3-Clause AND GPL-2.0-or-later AND      │        1 │
+│ LGPL-2.1-or-later WITH GNU-compiler-exception AND GPL-2.0-only AND ISC AND LicenseRef-Fedora-Public-Domain AND HPND AND  │          │
+│ CMU-Mach AND LGPL-2.1-only AND LGPL-2.0-or-later AND Unicode-DFS-2015 AND GFDL-1.1-or-later AND GPL-1.0-or-later AND     │          │
+│ FSFUL AND MIT AND Inner-Net-2.0 AND X11 AND GPL-2.0-or-later WITH GCC-exception-2.0 AND GFDL-1.3-only AND GFDL-1.1-only  │          │
+│ AND GPL-3.0-or-later AND GPL-3.0-or-later WITH Autoconf-exception-generic-3.0 AND GPL-3.0-or-later WITH                  │          │
+│ Texinfo-exception                                                                                                        │          │
+│ Zlib                                                                                                                     │        1 │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┴──────────┘
 6 distinct licenses across 7 packages; 0 unknown (nginx-core + 6 runtime deps)
 
 ========== 5. Vulnerability-applicability report ==========
