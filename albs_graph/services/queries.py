@@ -55,6 +55,13 @@ class GraphQueries:
 
     def __init__(self, graph: ProvenanceGraph) -> None:
         self.graph = graph
+        # Map each edge object to its list index once. The graph is fixed for
+        # this instance, so incoming()/outgoing() resolve indexes in O(1)
+        # instead of rebuilding an O(E) dict on every call -- it matters on a
+        # large universe (tens of thousands of edges) inspected per click.
+        self._edge_index: dict[int, int] = {
+            id(edge): index for index, edge in enumerate(graph.edges)
+        }
 
     def node_summary(self, node_id: str) -> NodeSummary:
         node = self._node(node_id)
@@ -146,8 +153,7 @@ class GraphQueries:
         )
 
     def _indexed_edges(self, edges: list[Edge]) -> list[tuple[int, Edge]]:
-        indexes = {id(edge): index for index, edge in enumerate(self.graph.edges)}
-        return [(indexes[id(edge)], edge) for edge in edges]
+        return [(self._edge_index[id(edge)], edge) for edge in edges]
 
 
 def _matches_node(node: Node, needle: str) -> bool:

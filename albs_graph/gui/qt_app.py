@@ -10,6 +10,7 @@ import sys
 
 from PyQt5 import QtCore, QtGui, QtSvg, QtWidgets
 
+from albs_graph.adapters.sbom import discover_build_sbom
 from albs_graph.gui.inspect import (
     InspectorEdge,
     edge_inspector_view,
@@ -368,6 +369,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.resize(1500, 930)
 
         self.thread_pool = QtCore.QThreadPool.globalInstance()
+        self._active_worker: AnalysisWorker | None = None
         self.result: AnalysisResult | None = None
         self.current_slice: GraphSlice | None = None
         self.findings = []
@@ -1007,6 +1009,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         worker.signals.progress.connect(self._log)
         worker.signals.failed.connect(self._analysis_failed)
         worker.signals.finished.connect(self._analysis_finished)
+        self._active_worker = worker  # keep a handle so closeEvent can detach it
         self.thread_pool.start(worker)
 
     def run_classic_build_pipeline(self) -> None:
@@ -1151,31 +1154,17 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self.build_sbom_edit.setText(str(candidate))
 
     def _suggest_build_sbom(self, load_spec: GraphLoadSpec) -> Path | None:
-        for candidate in self._build_sbom_candidates(load_spec):
-            if candidate.exists():
-                return candidate
-        return None
-
-    def _build_sbom_candidates(self, load_spec: GraphLoadSpec) -> list[Path]:
-        candidates: list[Path] = []
+        # Reuse the shared CLI convention (discover_build_sbom, D78) rather than
+        # a parallel re-implementation: it checks the source's directory and its
+        # parent, then examples/, for build-<id>.cyclonedx.json.
         build_id = self._build_id_for_spec(load_spec)
-        if load_spec.source is not None:
-            source = load_spec.source.expanduser()
-            stem = source.stem
-            if stem.endswith(".albs"):
-                stem = stem.removesuffix(".albs")
-            candidates.append(source.with_name(f"{stem}.cyclonedx.json"))
-        if build_id:
-            examples = _repo_root() / "examples"
-            candidates.append(examples / f"build-{build_id}.cyclonedx.json")
-        seen: set[Path] = set()
-        unique: list[Path] = []
-        for candidate in candidates:
-            resolved = candidate.expanduser()
-            if resolved not in seen:
-                seen.add(resolved)
-                unique.append(resolved)
-        return unique
+        if build_id is None:
+            return None
+        return discover_build_sbom(
+            int(build_id),
+            cache_path=load_spec.source,
+            search_dirs=(_repo_root() / "examples",),
+        )
 
     def _build_id_for_spec(self, load_spec: GraphLoadSpec) -> str | None:
         if load_spec.build_id is not None:
@@ -1947,6 +1936,19 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.close()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        # A running analysis worker cannot be interrupted mid-fetch; detach its
+        # signals so a late emit does not target the half-destroyed window, then
+        # drop queued work. We do not block the close on a network fetch.
+        if self._active_worker is not None:
+            for sig in (
+                self._active_worker.signals.progress,
+                self._active_worker.signals.finished,
+                self._active_worker.signals.failed,
+            ):
+                try:
+                    sig.disconnect()
+                except (TypeError, RuntimeError):
+                    pass
         self.thread_pool.clear()
         self.thread_pool.waitForDone(100)
         event.accept()

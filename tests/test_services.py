@@ -293,7 +293,11 @@ def test_workbench_graph_query_presets_find_paths_and_gaps() -> None:
 
 def test_finding_drilldown_expands_artifact_checks() -> None:
     result = AnalysisService(pipeline=AnalysisPipeline(steps=())).analyze_graph(_tiny_graph(), RunSpec())
-    finding = next(item for item in findings_for_analysis(result.graph, result.coverage, result.reconciliation) if item.subject)
+    finding = next(
+        item
+        for item in findings_for_analysis(result.graph, result.coverage, result.reconciliation)
+        if item.code.startswith("trust.")
+    )
 
     rows = finding_drilldown_rows(result.graph, finding)
 

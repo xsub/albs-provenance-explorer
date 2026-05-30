@@ -19,7 +19,23 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   docs(readme): fix the workbench usage examples. The old block led
+- (this)   fix(workbench): address code-review findings in services + gui.
+           queries.GraphQueries caches the edge->index map once in __init__
+           (O(E)-per-call -> O(1); matters inspecting a large universe).
+           compare fingerprint accepts source_rpm OR sourcerpm. slices
+           universe_neighborhood drops its dead `depth` arg (one-hop only).
+           findings aggregates per-RPM trust gaps into one row per check
+           (was ~900 info rows on a 456-RPM build); finding_drilldown_rows
+           expands an aggregated finding's affected nodes from metadata.
+           gui.qt_app unifies SBOM auto-discovery on the shared
+           discover_build_sbom (D78) instead of a parallel re-implementation,
+           and closeEvent detaches a running analysis worker's signals so a
+           late emit can't target the half-destroyed window. render adds
+           colors for source_tree/file/manifest/test_result nodes. ruff +
+           mypy clean; 367 pass (one drill-down test updated to the
+           aggregated shape).
+
+- 14b2e00  docs(readme): fix the workbench usage examples. The old block led
            with a redundant explicit `--build-sbom` even though the workbench
            already auto-discovers `examples/build-<id>.cyclonedx.json`
            (_autofill_build_sbom). Now: install is its own step, then a few

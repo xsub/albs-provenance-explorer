@@ -73,17 +73,25 @@ def findings_for_analysis(
             )
         )
 
+    # Aggregate trust-check gaps by check, not per (RPM x check): a 456-RPM
+    # build with every artifact missing has_sbom + has_errata_link would
+    # otherwise flood the panel with ~900 near-identical info rows. One row per
+    # check carries the affected node ids in metadata so the drill-down (which
+    # already queries per-check, not per-node) can expand them.
+    missing_by_check: dict[str, list[str]] = {}
     for node in graph.find_by_type(NodeType.BINARY_RPM):
         report = graph.trust_path_report(node.id)
         for missing in report.missing:
-            findings.append(
-                Finding(
-                    severity="info",
-                    code=f"trust.{missing}",
-                    title=f"Trust check missing: {missing}",
-                    subject=node.id,
-                    metadata={"node": node.id},
-                )
+            missing_by_check.setdefault(missing, []).append(node.id)
+    for check, nodes in sorted(missing_by_check.items()):
+        findings.append(
+            Finding(
+                severity="info",
+                code=f"trust.{check}",
+                title=f"Trust check missing: {check}",
+                detail=f"{len(nodes)} artifact(s)",
+                metadata={"check": check, "nodes": nodes, "count": len(nodes)},
             )
+        )
 
     return findings

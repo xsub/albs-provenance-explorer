@@ -568,6 +568,17 @@ def finding_drilldown_rows(graph: ProvenanceGraph, finding: Finding) -> list[Gra
     rows = [
         GraphQueryRow("finding", finding.code, finding.subject or "", finding.detail or "")
     ]
+    # An aggregated trust finding (one row per check, no single subject) carries
+    # the affected node ids + the check in metadata; expand each affected
+    # artifact as a missing-check row (capped) so the drill-down still reaches
+    # them. Findings with a concrete subject (conflicts) take the path below.
+    nodes_meta = finding.metadata.get("nodes")
+    if not finding.subject and isinstance(nodes_meta, list):
+        check = str(finding.metadata.get("check") or finding.code.split(".", 1)[-1])
+        for node_id in [str(node_id) for node_id in nodes_meta][:50]:
+            if node_id in graph.nodes:
+                rows.append(GraphQueryRow("check", check, node_id, "missing"))
+        return rows
     subject = finding.subject
     if subject and subject in graph.nodes:
         node = graph.nodes[subject]

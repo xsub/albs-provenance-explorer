@@ -125,12 +125,16 @@ class GraphSlices:
             metadata={"depth": depth},
         )
 
-    def universe_neighborhood(self, selector: str, *, incoming: bool, depth: int = 1) -> GraphSlice:
+    def universe_neighborhood(self, selector: str, *, incoming: bool) -> GraphSlice:
+        # One hop: neighborhood_subgraph returns the direct dependents or
+        # dependencies of the selector. Multi-hop universe walks live in
+        # reachable_dependencies / the SQLite recursive-CTE queries, not here,
+        # so this no longer pretends to take a depth.
         return GraphSlice(
             name="universe_neighborhood",
             graph=neighborhood_subgraph(self.graph, selector, incoming=incoming),
             focus=selector,
-            metadata={"incoming": incoming, "depth": depth},
+            metadata={"incoming": incoming},
         )
 
     def universe_path(self, source_id: str, target_selector: str) -> GraphSlice:

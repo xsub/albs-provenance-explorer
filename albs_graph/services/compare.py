@@ -66,5 +66,7 @@ def _artifact_fingerprint(metadata: dict[str, Any]) -> tuple[Any, ...]:
         metadata.get("release"),
         metadata.get("purl"),
         metadata.get("cas_hash"),
-        metadata.get("sourcerpm"),
+        # ALBS metadata stores "source_rpm"; an RPM-header parse uses the
+        # "sourcerpm" tag. Accept either so a real source change is detected.
+        metadata.get("source_rpm") or metadata.get("sourcerpm"),
     )

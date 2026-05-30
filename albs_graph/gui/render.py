@@ -30,6 +30,10 @@ LIGHT_NODE_COLORS = {
     "external_package": "#F5F5F5",
     "dependency_claim": "#ECEFF1",
     "dependency_resolution": "#E0F2F1",
+    "source_tree": "#E8F5E9",
+    "source_file": "#F1F8E9",
+    "source_manifest": "#F9FBE7",
+    "test_result": "#E1F5FE",
 }
 
 DARK_NODE_COLORS = {
@@ -49,6 +53,10 @@ DARK_NODE_COLORS = {
     "external_package": "#30343A",
     "dependency_claim": "#29323A",
     "dependency_resolution": "#1D3D3A",
+    "source_tree": "#173927",
+    "source_file": "#1C3A22",
+    "source_manifest": "#2E3315",
+    "test_result": "#16323E",
 }
 
 
