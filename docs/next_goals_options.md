@@ -157,6 +157,7 @@ milestones:
 - **M5 Session + report export** -- richer session save/load, Markdown/HTML
   report export, slice export (SVG/PNG), a small reproducibility appendix.
 
-Quality follow-ups (orthogonal to features): a headless smoke test for
-`gui/qt_app.py` (currently 0% coverage, `# mypy: ignore-errors`) and splitting
-the single-class main window into panels/controllers.
+Quality follow-ups (orthogonal to features): a headless smoke test now brings
+`gui/qt_app.py` to ~60% coverage; deeper interaction coverage, dropping the
+blanket `# mypy: ignore-errors` for targeted ignores, and splitting the
+single-class main window into panels/controllers remain.

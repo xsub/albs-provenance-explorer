@@ -19,7 +19,17 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   docs: surface the workbench in the general docs + flag the
+- (this)   test(gui): headless smoke test for the workbench main window.
+           gui/qt_app.py had 0% coverage (and `# mypy: ignore-errors`); two
+           tests now construct WorkbenchWindow under offscreen Qt, drive
+           _analysis_finished (populate artifacts/findings/coverage/evidence/
+           source/query/timeline/recipes + auto-select + slice render), then
+           select an artifact, inspect a node, and cycle every investigation
+           mode -- no network, no Graphviz needed (SVG falls back). qt_app.py
+           0% -> ~61%. Suite 367 -> 369; docs (plan/limitations/next_goals)
+           updated to the new count and the softened "lightly tested" wording.
+
+- ac229e0  docs: surface the workbench in the general docs + flag the
            cross-branch D-number collision. plan.md gains a "Desktop
            investigation workbench" status bullet (services facade + PyQt5 app
            + headless GUI tests). limitations.md gains a "Desktop workbench

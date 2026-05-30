@@ -313,12 +313,14 @@ stated "thousands of applications":
 The PyQt5 investigation workbench is a read-only frontend over the same
 `services` facade; its current limits:
 
-- **`gui/qt_app.py` is the one untested, untyped file.** The main window
-  (~2k lines, a single class) carries `# mypy: ignore-errors` and has no direct
-  tests yet -- the analysable logic lives in the well-tested, typed `services/`
-  layer (80-97% covered); a headless smoke test for the window is the next
-  quality step. The rest of `gui/` (rendering, image-map hit-testing,
-  inspector) is typed and tested.
+- **`gui/qt_app.py` is the untyped, lightly-tested file.** The main window
+  (~2k lines, a single class) carries `# mypy: ignore-errors` (PyQt5 stubs are
+  imperfect and signal/slot typing is painful). A headless smoke test now drives
+  construction + result-handling + slice rendering + the inspector (~60%
+  covered); deeper interaction coverage and dropping the blanket mypy ignore in
+  favour of targeted ignores remain open. The rest of `gui/` (rendering,
+  image-map hit-testing, inspector) is typed and tested, and the analysable
+  logic lives in the well-covered, typed `services/` layer (80-97%).
 - **Needs a Qt platform.** Tests run headless via `QT_QPA_PLATFORM=offscreen`;
   a real run needs a display. Graphviz (`dot`) renders the graph and degrades
   to a built-in fallback SVG when absent.

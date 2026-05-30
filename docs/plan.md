@@ -154,9 +154,11 @@ RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed
   queries, finding drill-down, and a classic-CLI runner. SBOM auto-discovery
   (D78) and the errata three-state (D79) are surfaced through it. The full
   design and milestone roadmap live in `docs/plan-pyqt5-investigation-workbench-app.md`.
-- ✅ Offline tests for all of the above (367 tests; ruff + mypy --strict clean),
+- ✅ Offline tests for all of the above (369 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not specific to any
-  single build. The PyQt5 GUI tests run headless (`QT_QPA_PLATFORM=offscreen`).
+  single build. The PyQt5 GUI tests run headless (`QT_QPA_PLATFORM=offscreen`),
+  including a workbench-window smoke test that exercises construction +
+  result-handling + slice rendering + the inspector.
 
 Demonstrated end to end on the real AlmaLinux 10 ALBS build 57810 (a 13-source
 batch), focused on `nginx-core`: 456 binary RPMs, provenance 1.00. On an `el10`
