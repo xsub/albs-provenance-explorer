@@ -143,9 +143,20 @@ RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed
 - ✅ Semantic version comparison in the reconciler (`VERSION_DRIFT` /
   `RANGE_VIOLATION` via rpmvercmp) and **GPG signature verification**
   (`coverage --verify-signatures`, real provenance verification now CAS is gone).
+- ✅ **Desktop investigation workbench** (this `InvestigationWorkbenchApp`
+  branch). An `albs_graph/services` facade -- `AnalysisService` over the
+  pipeline, typed graph queries, focused graph slices, findings, build
+  comparison -- is the shared backend for both CLI and a PyQt5 app
+  (`albs_graph/gui`, launched with `albs-graph-workbench`). It opens a cached
+  or live build, lists artifacts, renders clickable focused slices (SVG +
+  Graphviz image-map hit-testing), inspects nodes/edges, and shows a coverage /
+  evidence matrix, a build-task timeline (tree + Gantt), reusable graph
+  queries, finding drill-down, and a classic-CLI runner. SBOM auto-discovery
+  (D78) and the errata three-state (D79) are surfaced through it. The full
+  design and milestone roadmap live in `docs/plan-pyqt5-investigation-workbench-app.md`.
 - ✅ Offline tests for all of the above (367 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not specific to any
-  single build.
+  single build. The PyQt5 GUI tests run headless (`QT_QPA_PLATFORM=offscreen`).
 
 Demonstrated end to end on the real AlmaLinux 10 ALBS build 57810 (a 13-source
 batch), focused on `nginx-core`: 456 binary RPMs, provenance 1.00. On an `el10`

@@ -1,5 +1,14 @@
 # Decisions
 
+> **Note on D-numbering across branches.** This `InvestigationWorkbenchApp`
+> branch and `max` diverged at `fc5b647` and then numbered new decisions
+> independently, so D-numbers above ~D79 mean **different things** on each
+> branch (e.g. here `D80` is "Workbench timeline tree" and `D90` is the
+> HTML-fallback cache, whereas on `max` `D80` is "Reject empty SPA-shell caches"
+> and the fallback-cache decision is `D81`). When cross-referencing a decision
+> between branches, match it by **title**, not by number; do not merge the two
+> `decisions.md` files without reconciling the overlap.
+
 This document records the architecture and design decisions made while extending
 `albs-provenance-explorer` from a read-only metadata explorer toward a
 **maximal, conflict-aware provenance + dependency graph** over ALBS data.

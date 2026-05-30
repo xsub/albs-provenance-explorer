@@ -308,6 +308,29 @@ stated "thousands of applications":
 
 ---
 
+## Desktop workbench (GUI)
+
+The PyQt5 investigation workbench is a read-only frontend over the same
+`services` facade; its current limits:
+
+- **`gui/qt_app.py` is the one untested, untyped file.** The main window
+  (~2k lines, a single class) carries `# mypy: ignore-errors` and has no direct
+  tests yet -- the analysable logic lives in the well-tested, typed `services/`
+  layer (80-97% covered); a headless smoke test for the window is the next
+  quality step. The rest of `gui/` (rendering, image-map hit-testing,
+  inspector) is typed and tested.
+- **Needs a Qt platform.** Tests run headless via `QT_QPA_PLATFORM=offscreen`;
+  a real run needs a display. Graphviz (`dot`) renders the graph and degrades
+  to a built-in fallback SVG when absent.
+- **Rendering is stretch-to-fill SVG** in a scroll area (zoom / fit / reset),
+  not an interactive graphics scene; a whole large build is best read as
+  focused slices rather than the full graph.
+- **Single-window, single-build.** No multi-build tabs; session save/load is
+  lightweight. The `--build-id` path fetches live (no metadata-cache reuse) --
+  re-open a cached `--source` JSON to work offline.
+
+---
+
 ## Testing boundary
 
 Per the repo rule, tests never hit the network. The remote RPM path is exercised

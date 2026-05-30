@@ -131,3 +131,32 @@ Remaining genuinely open: **E1** for **Gradle** only (bigger tooling surface)
 and **G3** (`sqlite-vec` similarity overlay, optional). The remaining items are
 host-/tool-heavy or infra-heavy, so they need recorded fixtures or an AlmaLinux
 host to exercise.
+
+---
+
+## Desktop workbench roadmap (this branch)
+
+The PyQt5 investigation workbench (`albs_graph/services` facade + `albs_graph/gui`)
+has its full design and milestone plan in
+`docs/plan-pyqt5-investigation-workbench-app.md`. Status against those
+milestones:
+
+- **MVP + M1** (load build, artifacts, focused slices, inspector, findings,
+  timeline tree + Gantt, evidence matrix, graph queries, finding drill-down,
+  classic-CLI runner) -- **done** (decisions.md D80-D90).
+- **M2 Dependency workbench** -- group dependency claims by subject / identity /
+  context / evidence; show reconciliation verdicts + conflict kinds; filters
+  for runtime/build/static/test scope and "only conflicts / only unresolved".
+- **M3 Security workbench** -- CPE candidate browser, verified vs
+  vendor-asserted identity, the **errata three-state** (advisory_present /
+  confirmed_clean / not_checked, D79) surfaced in the evidence matrix, CVE-feed
+  match panel with version-range explanation, distro-backport caveat.
+- **M4 Universe workbench** -- open a SQLite universe store (D74), search
+  packages, traverse dependents/dependencies, render dependency paths
+  (the recursive-CTE queries are ready), save favourite slices.
+- **M5 Session + report export** -- richer session save/load, Markdown/HTML
+  report export, slice export (SVG/PNG), a small reproducibility appendix.
+
+Quality follow-ups (orthogonal to features): a headless smoke test for
+`gui/qt_app.py` (currently 0% coverage, `# mypy: ignore-errors`) and splitting
+the single-class main window into panels/controllers.

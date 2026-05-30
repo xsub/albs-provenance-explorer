@@ -19,7 +19,17 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   fix(workbench): address code-review findings in services + gui.
+- (this)   docs: surface the workbench in the general docs + flag the
+           cross-branch D-number collision. plan.md gains a "Desktop
+           investigation workbench" status bullet (services facade + PyQt5 app
+           + headless GUI tests). limitations.md gains a "Desktop workbench
+           (GUI)" section (qt_app untested/untyped, needs a Qt platform, SVG
+           stretch, single-window). next_goals_options.md gains a workbench
+           roadmap mapped to plan-pyqt5 milestones M2-M5 + quality follow-ups.
+           decisions.md gains a top note that D-numbers above ~D79 diverge
+           between this branch and max (match by title, not number). No code.
+
+- 2db3b5a  fix(workbench): address code-review findings in services + gui.
            queries.GraphQueries caches the edge->index map once in __init__
            (O(E)-per-call -> O(1); matters inspecting a large universe).
            compare fingerprint accepts source_rpm OR sourcerpm. slices
