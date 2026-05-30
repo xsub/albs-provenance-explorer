@@ -4,11 +4,21 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from albs_graph.adapters.rpmgraph import RpmgraphUnavailable
-from albs_graph.dependency import DependencySpec, Ecosystem, PackageIdentity
+from albs_graph.dependency import (
+    DependencyScope,
+    DependencySpec,
+    Ecosystem,
+    PackageIdentity,
+    ResolutionState,
+)
 from albs_graph.fixtures import SYNTHETIC_RPM_ID, build_synthetic_fixture_graph
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
 from albs_graph.pipeline import AnalysisPipeline, EnrichmentContext, RunSpec
-from albs_graph.provenance.reconcile import DependencyClaim, add_dependency_claim
+from albs_graph.provenance.reconcile import (
+    DependencyClaim,
+    add_dependency_claim,
+    reconcile_dependency_claims,
+)
 from albs_graph.services import (
     AnalysisService,
     GraphLoadSpec,
@@ -23,6 +33,7 @@ from albs_graph.services import (
     finding_drilldown_rows,
     GraphQueries,
     GraphSlices,
+    dependency_rows,
     findings_for_analysis,
     run_graph_query,
     security_rows,
@@ -295,6 +306,62 @@ def test_workbench_security_rows_browse_identity_errata_and_caveats() -> None:
     assert "backport" in rows["rpm:backport:x86_64"].caveats
     assert rows["rpm:naked:x86_64"].identity == "none"
     assert rows["rpm:naked:x86_64"].errata == "clean"
+
+
+def test_workbench_dependency_rows_group_verdicts_and_filters() -> None:
+    # M2 Dependency workbench: each reconciled group is one row with the
+    # agreement verdict + conflict kinds + scope/linkage facets, and the panel
+    # can filter to only-conflicts / only-unresolved / a scope facet.
+    graph = ProvenanceGraph()
+    graph.add_node(Node("rpm:app:x86_64", NodeType.BINARY_RPM, "app", {"name": "app"}))
+
+    def _spec(name: str, version: str | None, scope: DependencyScope, **kw: object) -> DependencySpec:
+        return DependencySpec(
+            identity=PackageIdentity(Ecosystem.RPM, name, version=version),
+            scope=scope,
+            **kw,  # type: ignore[arg-type]
+        )
+
+    # openssl: two agreeing runtime claims -> CONSENSUS, resolved.
+    add_dependency_claim(graph, DependencyClaim("rpm:app:x86_64",
+        _spec("openssl", "3.0.7", DependencyScope.RUNTIME, resolution_state=ResolutionState.LOCKED),
+        evidence="lockfile"))
+    add_dependency_claim(graph, DependencyClaim("rpm:app:x86_64",
+        _spec("openssl", "3.0.7", DependencyScope.RUNTIME, resolution_state=ResolutionState.RESOLVED),
+        evidence="resolver:uv"))
+    # zlib: two buildtime claims that disagree -> CONFLICT / VERSION_DRIFT.
+    add_dependency_claim(graph, DependencyClaim("rpm:app:x86_64",
+        _spec("zlib", "1.2.13", DependencyScope.BUILDTIME, resolution_state=ResolutionState.LOCKED),
+        evidence="lockfile"))
+    add_dependency_claim(graph, DependencyClaim("rpm:app:x86_64",
+        _spec("zlib", "1.3.1", DependencyScope.BUILDTIME, resolution_state=ResolutionState.OBSERVED),
+        evidence="elf_dt_needed"))
+    # pytest: a declared-only test dependency -> unresolved.
+    add_dependency_claim(graph, DependencyClaim("rpm:app:x86_64",
+        _spec("pytest", None, DependencyScope.TEST, resolution_state=ResolutionState.DECLARED),
+        evidence="manifest"))
+
+    reconcile_dependency_claims(graph)
+
+    by_coord = {row.coordinate: row for row in dependency_rows(graph)}
+    assert {"rpm:openssl", "rpm:zlib", "rpm:pytest"} <= set(by_coord)
+    assert by_coord["rpm:openssl"].verdict == "consensus"
+    assert by_coord["rpm:openssl"].subject == "app"  # navigates to the consuming RPM
+    assert by_coord["rpm:zlib"].verdict == "conflict"
+    assert "version_drift" in by_coord["rpm:zlib"].conflict_kinds
+
+    conflicts = dependency_rows(graph, only_conflicts=True)
+    assert [row.coordinate for row in conflicts] == ["rpm:zlib"]
+
+    unresolved = {row.coordinate for row in dependency_rows(graph, only_unresolved=True)}
+    assert "rpm:pytest" in unresolved and "rpm:openssl" not in unresolved
+
+    runtime = {row.coordinate for row in dependency_rows(graph, scope_facets={"runtime"})}
+    assert runtime == {"rpm:openssl"}
+    build = {row.coordinate for row in dependency_rows(graph, scope_facets={"build"})}
+    assert build == {"rpm:zlib"}
+    test = {row.coordinate for row in dependency_rows(graph, scope_facets={"test"})}
+    assert test == {"rpm:pytest"}
 
 
 def test_workbench_layer_filter_hides_disabled_security_context() -> None:

@@ -144,9 +144,13 @@ milestones:
 - **MVP + M1** (load build, artifacts, focused slices, inspector, findings,
   timeline tree + Gantt, evidence matrix, graph queries, finding drill-down,
   classic-CLI runner) -- **done** (decisions.md D80-D90).
-- **M2 Dependency workbench** -- group dependency claims by subject / identity /
-  context / evidence; show reconciliation verdicts + conflict kinds; filters
-  for runtime/build/static/test scope and "only conflicts / only unresolved".
+- **M2 Dependency workbench** -- **done** (D98): the "Dependencies" tab turns
+  each reconciled `DEPENDENCY_RESOLUTION` group into one row -- subject +
+  coordinate, the verdict (consensus / compatible / conflict /
+  insufficient_evidence), conflict kinds, cross-distro context, and the
+  scope / linkage / resolution-state facets aggregated from the member claims --
+  with filters for runtime/build/static/test scope and "only conflicts / only
+  unresolved".
 - **M3 Security workbench** -- mostly **done**: the **errata three-state**
   (advisory_present / confirmed_clean / not_checked, D79) in the evidence matrix
   (b703443), a workbench errata-source toggle so `clean` is reachable live

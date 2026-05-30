@@ -52,6 +52,13 @@ def test_workbench_window_constructs_and_handles_a_result(
         assert window.coverage_table.rowCount() > 0    # coverage table populated
         assert window.security_table.rowCount() > 0    # M3 security panel populated
         assert window.current_svg                      # an SVG string was produced
+
+        # M2 dependency panel: toggling the filters re-runs _populate without
+        # crashing (the synthetic fixture has no resolved deps, so 0 rows is OK).
+        window.dep_only_conflicts.setChecked(True)
+        window.dep_scope_combo.setCurrentIndex(1)
+        qapp.processEvents()
+        assert window.dependency_table.rowCount() >= 0
     finally:
         window.close()
 

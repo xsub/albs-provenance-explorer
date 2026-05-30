@@ -2619,6 +2619,40 @@ and a GUI assertion that the panel populates. Suite 371 -> 372.
 
 ---
 
+## D98 - Workbench Dependency panel (reconciled groups + scope/conflict filters)
+
+Plan milestone M2. The workbench already had a *Dependency Evidence* graph mode
+(a focused slice), but no tabular view of the reconciliation the pipeline runs
+on every analysis -- the verdicts, conflict kinds and scope/linkage facets were
+only reachable from the CLI's verbose output.
+
+Backend: `services.workbench.dependency_rows(graph, *, scope_facets=None,
+only_conflicts=False, only_unresolved=False) -> list[DependencyRow]`. Each
+`DEPENDENCY_RESOLUTION` node (written by `reconcile_dependency_claims` during
+analysis) is one group; its member claims, reached via the `OBSERVED_AS` edges
+the reconciler already writes, supply the scope / linkage / resolution-state
+facets (aggregated distinct). The row carries the consuming `subject` + the
+`coordinate`, the `verdict` (consensus / compatible / conflict /
+insufficient_evidence), the `conflict_kinds` (version_drift, range_violation,
+...), the cross-distro `context_issue`, the versions and the evidence sources.
+
+Filters mirror the plan: `scope_facets` keeps groups touching one of
+`{runtime, build, static, test}` -- "build" maps to the spec scope `buildtime`
+and "static" is matched against *linkage*, not scope, since the plan groups them
+on one axis; `only_conflicts` keeps reconciler-flagged groups; `only_unresolved`
+keeps groups with no resolved version (insufficient evidence, an
+unresolvable/ambiguous member, or declared-only).
+
+GUI: a "Dependencies" tab whose header carries a scope combo + "Only conflicts"
+/ "Only unresolved" checkboxes (each re-runs the populate), over an 11-column
+table (Subject, Coordinate, Ecosystem, Scope, Linkage, State, Verdict, Conflict,
+Context, Versions, Evidence), verdict/conflict/context colour-tinted, activate ->
+navigate to the consuming RPM. +1 backend test (consensus / version_drift /
+declared-only across runtime/build/test, plus every filter) and a GUI
+filter-toggle assertion. Suite 372 -> 373.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

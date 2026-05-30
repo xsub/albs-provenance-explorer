@@ -19,7 +19,22 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   feat(workbench): Security panel -- CPE browser + errata/CVE posture
+- (this)   feat(workbench): Dependency panel -- reconciled groups + scope/
+           conflict filters (plan milestone M2). New
+           services.workbench.dependency_rows turns each DEPENDENCY_RESOLUTION
+           group (written by reconcile during analysis) into one row: subject +
+           coordinate, the verdict (consensus/compatible/conflict/insufficient),
+           conflict kinds, cross-distro context, and the scope/linkage/state
+           facets aggregated from the member claims (via OBSERVED_AS). New
+           "Dependencies" tab with a scope combo + only-conflicts/only-unresolved
+           filters over an 11-column table, verdict/conflict/context tinted,
+           activate -> navigate to the consuming RPM. "build" maps to spec scope
+           buildtime; "static" matches linkage. +1 backend test (consensus/
+           version_drift/declared-only + every filter) + a GUI toggle assertion.
+           Suite 372 -> 373. decisions.md D98. Next: M4 Universe workbench
+           (open a SQLite store, traverse dependents, render paths).
+
+- f0452de  feat(workbench): Security panel -- CPE browser + errata/CVE posture
            (plan milestone M3). New services.workbench.security_rows reuses
            vulnerability_report (F1) for identity/errata/CVE/linkage, keys each
            assessment back to its node by (package, arch), and adds the errata

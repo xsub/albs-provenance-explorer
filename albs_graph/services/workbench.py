@@ -196,6 +196,49 @@ class SecurityRow:
 
 
 @dataclass(frozen=True)
+class DependencyRow:
+    """One reconciled dependency group for the M2 Dependency workbench.
+
+    A row is a ``DEPENDENCY_RESOLUTION`` group: the consuming ``subject`` and the
+    depended-on ``coordinate``, the reconciliation ``verdict`` (consensus /
+    compatible / conflict / insufficient_evidence) and any ``conflict_kinds``,
+    plus the scope / linkage / resolution-state facets aggregated from the
+    member claims so the panel can filter on them.
+    """
+
+    node_id: str          # the resolution node (navigates to it)
+    subject_id: str
+    subject: str
+    coordinate: str
+    ecosystem: str
+    scope: str
+    linkage: str
+    resolution_state: str
+    verdict: str
+    conflict_kinds: str
+    context_issue: str
+    versions: str
+    evidence: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "node_id": self.node_id,
+            "subject_id": self.subject_id,
+            "subject": self.subject,
+            "coordinate": self.coordinate,
+            "ecosystem": self.ecosystem,
+            "scope": self.scope,
+            "linkage": self.linkage,
+            "resolution_state": self.resolution_state,
+            "verdict": self.verdict,
+            "conflict_kinds": self.conflict_kinds,
+            "context_issue": self.context_issue,
+            "versions": self.versions,
+            "evidence": self.evidence,
+        }
+
+
+@dataclass(frozen=True)
 class BuildDiffRow:
     area: str
     change: str
@@ -546,6 +589,100 @@ def _security_caveats(assessment: PackageVulnAssessment) -> str:
     if assessment.static_objects:
         caveats.append(f"static:{assessment.static_objects}")
     return "; ".join(caveats) or "-"
+
+
+# Scope/linkage facets the Dependency workbench filters on. "build" maps to the
+# DependencySpec scope "buildtime"; "static" is a *linkage*, not a scope, but the
+# plan groups them together as one facet axis.
+_SCOPE_FACET_SCOPES = {"runtime": "runtime", "build": "buildtime", "test": "test"}
+_UNRESOLVED_STATES = frozenset({"unresolvable", "ambiguous", "resolution_skipped"})
+
+
+def dependency_rows(
+    graph: ProvenanceGraph,
+    *,
+    scope_facets: set[str] | None = None,
+    only_conflicts: bool = False,
+    only_unresolved: bool = False,
+) -> list[DependencyRow]:
+    """Reconciled dependency groups for the M2 Dependency workbench.
+
+    Each ``DEPENDENCY_RESOLUTION`` node (written by ``reconcile_dependency_claims``
+    during analysis) is one group; its member claims (reached via ``OBSERVED_AS``)
+    supply the scope / linkage / resolution-state facets. ``scope_facets`` keeps
+    only groups touching one of ``{"runtime", "build", "static", "test"}``;
+    ``only_conflicts`` keeps groups the reconciler flagged; ``only_unresolved``
+    keeps groups with no resolved version (insufficient evidence, an
+    unresolvable/ambiguous claim, or declared-only).
+    """
+
+    rows: list[DependencyRow] = []
+    for node in graph.find_by_type(NodeType.DEPENDENCY_RESOLUTION):
+        md = node.metadata
+        members = [
+            graph.nodes[edge.target]
+            for edge in graph.outgoing(node.id, Relation.OBSERVED_AS)
+            if edge.target in graph.nodes
+        ]
+        scopes = _distinct(member.metadata.get("scope") for member in members)
+        linkages = _distinct(member.metadata.get("linkage") for member in members)
+        states = _distinct(member.metadata.get("resolution_state") for member in members)
+        ecosystems = _distinct(member.metadata.get("ecosystem") for member in members)
+        verdict = str(md.get("agreement") or "")
+        conflict_kinds = [str(kind) for kind in (md.get("conflict_kinds") or [])]
+        if only_conflicts and verdict != "conflict" and not conflict_kinds:
+            continue
+        if only_unresolved and not _is_unresolved(verdict, states):
+            continue
+        if not _scope_facet_match(scope_facets, scopes, linkages):
+            continue
+        subject_id = str(md.get("subject") or "")
+        subject_node = graph.nodes.get(subject_id)
+        rows.append(
+            DependencyRow(
+                node_id=node.id,
+                subject_id=subject_id,
+                subject=subject_node.label if subject_node else subject_id,
+                coordinate=str(md.get("coordinate") or node.label),
+                ecosystem="; ".join(ecosystems) or "-",
+                scope="; ".join(scopes) or "-",
+                linkage="; ".join(linkages) or "-",
+                resolution_state="; ".join(states) or "-",
+                verdict=verdict or "-",
+                conflict_kinds="; ".join(conflict_kinds) or "-",
+                context_issue=str(md.get("context_issue") or "-"),
+                versions="; ".join(str(version) for version in (md.get("versions") or [])) or "-",
+                evidence="; ".join(str(source) for source in (md.get("evidence") or [])) or "-",
+            )
+        )
+    rows.sort(key=lambda row: (row.subject, row.coordinate, row.node_id))
+    return rows
+
+
+def _distinct(values: Any) -> list[str]:
+    return sorted({str(value) for value in values if value})
+
+
+def _is_unresolved(verdict: str, states: list[str]) -> bool:
+    if verdict == "insufficient_evidence":
+        return True
+    if any(state in _UNRESOLVED_STATES for state in states):
+        return True
+    return bool(states) and set(states) == {"declared"}
+
+
+def _scope_facet_match(
+    scope_facets: set[str] | None, scopes: list[str], linkages: list[str]
+) -> bool:
+    if not scope_facets:
+        return True
+    for facet in scope_facets:
+        mapped_scope = _SCOPE_FACET_SCOPES.get(facet)
+        if mapped_scope and mapped_scope in scopes:
+            return True
+        if facet == "static" and "static" in linkages:
+            return True
+    return False
 
 
 def compare_builds(
