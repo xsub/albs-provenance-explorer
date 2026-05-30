@@ -350,6 +350,10 @@ class WorkbenchSession:
     # ``errata_feed`` is an offline feed file or a live feed URL.
     errata_source: str = ""
     errata_feed: str = ""
+    # M3 security: a CPE dictionary (verify) feeds the pipeline; a CVE feed is a
+    # report-time input to the Security panel's Potential CVEs column.
+    verify_cpe: str = ""
+    cve_feed: str = ""
     # M2 Dependency panel filters.
     dep_scope: str = ""
     dep_only_conflicts: bool = False
@@ -371,6 +375,8 @@ class WorkbenchSession:
             "artifact_filter": self.artifact_filter,
             "errata_source": self.errata_source,
             "errata_feed": self.errata_feed,
+            "verify_cpe": self.verify_cpe,
+            "cve_feed": self.cve_feed,
             "dep_scope": self.dep_scope,
             "dep_only_conflicts": self.dep_only_conflicts,
             "dep_only_unresolved": self.dep_only_unresolved,
@@ -392,6 +398,8 @@ class WorkbenchSession:
             artifact_filter=str(data.get("artifact_filter") or ""),
             errata_source=str(data.get("errata_source") or ""),
             errata_feed=str(data.get("errata_feed") or ""),
+            verify_cpe=str(data.get("verify_cpe") or ""),
+            cve_feed=str(data.get("cve_feed") or ""),
             dep_scope=str(data.get("dep_scope") or ""),
             dep_only_conflicts=bool(data.get("dep_only_conflicts")),
             dep_only_unresolved=bool(data.get("dep_only_unresolved")),

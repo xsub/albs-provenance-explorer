@@ -14,6 +14,7 @@ from albs_graph.dependency import (
 from albs_graph.fixtures import SYNTHETIC_RPM_ID, build_synthetic_fixture_graph
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
 from albs_graph.pipeline import AnalysisPipeline, EnrichmentContext, RunSpec
+from albs_graph.security.cve_feed import CveFeed
 from albs_graph.provenance.reconcile import (
     DependencyClaim,
     add_dependency_claim,
@@ -307,6 +308,45 @@ def test_workbench_security_rows_browse_identity_errata_and_caveats() -> None:
     assert "backport" in rows["rpm:backport:x86_64"].caveats
     assert rows["rpm:naked:x86_64"].identity == "none"
     assert rows["rpm:naked:x86_64"].errata == "clean"
+
+
+def test_workbench_security_rows_match_cve_feed_when_cpe_resolved() -> None:
+    # M3: with a resolved (concrete) CPE and a CVE feed, the Potential CVEs
+    # column reports version-range matches not already addressed by an errata.
+    graph = ProvenanceGraph()
+    graph.add_node(
+        Node(
+            "rpm:nginx-core:x86_64",
+            NodeType.BINARY_RPM,
+            "nginx-core",
+            {
+                "name": "nginx-core",
+                "arch": "x86_64",
+                "version": "1.20.0",
+                "security_identity": {
+                    "cpe": "cpe:2.3:a:nginx:nginx:1.20.0:*:*:*:*:*:*:*",
+                    "cpe_status": "verified",
+                    "cpe_candidates": [],
+                },
+            },
+        )
+    )
+    feed = CveFeed.from_entries(
+        [
+            # In range [1.0.0, 1.30.0) -> matches nginx 1.20.0.
+            {"id": "CVE-2024-7777", "affected": [
+                {"vendor": "nginx", "product": "nginx", "introduced": "1.0.0", "fixed": "1.30.0"}]},
+            # Already fixed before 1.20.0 -> must NOT match.
+            {"id": "CVE-2019-0001", "affected": [
+                {"vendor": "nginx", "product": "nginx", "introduced": "1.0.0", "fixed": "1.10.0"}]},
+        ]
+    )
+
+    without_feed = security_rows(graph)[0]
+    assert without_feed.potential_cves == "-"
+
+    with_feed = security_rows(graph, cve_feed=feed)[0]
+    assert with_feed.potential_cves == "CVE-2024-7777"
 
 
 def test_workbench_dependency_rows_group_verdicts_and_filters() -> None:

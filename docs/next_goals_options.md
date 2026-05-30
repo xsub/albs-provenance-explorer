@@ -156,9 +156,9 @@ milestones:
   (b703443), a workbench errata-source toggle so `clean` is reachable live
   (D96), and a dedicated **Security panel** -- CPE candidate browser (verified
   vs vendor-asserted vs unverified guess), errata posture, addressed/potential
-  CVEs, distro-backport + reachability caveats (D97). *Remaining:* wire a live
-  CVE feed into the workbench (a feed toggle mirroring the errata one) so the
-  **Potential CVEs** column populates with version-range matches.
+  CVEs, distro-backport + reachability caveats (D97), and a CVE-feed + CPE-verify
+  toggle pair (D101) so the **Potential CVEs** column populates with
+  version-range matches (CPE verify resolves an official CPE the feed can match).
 - **M4 Universe workbench** -- **done** (D99): the "Universe" tab opens a SQLite
   universe store (D74), searches packages/capabilities (`sql_search`), walks
   Dependencies / Dependents / Reachable, finds label-resolved dependency paths
@@ -172,11 +172,9 @@ milestones:
   (inputs + graph size + tool/python/timestamp) carried in the JSON bundle and
   both reports.
 
-The PyQt workbench roadmap (M2-M5) is complete. Remaining genuinely open:
+The PyQt workbench roadmap (M2-M5) is complete, and the M3 CVE-feed toggle
+(D101) is done. Remaining genuinely open:
 
-- the **M3 CVE-feed toggle** -- wire a live CVE feed into the workbench (mirroring
-  the errata toggle) so the Security panel's *Potential CVEs* column populates
-  with version-range matches (today it reads `-` without a feed);
 - **quality follow-ups** (orthogonal to features): headless + interaction tests
   now bring `gui/qt_app.py` well above its initial ~60%; deeper interaction
   coverage, dropping the blanket `# mypy: ignore-errors` for targeted ignores,

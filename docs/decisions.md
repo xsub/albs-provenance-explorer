@@ -2716,6 +2716,38 @@ targeted mypy, splitting the god-object) and the M3 CVE-feed toggle.
 
 ---
 
+## D101 - Workbench CVE-feed + CPE-verify toggles (Potential CVEs populates)
+
+The Security panel (D97) shipped a *Potential CVEs* column that always read `-`
+because the workbench never fed `security_rows` a CVE feed. Closing that needs
+two coordinated inputs, because matching a CVE feed needs a *resolved official*
+CPE -- a vendor-asserted SBOM CPE (`almalinux:...`) rarely lines up with the NVD
+vendor/product tokens a feed keys on:
+
+- **CPE verify (analyze-time).** A toolbar `cpe_dict_edit` -> `_run_spec`:
+  a file path becomes `RunSpec.verify_cpe`, anything else `verify_cpe_url`. The
+  pipeline's `VerifyCpeStep` (already in `DEFAULT_STEPS`, run off-thread in the
+  worker) resolves candidates to official CPEs, so packages carry a vendor/
+  product/version a feed can match. Affects the next Analyze, like the build
+  SBOM and errata toggles.
+- **CVE feed (report-time).** A toolbar `cve_feed_edit` -> `_ensure_cve_feed`
+  loads a `CveFeed` via `live_feeds.fetch_cve_feed_or_none` (a path is a file;
+  else a live URL, cached on disk; crash-safe), cached by source string so it
+  loads once. `_populate_security_table` passes it to `security_rows(graph,
+  cve_feed=...)`, and `vulnerability_report` matches the resolved CPE's version
+  against the feed's affected ranges, minus CVEs an errata already addresses.
+  Because it is a report-time input (not a graph enrichment), editing the field
+  re-renders just the Security panel (`editingFinished -> _refresh_security_
+  table`) without re-running the analysis.
+
+Both sources persist in `WorkbenchSession` (`verify_cpe` / `cve_feed`). +2 test
+cases (backend feed match incl. an out-of-range CVE excluded; GUI verify-cpe
+run_spec kwargs + the panel's Potential CVEs cell populating from a feed file).
+Suite 381 -> 383. This closes the last functional gap in the M3 Security
+workbench.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

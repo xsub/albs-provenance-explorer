@@ -19,7 +19,20 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   docs(readme): reframe the workbench README as the GUI *version* of
+- (this)   feat(workbench): CVE-feed + CPE-verify toggles so the Security
+           panel's Potential CVEs column populates (M3, closes the last gap).
+           Two coordinated inputs: cpe_dict_edit -> RunSpec.verify_cpe /
+           verify_cpe_url (analyze-time, the pipeline VerifyCpeStep resolves an
+           official CPE so a feed can match), and cve_feed_edit -> _ensure_cve_
+           feed (report-time CveFeed via live_feeds.fetch_cve_feed_or_none, file
+           or cached URL, crash-safe, cached by source). _populate_security_table
+           passes the feed to security_rows; editing the feed re-renders just the
+           panel (editingFinished) without re-analysing. Both persist in the
+           session. +2 test cases (backend match incl. out-of-range exclusion;
+           GUI verify-cpe kwargs + panel cell). Suite 381 -> 383. decisions.md
+           D101. el10 VPS-verified earlier this session (381 then).
+
+- 09381eb  docs(readme): reframe the workbench README as the GUI *version* of
            albs-provenance-explorer (not a screenshot bolted onto the CLI
            README). States the shared-backend fact (CLI runs AnalysisPipeline
            directly, GUI via the services facade -- one engine), lists what the

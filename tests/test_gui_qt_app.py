@@ -20,6 +20,7 @@ from PyQt5 import QtWidgets
 
 from albs_graph.fixtures import SYNTHETIC_RPM_ID, build_synthetic_fixture_graph
 from albs_graph.gui.qt_app import WorkbenchWindow
+from albs_graph.model import Node, NodeType, ProvenanceGraph
 from albs_graph.pipeline import AnalysisPipeline, RunSpec
 from albs_graph.provenance import universe_from_dot
 from albs_graph.services import AnalysisResult, AnalysisService, GraphLoadSpec
@@ -195,6 +196,62 @@ def test_workbench_session_captures_dependency_and_universe_state(
         window._restore_universe_session(session)
         assert str(window.dep_scope_combo.currentData() or "") == "build"
         assert window.universe_fav_combo.count() >= 2
+    finally:
+        window.close()
+
+
+def test_workbench_cpe_verify_run_spec_and_cve_feed_panel(
+    qapp: QtWidgets.QApplication, tmp_path: Path
+) -> None:
+    window = WorkbenchWindow()
+    try:
+        load_spec = GraphLoadSpec(source=tmp_path / "graph.json")
+
+        # CPE dict: an existing path -> verify_cpe; otherwise -> verify_cpe_url.
+        cpe_dict = tmp_path / "cpe.json"
+        cpe_dict.write_text("[]", encoding="utf-8")
+        window.cpe_dict_edit.setText(str(cpe_dict))
+        assert window._run_spec(load_spec).verify_cpe == cpe_dict
+        window.cpe_dict_edit.setText("https://example.org/cpe.json")
+        spec = window._run_spec(load_spec)
+        assert spec.verify_cpe is None
+        assert spec.verify_cpe_url == "https://example.org/cpe.json"
+
+        # CVE feed: a result with a resolved CPE + a feed file -> the Security
+        # panel's Potential CVEs column populates (live, report-time).
+        feed = tmp_path / "cve.json"
+        feed.write_text(
+            '{"cves":[{"id":"CVE-2024-7777","affected":'
+            '[{"vendor":"nginx","product":"nginx","introduced":"1.0.0","fixed":"1.30.0"}]}]}',
+            encoding="utf-8",
+        )
+        graph = ProvenanceGraph()
+        graph.add_node(
+            Node(
+                "rpm:nginx-core:x86_64",
+                NodeType.BINARY_RPM,
+                "nginx-core",
+                {
+                    "name": "nginx-core", "arch": "x86_64", "version": "1.20.0",
+                    "security_identity": {
+                        "cpe": "cpe:2.3:a:nginx:nginx:1.20.0:*:*:*:*:*:*:*",
+                        "cpe_status": "verified", "cpe_candidates": [],
+                    },
+                },
+            )
+        )
+        result = AnalysisService(pipeline=AnalysisPipeline(steps=())).analyze_graph(graph, RunSpec())
+        window.cve_feed_edit.setText(str(feed))
+        window._analysis_finished(result)
+        qapp.processEvents()
+
+        # Find the nginx-core row and read its Potential CVEs cell (column 7).
+        potentials = [
+            window.security_table.item(row, 7).text()
+            for row in range(window.security_table.rowCount())
+            if window.security_table.item(row, 0).text() == "nginx-core"
+        ]
+        assert potentials and "CVE-2024-7777" in potentials[0]
     finally:
         window.close()
 

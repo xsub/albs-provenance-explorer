@@ -329,9 +329,12 @@ The PyQt5 investigation workbench is a read-only frontend over the same
 - **Rendering is stretch-to-fill SVG** in a scroll area (zoom / fit / reset),
   not an interactive graphics scene; a whole large build is best read as
   focused slices rather than the full graph. Slice export is SVG or PNG.
-- **The Security panel's *Potential CVEs* column needs a live CVE feed**, which
-  the workbench does not yet wire (the errata toggle wires errata, not the CVE
-  feed), so it reads `-`; addressed CVEs (via errata) always populate.
+- **The Security panel's *Potential CVEs* column needs a CVE feed + a resolved
+  CPE.** Both are now wired (D101): a CVE-feed field (file or cached URL) and a
+  CPE-dictionary "verify" field that resolves an official CPE the feed can match.
+  Without them the column reads `-`; addressed CVEs (via errata) always populate.
+  A vendor-asserted SBOM CPE alone rarely matches NVD tokens, so verify is the
+  load-bearing input.
 - **Single-window, single-build.** No multi-build tabs. Session save/load now
   persists the dependency filters + the universe store/favourites alongside the
   inputs and selection. The `--build-id` path fetches live (no metadata-cache

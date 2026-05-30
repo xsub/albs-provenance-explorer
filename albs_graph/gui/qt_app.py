@@ -18,6 +18,8 @@ from albs_graph.gui.inspect import (
     raw_json,
 )
 from albs_graph.pipeline import RunSpec
+from albs_graph.security.cve_feed import CveFeed
+from albs_graph.security.live_feeds import fetch_cve_feed_or_none
 from albs_graph.gui.hitmap import EdgeRegion, NodeRegion, edge_at, node_at
 from albs_graph.gui.render import workbench_graph_rendering
 from albs_graph.services import (
@@ -377,6 +379,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.universe_store: UniverseStore | None = None
         self.universe_focus: str | None = None
         self.universe_favourites: list[dict[str, str]] = []
+        # M3: a report-time CVE feed for the Security panel's Potential CVEs
+        # column, cached by the source string it was loaded from.
+        self.cve_feed: CveFeed | None = None
+        self._cve_feed_source: str | None = None
         self.result: AnalysisResult | None = None
         self.current_slice: GraphSlice | None = None
         self.findings = []
@@ -410,6 +416,16 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.errata_feed_edit.setPlaceholderText("errata feed file / URL")
         self.errata_feed_edit.setClearButtonEnabled(True)
         self.errata_feed_edit.setFixedWidth(180)
+        # M3: CPE dictionary (verify candidates -> official CPE) feeds RunSpec;
+        # the CVE feed is a report-time input to the Security panel.
+        self.cpe_dict_edit = QtWidgets.QLineEdit()
+        self.cpe_dict_edit.setPlaceholderText("CPE dict (verify)")
+        self.cpe_dict_edit.setClearButtonEnabled(True)
+        self.cpe_dict_edit.setFixedWidth(150)
+        self.cve_feed_edit = QtWidgets.QLineEdit()
+        self.cve_feed_edit.setPlaceholderText("CVE feed")
+        self.cve_feed_edit.setClearButtonEnabled(True)
+        self.cve_feed_edit.setFixedWidth(150)
         self.recipe_combo = QtWidgets.QComboBox()
         self.recipe_combo.addItem("Recipes")
         self.recipe_combo.setFixedWidth(RECIPE_COMBO_WIDTH)
@@ -755,6 +771,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         toolbar.addSeparator()
         toolbar.addWidget(self.errata_combo)
         toolbar.addWidget(self.errata_feed_edit)
+        toolbar.addWidget(self.cpe_dict_edit)
+        toolbar.addWidget(self.cve_feed_edit)
 
         left = QtWidgets.QWidget()
         left_layout = QtWidgets.QVBoxLayout(left)
@@ -927,6 +945,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.evidence_table.itemDoubleClicked.connect(self._evidence_activated)
         self.security_table.itemActivated.connect(self._security_activated)
         self.security_table.itemDoubleClicked.connect(self._security_activated)
+        self.cve_feed_edit.editingFinished.connect(self._refresh_security_table)
         self.dependency_table.itemActivated.connect(self._dependency_activated)
         self.dependency_table.itemDoubleClicked.connect(self._dependency_activated)
         self.dep_scope_combo.currentIndexChanged.connect(lambda _index: self._populate_dependency_table())
@@ -1247,7 +1266,28 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                     f"Build SBOM appears to be for build {sbom_build_id}, "
                     f"but the current source is build {expected_build_id}."
                 )
-        return RunSpec(build_sbom=build_sbom_path, **self._errata_run_kwargs())
+        return RunSpec(
+            build_sbom=build_sbom_path,
+            **self._errata_run_kwargs(),
+            **self._verify_cpe_run_kwargs(),
+        )
+
+    def _verify_cpe_run_kwargs(self) -> dict[str, object]:
+        """RunSpec CPE-verify kwargs from the toolbar field (D101/M3).
+
+        An NVD-style CPE dictionary resolves a candidate to an official CPE, so
+        the Security panel's CVE-feed matching has a real vendor/product to
+        match (a vendor-asserted SBOM CPE rarely lines up with NVD tokens). A
+        file wins; otherwise the value is treated as a live dictionary URL.
+        """
+
+        value = self.cpe_dict_edit.text().strip()
+        if not value:
+            return {}
+        candidate = Path(value).expanduser()
+        if candidate.exists():
+            return {"verify_cpe": candidate}
+        return {"verify_cpe_url": value}
 
     def _errata_run_kwargs(self) -> dict[str, object]:
         """RunSpec errata kwargs from the toolbar combo + feed field (D79/M3).
@@ -1428,9 +1468,44 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 self.evidence_table.setItem(row, column, item)
         self.evidence_table.resizeColumnsToContents()
 
+    def _ensure_cve_feed(self) -> CveFeed | None:
+        """Load (and cache) the report-time CVE feed from the toolbar field.
+
+        A path is read as a file; anything else is treated as a live feed URL
+        (cached on disk via HttpCache). Cached by source string so it loads once;
+        crash-safe -- a bad file/URL logs and degrades to no feed.
+        """
+
+        source = self.cve_feed_edit.text().strip()
+        if not source:
+            self.cve_feed = None
+            self._cve_feed_source = None
+            return None
+        if source == self._cve_feed_source:
+            return self.cve_feed
+        candidate = Path(source).expanduser()
+        try:
+            feed = fetch_cve_feed_or_none(
+                source_file=str(candidate) if candidate.exists() else None,
+                url=None if candidate.exists() else source,
+                on_progress=self._log,
+            )
+        except Exception as exc:  # noqa: BLE001 -- a bad feed must not crash the panel
+            self._log(f"CVE feed unavailable ({exc}); continuing without it")
+            feed = None
+        self.cve_feed = feed
+        self._cve_feed_source = source
+        return feed
+
+    def _refresh_security_table(self) -> None:
+        # The CVE feed is a report-time input, so editing it re-renders the
+        # Security panel without re-running the whole analysis.
+        if self.result is not None:
+            self._populate_security_table()
+
     def _populate_security_table(self) -> None:
         assert self.result is not None
-        rows = security_rows(self.result.graph)
+        rows = security_rows(self.result.graph, cve_feed=self._ensure_cve_feed())
         self.security_table.setRowCount(len(rows))
         for row, entry in enumerate(rows):
             values = [
@@ -2354,6 +2429,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.artifact_filter.setText(session.artifact_filter)
         self._set_errata_source(session.errata_source)
         self.errata_feed_edit.setText(session.errata_feed)
+        self.cpe_dict_edit.setText(session.verify_cpe)
+        self.cve_feed_edit.setText(session.cve_feed)
         self._set_dep_scope(session.dep_scope)
         self.dep_only_conflicts.setChecked(session.dep_only_conflicts)
         self.dep_only_unresolved.setChecked(session.dep_only_unresolved)
@@ -2387,6 +2464,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             artifact_filter=self.artifact_filter.text(),
             errata_source=str(self.errata_combo.currentData() or ""),
             errata_feed=self.errata_feed_edit.text(),
+            verify_cpe=self.cpe_dict_edit.text(),
+            cve_feed=self.cve_feed_edit.text(),
             dep_scope=str(self.dep_scope_combo.currentData() or ""),
             dep_only_conflicts=self.dep_only_conflicts.isChecked(),
             dep_only_unresolved=self.dep_only_unresolved.isChecked(),
@@ -2416,6 +2495,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.artifact_filter.setText(session.artifact_filter)
         self._set_errata_source(session.errata_source)
         self.errata_feed_edit.setText(session.errata_feed)
+        self.cpe_dict_edit.setText(session.verify_cpe)
+        self.cve_feed_edit.setText(session.cve_feed)
         if session.selected_artifact_id and self._select_artifact(session.selected_artifact_id):
             if session.selected_node_id:
                 self._navigate_to_node(session.selected_node_id, prefer_artifact=False)
