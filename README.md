@@ -20,11 +20,29 @@ live build id, runs the shared `AnalysisService`, lists RPM artifacts, renders
 focused graph slices, and lets you inspect node metadata, incoming/outgoing
 evidence and findings without leaving the graph.
 
+Install once (the `gui` extra pulls in PyQt5):
+
 ```bash
 pip install -e '.[dev,gui]'
+```
+
+Then just run it. The simplest start is to point at a build id -- the workbench
+fetches the ALBS metadata and **auto-discovers** the matching build SBOM
+(`examples/build-<id>.cyclonedx.json`), so per-RPM SBOM evidence is wired up with
+no extra flags:
+
+```bash
+# Fetch a live build and investigate it (auto-finds its SBOM):
+albs-graph-workbench --build-id 57810
+
+# No arguments: open the bundled synthetic fixture, fully offline:
 albs-graph-workbench
-# For full per-RPM SBOM evidence, use the same build SBOM input as the CLI:
-albs-graph-workbench --build-id 57810 --build-sbom examples/build-57810.cyclonedx.json
+
+# Re-open metadata you already downloaded (a cached build-<id>.albs.json), offline:
+albs-graph-workbench --source examples/live-build-57810/build-57810.albs.json
+
+# The build SBOM is found by convention; pass one explicitly only to override it:
+albs-graph-workbench --build-id 57810 --build-sbom path/to/build.cyclonedx.json
 ```
 
 ---

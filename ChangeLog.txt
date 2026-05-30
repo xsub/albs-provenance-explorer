@@ -19,7 +19,16 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   ci+docs(workbench): bring CI + badges to the workbench branch,
+- (this)   docs(readme): fix the workbench usage examples. The old block led
+           with a redundant explicit `--build-sbom` even though the workbench
+           already auto-discovers `examples/build-<id>.cyclonedx.json`
+           (_autofill_build_sbom). Now: install is its own step, then a few
+           described examples starting from the simplest -- `--build-id N`
+           (fetch live + auto-find SBOM), no-args (bundled fixture, offline),
+           `--source` (re-open already-downloaded metadata), and an explicit
+           `--build-sbom` only as a convention override. No code change.
+
+- 13c75a7  ci+docs(workbench): bring CI + badges to the workbench branch,
            PyQt5-aware. New python-app.yml installs `.[dev,gui]` + the Qt
            offscreen plugin's system libs + graphviz, runs ruff + mypy
            --strict + pytest (incl. the GUI tests, headless) + coverage +
