@@ -165,10 +165,19 @@ milestones:
   (the recursive-CTE queries), and saves favourite (store, search, focus,
   target) explorations to re-run. Backed by the read-only
   `services.universe.UniverseStore` facade so the CTEs stay in SQLite.
-- **M5 Session + report export** -- richer session save/load, Markdown/HTML
-  report export, slice export (SVG/PNG), a small reproducibility appendix.
+- **M5 Session + report export** -- **done** (D100): richer session save/load
+  (now persists the dependency filters + the universe store/favourites),
+  Markdown **and** HTML report export (`evidence_report_markdown`), slice export
+  as SVG **and** PNG (`QtSvg.QSvgRenderer`), and a reproducibility appendix
+  (inputs + graph size + tool/python/timestamp) carried in the JSON bundle and
+  both reports.
 
-Quality follow-ups (orthogonal to features): a headless smoke test now brings
-`gui/qt_app.py` to ~60% coverage; deeper interaction coverage, dropping the
-blanket `# mypy: ignore-errors` for targeted ignores, and splitting the
-single-class main window into panels/controllers remain.
+The PyQt workbench roadmap (M2-M5) is complete. Remaining genuinely open:
+
+- the **M3 CVE-feed toggle** -- wire a live CVE feed into the workbench (mirroring
+  the errata toggle) so the Security panel's *Potential CVEs* column populates
+  with version-range matches (today it reads `-` without a feed);
+- **quality follow-ups** (orthogonal to features): headless + interaction tests
+  now bring `gui/qt_app.py` well above its initial ~60%; deeper interaction
+  coverage, dropping the blanket `# mypy: ignore-errors` for targeted ignores,
+  and splitting the single-class main window into panels/controllers remain.

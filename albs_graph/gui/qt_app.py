@@ -24,6 +24,7 @@ from albs_graph.services import (
     AnalysisResult,
     AnalysisService,
     evidence_report_html,
+    evidence_report_markdown,
     GraphLoadSpec,
     GraphQueries,
     GraphSlice,
@@ -676,6 +677,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         export_bundle_action.triggered.connect(self.export_bundle)
         export_html_action = QtWidgets.QAction("Export HTML", self)
         export_html_action.triggered.connect(self.export_html_report)
+        export_markdown_action = QtWidgets.QAction("Export Markdown", self)
+        export_markdown_action.triggered.connect(self.export_markdown_report)
+        export_png_action = QtWidgets.QAction("Export PNG", self)
+        export_png_action.triggered.connect(self.export_png)
         compare_action = QtWidgets.QAction("Compare", self)
         compare_action.triggered.connect(self.compare_with_source)
         build_sbom_action = QtWidgets.QAction("SBOM", self)
@@ -717,6 +722,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             export_action=export_action,
             export_bundle_action=export_bundle_action,
             export_html_action=export_html_action,
+            export_markdown_action=export_markdown_action,
+            export_png_action=export_png_action,
             compare_action=compare_action,
             save_session_action=save_session_action,
             load_session_action=load_session_action,
@@ -848,6 +855,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         export_action: QtWidgets.QAction,
         export_bundle_action: QtWidgets.QAction,
         export_html_action: QtWidgets.QAction,
+        export_markdown_action: QtWidgets.QAction,
+        export_png_action: QtWidgets.QAction,
         compare_action: QtWidgets.QAction,
         save_session_action: QtWidgets.QAction,
         load_session_action: QtWidgets.QAction,
@@ -866,8 +875,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         file_menu.addAction(load_session_action)
         export_menu = file_menu.addMenu("Export")
         export_menu.addAction(export_action)
+        export_menu.addAction(export_png_action)
         export_menu.addAction(export_bundle_action)
         export_menu.addAction(export_html_action)
+        export_menu.addAction(export_markdown_action)
         file_menu.addSeparator()
         file_menu.addAction(reload_program_action)
         file_menu.addAction(exit_action)
@@ -2199,7 +2210,13 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         )
         if not path:
             return
-        data = evidence_bundle(
+        data = self._current_bundle()
+        Path(path).write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        self._log(f"Exported evidence bundle to {path}")
+
+    def _current_bundle(self) -> dict:
+        assert self.result is not None
+        return evidence_bundle(
             graph=self.result.graph,
             graph_slice=self.current_slice,
             coverage=self.result.coverage,
@@ -2215,8 +2232,6 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             session=self._current_session(),
             build_analysis=self.result.build_analysis,
         )
-        Path(path).write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        self._log(f"Exported evidence bundle to {path}")
 
     def export_html_report(self) -> None:
         if self.result is None:
@@ -2230,24 +2245,51 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         )
         if not path:
             return
-        bundle = evidence_bundle(
-            graph=self.result.graph,
-            graph_slice=self.current_slice,
-            coverage=self.result.coverage,
-            findings=self.findings,
-            selected_node_id=self.selected_node_id,
-            selected_edge_index=self.selected_edge_index,
-            selected_edge_graph=(
-                self.current_slice.graph
-                if self.selected_edge_index is not None and self.current_slice is not None
-                else None
-            ),
-            svg=self.current_svg,
-            session=self._current_session(),
-            build_analysis=self.result.build_analysis,
-        )
-        Path(path).write_text(evidence_report_html(bundle), encoding="utf-8")
+        Path(path).write_text(evidence_report_html(self._current_bundle()), encoding="utf-8")
         self._log(f"Exported HTML report to {path}")
+
+    def export_markdown_report(self) -> None:
+        if self.result is None:
+            self._show_error("No analysis result to export.")
+            return
+        path, _filter = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "Export investigation Markdown report",
+            "investigation-report.md",
+            "Markdown files (*.md);;All files (*)",
+        )
+        if not path:
+            return
+        Path(path).write_text(evidence_report_markdown(self._current_bundle()), encoding="utf-8")
+        self._log(f"Exported Markdown report to {path}")
+
+    def export_png(self) -> None:
+        if not self.current_svg:
+            self._show_error("No rendered graph slice to export.")
+            return
+        path, _filter = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "Export current graph slice as PNG",
+            "trust-slice.png",
+            "PNG files (*.png);;All files (*)",
+        )
+        if not path:
+            return
+        renderer = QtSvg.QSvgRenderer(QtCore.QByteArray(self.current_svg.encode("utf-8")))
+        size = renderer.defaultSize()
+        if not size.isValid() or size.isEmpty():
+            size = self.svg_default_size
+        image = QtGui.QImage(size, QtGui.QImage.Format_ARGB32)
+        image.fill(QtCore.Qt.white)
+        painter = QtGui.QPainter(image)
+        try:
+            renderer.render(painter)
+        finally:
+            painter.end()
+        if image.save(path, "PNG"):
+            self._log(f"Exported PNG to {path}")
+        else:
+            self._show_error(f"Could not write PNG to {path}")
 
     def compare_with_source(self) -> None:
         if self.result is None:
@@ -2312,7 +2354,27 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.artifact_filter.setText(session.artifact_filter)
         self._set_errata_source(session.errata_source)
         self.errata_feed_edit.setText(session.errata_feed)
+        self._set_dep_scope(session.dep_scope)
+        self.dep_only_conflicts.setChecked(session.dep_only_conflicts)
+        self.dep_only_unresolved.setChecked(session.dep_only_unresolved)
+        self._restore_universe_session(session)
         self.run_analysis()
+
+    def _set_dep_scope(self, value: str) -> None:
+        index = self.dep_scope_combo.findData(value or "")
+        self.dep_scope_combo.setCurrentIndex(max(index, 0))
+
+    def _restore_universe_session(self, session: WorkbenchSession) -> None:
+        self.universe_favourites = [dict(fav) for fav in session.universe_favourites]
+        self.universe_fav_combo.clear()
+        self.universe_fav_combo.addItem("Favourites", "")
+        for index, fav in enumerate(self.universe_favourites):
+            label = fav.get("focus") or fav.get("search") or fav.get("store") or "favourite"
+            if fav.get("target"):
+                label = f"{label} -> {fav['target']}"
+            self.universe_fav_combo.addItem(label, str(index))
+        if session.universe_store and Path(session.universe_store).exists():
+            self.open_universe(session.universe_store)
 
     def _current_session(self) -> WorkbenchSession:
         current = self.artifact_list.currentItem()
@@ -2325,6 +2387,13 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             artifact_filter=self.artifact_filter.text(),
             errata_source=str(self.errata_combo.currentData() or ""),
             errata_feed=self.errata_feed_edit.text(),
+            dep_scope=str(self.dep_scope_combo.currentData() or ""),
+            dep_only_conflicts=self.dep_only_conflicts.isChecked(),
+            dep_only_unresolved=self.dep_only_unresolved.isChecked(),
+            universe_store=(
+                str(self.universe_store.db_path) if self.universe_store is not None else ""
+            ),
+            universe_favourites=tuple(self.universe_favourites),
             selected_artifact_id=(
                 str(current.data(QtCore.Qt.UserRole)) if current is not None else None
             ),

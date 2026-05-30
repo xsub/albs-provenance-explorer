@@ -313,23 +313,29 @@ stated "thousands of applications":
 The PyQt5 investigation workbench is a read-only frontend over the same
 `services` facade; its current limits:
 
-- **`gui/qt_app.py` is the untyped, lightly-tested file.** The main window
-  (~2k lines, a single class) carries `# mypy: ignore-errors` (PyQt5 stubs are
-  imperfect and signal/slot typing is painful). A headless smoke test now drives
-  construction + result-handling + slice rendering + the inspector (~60%
-  covered); deeper interaction coverage and dropping the blanket mypy ignore in
-  favour of targeted ignores remain open. The rest of `gui/` (rendering,
-  image-map hit-testing, inspector) is typed and tested, and the analysable
-  logic lives in the well-covered, typed `services/` layer (80-97%).
+- **`gui/qt_app.py` is the untyped, single-class file.** The main window
+  (a single class) carries `# mypy: ignore-errors` (PyQt5 stubs are imperfect
+  and signal/slot typing is painful). Headless + interaction tests now drive
+  construction, result-handling, slice rendering, the inspector, the M3 Security
+  panel, the M2 dependency filters, the M4 universe panel (open/search/walk/
+  paths/favourites), and the M5 Markdown/PNG export + session capture/restore --
+  well above the initial ~60%. Dropping the blanket mypy ignore for targeted
+  ignores and splitting the god-object into panels/controllers remain open. The
+  rest of `gui/` is typed/tested and the analysable logic lives in the
+  well-covered, typed `services/` layer (80-97%).
 - **Needs a Qt platform.** Tests run headless via `QT_QPA_PLATFORM=offscreen`;
   a real run needs a display. Graphviz (`dot`) renders the graph and degrades
   to a built-in fallback SVG when absent.
 - **Rendering is stretch-to-fill SVG** in a scroll area (zoom / fit / reset),
   not an interactive graphics scene; a whole large build is best read as
-  focused slices rather than the full graph.
-- **Single-window, single-build.** No multi-build tabs; session save/load is
-  lightweight. The `--build-id` path fetches live (no metadata-cache reuse) --
-  re-open a cached `--source` JSON to work offline.
+  focused slices rather than the full graph. Slice export is SVG or PNG.
+- **The Security panel's *Potential CVEs* column needs a live CVE feed**, which
+  the workbench does not yet wire (the errata toggle wires errata, not the CVE
+  feed), so it reads `-`; addressed CVEs (via errata) always populate.
+- **Single-window, single-build.** No multi-build tabs. Session save/load now
+  persists the dependency filters + the universe store/favourites alongside the
+  inputs and selection. The `--build-id` path fetches live (no metadata-cache
+  reuse) -- re-open a cached `--source` JSON to work offline.
 
 ---
 

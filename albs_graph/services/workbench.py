@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import sys
 from html import escape
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
+from importlib import metadata
 from pathlib import Path
 from typing import Any, Callable
 
@@ -348,6 +350,13 @@ class WorkbenchSession:
     # ``errata_feed`` is an offline feed file or a live feed URL.
     errata_source: str = ""
     errata_feed: str = ""
+    # M2 Dependency panel filters.
+    dep_scope: str = ""
+    dep_only_conflicts: bool = False
+    dep_only_unresolved: bool = False
+    # M4 Universe panel state (independent of the loaded build).
+    universe_store: str = ""
+    universe_favourites: tuple[dict[str, str], ...] = ()
     selected_artifact_id: str | None = None
     selected_node_id: str | None = None
     selected_edge_index: int | None = None
@@ -362,6 +371,11 @@ class WorkbenchSession:
             "artifact_filter": self.artifact_filter,
             "errata_source": self.errata_source,
             "errata_feed": self.errata_feed,
+            "dep_scope": self.dep_scope,
+            "dep_only_conflicts": self.dep_only_conflicts,
+            "dep_only_unresolved": self.dep_only_unresolved,
+            "universe_store": self.universe_store,
+            "universe_favourites": [dict(fav) for fav in self.universe_favourites],
             "selected_artifact_id": self.selected_artifact_id,
             "selected_node_id": self.selected_node_id,
             "selected_edge_index": self.selected_edge_index,
@@ -378,6 +392,11 @@ class WorkbenchSession:
             artifact_filter=str(data.get("artifact_filter") or ""),
             errata_source=str(data.get("errata_source") or ""),
             errata_feed=str(data.get("errata_feed") or ""),
+            dep_scope=str(data.get("dep_scope") or ""),
+            dep_only_conflicts=bool(data.get("dep_only_conflicts")),
+            dep_only_unresolved=bool(data.get("dep_only_unresolved")),
+            universe_store=str(data.get("universe_store") or ""),
+            universe_favourites=_favourites_from(data.get("universe_favourites")),
             selected_artifact_id=_optional_text(data.get("selected_artifact_id")),
             selected_node_id=_optional_text(data.get("selected_node_id")),
             selected_edge_index=_optional_int(data.get("selected_edge_index")),
@@ -1665,6 +1684,38 @@ def evidence_bundle(
         "slice": graph_slice.to_dict() if graph_slice is not None else None,
         "slice_graph": graph_slice.graph.to_dict() if graph_slice is not None else None,
         "svg": svg,
+        "reproducibility": _reproducibility(graph, session),
+    }
+
+
+def _reproducibility(
+    graph: ProvenanceGraph, session: WorkbenchSession, *, generated_at: str | None = None
+) -> dict[str, Any]:
+    """A small reproducibility appendix for the report / JSON bundle.
+
+    Records *what was investigated and with what* -- the inputs (source /
+    build id / build SBOM / errata source / mode), the graph size, and the
+    runtime (tool version + Python) -- so a report stands on its own. The
+    timestamp is injectable so tests stay deterministic.
+    """
+
+    try:
+        version = metadata.version("albs-provenance-explorer")
+    except Exception:  # noqa: BLE001 -- version lookup must never break a report
+        version = "unknown"
+    return {
+        "schema": "albs-provenance-workbench/reproducibility/v1",
+        "generated_at": generated_at or datetime.now(timezone.utc).isoformat(),
+        "tool": "albs-provenance-explorer",
+        "tool_version": version,
+        "python": sys.version.split()[0],
+        "node_count": len(graph.nodes),
+        "edge_count": len(graph.edges),
+        "source": session.source or None,
+        "build_id": session.build_id or None,
+        "build_sbom": session.build_sbom or None,
+        "errata_source": session.errata_source or None,
+        "mode": session.mode,
     }
 
 
@@ -1752,12 +1803,100 @@ def evidence_report_html(bundle: dict[str, Any]) -> str:
             _section("Selected Node", _raw_block(selected_node)),
             _section("Selected Edge", _raw_block(selected_edge)),
             _section("Graph", f'<div class="graph">{svg}</div>'),
+            _section("Reproducibility", _dict_table(bundle.get("reproducibility") or {})),
             "</main>",
             "</body>",
             "</html>",
             "",
         ]
     )
+
+
+def evidence_report_markdown(bundle: dict[str, Any]) -> str:
+    """Render the evidence bundle as a Markdown report (mirrors the HTML one).
+
+    Same sections as ``evidence_report_html`` minus the inline SVG (a Markdown
+    report is meant to be read/diffed as text), plus the reproducibility
+    appendix so the report stands on its own.
+    """
+
+    session = bundle.get("session") or {}
+    parts: list[str] = [
+        "# ALBS Provenance Investigation Report",
+        "",
+        f"_{session.get('source') or session.get('build_id') or 'current investigation'}_",
+        "",
+        _md_section("Current Slice", _md_kv(bundle.get("slice") or {})),
+        _md_section(
+            "Coverage",
+            _md_table(bundle.get("coverage") or [], ["axis", "covered", "total", "ratio", "status"]),
+        ),
+        _md_section(
+            "Evidence Matrix",
+            _md_table(
+                bundle.get("evidence_matrix") or [],
+                ["package", "arch", "provenance", "security_context", "sbom", "errata",
+                 "tests", "completeness", "missing"],
+            ),
+        ),
+        _md_section(
+            "Source Evidence",
+            _md_table(bundle.get("source_evidence") or [], ["category", "label", "node_id", "detail"]),
+        ),
+        _md_section(
+            "Findings",
+            _md_table(bundle.get("findings") or [], ["severity", "code", "subject", "detail"]),
+        ),
+        _md_section(
+            "Timeline",
+            _md_table(
+                bundle.get("timeline") or [],
+                ["kind", "label", "status", "duration_seconds", "node_id", "detail"],
+            ),
+        ),
+        _md_section("Selected Node", _md_code(bundle.get("selected_node"))),
+        _md_section("Selected Edge", _md_code(bundle.get("selected_edge"))),
+        _md_section("Reproducibility", _md_kv(bundle.get("reproducibility") or {})),
+        "",
+    ]
+    return "\n".join(parts)
+
+
+def _md_section(title: str, body: str) -> str:
+    return f"## {title}\n\n{body}\n"
+
+
+def _md_kv(data: dict[str, Any]) -> str:
+    if not data:
+        return "_No data._"
+    lines = ["| Key | Value |", "| --- | --- |"]
+    for key, value in data.items():
+        rendered = json.dumps(value, sort_keys=True) if isinstance(value, (dict, list)) else str(value)
+        lines.append(f"| {_md_cell(str(key))} | {_md_cell(rendered)} |")
+    return "\n".join(lines)
+
+
+def _md_table(rows: list[dict[str, Any]], columns: list[str]) -> str:
+    if not rows:
+        return "_No rows._"
+    header = "| " + " | ".join(columns) + " |"
+    divider = "| " + " | ".join("---" for _ in columns) + " |"
+    body = [
+        "| " + " | ".join(_md_cell(str(row.get(column) or "")) for column in columns) + " |"
+        for row in rows
+    ]
+    return "\n".join([header, divider, *body])
+
+
+def _md_code(data: Any) -> str:
+    if not data:
+        return "_No selection._"
+    return "```json\n" + json.dumps(data, indent=2, sort_keys=True) + "\n```"
+
+
+def _md_cell(value: str) -> str:
+    # Keep table cells single-line and pipe-safe.
+    return value.replace("|", "\\|").replace("\n", " ").strip()
 
 
 def _optional_text(value: Any) -> str | None:
@@ -1773,6 +1912,16 @@ def _optional_int(value: Any) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _favourites_from(value: Any) -> tuple[dict[str, str], ...]:
+    if not isinstance(value, list):
+        return ()
+    favourites: list[dict[str, str]] = []
+    for item in value:
+        if isinstance(item, dict):
+            favourites.append({str(key): str(val) for key, val in item.items()})
+    return tuple(favourites)
 
 
 def _selected_node_raw(graph: ProvenanceGraph, node_id: str | None) -> dict[str, Any] | None:

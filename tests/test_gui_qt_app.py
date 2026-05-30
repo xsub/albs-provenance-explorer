@@ -137,6 +137,68 @@ def test_workbench_errata_toggle_feeds_run_spec(
         window.close()
 
 
+def test_workbench_exports_markdown_and_png(
+    qapp: QtWidgets.QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    window = WorkbenchWindow()
+    try:
+        window._analysis_finished(_fixture_result())
+        qapp.processEvents()
+
+        md_path = tmp_path / "report.md"
+        monkeypatch.setattr(
+            QtWidgets.QFileDialog,
+            "getSaveFileName",
+            lambda *args, **kwargs: (str(md_path), ""),
+        )
+        window.export_markdown_report()
+        assert md_path.exists()
+        assert "ALBS Provenance Investigation Report" in md_path.read_text(encoding="utf-8")
+
+        png_path = tmp_path / "slice.png"
+        monkeypatch.setattr(
+            QtWidgets.QFileDialog,
+            "getSaveFileName",
+            lambda *args, **kwargs: (str(png_path), ""),
+        )
+        window.export_png()
+        assert png_path.exists() and png_path.stat().st_size > 0
+    finally:
+        window.close()
+
+
+def test_workbench_session_captures_dependency_and_universe_state(
+    qapp: QtWidgets.QApplication, tmp_path: Path
+) -> None:
+    dot = 'digraph g { "nginx-core" -> "glibc"; }'
+    db = tmp_path / "universe.db"
+    save_graph(universe_from_dot(dot), db)
+
+    window = WorkbenchWindow()
+    try:
+        window.dep_scope_combo.setCurrentIndex(window.dep_scope_combo.findData("build"))
+        window.dep_only_conflicts.setChecked(True)
+        window.open_universe(str(db))
+        window.universe_focus = "nginx-core"
+        window._universe_save_favourite()
+
+        session = window._current_session()
+        assert session.dep_scope == "build"
+        assert session.dep_only_conflicts is True
+        assert session.universe_store == str(db)
+        assert session.universe_favourites  # the saved favourite round-trips
+
+        # Restoring a session rebuilds the favourites combo + dependency filters.
+        window.dep_only_conflicts.setChecked(False)
+        window.universe_favourites = []
+        window._set_dep_scope(session.dep_scope)
+        window._restore_universe_session(session)
+        assert str(window.dep_scope_combo.currentData() or "") == "build"
+        assert window.universe_fav_combo.count() >= 2
+    finally:
+        window.close()
+
+
 def test_workbench_universe_panel_open_search_traverse_paths(
     qapp: QtWidgets.QApplication, tmp_path: Path
 ) -> None:

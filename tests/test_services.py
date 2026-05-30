@@ -29,6 +29,7 @@ from albs_graph.services import (
     evidence_matrix_rows,
     evidence_bundle,
     evidence_report_html,
+    evidence_report_markdown,
     filter_graph_layers,
     finding_drilldown_rows,
     GraphQueries,
@@ -516,6 +517,76 @@ def test_evidence_report_html_renders_bundle_sections() -> None:
     assert "ALBS Provenance Investigation Report" in html
     assert "trust.has_sbom" in html
     assert "<svg></svg>" in html
+
+
+def test_evidence_bundle_includes_reproducibility_appendix() -> None:
+    # M5: the bundle carries a reproducibility appendix (inputs + graph size +
+    # tool/runtime) so a report stands on its own.
+    result = AnalysisService(pipeline=AnalysisPipeline(steps=())).analyze_graph(
+        build_synthetic_fixture_graph(), RunSpec()
+    )
+    findings = findings_for_analysis(result.graph, result.coverage, result.reconciliation)
+    bundle = evidence_bundle(
+        graph=result.graph,
+        graph_slice=None,
+        coverage=result.coverage,
+        findings=findings,
+        selected_node_id=None,
+        svg="",
+        session=WorkbenchSession(build_id="57810", errata_source="http"),
+    )
+
+    repro = bundle["reproducibility"]
+    assert repro["tool"] == "albs-provenance-explorer"
+    assert repro["build_id"] == "57810"
+    assert repro["errata_source"] == "http"
+    assert repro["node_count"] == len(result.graph.nodes)
+    assert repro["python"] and repro["generated_at"]
+
+
+def test_evidence_report_markdown_renders_sections_and_reproducibility() -> None:
+    bundle = {
+        "session": {"source": "build.json"},
+        "slice": {"name": "trust_path"},
+        "coverage": [
+            {"axis": "provenance", "covered": 1, "total": 1, "ratio": 1, "status": "complete"}
+        ],
+        "evidence_matrix": [],
+        "source_evidence": [],
+        "findings": [{"severity": "info", "code": "trust.has_sbom", "subject": "rpm:1", "detail": ""}],
+        "timeline": [],
+        "selected_node": {"node": {"id": "rpm:1"}},
+        "selected_edge": None,
+        "reproducibility": {"tool": "albs-provenance-explorer", "node_count": 3, "build_id": "57810"},
+    }
+
+    md = evidence_report_markdown(bundle)
+
+    assert md.startswith("# ALBS Provenance Investigation Report")
+    assert "## Coverage" in md and "| axis | covered |" in md
+    assert "trust.has_sbom" in md
+    assert "## Reproducibility" in md and "57810" in md
+    assert "```json" in md  # the selected node is rendered as a fenced code block
+
+
+def test_workbench_session_round_trips_dependency_and_universe_state() -> None:
+    session = WorkbenchSession(
+        build_id="57810",
+        dep_scope="build",
+        dep_only_conflicts=True,
+        dep_only_unresolved=True,
+        universe_store="/tmp/u.db",
+        universe_favourites=(
+            {"store": "/tmp/u.db", "search": "nginx", "focus": "nginx-core", "target": "glibc"},
+        ),
+    )
+
+    restored = WorkbenchSession.from_dict(session.to_dict())
+
+    assert restored.dep_scope == "build"
+    assert restored.dep_only_conflicts and restored.dep_only_unresolved
+    assert restored.universe_store == "/tmp/u.db"
+    assert restored.universe_favourites == session.universe_favourites
 
 
 def test_compare_artifacts_reports_added_removed_and_changed_artifacts() -> None:

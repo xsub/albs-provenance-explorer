@@ -2681,6 +2681,41 @@ open/search/traverse/paths/favourite test. Suite 373 -> 376.
 
 ---
 
+## D100 - Workbench session + report export (Markdown, PNG, reproducibility)
+
+Plan milestone M5, the last of the workbench roadmap. The workbench could export
+SVG / a JSON evidence bundle / an HTML report and save a (thin) session; M5
+rounds that out.
+
+- **Reproducibility appendix.** `evidence_bundle` now carries a
+  `reproducibility` block -- the inputs (source / build id / build SBOM / errata
+  source / mode), the graph size, and the runtime (tool version via
+  `importlib.metadata`, Python version, an injectable timestamp so tests stay
+  deterministic). It rides in the JSON bundle and renders as a section in both
+  the HTML and the new Markdown report, so a report stands on its own.
+- **Markdown report.** `evidence_report_markdown(bundle)` mirrors the HTML
+  renderer's sections (slice / coverage / evidence matrix / source / findings /
+  timeline / selected node + edge) as GitHub-flavoured Markdown tables + fenced
+  JSON, minus the inline SVG (a Markdown report is meant to be read/diffed as
+  text), plus the reproducibility appendix. New File -> Export -> Markdown.
+- **PNG slice export.** `export_png` rasterises the current slice SVG through
+  `QtSvg.QSvgRenderer` -> `QImage` (white background, falling back to the
+  default size when the SVG declares none). New File -> Export -> PNG.
+- **Richer session.** `WorkbenchSession` gained the M2 dependency filters
+  (`dep_scope` / `dep_only_conflicts` / `dep_only_unresolved`) and the M4
+  universe state (`universe_store` + `universe_favourites`), so a saved
+  investigation restores the dependency view and re-opens the universe with its
+  favourites. `_current_bundle` was extracted to stop the three exporters
+  duplicating the bundle build.
+
++5 test cases (reproducibility appendix; Markdown render; session round-trip;
+GUI markdown+png export via a monkeypatched save dialog; GUI session capture +
+restore). Suite 376 -> 381. This completes M2-M5; the workbench roadmap's
+remaining items are the orthogonal quality follow-ups (deeper qt_app coverage,
+targeted mypy, splitting the god-object) and the M3 CVE-feed toggle.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

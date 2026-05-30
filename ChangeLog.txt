@@ -19,7 +19,20 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   feat(workbench): Universe panel -- open a SQLite store, search, walk,
+- (this)   feat(workbench): session + report export -- Markdown, PNG,
+           reproducibility (plan milestone M5, completes M2-M5). evidence_bundle
+           gains a reproducibility appendix (inputs + graph size + tool/python/
+           timestamp, injectable for tests) that rides the JSON bundle and
+           renders in both the HTML and a new evidence_report_markdown (GFM
+           tables + fenced JSON, no inline SVG). New File>Export>Markdown and
+           File>Export>PNG (QtSvg.QSvgRenderer -> QImage). WorkbenchSession now
+           persists the M2 dependency filters + M4 universe store/favourites, so
+           a saved investigation restores the dependency view and re-opens the
+           universe; _current_bundle extracted to de-duplicate the exporters.
+           +5 test cases. Suite 376 -> 381. decisions.md D100. Workbench done;
+           remaining are quality follow-ups + the M3 CVE-feed toggle.
+
+- 01e7dc9  feat(workbench): Universe panel -- open a SQLite store, search, walk,
            render paths (plan milestone M4). Two new store helpers (sql_search
            label/id substring -> (id,type,label); sql_node_labels resolve a
            path's ids -> labels) feed a read-only services.universe.UniverseStore
