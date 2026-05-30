@@ -1,6 +1,14 @@
 # albs-provenance-explorer
 
 [![CI](https://github.com/xsub/albs-provenance-explorer/actions/workflows/python-app.yml/badge.svg)](https://github.com/xsub/albs-provenance-explorer/actions/workflows/python-app.yml)
+[![CodeQL](https://github.com/xsub/albs-provenance-explorer/actions/workflows/codeql.yml/badge.svg)](https://github.com/xsub/albs-provenance-explorer/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/xsub/albs-provenance-explorer/badge)](https://scorecard.dev/viewer/?uri=github.com/xsub/albs-provenance-explorer)
+[![codecov](https://codecov.io/gh/xsub/albs-provenance-explorer/branch/main/graph/badge.svg)](https://codecov.io/gh/xsub/albs-provenance-explorer)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Typed: mypy strict](https://img.shields.io/badge/mypy-strict-blue)](https://mypy-lang.org/)
 
 `albs-provenance-explorer` is a read-only Python PoC that builds a provenance-aware graph over AlmaLinux Build System (ALBS), RPM, SBOM, CAS and errata data.
 
