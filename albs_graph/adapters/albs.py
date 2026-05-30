@@ -177,11 +177,21 @@ def fetch_build_metadata(
             if cached_id is None:
                 cached_id = cached.get("build_id")
             if cached_id is None or str(cached_id) == str(build_id):
-                if progress:
-                    progress(f"Loading ALBS build metadata from fresh cache {cache}")
-                return parse_build_metadata(cached)
-            if progress:
+                if _is_unusable_html_fallback_cache(cached):
+                    if progress:
+                        progress(f"Ignoring unusable ALBS metadata cache {cache}; refetching")
+                    try:
+                        cache.unlink()
+                    except FileNotFoundError:
+                        pass
+                else:
+                    if progress:
+                        progress(f"Loading ALBS build metadata from fresh cache {cache}")
+                    return parse_build_metadata(cached)
+            if cached_id is not None and str(cached_id) != str(build_id) and progress:
                 progress(f"Cache {cache} holds build {cached_id}, not {build_id}; refetching")
+            elif cached_id is None and progress:
+                progress(f"Cache {cache} is not usable for build {build_id}; refetching")
 
     root = base_url.rstrip("/")
     api_url = f"{root}/api/v1/builds/{build_id}/"
@@ -206,7 +216,16 @@ def fetch_build_metadata(
     response.raise_for_status()
     if progress:
         progress("Parsing ALBS build HTML fallback")
-    return parse_build_page(build_id=str(build_id), html=response.text, url=url)
+    metadata = parse_build_page(build_id=str(build_id), html=response.text, url=url)
+    if cache:
+        if progress:
+            progress(f"Writing ALBS build metadata cache to {cache}")
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(
+            json.dumps(metadata.raw, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    return metadata
 
 
 def parse_build_metadata(data: dict[str, Any]) -> AlbsBuildMetadata:
@@ -254,7 +273,6 @@ def parse_build_page(build_id: str, html: str, url: str) -> AlbsBuildMetadata:
     soup = BeautifulSoup(html, "lxml")
     text = soup.get_text("\n", strip=True)
     title = soup.title.get_text(" ", strip=True) if soup.title else f"ALBS build {build_id}"
-    package = _extract_after(text, ("Package", "Source package", "Name")) or title.split()[0]
     commit = _extract_after(text, ("Commit", "Git commit", "Ref")) or "unknown"
     repository = _extract_after(text, ("Repository", "Git repository", "Source repository"))
     binary_rpms = [
@@ -264,6 +282,15 @@ def parse_build_page(build_id: str, html: str, url: str) -> AlbsBuildMetadata:
     ]
     source_rpm = next((rpm for rpm in binary_rpms if rpm.endswith(".src.rpm")), None)
     binaries = [rpm for rpm in binary_rpms if not rpm.endswith(".src.rpm")]
+    package = (
+        _extract_after(text, ("Package", "Source package", "Name"))
+        or _package_from_rpm_name(source_rpm)
+        or _package_from_rpm_name(binaries[0] if binaries else None)
+    )
+    if not package:
+        raise ValueError(
+            f"ALBS HTML fallback for build {build_id} did not contain build metadata"
+        )
     return AlbsBuildMetadata(
         build_id=build_id,
         package=package,
@@ -275,8 +302,50 @@ def parse_build_page(build_id: str, html: str, url: str) -> AlbsBuildMetadata:
         binary_rpms=binaries,
         release_repository=_extract_after(text, ("Release repository", "Repository release")),
         arch=_extract_after(text, ("Architecture", "Arch")),
-        raw={"source_url": url, "title": title},
+        raw={
+            "build_id": build_id,
+            "package": package,
+            "source_repository": repository or f"unknown-albs-source:{package}",
+            "commit": commit,
+            "source_cas_hash": _extract_after(
+                text, ("Codenotary CAS", "CAS hash", "Source CAS hash")
+            ),
+            "source_rpm": source_rpm,
+            "binary_rpms": binaries,
+            "release_repository": _extract_after(
+                text, ("Release repository", "Repository release")
+            ),
+            "arch": _extract_after(text, ("Architecture", "Arch")),
+            "source_url": url,
+            "title": title,
+        },
     )
+
+
+def _is_unusable_html_fallback_cache(data: dict[str, Any]) -> bool:
+    """Reject older cached SPA shells that masquerade as parsed build metadata."""
+
+    if "tasks" in data:
+        return False
+    if not data.get("source_url"):
+        return False
+    title = _metadata_text(data.get("title"))
+    if title != "AlmaLinux Build System":
+        return False
+    if data.get("binary_rpms") or data.get("source_rpm"):
+        return False
+    commit = _metadata_text(data.get("commit"))
+    repository = _metadata_text(data.get("source_repository"))
+    return (commit is None or commit == "unknown") and (
+        repository is None or repository.startswith("unknown-albs-source:")
+    )
+
+
+def _package_from_rpm_name(filename: str | None) -> str | None:
+    if not filename:
+        return None
+    name = _rpm_metadata_from_filename(filename).get("name")
+    return str(name) if name else None
 
 
 def source_ref_for_package(build: AlbsBuildMetadata, package: str) -> tuple[str, str] | None:

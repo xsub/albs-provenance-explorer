@@ -1961,6 +1961,415 @@ Coverage golden byte-identical. Suite stays 263.
 
 ---
 
+## D80 - Reject empty SPA-shell HTML fallback caches (absorbed from the workbench branch)
+
+Follow-up to the HTML-fallback caching work (fd579de). Build 57811 returns an
+API 404 plus AlmaLinux's generic frontend SPA shell at ``/build/57811``; the
+fallback parser cached *that* as package ``AlmaLinux`` with zero RPMs, so any
+consumer (the PyQt workbench especially) opened a useless 5-node graph from a
+poisoned cache. The fix originated on the ``InvestigationWorkbenchApp`` branch
+(commit ``15196c1``) where it was first felt; max absorbs the backend half here
+so both branches share the hardening (per the cross-branch sync -- GUI stays on
+the workbench branch, backend flows both ways).
+
+Three changes in ``adapters/albs.py``:
+
+- ``parse_build_page`` now derives ``package`` from the source/binary RPM name
+  when the HTML carries no explicit package field, and **raises** when even that
+  yields nothing -- an empty SPA shell no longer fabricates metadata.
+- ``fetch_build_metadata`` does not cache an unusable fallback (the raise
+  happens before the write), so a poisoned cache is never created.
+- A new ``_is_unusable_html_fallback_cache`` guard detects an older poisoned
+  cache (the SPA-shell signature: ``title == "AlmaLinux Build System"``, no
+  ``tasks``, no RPMs, ``unknown`` commit / ``unknown-albs-source:`` repo) and
+  discards + refetches it instead of reusing it.
+
+Brought to max surgically (only ``adapters/albs.py`` + the two regression tests
++ a one-line ``example--full.sh`` error-message tweak), explicitly *not* the
+commit's GUI (``gui/qt_app.py``) or branch-numbered doc churn -- those belong to
+the workbench branch. +2 test cases (reject-empty-fallback raises and does not
+cache; discard-and-refetch a poisoned cache). Suite 332 -> 334. ruff + mypy
+--strict clean.
+
+---
+
+## D79 - Live errata source + three-state errata status (no advisory != missing)
+
+User-spotted, and correct: the trust path's ``has_errata_link`` showing
+"missing" is misleading. Errata is a *queryable* fact (dnf updateinfo / the
+AlmaLinux errata feed), and for the vast majority of packages **having no
+advisory is the normal, complete state** -- a clean package was being
+penalised for not being vulnerable, which is backwards. The root cause: the
+graph conflated two states into one boolean. ``has_errata_link`` was true only
+when an advisory edge existed, and an advisory edge existed only when a hand-
+supplied ``--errata FILE`` (or the fixture) created one. So absent that file
+the check was *always* "missing" -- and "missing" meant **"we never looked"**,
+not "this package has no advisory".
+
+Two-part fix.
+
+**Part 1 -- query (new ``albs_graph/adapters/errata_source.py``).** An
+``ErrataSource`` Protocol with two implementations behind an
+``errata_source_for`` factory (the ``resolver_for`` pattern, the user's
+choice of "both behind one contract"):
+
+- ``HttpErrataSource`` -- the AlmaLinux errata feed JSON (file or URL),
+  fetched through ``HttpCache`` + TTL by reusing ``live_feeds._cached_get``
+  (D76). Indexes ``package name -> [(NEVRA, advisory)]``; matches a build by
+  exact name+version+release(+arch). Tolerant of feed shape (bare list /
+  ``{"data": ...}`` / ``{"errata": ...}``) and CVE encoding (``references``
+  with ``type=cve`` or a flat ``cves`` list).
+- ``DnfErrataSource`` -- ``dnf -q updateinfo list --all`` on an AlmaLinux
+  host, parsing the ``ADVISORY  SEV/TYPE  NEVRA`` columns. Degrades to "not
+  consulted" when ``dnf`` is absent (e.g. on a Mac), like the other dnf
+  adapters.
+
+Both expose ``consulted: bool`` -- the load-bearing distinction between
+"checked, none found" and "never checked".
+
+**Part 2 -- three-state status (the user's choice of explicit ok/none/unknown,
+like D71 split identity).** ``TrustPathReport`` gains ``errata_status``:
+
+- ``advisory_present`` -- an advisory edge ships this exact NEVRA.
+- ``confirmed_clean`` -- a source was consulted and found none (node carries
+  ``errata_status="confirmed_clean"`` metadata, written by
+  ``attach_errata_from_source``).
+- ``not_checked`` -- neither; no source was consulted (the historical default).
+
+``has_errata_link`` is now satisfied by the first **two** states -- a
+confirmed-clean package with an SBOM is ``security_context_complete``. Only
+``not_checked`` leaves it genuinely open. ``attach_errata_from_source`` records
+the outcome per RPM (advisory -> ERRATA node + ``FIXES`` edge + CVE nodes, like
+``attach_errata_file``; consulted-but-none -> the clean marker; not consulted
+-> nothing, so it never lies).
+
+Wiring: a pipeline ``ErrataSourceStep`` (applies on ``errata_source`` or
+``errata_feed``; uses the binary-RPM selector, not a single subject, because a
+build's errata coverage spans all its artifacts), plus ``RunSpec`` fields and
+``--errata-source {http,dnf}`` / ``--errata-feed PATH`` / ``--errata-url URL``
+on ``coverage`` / ``vuln`` / ``trust-path``. The trust-path summary renders the
+nuance: ``ok (advisory)`` / ``ok (no advisory)`` / ``missing (not checked)``.
+
+Deliberately **no cas path** (the user's "ok ale bez casa"):
+``alma_commit_sbom_hash`` exists in build.json and could address the SBOM in
+CAS, but that needs the ``cas`` CLI + endpoint -- an opt-in future, like
+``--use-cas``.
+
+Backward compatible: nothing sets ``errata_status`` unless an errata source
+runs, so existing tests (fixture = ``advisory_present``; ``test_errata.py`` =
+``not_checked``) are unchanged; coverage / vuln golden output byte-identical.
++15 test cases (HTTP match/no-match/feed-shapes/url/failure, dnf parse/missing/
+nonzero, factory routing, attach three-state, graph three-state, clean+SBOM
+completes, not-consulted stays not_checked). Suite 317 -> 332. ruff + mypy
+--strict clean; no network.
+
+---
+
+## D78 - Auto-discover the build SBOM from --build-id (file convention)
+
+User-spotted: "--build-sbom should be discoverable from build.json since
+there's a way to identify the SBOM file there?" The honest answer is *no*
+-- ALBS build.json does not carry an SBOM URL or artifact entry. Confirmed
+by inspecting ``examples/live-build-17812/build-17812.albs.json``: artifact
+types are ``rpm`` and ``build_log`` only, no SBOM. The SBOM is produced
+*separately* by ``alma-sbom``:
+
+    alma-sbom --file-format cyclonedx-json build --build-id N -o build-N.cyclonedx.json
+
+``example--full.sh`` has used the convention ``examples/build-N.cyclonedx.json``
+for a while. This decision lifts that convention into the CLI so a user
+with ``--build-id N`` doesn't have to remember ``--build-sbom``.
+
+New helper ``albs_graph/adapters/sbom.discover_build_sbom(build_id, *,
+cache_path=None, search_dirs=("examples",))``:
+
+- Sibling of the ALBS metadata cache (``<cache_dir>/build-N.cyclonedx.json``)
+  -- the layout ``example--full.sh`` writes first.
+- One level up from the cache (``<cache_dir>/../build-N.cyclonedx.json``) --
+  the other shape ``example--full.sh`` produces.
+- Then each ``search_dirs`` entry (default: ``examples/``).
+- First existing **file** wins (``is_file()`` rules out a directory with the
+  same name); none found returns ``None`` -- never raises.
+
+CLI wiring across the four SBOM-aware commands (coverage / identify /
+trust-path / vuln) via a small ``_resolve_build_sbom`` helper:
+
+- ``--build-sbom FILE`` (explicit) **wins** -- discovery never runs.
+- ``--no-auto-sbom`` opts out of discovery entirely (returns None).
+- ``--build-id N`` without ``--build-sbom`` triggers discovery; a hit is
+  logged on ``--verbose`` so the user sees what was picked.
+- ``--source FILE`` only (no build_id) returns None as before.
+
+Out of scope (deliberately, per the user's "ok ale bez casa"): no
+``cas authenticate`` path. The CAS-hash flow exists (``alma_commit_sbom_hash``
+sits in build.json metadata, addressing the SBOM by content hash in CAS),
+but it depends on the ``cas`` CLI and an external CAS endpoint -- the same
+opt-in posture as ``--use-cas``. File discovery solves the common case
+without that dependency.
+
++11 test cases for the discovery module: sibling wins, parent fallback,
+sibling-wins-over-parent precedence, custom search dirs, no-cache call,
+none-found returns None, filename keyed on build_id (no collisions across
+runs), directories with the matching name are skipped, plus three for the
+``_resolve_build_sbom`` CLI helper (explicit-wins, ``--no-auto-sbom``
+disables, missing ``build_id`` returns None). Suite 306 -> 317. ruff +
+mypy --strict clean.
+
+---
+
+## D77 - Live arch builder: one command for the whole-arch universe
+
+D32 added ``universe_from_dot`` (parse one repograph dot); D74 added merge
+mode in the store. ``universe --repograph-dot`` already accepted multiple
+``--repograph-dot FILE`` arguments and merged them. What was still missing:
+one command that *fetches* every repo of an arch live, runs ``dnf repograph
+--repo X`` for each, merges into one universe, and (optionally) persists.
+
+Decision: a new ``arch-universe`` CLI command on top of a thin
+``albs_graph/adapters/arch_builder.py`` wrapper.
+
+``arch_builder.build_arch_universe_live(arch=, release=, repos=, runner=,
+on_progress=)``:
+
+- **Repo enumeration**: explicit ``repos`` wins; otherwise
+  ``DEFAULT_REPOS[release]`` (the well-known per-release set:
+  ``("baseos", "appstream", "crb", "extras", "plus")`` for 9,
+  ``("baseos", "appstream", "crb", "extras")`` for 10). Intentionally a
+  small constant rather than ``dnf repolist`` parsing -- the upstream
+  listing is documented and stable, and the constant lets a caller without
+  a live dnf host still target the right enumeration.
+- **Per-repo run**: ``runner(repo) -> dot`` defaults to
+  ``run_repograph(repo)`` from ``rpmgraph``; injectable so tests run
+  offline. Each repo's dot is parsed with ``universe_from_dot`` (which
+  already knows about arch filtering via its ``arch=`` kwarg).
+- **Merge**: ``merge_graphs`` stitches the per-repo components by canonical
+  ``pkg:<name>`` ids, so an appstream package's edge to a baseos library
+  becomes a cross-repo edge in the merged universe.
+- **Per-repo failure handling**: a ``RpmgraphUnavailable`` (dnf missing,
+  one repo not subscribed) records a ``RepoFetch(repo=, edges=0,
+  error=...)`` and the build proceeds with the rest. A truly unexpected
+  exception is caught with the same handling (the "never fatal" rule:
+  one repo's glitch must not crash the whole build). With every repo
+  failing the result still returns -- empty graph + full failure list --
+  so the caller decides.
+
+CLI command ``arch-universe``:
+- ``--arch x86_64``, ``--release 9|10`` (picks default repo set),
+  ``--repo NAME`` repeatable (overrides the release default).
+- ``--save PATH [--merge]`` routes through D74's store (replace vs merge).
+- ``--format`` summary | json | dot | svg with the same emitter the rest of
+  the CLI uses. The summary table shows per-repo edge counts + status
+  (ok / "skipped: REASON"), then the universe totals.
+
+Tests: +12, all using an injectable ``runner``: default-repo lookup, repo
+override, cross-repo merge stitching, one-repo failure, unexpected-error
+swallowing, bare-invocation no-op, arch forwarding, round-trip through
+the SQLite store. No live dnf is invoked. Plus a smoke test of the CLI's
+graceful degradation (``dnf not found in PATH`` -> 4 skips, empty
+universe, no traceback).
+
+Suite 293 -> 305. ruff + mypy --strict clean.
+
+---
+
+## D76 - Live CPE / CVE feed fetch + cache + TTL
+
+D21 (CPE dictionary) and D25 (CVE feed) ship as supplied-file modules:
+``CpeDictionary.from_file`` and ``CveFeed.from_file``. That kept the suite
+offline and is still the right default for tests -- but a real run wants to
+pull NVD's bundled JSON exports on its own, not have an operator stage a
+file. The "every adapter must degrade gracefully when its tool / network is
+absent" rule (CAS / dnf / rpmkeys are the existing examples) sets the design.
+
+Decision: a thin ``albs_graph/security/live_feeds.py`` module that fetches
+both feeds through the existing ``HttpCache`` (D63/D64), with a TTL on top:
+
+- ``fetch_cpe_dictionary(url, ..)`` -> ``CpeDictionary`` (raises on parse
+  failure -- the URL returned bytes but not the expected JSON shape).
+- ``fetch_cve_feed(url, ..)`` -> ``CveFeed`` (same).
+- ``fetch_cpe_dictionary_or_none`` / ``fetch_cve_feed_or_none`` are the
+  CLI-facing helpers: a ``--verify-cpe FILE`` / ``--cve-feed FILE`` wins
+  over the URL; missing both returns ``None``; a live fetch failure logs a
+  graceful-degradation message and returns ``None`` so the run continues
+  without the live feed.
+
+TTL design: HttpCache itself is correctness-first (content-addressed, no
+TTL) -- the same RPM header bytes never change for a given (url, range).
+Feeds *do* change upstream, so this wrapper layers a freshness window on
+top: when the cached entry's mtime is older than ``ttl_seconds`` we delete
+the cached body before delegating to ``get_or_fetch`` (which then writes a
+fresh copy atomically). Default 12h, matching NVD's documented refresh
+cadence; ``ttl_seconds=0`` forces a refetch every call; ``None`` disables
+the TTL entirely (any cached copy is fresh enough).
+
+CLI plumbing: ``coverage --verify-cpe-url URL`` and
+``vuln --verify-cpe-url URL --cve-feed-url URL`` + ``--feed-ttl SECONDS``
+across both. The pipeline's ``VerifyCpeStep`` now takes either a file path
+or a URL through ``RunSpec.verify_cpe_url`` (introduced for the same step);
+``vuln`` resolves the CVE feed itself (it owns the matching, not the
+pipeline) via ``fetch_cve_feed_or_none``. Coverage's golden output is
+byte-identical for the no-flag invocation.
+
+Stdlib-only: ``urllib.request`` for the default GET (lazy-imported so the
+security module stays adapter-free), ``time.time()`` + ``stat`` for TTL.
+``Fetcher`` is injectable so tests run fully offline.
+
++10 test cases for the live-feeds module: parse round-trip for both feeds,
+cache hit within TTL, ``ttl_seconds=0`` forces refetch, stale cache entry
+triggers refetch after mtime-rewind, file-wins-over-URL in the helpers,
+both-absent returns ``None``, live failure is swallowed with the right
+progress log, and an unparseable response raises clearly on the strict path
+while the helper returns ``None``. Suite 283 -> 293. ruff + mypy --strict
+clean; no network.
+
+---
+
+## D75 - E1 extensions: pip / Maven / npm native resolvers
+
+D32 introduced the ``DependencyResolver`` contract and wired the first two
+ecosystems (Go via ``go list -m all``; Cargo via ``cargo metadata``). pip,
+Maven and npm were always part of the same plan -- their package managers are
+the authoritative sources of truth for their respective ecosystems -- but
+were deferred for sandboxed-runner work. They now ship behind the same
+contract, matching the existing pattern exactly:
+
+- ``PypiResolver`` -> ``pip install --dry-run --quiet --no-input --report -
+  -r REQS``. The ``--dry-run`` + ``--report -`` combination (pip >= 22.2)
+  produces a stable JSON document describing what pip *would* install,
+  without touching any environment. Every entry's ``metadata.{name,version}``
+  becomes a ``RESOLVED`` spec; tool absence / non-zero exit / unparseable
+  JSON all degrade to ``UNRESOLVABLE`` so a missing pip never crashes.
+- ``MavenResolver`` -> ``mvn -B -q dependency:list -DincludeScope=runtime``.
+  Maven prints one ``[INFO] groupId:artifactId:packaging:[classifier:]version:scope``
+  line per resolved dependency (transitive too). The regex tolerates the
+  optional classifier token and keeps ``groupId:artifactId`` as the package
+  identity (jar/war/pom is type, not identity); version + scope ride along.
+- ``NpmResolver`` -> ``npm ls --json --all``. The tree's ``dependencies`` map
+  is walked recursively, ``(name, version)`` pairs deduped on the way so a
+  diamond dep does not produce two specs. npm's non-zero exit on peer-dep
+  warnings is tolerated when the JSON tree still has packages (npm prints
+  the valid tree alongside the warnings); a truly empty / unparseable
+  output is the only real failure.
+
+Each is identical to ``GoResolver`` / ``CargoResolver`` in shape: ecosystem
+attribute, injectable ``Runner``, ``FileNotFoundError`` -> tool-missing
+diagnostic, non-zero exit -> ``UNRESOLVABLE``, all requested specs preserved
+in the unresolved tuple on failure. The factory ``resolver_for`` routes the
+three new ecosystems to their resolvers; Gradle is the only remaining
+ecosystem still on ``NullResolver`` (Gradle's tooling surface is bigger and
+not in this rev).
+
+Tests: +12, each mocking the native tool's stdout against a hand-crafted
+output that matches what the real tool prints. The pypi factory test moved
+from ``isinstance(NullResolver)`` to ``isinstance(PypiResolver)`` (the wired
+one), matching the same change Go/Cargo got in D32. Suite 272 -> 283. ruff
++ mypy --strict clean. Tests stay offline per the repo rule (no real pip /
+mvn / npm execution).
+
+---
+
+## D74 - Real SQLite query backend (versioning, merge mode, recursive CTEs, snapshots)
+
+D-entry G2 from the review's open list. ``albs_graph/store.py`` was the
+"persist a built universe and reload it later" minimum -- replace-on-save,
+one-hop SQL only, no schema versioning. Multi-build / multi-arch accumulation
+silently lost evidence (the second ``save_graph`` wiped the first); multi-hop
+queries required a full ``load_graph``; there was no way to evolve the schema
+without a follow-up migration burden on every caller.
+
+Decision: turn ``store.py`` into a small but real query backend. Four
+additions, all stdlib-only:
+
+1. **Versioned schema with in-place migrations.** A ``schema_version`` table
+   plus an ordered ``MIGRATIONS`` tuple (``_migration_v1_*`` ...
+   ``_migration_v3_*`` today). Every public entry point now calls
+   ``_ensure_schema(connection)``; a fresh DB walks every migration, an
+   existing one applies just the missing ones, and rolling back a release
+   leaves the store at a newer version that the older code still reads
+   (the base tables are forward-compatible).
+2. **Merge mode (closes G2).** ``save_graph(.., mode="merge")`` upserts node
+   and edge rows and deep-merges the JSON metadata: dicts merge key-by-key
+   (incoming wins on scalar conflicts), lists union with order preserved
+   (no duplicates), other types take incoming. This is the shape edge
+   metadata naturally has (``evidence: list``, ``note: str``, ``claim: str``)
+   so the union is what callers want -- multi-build accumulation no longer
+   silently overwrites. The default stays ``"replace"`` so existing callers
+   are unchanged; ``--merge`` on ``universe --save`` opts in.
+3. **Recursive-CTE multi-hop queries.** ``sql_reachable_dependencies`` and
+   ``sql_dependency_paths`` walk in SQLite via ``WITH RECURSIVE``, with
+   cycle detection (UNION dedupes the closure; the path query carries a
+   ``|id|id|`` string and uses ``instr`` to skip revisits). ``max_depth`` and
+   ``max_paths`` bound runtime; the queries are wired into
+   ``universe --db --path-from/--path-to`` so the SQL fast path now covers
+   chains too, not just one-hop lookups.
+4. **Materialized analysis snapshots.** ``save_analysis_snapshot`` /
+   ``load_analysis_snapshot`` persist a coverage / vuln / license report
+   payload keyed on ``(kind, subject_id)``; older snapshots stay as an audit
+   trail, ``load`` returns the most recent. The table is the foundation for
+   future "what changed since the last run?" diffs without re-deriving the
+   report.
+
+Backward compatibility: every original public function
+(``save_graph`` / ``load_graph`` / ``sql_dependents`` / ``sql_dependencies``)
+keeps its old signature and default semantics. All 5 original tests pass
+unchanged. 9 new tests cover the additions (schema versioning idempotency,
+both save modes, deep-merge of edge metadata + node metadata accumulation,
+recursive-CTE walks against the in-memory BFS, ``max_depth`` / ``max_paths``
+bounds, snapshot most-recent-wins). Suite 263 → 272.
+
+Out of scope: still no concurrency control (single-writer), still no
+``sqlite-vec`` similarity overlay (G3; deliberately optional).
+
+---
+
+## D73 - Finish D57: identify / trust-path / vuln / license on the pipeline
+
+D57 introduced ``AnalysisPipeline`` and migrated ``coverage`` first, deferring
+the other four commands to follow-ups. This decision closes that loop: each
+remaining command builds a ``RunSpec`` from its CLI args and delegates the
+load -> enrich -> reconcile portion to ``AnalysisPipeline().run()``, then keeps
+its own rendering as before.
+
+What moved per command:
+
+- ``identify``: ``BuildSbomStep`` (when ``--build-sbom`` is given). The CPE,
+  errata, payload + dnf steps don't apply to identify's surface today, but the
+  pipeline transparently picks them up if they're added later (no change to
+  ``identify_command`` needed).
+- ``trust-path``: ``BuildSbomStep`` + ``ErrataStep``. To preserve the prior
+  "errata defaults to the selected RPM" behaviour, the CLI promotes the
+  ``rpm`` / ``package`` selector to ``RunSpec.errata_subject`` when
+  ``--errata-subject`` is not given; the pipeline's subject-resolution then
+  picks the same RPM the inline code did.
+- ``vuln``: ``BuildSbomStep`` + ``VerifyCpeStep`` + ``ErrataStep`` +
+  ``PayloadStep``. **Latent bug fixed by the migration**: ``vuln`` ran
+  ``verify_cpe`` *before* ``build_sbom``, so a vendor CPE from the SBOM
+  overwrote an NVD-verified one. The pipeline's documented order (D57:
+  "build_sbom runs before verify_cpe") is the design intent; vuln now uses it.
+- ``license``: ``SbomStep`` (the CycloneDX attach). The ``--rpm-licenses`` path
+  stays inline; it isn't an enrichment pipeline (it queries dnf for license tags
+  and rolls them up, not adding claims).
+
+Verification: byte-identical JSON output for each command on the synthetic
+fixture (``--source albs_graph/examples/synthetic_build.json``) before and
+after, captured the same way coverage was in D57. No new tests are needed --
+the existing pipeline tests already cover the orchestration, the existing
+provenance tests cover the analyses, and ``test_cli_help`` already exercises
+that ``trust-path --errata`` closes ``has_errata_link`` (the only behaviour
+sensitive to subject resolution). Cleanup: 6 now-unused imports removed from
+``cli/main.py``; the file shrinks by 23 lines net.
+
+Drive-by fix in the same commit: modern Typer (0.13+) vendors its own
+``click`` fork, so ``NoArgsIsHelpError`` raised by ``no_args_is_help=True`` is
+*not* a ``click.ClickException`` -- it bypassed ``main()``'s ``except``,
+broke ``test_fetch_without_args_shows_help`` and
+``test_trust_path_without_args_shows_help``, and would have leaked tracebacks
+to users. ``main()`` now catches both ``click.ClickException`` and
+``typer._click.exceptions.ClickException`` (with a fallback alias for older
+typers). Suite unchanged at 263.
+
+---
+
 ## D72 - demo_verbose attaches the build SBOM (consistency with the rest of the run)
 
 User-spotted on a VPS run: ``grep -R sbom examples/demo-build-57810/`` returns
@@ -1980,6 +2389,36 @@ before the internal ``trust_path``. ``example--full.sh`` step 11 passes
 trust-path's ``has_sbom`` check now matches the outer one whenever the SBOM
 file exists. Regenerated console.txt confirms: ``has_sbom`` now reads ``ok``
 on both trust-path tables (lines 31 and 530). Suite unchanged at 263.
+
+---
+
+## D81 - HTML fallback metadata is cacheable
+
+The live ALBS API can return non-JSON or unavailable responses for some builds
+while the human build page still contains enough fallback evidence to build a
+minimal graph. `fetch_build_metadata(..., cache_path=...)` only wrote the raw
+cache on the JSON API path, so `example--full.sh` could print a successful
+fallback fetch, write the rendered graph JSON, and immediately fail because
+`build-<id>.albs.json` was missing.
+
+Fix: after parsing the HTML fallback, write a parseable synthetic raw metadata
+cache to `cache_path`. The fallback raw payload now carries `build_id`,
+`package`, source repository, commit, CAS, source RPM, binary RPMs, release
+repository, arch, source URL and title. A later run can load that cache through
+the same `parse_build_metadata` path instead of hitting the network again.
+
+Tests add a fake API-miss/HTML-hit sequence and verify the fallback cache is
+written and reused. The same verification run exposed an `example--full.sh`
+macOS/bash `set -u` failure when `SBOM_FILE` is absent: step 11 expanded an
+empty `sbom_args` array directly. It now uses the same guarded expansion as the
+earlier CLI steps, so builds without a committed SBOM keep running best-effort.
+Full suite passed locally.
+
+*(Numbering: this decision documents commit `fd579de`, which landed between
+D78 and D79. It was originally drafted as `D73` and accidentally swept into the
+D78 commit `f7409be` from an in-progress working tree; since `D73` was already
+taken by "Finish D57", it is renumbered to D81 -- the next free number -- with
+no change to its content. Its position among the older entries is left as-is.)*
 
 ---
 

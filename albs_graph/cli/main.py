@@ -8,6 +8,13 @@ from typing import Callable, Optional
 
 import click
 import typer
+
+try:
+    # Typer 0.13+ vendors its own click fork; its NoArgsIsHelpError is not a
+    # click.ClickException, so we have to catch it independently.
+    from typer._click.exceptions import ClickException as _TyperClickException
+except ImportError:  # older typers re-use upstream click
+    _TyperClickException = click.ClickException  # type: ignore[assignment, misc]
 from rich.console import Console
 from rich.table import Table
 
@@ -32,16 +39,13 @@ from albs_graph.adapters.dnf import (
     parse_nevra,
     repoquery,
 )
-from albs_graph.adapters.errata import attach_errata_file
-from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
 from albs_graph.adapters.rpmgraph import (
     RpmgraphUnavailable,
     run_repograph,
 )
 from albs_graph.adapters.sbom import (
-    attach_cyclonedx_sbom_claims,
-    enrich_graph_with_build_sbom,
+    discover_build_sbom,
     import_sbom,
 )
 from albs_graph.adapters.source_imports import attach_source_tree_imports
@@ -77,9 +81,14 @@ from albs_graph.provenance.trust import (
     trust_path,
 )
 from albs_graph.render import SvgRenderError, graph_to_dot, graph_to_json, graph_to_svg
-from albs_graph.security.cpe import CpeDictionary, verify_graph_cpe
-from albs_graph.security.cve_feed import CveFeed
-from albs_graph.store import load_graph, save_graph, sql_dependencies, sql_dependents
+from albs_graph.security.live_feeds import fetch_cve_feed_or_none
+from albs_graph.store import (
+    load_graph,
+    save_graph,
+    sql_dependencies,
+    sql_dependency_paths,
+    sql_dependents,
+)
 
 app = typer.Typer(
     name="albs-graph",
@@ -455,6 +464,12 @@ def coverage_command(
         help="CycloneDX build SBOM (e.g. from alma-sbom) matched to the build's own RPMs: "
         "attaches each RPM's vendor CPE (moves the identity axis) + PURL/hash + an SBOM link.",
     ),
+    auto_sbom: bool = typer.Option(
+        True,
+        "--auto-sbom/--no-auto-sbom",
+        help="When --build-sbom is not given and --build-id is, auto-discover "
+        "build-<id>.cyclonedx.json next to --cache (or under examples/). D78.",
+    ),
     requirements: Optional[Path] = typer.Option(
         None, "--requirements", help="Python requirements.txt to attach as PyPI dependency claims."
     ),
@@ -476,11 +491,36 @@ def coverage_command(
     errata_subject: Optional[str] = typer.Option(
         None, "--errata-subject", help="Binary RPM the errata applies to."
     ),
+    errata_source: Optional[str] = typer.Option(
+        None,
+        "--errata-source",
+        help="Live errata source 'http' or 'dnf' (D79): queries every RPM for advisories. "
+        "A confirmed-no-advisory result satisfies has_errata_link (clean != missing).",
+    ),
+    errata_feed: Optional[Path] = typer.Option(
+        None, "--errata-feed", help="Offline AlmaLinux errata feed JSON for --errata-source http."
+    ),
+    errata_url: Optional[str] = typer.Option(
+        None, "--errata-url", help="URL of a live errata feed JSON (cached; --errata-feed wins)."
+    ),
     verify_cpe: Optional[Path] = typer.Option(
         None,
         "--verify-cpe",
         help="CPE dictionary JSON (list of official cpe:2.3 strings) to verify "
         "candidates against, moving the identity axis.",
+    ),
+    verify_cpe_url: Optional[str] = typer.Option(
+        None,
+        "--verify-cpe-url",
+        help="URL of a live CPE dictionary JSON (e.g. an NVD CPE export). Cached "
+        "on disk via HttpCache and reused while fresh; --verify-cpe FILE wins "
+        "when both are given. Network failure degrades to skipped (never fatal).",
+    ),
+    feed_ttl: float = typer.Option(
+        12 * 3600,
+        "--feed-ttl",
+        help="Seconds a live CPE/CVE feed cached copy stays fresh (default 12h; "
+        "0 forces refetch).",
     ),
     repograph_dot: Optional[Path] = typer.Option(
         None,
@@ -549,6 +589,13 @@ def coverage_command(
     _log_graph_stats(verbose, graph)
     _ = all_packages  # default behavior; flag documents intent and pairs with --all-archs
 
+    # D78: when --build-sbom is not given but --build-id is, look for the
+    # conventionally-named CycloneDX file (alma-sbom's output, written by
+    # example--full.sh next to the cache).
+    build_sbom = _resolve_build_sbom(
+        build_sbom, build_id, cache=cache, auto=auto_sbom, verbose=verbose
+    )
+
     # The repograph dot is resolved here (file read / live run + its warning are
     # I/O and presentation); the rest of the enrichment flow is the pipeline's job.
     dot_text: str | None = None
@@ -579,7 +626,11 @@ def coverage_command(
         module_map=module_map,
         errata=errata,
         errata_subject=errata_subject,
+        errata_source=errata_source,
+        errata_feed=errata_feed,
+        errata_url=errata_url,
         verify_cpe=verify_cpe,
+        verify_cpe_url=verify_cpe_url,
         with_rpm_headers=with_rpm_headers,
         with_rpm_payloads=with_rpm_payloads,
         resolve_sonames=resolve_sonames,
@@ -589,6 +640,7 @@ def coverage_command(
         max_concurrency=max_concurrency,
         http_cache=http_cache,
         cache_payloads=cache_payloads,
+        feed_ttl_seconds=feed_ttl,
     )
     result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
 
@@ -602,6 +654,7 @@ def coverage_command(
     python_result = result.result("python")
     import_result = result.result("python_imports")
     errata_id = result.result("errata")
+    errata_source_result = result.result("errata_source")
     cpe_result = result.result("verify_cpe")
     enrichment = result.result("rpm_headers")
     payload_result = result.result("rpm_payloads")
@@ -641,6 +694,8 @@ def coverage_command(
             payload["python_imports"] = import_result.to_dict()
         if errata_id is not None:
             payload["errata"] = errata_id
+        if errata_source_result is not None:
+            payload["errata_source"] = errata_source_result.to_dict()
         if cpe_result is not None:
             payload["cpe_verification"] = cpe_result.to_dict()
         sys.stdout.write(json.dumps(payload, indent=2) + "\n")
@@ -694,6 +749,16 @@ def coverage_command(
         )
     if errata_id is not None:
         console.print(f"Errata: attached {errata_id} (security context)")
+    if errata_source_result is not None:
+        esr = errata_source_result
+        if not esr.consulted:
+            console.print(f"Errata source ({esr.source}): not consulted (unavailable)")
+        else:
+            console.print(
+                f"Errata source ({esr.source}): {esr.with_advisory} with advisory, "
+                f"{esr.clean} confirmed clean of {esr.queried} RPMs "
+                f"({esr.advisories_added} advisory links)"
+            )
     if cpe_result is not None:
         console.print(
             f"CPE: {cpe_result.verified} verified, {cpe_result.ambiguous} ambiguous, "
@@ -816,6 +881,12 @@ def identify_command(
     build_sbom: Optional[Path] = typer.Option(
         None, "--build-sbom", help="CycloneDX build SBOM (alma-sbom) to attach to the build's RPMs."
     ),
+    auto_sbom: bool = typer.Option(
+        True,
+        "--auto-sbom/--no-auto-sbom",
+        help="Auto-discover build-<id>.cyclonedx.json near --cache when --build-sbom is "
+        "not given (D78).",
+    ),
     output_format: str = typer.Option("summary", "--format", "-f", help="summary or json."),
     base_url: str = typer.Option("https://build.almalinux.org", "--base-url"),
     cache: Optional[Path] = typer.Option(None, "--cache", help="ALBS metadata cache JSON."),
@@ -838,9 +909,15 @@ def identify_command(
     else:
         raise ValueError("identify requires --build-id or --source")
 
-    if build_sbom is not None:
-        _log_step(verbose, f"Attaching build SBOM {build_sbom} to the build's RPMs")
-        enrich_graph_with_build_sbom(graph, build_sbom, on_progress=_progress(verbose))
+    build_sbom = _resolve_build_sbom(
+        build_sbom, build_id, cache=cache, auto=auto_sbom, verbose=verbose
+    )
+    # The single load -> enrich -> reconcile -> render pipeline (D57). Identify
+    # uses just the build_sbom step today; new pipeline steps reach this command
+    # automatically when they apply.
+    spec = RunSpec(arch=arch, build_sbom=build_sbom)
+    result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
+    graph = result.graph
 
     report = identify_file(graph, filepath, owner_package=owner, arch=arch)
 
@@ -922,6 +999,12 @@ def trust_path_command(
         "--build-sbom",
         help="CycloneDX build SBOM (alma-sbom) to attach, so the trust path's has_sbom check passes.",
     ),
+    auto_sbom: bool = typer.Option(
+        True,
+        "--auto-sbom/--no-auto-sbom",
+        help="Auto-discover build-<id>.cyclonedx.json near --cache when --build-sbom is "
+        "not given (D78).",
+    ),
     errata: Optional[Path] = typer.Option(
         None,
         "--errata",
@@ -932,6 +1015,19 @@ def trust_path_command(
         None,
         "--errata-subject",
         help="Binary RPM the errata applies to (defaults to the selected RPM).",
+    ),
+    errata_source: Optional[str] = typer.Option(
+        None,
+        "--errata-source",
+        help="Live errata source: 'http' (AlmaLinux errata feed via --errata-feed/--errata-url) "
+        "or 'dnf' (updateinfo on an AlmaLinux host). A confirmed-no-advisory result satisfies "
+        "has_errata_link (a clean package is not 'missing'). D79.",
+    ),
+    errata_feed: Optional[Path] = typer.Option(
+        None, "--errata-feed", help="Offline AlmaLinux errata feed JSON for --errata-source http."
+    ),
+    errata_url: Optional[str] = typer.Option(
+        None, "--errata-url", help="URL of a live errata feed JSON (cached on disk; --errata-feed wins)."
     ),
 ) -> None:
     if build_id is not None:
@@ -952,11 +1048,28 @@ def trust_path_command(
     else:
         raise ValueError("trust-path requires --build-id or --source")
     _log_graph_stats(verbose, graph)
-    if build_sbom is not None:
-        _log_step(verbose, f"Attaching build SBOM {build_sbom} to the build's RPMs")
-        enrich_graph_with_build_sbom(graph, build_sbom, on_progress=_progress(verbose))
 
+    build_sbom = _resolve_build_sbom(
+        build_sbom, build_id, cache=cache, auto=auto_sbom, verbose=verbose
+    )
+    # The single load -> enrich -> reconcile -> render pipeline (D57). Errata
+    # defaults to the selected RPM (preserving prior behaviour) by promoting
+    # the RPM selector to errata_subject when --errata-subject is not given.
     rpm_selector = rpm or package
+    effective_errata_subject = errata_subject or rpm_selector
+    spec = RunSpec(
+        package=package,
+        arch=arch,
+        build_sbom=build_sbom,
+        errata=errata,
+        errata_subject=effective_errata_subject,
+        errata_source=errata_source,
+        errata_feed=errata_feed,
+        errata_url=errata_url,
+    )
+    result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
+    graph = result.graph
+
     if rpm_selector is None:
         _log_step(verbose, "No RPM selector provided; selecting representative binary RPM")
         rpm_node = select_default_binary_rpm(graph, arch=arch)
@@ -964,12 +1077,6 @@ def trust_path_command(
         _log_step(verbose, f"Resolving binary RPM selector: {rpm_selector}")
         rpm_node = find_binary_rpm(graph, rpm_selector, arch=arch)
     _log_step(verbose, f"Selected RPM node: {rpm_node.id}")
-    if errata is not None:
-        errata_node = (
-            find_binary_rpm(graph, errata_subject, arch=arch) if errata_subject else rpm_node
-        )
-        _log_step(verbose, f"Attaching errata {errata} to {errata_node.id}")
-        attach_errata_file(graph, errata_node.id, errata)
     _log_step(verbose, "Analyzing source-to-artifact trust path")
     report = trust_path(graph, rpm_node.id)
 
@@ -989,8 +1096,18 @@ def trust_path_command(
     table = Table(title=f"Trust path: {rpm_node.label}")
     table.add_column("Check")
     table.add_column("Result")
+    # The errata check is three-state (D79): show *why* it's ok/missing so a
+    # clean package reads as "no advisory" rather than a bare "missing".
+    errata_label = {
+        "advisory_present": "ok (advisory)",
+        "confirmed_clean": "ok (no advisory)",
+        "not_checked": "missing (not checked)",
+    }
     for name, value in report["checks"].items():
-        table.add_row(name, "ok" if value else "missing")
+        if name == "has_errata_link":
+            table.add_row(name, errata_label.get(report["errata_status"], "ok" if value else "missing"))
+        else:
+            table.add_row(name, "ok" if value else "missing")
     console.print(table)
     console.print(f"Provenance complete: {report['provenance_complete']}")
     console.print(f"Security context complete: {report['security_context_complete']}")
@@ -1034,6 +1151,13 @@ def universe_command(
     save: Optional[Path] = typer.Option(
         None, "--save", help="Persist the built universe to a SQLite store (low-footprint)."
     ),
+    merge: bool = typer.Option(
+        False,
+        "--merge",
+        help="With --save, upsert into the existing store instead of replacing it. "
+        "Edge metadata is deep-merged so multi-build / multi-arch accumulation "
+        "preserves claims.",
+    ),
     output_format: str = typer.Option("summary", "--format", "-f", help="summary, json, dot, svg."),
     output: Optional[Path] = typer.Option(None, "--output", "-o"),
 ) -> None:
@@ -1041,8 +1165,10 @@ def universe_command(
     # query result is printed as text.
     render = output_format.lower() in {"json", "dot", "svg"}
 
-    # SQL fast path: one-hop text queries run directly against the store without
-    # loading the whole universe into memory.
+    # SQL fast path: text queries run directly against the store without loading
+    # the whole universe into memory. The recursive-CTE path query also lives
+    # here (D74), so --path-from/--path-to are answerable from a persisted
+    # store too.
     if db is not None and not render:
         if dependents_of_cap:
             names = sql_dependents(db, dependents_of_cap)
@@ -1056,6 +1182,12 @@ def universe_command(
             for name in names:
                 console.print(f"  {name}")
             return
+        if path_from and path_to:
+            paths = sql_dependency_paths(db, path_from, path_to)
+            console.print(f"{len(paths)} path(s) from {path_from} to {path_to}:")
+            for chain in paths:
+                console.print("  " + " -> ".join(chain))
+            return
 
     if db is not None:
         graph = load_graph(db)
@@ -1066,8 +1198,9 @@ def universe_command(
             arch=arch,
         )
         if save is not None:
-            stats = save_graph(graph, save)
-            console.print(f"Saved universe to {save}: {stats.nodes} nodes, {stats.edges} edges")
+            stats = save_graph(graph, save, mode="merge" if merge else "replace")
+            verb = "Merged into" if merge else "Saved universe to"
+            console.print(f"{verb} {save}: {stats.nodes} nodes, {stats.edges} edges")
     else:
         raise ValueError("universe requires --repograph-dot, --source, or --db")
 
@@ -1139,18 +1272,52 @@ def vuln_command(
     errata_subject: Optional[str] = typer.Option(
         None, "--errata-subject", help="Binary RPM the errata applies to (defaults to --package)."
     ),
+    errata_source: Optional[str] = typer.Option(
+        None,
+        "--errata-source",
+        help="Live errata source 'http' or 'dnf' (D79): which advisories ship each RPM. "
+        "Confirmed-clean satisfies has_errata_link (a package with no advisory is not 'missing').",
+    ),
+    errata_feed: Optional[Path] = typer.Option(
+        None, "--errata-feed", help="Offline AlmaLinux errata feed JSON for --errata-source http."
+    ),
+    errata_url: Optional[str] = typer.Option(
+        None, "--errata-url", help="URL of a live errata feed JSON (cached; --errata-feed wins)."
+    ),
     verify_cpe: Optional[Path] = typer.Option(
         None, "--verify-cpe", help="CPE dictionary JSON to verify candidates against."
+    ),
+    verify_cpe_url: Optional[str] = typer.Option(
+        None,
+        "--verify-cpe-url",
+        help="URL of a live CPE dictionary JSON (cached on disk; --verify-cpe wins).",
     ),
     build_sbom: Optional[Path] = typer.Option(
         None,
         "--build-sbom",
         help="CycloneDX build SBOM (alma-sbom): set each RPM's vendor CPE so identities resolve.",
     ),
+    auto_sbom: bool = typer.Option(
+        True,
+        "--auto-sbom/--no-auto-sbom",
+        help="Auto-discover build-<id>.cyclonedx.json near --cache when --build-sbom is "
+        "not given (D78).",
+    ),
     cve_feed: Optional[Path] = typer.Option(
         None,
         "--cve-feed",
         help="CVE feed JSON (affected vendor/product + version ranges) to match verified CPEs.",
+    ),
+    cve_feed_url: Optional[str] = typer.Option(
+        None,
+        "--cve-feed-url",
+        help="URL of a live CVE feed JSON (cached on disk; --cve-feed wins). "
+        "Network failure degrades to no live feed (never fatal).",
+    ),
+    feed_ttl: float = typer.Option(
+        12 * 3600,
+        "--feed-ttl",
+        help="Seconds a cached CPE/CVE feed copy stays fresh (default 12h; 0 forces refetch).",
     ),
     with_rpm_payloads: bool = typer.Option(
         False, "--with-rpm-payloads", help="Analyze payload ELFs for linkage (dlopen/static)."
@@ -1182,27 +1349,41 @@ def vuln_command(
     else:
         raise ValueError("vuln requires --build-id or --source")
 
+    build_sbom = _resolve_build_sbom(
+        build_sbom, build_id, cache=cache, auto=auto_sbom, verbose=verbose
+    )
+    # The single load -> enrich -> reconcile -> render pipeline (D57). The
+    # pipeline runs build_sbom *before* verify_cpe, so an NVD match upgrades a
+    # vendor-asserted CPE rather than the other way round -- the order the
+    # design intends and that coverage already uses; the prior inline order
+    # in `vuln` was reversed (latent bug fixed by the migration).
     selector = make_binary_rpm_selector(package=package, arch=arch)
-    if with_rpm_payloads:
-        _log_step(verbose, "Analyzing payload ELFs for linkage")
-        enrich_graph_with_rpm_payloads(graph, node_selector=selector, on_progress=_progress(verbose))
-    if verify_cpe is not None:
-        _log_step(verbose, f"Verifying CPEs against {verify_cpe}")
-        verify_graph_cpe(graph, CpeDictionary.from_file(verify_cpe), node_selector=selector)
-    if build_sbom is not None:
-        _log_step(verbose, f"Setting vendor CPEs from build SBOM {build_sbom}")
-        enrich_graph_with_build_sbom(graph, build_sbom, on_progress=_progress(verbose))
-    if errata is not None:
-        subject_selector = errata_subject or package
-        subject = (
-            find_binary_rpm(graph, subject_selector, arch=arch)
-            if subject_selector
-            else select_default_binary_rpm(graph, arch=arch)
-        )
-        _log_step(verbose, f"Attaching errata {errata} to {subject.id}")
-        attach_errata_file(graph, subject.id, errata)
+    spec = RunSpec(
+        package=package,
+        arch=arch,
+        build_sbom=build_sbom,
+        verify_cpe=verify_cpe,
+        verify_cpe_url=verify_cpe_url,
+        errata=errata,
+        errata_subject=errata_subject or package,
+        errata_source=errata_source,
+        errata_feed=errata_feed,
+        errata_url=errata_url,
+        with_rpm_payloads=with_rpm_payloads,
+        feed_ttl_seconds=feed_ttl,
+    )
+    result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
+    graph = result.graph
 
-    feed = CveFeed.from_file(cve_feed) if cve_feed is not None else None
+    # CVE feed: file wins; URL falls back; offline degrades to no feed (the
+    # report still runs and counts addressed CVEs from errata, just without
+    # potentially-affected matches).
+    feed = fetch_cve_feed_or_none(
+        source_file=cve_feed,
+        url=cve_feed_url,
+        ttl_seconds=feed_ttl,
+        on_progress=_progress(verbose),
+    )
     report = vulnerability_report(
         graph, cve_feed=feed, only_with_cves=only_with_cves, node_selector=selector
     )
@@ -1306,12 +1487,13 @@ def license_command(
     if sbom is None:
         raise typer.BadParameter("license needs --sbom FILE (SBOM rollup) or --rpm-licenses")
 
-    subject = (
-        find_binary_rpm(graph, sbom_subject, arch=arch)
-        if sbom_subject
-        else select_default_binary_rpm(graph, arch=arch)
-    )
-    attach_cyclonedx_sbom_claims(graph, subject.id, sbom)
+    # The single load -> enrich -> reconcile -> render pipeline (D57). The SbomStep
+    # attaches CycloneDX claims to sbom_subject (or the default RPM) -- same
+    # subject resolution the prior inline code used.
+    spec = RunSpec(arch=arch, sbom=sbom, sbom_subject=sbom_subject)
+    result = AnalysisPipeline().run(spec, graph, on_progress=_progress(verbose))
+    graph = result.graph
+
     report = license_report(graph)
 
     if output_format.lower() == "json":
@@ -1531,6 +1713,82 @@ def slsa_command(
 
 
 @app.command(
+    "arch-universe",
+    help="Build a whole-arch dependency universe live (dnf repograph each repo + merge).",
+    short_help="Build one universe per arch from live dnf repograph runs.",
+    no_args_is_help=True,
+)
+def arch_universe_command(
+    arch: Optional[str] = typer.Option(
+        None, "--arch", help="Restrict the universe to this arch (default: keep all)."
+    ),
+    release: Optional[str] = typer.Option(
+        None,
+        "--release",
+        help="AlmaLinux release for the default repo list (e.g. '9' or '10'). "
+        "Ignored if --repo is given.",
+    ),
+    repo: list[str] = typer.Option(
+        [],
+        "--repo",
+        help="Repo names to fetch (repeatable). If omitted, --release picks the well-known set.",
+    ),
+    save: Optional[Path] = typer.Option(
+        None, "--save", help="Persist the merged universe to a SQLite store."
+    ),
+    merge: bool = typer.Option(
+        False,
+        "--merge",
+        help="With --save, upsert (deep-merge metadata) instead of replacing -- so a "
+        "later arch-universe run for the same arch adds to the store rather than wiping it.",
+    ),
+    output_format: str = typer.Option(
+        "summary", "--format", "-f", help="summary, json, dot or svg."
+    ),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    from albs_graph.adapters.arch_builder import build_arch_universe_live
+
+    result = build_arch_universe_live(
+        arch=arch,
+        release=release,
+        repos=tuple(repo) if repo else None,
+        on_progress=_progress(verbose),
+    )
+
+    if save is not None:
+        stats = save_graph(result.universe, save, mode="merge" if merge else "replace")
+        verb = "Merged into" if merge else "Saved arch universe to"
+        console.print(f"{verb} {save}: {stats.nodes} nodes, {stats.edges} edges")
+
+    if output_format.lower() == "json":
+        sys.stdout.write(json.dumps(result.to_dict(), indent=2) + "\n")
+        return
+
+    if output_format.lower() in {"dot", "svg"} or output:
+        _emit_graph(result.universe, output_format, output, verbose=verbose)
+        return
+
+    table = Table(title=f"Arch universe (arch={arch or '*'}, release={release or '?'})")
+    table.add_column("Repo")
+    table.add_column("Edges", justify="right")
+    table.add_column("Status")
+    for fetch in result.repos:
+        status = "ok" if fetch.error is None else f"skipped: {fetch.error}"
+        table.add_row(fetch.repo, str(fetch.edges), status)
+    console.print(table)
+    console.print(
+        f"Universe: {len(result.universe.nodes)} nodes, {len(result.universe.edges)} edges "
+        f"({result.succeeded} repos ok, {result.failed} skipped)"
+    )
+    if not result.repos:
+        console.print(
+            "[yellow]No repos requested.[/yellow] Pass --release 9|10 or --repo NAME (repeatable)."
+        )
+
+
+@app.command(
     "render-fixture",
     help="Render a synthetic package fixture graph as SVG, DOT or JSON.",
     short_help="Render a synthetic fixture graph.",
@@ -1574,7 +1832,9 @@ def inspect_fixture(
 def main(argv: list[str] | None = None) -> int:
     try:
         app(args=argv, standalone_mode=False)
-    except click.ClickException as exc:
+    except (click.ClickException, _TyperClickException) as exc:
+        # Modern Typer forks click, so its NoArgsIsHelpError (raised by
+        # no_args_is_help=True) is NOT a click.ClickException -- catch both.
         exc.show()
         return int(exc.exit_code)
     except (
@@ -1628,6 +1888,32 @@ def _progress(verbose: bool) -> Callable[[str], None] | None:
 def _log_step(verbose: bool, message: str) -> None:
     if verbose:
         verbose_console.print(f"[cyan]step[/cyan] {message}")
+
+
+def _resolve_build_sbom(
+    explicit: Path | None,
+    build_id: int | None,
+    *,
+    cache: Path | None,
+    auto: bool,
+    verbose: bool,
+) -> Path | None:
+    """Choose the build SBOM: explicit --build-sbom wins; else discover by convention.
+
+    The discovery walks the same paths ``example--full.sh`` writes to (sibling of
+    the ALBS metadata cache, then ``examples/``); a hit is logged on --verbose so
+    the user sees what was picked, a miss returns None and the command runs
+    without an SBOM (the prior behaviour). ``auto=False`` skips discovery entirely.
+    """
+
+    if explicit is not None:
+        return explicit
+    if not auto or build_id is None:
+        return None
+    found = discover_build_sbom(build_id, cache_path=cache)
+    if found is not None:
+        _log_step(verbose, f"Auto-discovered build SBOM at {found} (D78)")
+    return found
 
 
 def _log_package_metadata(verbose: bool, package: str, source: str) -> None:

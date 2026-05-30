@@ -22,6 +22,12 @@ class TrustPathReport:
     missing: list[str]
     missing_provenance: list[str]
     missing_security_context: list[str]
+    # Three-state errata view (D79): "advisory_present" (an advisory ships this
+    # exact NEVRA), "confirmed_clean" (an errata source was consulted and found
+    # none -- the normal, trustworthy state), or "not_checked" (no source was
+    # consulted; the only genuinely-open case). ``has_errata_link`` in
+    # ``security_context_checks`` is satisfied by the first two.
+    errata_status: str = "not_checked"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -36,6 +42,7 @@ class TrustPathReport:
             "missing": self.missing,
             "missing_provenance": self.missing_provenance,
             "missing_security_context": self.missing_security_context,
+            "errata_status": self.errata_status,
         }
 
 
@@ -238,11 +245,28 @@ class ProvenanceGraph:
                 for edge in self.outgoing(rpm_node_id)
             ),
         }
+        # Three-state errata (D79). An advisory edge means this exact build
+        # ships in an advisory ("advisory_present"). Absent that, an errata
+        # source may have recorded "confirmed_clean" on the node (it was
+        # consulted and found no advisory -- the normal state for most
+        # packages, which must NOT be penalised as missing). With neither, no
+        # source was consulted: "not_checked", the only genuinely-open case.
+        has_advisory_edge = (
+            Relation.FIXES in outgoing_relations or Relation.AFFECTED_BY in outgoing_relations
+        )
+        recorded_status = self.nodes[rpm_node_id].metadata.get("errata_status")
+        if has_advisory_edge:
+            errata_status = "advisory_present"
+        elif recorded_status == "confirmed_clean":
+            errata_status = "confirmed_clean"
+        else:
+            errata_status = "not_checked"
+
         security_context_checks = {
             "has_sbom": Relation.DESCRIBED_BY in outgoing_relations,
-            "has_errata_link": (
-                Relation.FIXES in outgoing_relations or Relation.AFFECTED_BY in outgoing_relations
-            ),
+            # Satisfied by a present advisory OR a confirmed-clean result; only
+            # "not_checked" leaves it open.
+            "has_errata_link": errata_status != "not_checked",
         }
         checks = provenance_checks | security_context_checks
         missing_provenance = [name for name, passed in provenance_checks.items() if not passed]
@@ -264,6 +288,7 @@ class ProvenanceGraph:
             missing=missing,
             missing_provenance=missing_provenance,
             missing_security_context=missing_security_context,
+            errata_status=errata_status,
         )
 
     def neighborhood(self, node_id: str, depth: int = 1) -> "ProvenanceGraph":

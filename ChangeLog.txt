@@ -16,10 +16,194 @@ Conventions:
     via `git log main --oneline` if needed.
 
 ----------------------------------------------------------------------
+2026-05-30
+----------------------------------------------------------------------
+
+- (this)   docs(demo): refresh examples/demo-build-57810/console.txt from a
+           fresh el10 VPS run of example--full.sh (build 57810, nginx-core).
+           Reflects the D79 errata three-state in step 1's trust-path table --
+           `has_errata_link │ missing (not checked)` instead of a bare
+           "missing" -- so the committed demo output matches the current code.
+           Step 11's demo_verbose table still renders the bare "missing"
+           (it has its own renderer). SCP'd byte-for-byte from the VPS, not
+           hand-edited. No code change.
+
+- 00dfa01  docs(decisions): fix duplicate D73. The "HTML fallback metadata is
+           cacheable" entry (documenting fd579de) was accidentally swept into
+           the D78 commit f7409be from an in-progress working tree and reused
+           the D73 number already taken by "Finish D57". Renumbered to D81
+           (next free), content unchanged, with a note recording its actual
+           landing order (between D78 and D79). No code change; the only D73
+           ChangeLog reference (@ the "Finish D57" entry) is unaffected.
+
+- 7a26559  fix(albs): reject empty SPA-shell HTML fallback caches (absorbed
+           from the workbench branch's 15196c1). Build 57811 returns API 404
+           + AlmaLinux's generic frontend shell; the old parser cached that
+           as package "AlmaLinux" with zero RPMs (poisoned cache -> useless
+           5-node graph). parse_build_page now derives package from the RPM
+           name and RAISES when even that is empty; fetch_build_metadata
+           never writes an unusable fallback; _is_unusable_html_fallback_cache
+           discards an older poisoned cache before refetch. Brought to max
+           surgically -- only adapters/albs.py + 2 regression tests + a
+           1-line example--full.sh message tweak; NOT the commit's GUI
+           (gui/qt_app.py) or branch-numbered doc churn (those stay on the
+           workbench branch). Cross-branch sync: GUI stays off max, backend
+           hardening flows in. Suite 332 -> 334. ruff + mypy --strict clean.
+           (D80)
+
+- 527f471  feat(errata): live errata source + three-state errata status.
+           User-spotted: trust path's "missing errata" is misleading --
+           errata is queryable, and no advisory is the NORMAL state, not
+           an incompleteness. Root cause: graph conflated "never looked"
+           with "no advisory" into one boolean. Fix (two parts): (1) new
+           adapters/errata_source.py with ErrataSource Protocol + two
+           impls behind errata_source_for factory -- HttpErrataSource
+           (AlmaLinux errata feed file/URL via HttpCache+TTL, reusing
+           live_feeds._cached_get from D76) and DnfErrataSource
+           (`dnf -q updateinfo list --all`, degrades when dnf absent);
+           both expose consulted:bool. (2) TrustPathReport.errata_status
+           three-state: advisory_present / confirmed_clean / not_checked;
+           has_errata_link now satisfied by present OR clean (a clean
+           package with an SBOM is security_context_complete). Pipeline
+           ErrataSourceStep (binary-RPM selector, not one subject) +
+           RunSpec errata_source/errata_feed/errata_url + CLI flags on
+           coverage/vuln/trust-path; trust-path renders ok(advisory) /
+           ok(no advisory) / missing(not checked). NO cas path (user's
+           "ok ale bez casa"). Backward compatible: nothing sets
+           errata_status unless a source runs, so existing tests + the
+           coverage/vuln golden output are unchanged. +15 test cases.
+           Suite 317 → 332. ruff + mypy --strict clean; no network. (D79)
+
+----------------------------------------------------------------------
+2026-05-29
+----------------------------------------------------------------------
+
+- f7409be  feat(cli): auto-discover the build SBOM from --build-id
+           (file convention). User noted that passing --build-sbom is
+           redundant when the SBOM file already lives next to the cache.
+           ALBS build.json itself does NOT carry an SBOM URL (verified on
+           17812: only `rpm` and `build_log` artifact types) -- the SBOM
+           is produced separately by `alma-sbom` and dropped near the
+           cache by convention. New `discover_build_sbom(build_id, *,
+           cache_path=, search_dirs=)` walks: sibling of --cache, one
+           level up, then each search dir (default `examples/`); first
+           existing FILE wins (`is_file()` rules out a same-named dir).
+           Wired into coverage / identify / trust-path / vuln via a small
+           `_resolve_build_sbom` CLI helper: explicit --build-sbom always
+           wins; --no-auto-sbom opts out; without --build-id discovery
+           is a no-op. Hit is logged on --verbose so the user sees what
+           was picked. NO cas path (user explicitly excluded;
+           alma_commit_sbom_hash + `cas authenticate` stays an opt-in
+           future). example--full.sh keeps its explicit --build-sbom
+           (explicit wins, no change). +11 test cases (8 for the
+           discovery module, 3 for the CLI helper). Suite 306 → 317.
+           ruff + mypy --strict clean. (D78)
+
+- 08b7ead  feat(cli): arch-universe -- one command to fetch + repograph
+           every repo of an arch + merge. New
+           `albs_graph/adapters/arch_builder.py` enumerates the well-known
+           per-release repos (baseos / appstream / crb / extras / plus),
+           runs `dnf repograph --repo X` against each via an injectable
+           runner (tests stay offline), parses each dot with
+           `universe_from_dot`, merges with `merge_graphs` so canonical
+           `pkg:<name>` ids stitch cross-repo edges, and returns an
+           ArchUniverseResult (universe + per-repo edge counts + skip
+           reasons). Per-repo failure is recorded, never fatal -- "every
+           repo failed" still returns an empty graph + the full failure
+           list. CLI command `arch-universe` adds --arch, --release 9|10
+           (default repo set), --repo NAME (repeatable, overrides
+           release), --save PATH [--merge] (routes through D74's store),
+           --format summary|json|dot|svg. Smoke-tested without dnf: all
+           4 repos skip with "dnf not found", empty universe, no
+           traceback. +12 tests covering default lookup, repo override,
+           cross-repo merge stitching, single-repo failure, unexpected-
+           error swallowing, bare-invocation no-op, arch forwarding, and
+           round-trip through the SQLite store. Suite 293 → 305. ruff +
+           mypy --strict clean. (D77; closes the "live arch builder"
+           remaining-open item.)
+
+- eca9943  feat(security): live CPE / CVE feed fetch with HttpCache + TTL.
+           New `albs_graph/security/live_feeds.py` fetches NVD's CPE
+           dictionary + CVE feed through the existing HttpCache (D63/D64);
+           a TTL layered on top (default 12h, matching NVD's documented
+           cadence) drops stale cached entries before refetch.
+           `fetch_cpe_dictionary_or_none` / `fetch_cve_feed_or_none` are
+           the CLI helpers: a `--verify-cpe FILE` / `--cve-feed FILE` wins,
+           a URL falls back, missing both returns None; live fetch failure
+           degrades to None with a progress log (matches cas/dnf/rpmkeys).
+           CLI: `coverage --verify-cpe-url URL` + `vuln --verify-cpe-url`
+           / `--cve-feed-url` URL + `--feed-ttl SECONDS`. Pipeline's
+           VerifyCpeStep now applies on file OR URL via the new
+           `RunSpec.verify_cpe_url`; coverage golden output byte-identical.
+           Stdlib-only (urllib lazy-imported). +10 tests covering parse
+           round-trip for both feeds, cache hit within TTL, ttl_seconds=0
+           refetch, stale entry refetched after mtime rewind, helper file-
+           wins-over-URL, both-absent returns None, live failure swallowed
+           with the right progress log, unparseable response raises on the
+           strict path while the helper still returns None. Suite 283 →
+           293. ruff + mypy --strict clean; no network. (D76; closes the
+           "live CVE/NVD feed fetch" remaining-open item.)
+
+- 514aaab  feat(resolvers): pip / Maven / npm join Go + Cargo behind the
+           DependencyResolver contract. PypiResolver uses
+           `pip install --dry-run --quiet --no-input --report - -r REQS`
+           (pip >= 22.2; the dry-run + JSON report is the whole point) and
+           reads each install entry's metadata.name/version. MavenResolver
+           uses `mvn -B -q dependency:list -DincludeScope=runtime` and
+           parses each `[INFO] groupId:artifactId:packaging:[classifier:]
+           version:scope` line; coord = groupId:artifactId (packaging is
+           type, not identity). NpmResolver uses `npm ls --json --all` and
+           recursively walks `dependencies`, dedup'ing on (name, version)
+           so diamond deps collapse; tolerates npm's non-zero exit on
+           peer-dep warnings when the tree is still present. All three
+           follow the existing GoResolver / CargoResolver pattern exactly:
+           injectable Runner, FileNotFoundError -> tool-missing, non-zero
+           exit -> UNRESOLVABLE preserving requested specs. resolver_for
+           factory routes the three new ecosystems; only Gradle stays on
+           NullResolver (deferred -- bigger tooling surface). +12 tests,
+           each mocking the native tool's stdout. Suite 272 -> 283. ruff +
+           mypy --strict clean; no network. (D75; closes E1 for pip /
+           Maven / npm, leaving Gradle as the only remaining ecosystem.)
+
+- 48d8d6b  feat(store): real SQLite query backend -- closes G2. Four
+           additions to albs_graph/store.py (stdlib-only, no external deps):
+           (1) versioned schema with in-place migrations
+           (`schema_version` table + ordered MIGRATIONS tuple), so older
+           stores upgrade idempotently on open; (2) `save_graph(.., mode=
+           "merge")` upserts nodes + edges with deep metadata merge (dicts
+           merge key-by-key, lists union with order preserved), so multi-
+           build / multi-arch accumulation no longer wipes prior evidence;
+           (3) recursive-CTE multi-hop queries (`sql_reachable_dependencies`
+           / `sql_dependency_paths`) so a repo-wide universe is walkable
+           without `load_graph`, with cycle detection + max_depth + max_paths
+           bounds; wired into `universe --db --path-from/--path-to` so the
+           SQL fast path covers chains too. (4) Materialized analysis
+           snapshots (`save_analysis_snapshot` / `load_analysis_snapshot`)
+           persist coverage / vuln / license reports keyed on
+           `(kind, subject_id)`, older rows stay as an audit trail. All
+           original 5 store tests pass unchanged; +9 new tests covering
+           versioning idempotency, both save modes, deep-merge of edge +
+           node metadata, recursive walk against in-memory BFS, bounds, and
+           snapshot most-recent-wins. Suite 263 → 272. (D74; closes G2.)
+
+- 3c96c1b  refactor(cli): finish D57 -- migrate identify / trust-path / vuln /
+           license onto AnalysisPipeline. Each command builds a RunSpec and
+           delegates load -> enrich -> reconcile to the pipeline; rendering
+           stays in the command. Same byte-identical output on the synthetic
+           fixture; 23 lines net shrinkage in cli/main.py, 6 now-unused
+           imports removed. Drive-by: main() catches typer._click's
+           ClickException too, so Typer 0.13+'s NoArgsIsHelpError no longer
+           leaks tracebacks (fixes test_fetch_without_args_shows_help +
+           test_trust_path_without_args). Latent bug fixed: vuln ran
+           verify_cpe before build_sbom, overwriting NVD-verified CPEs with
+           vendor-asserted ones; pipeline order is the design intent. Closes
+           the loop opened by D57. (D73)
+
+----------------------------------------------------------------------
 2026-05-28
 ----------------------------------------------------------------------
 
-- (this)   docs(README): splice the second (step-11 / demo_verbose) trust-path
+- fc5b647  docs(README): splice the second (step-11 / demo_verbose) trust-path
            table into the README screenshot so both has_sbom rows read `ok`
            side by side -- visible confirmation of the D72 consistency fix.
 

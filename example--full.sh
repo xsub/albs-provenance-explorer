@@ -76,7 +76,7 @@ main() {
   opt run fetch --build-id "$BUILD_ID" --cache "$CACHE" --cache-ttl 86400 \
     --format json -o "$LIVE_DIR/build-$BUILD_ID.json" --verbose
   if [[ ! -f "$CACHE" ]]; then
-    printf 'ERROR: no cached metadata at %s (need network for the first run).\n' "$CACHE"
+    printf 'ERROR: no usable cached metadata at %s (fetch failed, build missing, or network unavailable).\n' "$CACHE"
     return 1
   fi
 
@@ -162,7 +162,7 @@ main() {
   opt "$PYTHON_BIN" -m albs_graph.cli.demo_verbose \
     --build-id "$BUILD_ID" --rpm "$PACKAGE" --arch "$ARCH" \
     --out-dir "$OUT_DIR" --live-dir "$LIVE_DIR" --cache "$CACHE" --cache-ttl 86400 --verify-git 0 \
-    "${sbom_args[@]}"
+    ${sbom_args[@]+"${sbom_args[@]}"}
 
   step "12. Render graphs to SVG (full build, focused trust path, whole-source fan-out)"
   if have dot; then

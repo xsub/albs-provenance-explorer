@@ -30,11 +30,16 @@ Two distinct facts here:
   consume a *provided* CycloneDX file when one carries licenses; `import-sbom`
   ingests the real `alma-sbom` SBOM for its PURL/CPE/provenance.
 - **The axis is binary-complete and needs errata too.** `security_context_complete`
-  requires *both* an attached SBOM **and** an errata/CVE link. `coverage --errata
-  FILE` now attaches errata, so SBOM + errata on the same subject completes the
-  axis. Remaining: errata is ingested from a **provided file** and attached to a
-  **single subject** (a live errata.almalinux.org fetch, and per-package
-  attachment across all of a build's binaries, are future work).
+  requires *both* an attached SBOM **and** an errata check. Two errata paths now
+  exist: `--errata FILE` (a single provided advisory on one subject) and a
+  **live errata source** (D79) `--errata-source http|dnf` that queries advisories
+  for **every** RPM. The errata check is **three-state**: `advisory_present` (an
+  advisory ships this exact NEVRA), `confirmed_clean` (a source was consulted and
+  found none -- this satisfies `has_errata_link`, because a package with no
+  advisory is normal, not incomplete), or `not_checked` (no source consulted --
+  the only genuinely-open case). Remaining: the AlmaLinux errata feed schema is
+  matched leniently (point `--errata-url` at the real `errata.full.json`); CAS
+  addressing of the SBOM by `alma_commit_sbom_hash` stays opt-in future work.
 
 ### `identity` - two real CPE sources, both honest
 The `identity` axis counts binaries with a verified CPE. Two paths populate it:
@@ -267,16 +272,27 @@ but:
   on PATH; `dot`/`json` are dependency-free.
 
 ## SQLite store
-The `albs_graph/store.py` persistence is intentionally minimal:
-- **One-hop SQL only.** `sql_dependents` / `sql_dependencies` run without loading
-  the graph, but multi-hop paths and rendering still `load_graph` the whole
-  store into memory.
+The `albs_graph/store.py` persistence is intentionally minimal -- but grew (D74):
+- **One- and multi-hop SQL.** `sql_dependents` / `sql_dependencies` (one hop)
+  plus `sql_reachable_dependencies` / `sql_dependency_paths` (recursive CTE)
+  run without loading the graph -- so a repo-wide universe is walkable from
+  the persisted store. Rendering still `load_graph`s the whole store into
+  memory (focused-subgraph emission needs the in-memory model).
 - **Substring/exact name matching** (label / `pkg:<name>` / `cap:%<name>`), same
   trade-off as the in-memory traversal.
-- **Single-writer, replace-on-save.** `save_graph` rewrites the file; there is no
-  incremental update, concurrency control, or migration story.
+- **Replace and merge modes.** `save_graph(.., mode="replace")` is the original
+  behaviour; `mode="merge"` upserts and deep-merges node + edge metadata so
+  multi-build / multi-arch accumulation does not lose claims (lists union, dict
+  keys merge, scalar conflicts let incoming win). Closes G2.
+- **Versioned schema with in-place migrations.** A `schema_version` table +
+  ordered `MIGRATIONS` list (`_migration_v1_*` ... `_migration_v3_*` today)
+  lifts older stores to the latest schema idempotently. No concurrency
+  control: still single-writer.
+- **Materialized analysis snapshots.** `save_analysis_snapshot` /
+  `load_analysis_snapshot` persist coverage / vuln / license reports as JSON
+  payloads keyed on `(kind, subject_id)`; older rows stay as an audit trail.
 - **No vector/similarity.** A `sqlite-vec` overlay is noted in the plan but not
-  implemented.
+  implemented (still G3).
 
 ## Scale and performance
 

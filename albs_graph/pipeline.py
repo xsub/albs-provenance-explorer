@@ -40,6 +40,7 @@ from albs_graph.adapters.dnf import (
     resolve_soname_claims,
 )
 from albs_graph.adapters.errata import attach_errata_file
+from albs_graph.adapters.errata_source import attach_errata_from_source, errata_source_for
 from albs_graph.adapters.pylang import attach_python_imports, attach_python_requirements
 from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
@@ -53,7 +54,8 @@ from albs_graph.provenance.trust import (
     make_binary_rpm_selector,
     select_default_binary_rpm,
 )
-from albs_graph.security.cpe import CpeDictionary, verify_graph_cpe
+from albs_graph.security.cpe import verify_graph_cpe
+from albs_graph.security.live_feeds import fetch_cpe_dictionary_or_none
 
 Progress = Callable[[str], None] | None
 NodeSelector = Callable[[Node], bool]
@@ -79,7 +81,13 @@ class RunSpec:
     module_map: Path | None = None
     errata: Path | None = None
     errata_subject: str | None = None
+    # Live errata source (D79): query advisories for *every* RPM (not a single
+    # subject). "http" reads errata_feed / errata_url; "dnf" runs updateinfo.
+    errata_source: str | None = None
+    errata_feed: Path | None = None
+    errata_url: str | None = None
     verify_cpe: Path | None = None
+    verify_cpe_url: str | None = None  # live NVD CPE dictionary (D76)
     with_rpm_headers: bool = False
     with_rpm_payloads: bool = False
     resolve_sonames: bool = False
@@ -90,6 +98,9 @@ class RunSpec:
     max_concurrency: int = 4
     http_cache: bool = True       # header cache (tiny); default on
     cache_payloads: bool = False  # payload cache (5-50 MB each); opt-in
+    # Live-feed TTL (D76): how long a cached NVD CPE/CVE feed copy is good
+    # for; 0 forces refetch, None disables the TTL on top of HttpCache.
+    feed_ttl_seconds: float | None = 12 * 3600
 
 
 @dataclass(frozen=True)
@@ -231,18 +242,53 @@ class ErrataStep:
 
 
 @dataclass(frozen=True)
+class ErrataSourceStep:
+    name: str = "errata_source"
+
+    def applies(self, spec: RunSpec) -> bool:
+        return spec.errata_source is not None or spec.errata_feed is not None
+
+    def run(self, ctx: EnrichmentContext) -> Any:
+        # Errata is measured across every (selected) RPM, not one subject -- a
+        # build's security context is "which of my artifacts carry advisories",
+        # so this uses the binary-RPM selector, not ctx.subject().
+        source = errata_source_for(
+            ctx.spec.errata_source,
+            feed_file=ctx.spec.errata_feed,
+            url=ctx.spec.errata_url,
+            ttl_seconds=ctx.spec.feed_ttl_seconds,
+            on_progress=ctx.on_progress,
+        )
+        if source is None:
+            ctx.log("Errata source requested but could not be built; skipping")
+            return None
+        ctx.log(f"Querying errata source {source.name} for advisory coverage")
+        return attach_errata_from_source(ctx.graph, source, node_selector=ctx.selector)
+
+
+@dataclass(frozen=True)
 class VerifyCpeStep:
     name: str = "verify_cpe"
 
     def applies(self, spec: RunSpec) -> bool:
-        return spec.verify_cpe is not None
+        return spec.verify_cpe is not None or spec.verify_cpe_url is not None
 
     def run(self, ctx: EnrichmentContext) -> Any:
-        assert ctx.spec.verify_cpe is not None  # guaranteed by applies()
-        ctx.log(f"Verifying CPE candidates against {ctx.spec.verify_cpe}")
-        return verify_graph_cpe(
-            ctx.graph, CpeDictionary.from_file(ctx.spec.verify_cpe), node_selector=ctx.selector
+        # File wins over URL when both are given; URL falls back to None when
+        # the network is unavailable so the run continues (D76's graceful
+        # degradation rule, same shape as cas/dnf/rpmkeys).
+        dictionary = fetch_cpe_dictionary_or_none(
+            source_file=ctx.spec.verify_cpe,
+            url=ctx.spec.verify_cpe_url,
+            ttl_seconds=ctx.spec.feed_ttl_seconds,
+            on_progress=ctx.on_progress,
         )
+        if dictionary is None:
+            ctx.log("CPE verification skipped (no dictionary file and live feed unavailable)")
+            return None
+        source = ctx.spec.verify_cpe or ctx.spec.verify_cpe_url
+        ctx.log(f"Verifying CPE candidates against {source}")
+        return verify_graph_cpe(ctx.graph, dictionary, node_selector=ctx.selector)
 
 
 @dataclass(frozen=True)
@@ -341,6 +387,7 @@ DEFAULT_STEPS: tuple[EnrichmentStep, ...] = (
     RequirementsStep(),
     ImportsStep(),
     ErrataStep(),
+    ErrataSourceStep(),
     VerifyCpeStep(),
     HeadersStep(),
     PayloadStep(),
