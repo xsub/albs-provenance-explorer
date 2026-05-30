@@ -1,5 +1,17 @@
 # PyQt investigation workbench
 
+[![CI](https://github.com/xsub/albs-provenance-explorer/actions/workflows/python-app.yml/badge.svg?branch=InvestigationWorkbenchApp)](https://github.com/xsub/albs-provenance-explorer/actions/workflows/python-app.yml)
+[![CodeQL](https://github.com/xsub/albs-provenance-explorer/actions/workflows/codeql.yml/badge.svg?branch=InvestigationWorkbenchApp)](https://github.com/xsub/albs-provenance-explorer/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/xsub/albs-provenance-explorer/badge)](https://scorecard.dev/viewer/?uri=github.com/xsub/albs-provenance-explorer)
+[![codecov](https://codecov.io/gh/xsub/albs-provenance-explorer/branch/InvestigationWorkbenchApp/graph/badge.svg)](https://codecov.io/gh/xsub/albs-provenance-explorer)
+
+[![Built for AlmaLinux](https://img.shields.io/badge/built_for-AlmaLinux-0D597F?logo=almalinux&logoColor=white)](https://almalinux.org)
+[![GUI: PyQt5](https://img.shields.io/badge/GUI-PyQt5-41CD52?logo=qt&logoColor=white)](https://pypi.org/project/PyQt5/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Typed: mypy strict](https://img.shields.io/badge/mypy-strict-blue)](https://mypy-lang.org/)
+
 ![PyQt investigation workbench showing dependency evidence for build 57810](examples/demo-build-57810/pyqt-investigation-workbench.png)
 
 The `InvestigationWorkbenchApp` branch exposes the same provenance backend

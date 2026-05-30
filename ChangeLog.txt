@@ -19,7 +19,22 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   docs(demo): refresh examples/demo-build-57810/console.txt from a
+- (this)   ci+docs(workbench): bring CI + badges to the workbench branch,
+           PyQt5-aware. New python-app.yml installs `.[dev,gui]` + the Qt
+           offscreen plugin's system libs + graphviz, runs ruff + mypy
+           --strict + pytest (incl. the GUI tests, headless) + coverage +
+           check-test-count on matrix 3.11/3.12/3.13; QT_QPA_PLATFORM=offscreen
+           job-wide. New codeql.yml (Scorecard stays repo-level from main).
+           tests/conftest.py pins TERM=dumb + COLUMNS=200 (Rich help under CI
+           FORCE_COLOR) and QT_QPA_PLATFORM=offscreen (headless Qt) so the
+           full 367-test suite runs deterministically with a bare `pytest`.
+           pytest-cov added to the dev extra; coverage artifacts gitignored.
+           README badge block: CI + CodeQL + Scorecard + codecov (branch-
+           scoped) + Built-for-AlmaLinux + PyQt5 + License + Python + Ruff +
+           mypy. Verified locally: ruff clean, mypy 84 files, 367 passed
+           headless, 68% coverage.
+
+- 6d93c39  docs(demo): refresh examples/demo-build-57810/console.txt from a
            fresh el10 run of example--full.sh (build 57810, nginx-core).
            Reflects the D94 errata three-state in step 1's trust-path table
            -- `has_errata_link | missing (not checked)` instead of a bare
