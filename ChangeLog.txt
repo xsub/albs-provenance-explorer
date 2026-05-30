@@ -19,7 +19,17 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   ci(github): replace the generic starter workflow with one that
+- (this)   test(conftest): pin deterministic Rich/Typer help rendering so the
+           CLI-help tests pass on CI. The first CI run went red: GitHub Actions
+           sets FORCE_COLOR, so Rich interleaves ANSI escape codes through the
+           --help text and `assert "--build-id" in output` no longer matches a
+           contiguous substring (it passes on a normal dev terminal, hence the
+           local 334-green). New tests/conftest.py forces TERM=dumb (plain, no
+           ANSI) + COLUMNS=200 (no wrap, matching example--full.sh) and drops
+           FORCE_COLOR for the session. Verified under FORCE_COLOR=1 locally:
+           test_cli_help 6/6, full suite 334. No test added (count unchanged).
+
+- fa3c4c6  ci(github): replace the generic starter workflow with one that
            matches the project. The web-UI template used Python 3.10 (project
            requires >=3.11, so `pip install .` failed outright), flake8 (project
            lints with ruff), and no mypy. New python-app.yml: matrix 3.11/3.12/
