@@ -2580,6 +2580,45 @@ http+non-path -> url; dnf -> source only; session round-trip). Suite 370 -> 371.
 
 ---
 
+## D97 - Workbench Security panel (CPE browser + errata/CVE posture)
+
+M3's remaining payoff after the Evidence-matrix errata cell (b703443) and the
+errata toggle (D96): a dedicated **Security** tab that reads, per binary RPM,
+the whole security picture the layers already produce but no single workbench
+view surfaced -- identity, errata three-state, addressed CVEs, feed-matched
+potentially-affected CVEs, and the caveats that frame a naive version match.
+
+Backend: `services.workbench.security_rows(graph, *, cve_feed=None,
+node_selector=None) -> list[SecurityRow]`. It reuses `vulnerability_report`
+(F1) for identity / errata / CVE / linkage and keys each assessment back to its
+node by `(package, arch)` so the row carries a `node_id` (the panel navigates to
+the artifact on activate). On top it adds two things the vuln report does not
+expose per row: the **errata three-state** from `trust_path_report().errata_status`
+(`advisory` / `clean` / `missing`, consistent with the matrix), and the
+**CPE-candidate browser** -- the unverified `cpe_candidates` product/version
+guesses from the node's `security_identity`, so a package with no official CPE
+still shows what it *might* be (with a `[verified]` marker on a promoted
+candidate). The `identity` column collapses `cpe_status` into
+`verified` / `vendor-asserted` / `ambiguous` / `candidate` / `none`; `caveats`
+joins `backport` (the distro-backport version-match caveat) + `dlopen` +
+`static:N` reachability.
+
+GUI: a 9-column `security_table` tab (Package, Arch, Identity, CPE, Candidates,
+Errata, Addressed CVEs, Potential CVEs, Caveats), populated in
+`_analysis_finished`, colour-tinted (verified/clean green, vendor/candidate/
+advisory/backport amber, none/missing red), activate -> navigate to the node.
+
+Scope note: the **Potential CVEs** column needs a live CVE feed at report time;
+the workbench does not yet wire one (the errata toggle wires errata, not the CVE
+feed), so it reads `-` until a feed source is added -- the column is present and
+forward-compatible, and addressed CVEs (via errata) always populate. A
+CVE-feed toggle mirroring the errata toggle is the natural follow-up.
+
++1 backend test (verified/vendor/candidate/backport/clean rows + addressed CVE)
+and a GUI assertion that the panel populates. Suite 371 -> 372.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

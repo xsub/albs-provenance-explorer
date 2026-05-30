@@ -25,6 +25,7 @@ from albs_graph.services import (
     GraphSlices,
     findings_for_analysis,
     run_graph_query,
+    security_rows,
     source_evidence_rows,
     investigation_recipes,
     timeline_gantt_rows,
@@ -236,6 +237,64 @@ def test_workbench_evidence_matrix_surfaces_errata_three_state() -> None:
     assert cells["rpm:adv:x86_64"] == "advisory"
     assert cells["rpm:clean:x86_64"] == "clean"
     assert cells["rpm:unknown:x86_64"] == "missing"
+
+
+def test_workbench_security_rows_browse_identity_errata_and_caveats() -> None:
+    # M3 Security panel: one row per binary RPM combining identity (verified vs
+    # vendor-asserted vs unverified candidate), the errata three-state, the CVEs
+    # an errata addresses, and the distro-backport caveat.
+    graph = ProvenanceGraph()
+
+    def _rpm(name: str, identity: dict | None, extra: dict | None = None) -> None:
+        meta = {"name": name, "arch": "x86_64", "version": "1.0", **(extra or {})}
+        if identity is not None:
+            meta["security_identity"] = identity
+        graph.add_node(Node(f"rpm:{name}:x86_64", NodeType.BINARY_RPM, name, meta))
+
+    _rpm(
+        "verified",
+        {"cpe": "cpe:2.3:a:nginx:nginx:1.0:*:*:*:*:*:*:*", "cpe_status": "verified",
+         "cpe_candidates": [{"cpe23": "cpe:2.3:a:nginx:nginx:1.0:*:*:*:*:*:*:*",
+                             "product": "nginx", "version": "1.0", "verified": True}]},
+    )
+    _rpm(
+        "vendor",
+        {"cpe": "cpe:2.3:a:almalinux:zlib:1.0:*:*:*:*:*:*:*", "cpe_status": "vendor_asserted",
+         "cpe_candidates": []},
+    )
+    _rpm(
+        "guess",
+        {"cpe": None, "cpe_status": "candidate_only",
+         "cpe_candidates": [{"cpe23": "cpe:2.3:a:*:openssl:3.0:*:*:*:*:*:*:*",
+                             "product": "openssl", "version": "3.0", "verified": False}]},
+    )
+    _rpm(
+        "backport",
+        {"cpe": "cpe:2.3:a:openssl:openssl:3.0:*:*:*:*:*:*:*", "cpe_status": "verified",
+         "cpe_candidates": [], "distro_backport": True},
+    )
+    _rpm("naked", None, {"errata_status": "confirmed_clean"})
+
+    # An advisory + CVE attached to the verified RPM.
+    graph.add_node(Node("errata:ALSA-9", NodeType.ERRATA, "ALSA-9", {}))
+    graph.add_node(Node("cve:CVE-2026-9", NodeType.CVE, "CVE-2026-9", {}))
+    graph.add_edge("rpm:verified:x86_64", "errata:ALSA-9", Relation.FIXES)
+    graph.add_edge("errata:ALSA-9", "cve:CVE-2026-9", Relation.FIXES)
+
+    rows = {row.node_id: row for row in security_rows(graph)}
+
+    assert rows["rpm:verified:x86_64"].identity == "verified"
+    assert rows["rpm:verified:x86_64"].errata == "advisory"
+    assert rows["rpm:verified:x86_64"].addressed_cves == "CVE-2026-9"
+    assert rows["rpm:vendor:x86_64"].identity == "vendor-asserted"
+    # The unverified candidate is surfaced even though no official CPE is set.
+    guess = rows["rpm:guess:x86_64"]
+    assert guess.identity == "candidate"
+    assert guess.cpe == "cpe:2.3:a:*:openssl:3.0:*:*:*:*:*:*:*"
+    assert "openssl 3.0" in guess.candidates
+    assert "backport" in rows["rpm:backport:x86_64"].caveats
+    assert rows["rpm:naked:x86_64"].identity == "none"
+    assert rows["rpm:naked:x86_64"].errata == "clean"
 
 
 def test_workbench_layer_filter_hides_disabled_security_context() -> None:

@@ -19,7 +19,21 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   feat(workbench): errata-source toggle so `clean` is reachable from
+- (this)   feat(workbench): Security panel -- CPE browser + errata/CVE posture
+           (plan milestone M3). New services.workbench.security_rows reuses
+           vulnerability_report (F1) for identity/errata/CVE/linkage, keys each
+           assessment back to its node by (package, arch), and adds the errata
+           three-state (from trust_path_report) + the unverified cpe_candidates
+           browser (product/version guesses, [verified] marker) on top. New
+           9-column Security tab (Package/Arch/Identity/CPE/Candidates/Errata/
+           Addressed CVEs/Potential CVEs/Caveats), colour-tinted, activate ->
+           navigate to the node. Potential CVEs needs a live feed (not yet wired
+           in the workbench) so it reads `-`; addressed CVEs always populate.
+           +1 backend test + a GUI populate assertion. Suite 371 -> 372.
+           decisions.md D97. Next M3/M2 step: a CVE-feed toggle (mirroring the
+           errata toggle), then the Dependency workbench (claim grouping).
+
+- 580252d  feat(workbench): errata-source toggle so `clean` is reachable from
            the Analyze path (plan milestone M3). A toolbar `errata_combo`
            (off / http / dnf, userData == RunSpec.errata_source) plus an
            `errata_feed_edit`: for http the field is an offline feed file when

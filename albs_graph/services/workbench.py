@@ -5,11 +5,13 @@ from html import escape
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from albs_graph.model import Edge, Node, NodeType, ProvenanceGraph, Relation
 from albs_graph.provenance.build_analysis import BuildAnalysis, SignTaskTiming, TaskTiming
 from albs_graph.provenance.coverage import CoverageReport
+from albs_graph.provenance.vuln import PackageVulnAssessment, vulnerability_report
+from albs_graph.security.cve_feed import CveFeed
 from albs_graph.services.findings import Finding
 from albs_graph.services.slices import GraphSlice
 
@@ -154,6 +156,42 @@ class EvidenceMatrixRow:
             "tests": self.tests,
             "completeness": self.completeness,
             "missing": self.missing,
+        }
+
+
+@dataclass(frozen=True)
+class SecurityRow:
+    """One binary RPM's security posture for the M3 Security panel.
+
+    Combines identity (verified vs vendor-asserted vs unverified candidates),
+    the errata three-state (D79), the CVEs an errata addresses, any
+    feed-matched potentially-affected CVEs, and the caveats that frame how far
+    a naive version match can be trusted (distro backport + reachability).
+    """
+
+    node_id: str
+    package: str
+    arch: str
+    identity: str          # verified / vendor-asserted / ambiguous / candidate / none
+    cpe: str               # resolved cpe:2.3, else the top candidate, else "-"
+    candidates: str        # unverified product/version guesses (the "browser")
+    errata: str            # advisory / clean / missing (three-state)
+    addressed_cves: str    # CVEs an attached errata fixes
+    potential_cves: str    # CVE-feed matches not already addressed (needs a feed)
+    caveats: str           # backport / dlopen / static:N
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "node_id": self.node_id,
+            "package": self.package,
+            "arch": self.arch,
+            "identity": self.identity,
+            "cpe": self.cpe,
+            "candidates": self.candidates,
+            "errata": self.errata,
+            "addressed_cves": self.addressed_cves,
+            "potential_cves": self.potential_cves,
+            "caveats": self.caveats,
         }
 
 
@@ -405,6 +443,109 @@ def evidence_matrix_rows(graph: ProvenanceGraph) -> list[EvidenceMatrixRow]:
             )
         )
     return rows
+
+
+def security_rows(
+    graph: ProvenanceGraph,
+    *,
+    cve_feed: CveFeed | None = None,
+    node_selector: Callable[[Node], bool] | None = None,
+) -> list[SecurityRow]:
+    """Per-binary-RPM security posture for the M3 Security panel.
+
+    Reuses ``vulnerability_report`` for identity / errata / CVE / linkage and
+    adds the node id, the errata three-state (from the trust-path report) and
+    the unverified CPE-candidate browser (from the node's ``security_identity``)
+    on top, keyed back to each node by ``(package, arch)``. Without a
+    ``cve_feed`` the potentially-affected column stays empty (the addressed
+    CVEs an errata fixes are always shown).
+    """
+
+    report = vulnerability_report(graph, cve_feed=cve_feed, node_selector=node_selector)
+    by_key = {(item.package, item.arch): item for item in report.packages}
+    rows: list[SecurityRow] = []
+    for node in graph.find_by_type(NodeType.BINARY_RPM):
+        if node_selector and not node_selector(node):
+            continue
+        package = str(node.metadata.get("name") or node.label)
+        arch = node.metadata.get("arch")
+        arch = str(arch) if arch else None
+        assessment = by_key.get((package, arch))
+        if assessment is None:
+            continue
+        identity = node.metadata.get("security_identity")
+        identity = identity if isinstance(identity, dict) else {}
+        trust = graph.trust_path_report(node.id)
+        rows.append(
+            SecurityRow(
+                node_id=node.id,
+                package=package,
+                arch=arch or "",
+                identity=_identity_label(identity),
+                cpe=_cpe_display(identity),
+                candidates=_candidate_summary(identity),
+                errata=_errata_cell(trust.errata_status),
+                addressed_cves="; ".join(assessment.addressed_cves) or "-",
+                potential_cves="; ".join(assessment.potentially_affected_cves) or "-",
+                caveats=_security_caveats(assessment),
+            )
+        )
+    rows.sort(key=lambda row: (row.package, row.arch, row.node_id))
+    return rows
+
+
+def _identity_label(identity: dict[str, Any]) -> str:
+    status = str(identity.get("cpe_status") or "unresolved")
+    if status == "verified":
+        return "verified"
+    if status == "vendor_asserted":
+        return "vendor-asserted"
+    if status == "ambiguous_vendor":
+        return "ambiguous"
+    if identity.get("cpe_candidates"):
+        return "candidate"
+    return "none"
+
+
+def _cpe_display(identity: dict[str, Any]) -> str:
+    cpe = identity.get("cpe")
+    if isinstance(cpe, str) and cpe:
+        return cpe
+    for candidate in _candidate_dicts(identity):
+        cpe23 = candidate.get("cpe23")
+        if isinstance(cpe23, str) and cpe23:
+            return cpe23
+    return "-"
+
+
+def _candidate_summary(identity: dict[str, Any]) -> str:
+    parts: list[str] = []
+    for candidate in _candidate_dicts(identity):
+        product = str(candidate.get("product") or "*")
+        version = str(candidate.get("version") or "*")
+        label = f"{product} {version}"
+        if candidate.get("verified"):
+            label += " [verified]"
+        parts.append(label)
+    return "; ".join(parts) or "-"
+
+
+def _candidate_dicts(identity: dict[str, Any]) -> list[dict[str, Any]]:
+    candidates = identity.get("cpe_candidates")
+    if not isinstance(candidates, list):
+        return []
+    return [candidate for candidate in candidates if isinstance(candidate, dict)]
+
+
+def _security_caveats(assessment: PackageVulnAssessment) -> str:
+    caveats: list[str] = []
+    if assessment.distro_backport:
+        caveats.append("backport")
+    if assessment.dlopen:
+        caveats.append("dlopen")
+    if assessment.static_objects:
+        caveats.append(f"static:{assessment.static_objects}")
+    return "; ".join(caveats) or "-"
 
 
 def compare_builds(

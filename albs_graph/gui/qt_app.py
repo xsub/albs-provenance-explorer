@@ -40,6 +40,7 @@ from albs_graph.services import (
     graph_query_presets,
     investigation_recipes,
     run_graph_query,
+    security_rows,
     source_evidence_rows,
     timeline_gantt_rows,
     timeline_tree,
@@ -505,6 +506,24 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.evidence_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.evidence_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.evidence_table.setAlternatingRowColors(True)
+        self.security_table = QtWidgets.QTableWidget(0, 9)
+        self.security_table.setHorizontalHeaderLabels(
+            [
+                "Package",
+                "Arch",
+                "Identity",
+                "CPE",
+                "Candidates",
+                "Errata",
+                "Addressed CVEs",
+                "Potential CVEs",
+                "Caveats",
+            ]
+        )
+        self.security_table.horizontalHeader().setStretchLastSection(True)
+        self.security_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.security_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.security_table.setAlternatingRowColors(True)
         self.source_table = QtWidgets.QTableWidget(0, 4)
         self.source_table.setHorizontalHeaderLabels(["Category", "Label", "Node id", "Detail"])
         self.source_table.horizontalHeader().setStretchLastSection(True)
@@ -725,6 +744,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         bottom.addTab(self.findings_table, "Findings")
         bottom.addTab(self.coverage_table, "Coverage")
         bottom.addTab(self.evidence_table, "Evidence")
+        bottom.addTab(self.security_table, "Security")
         bottom.addTab(self.source_table, "Source")
         bottom.addTab(self.query_panel, "Queries")
         bottom.addTab(self.finding_detail_table, "Finding Detail")
@@ -842,6 +862,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.timeline_view_combo.currentIndexChanged.connect(self.timeline_stack.setCurrentIndex)
         self.evidence_table.itemActivated.connect(self._evidence_activated)
         self.evidence_table.itemDoubleClicked.connect(self._evidence_activated)
+        self.security_table.itemActivated.connect(self._security_activated)
+        self.security_table.itemDoubleClicked.connect(self._security_activated)
         self.source_table.itemActivated.connect(self._source_activated)
         self.source_table.itemDoubleClicked.connect(self._source_activated)
         self.query_run_button.clicked.connect(self._run_selected_query)
@@ -1220,6 +1242,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._populate_findings()
         self._populate_coverage_table()
         self._populate_evidence_table()
+        self._populate_security_table()
         self._populate_source_table()
         self._run_selected_query()
         self._populate_timeline()
@@ -1335,6 +1358,57 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                     item.setForeground(QtGui.QBrush(QtGui.QColor("#87D37C")))
                 self.evidence_table.setItem(row, column, item)
         self.evidence_table.resizeColumnsToContents()
+
+    def _populate_security_table(self) -> None:
+        assert self.result is not None
+        rows = security_rows(self.result.graph)
+        self.security_table.setRowCount(len(rows))
+        for row, entry in enumerate(rows):
+            values = [
+                entry.package,
+                entry.arch,
+                entry.identity,
+                entry.cpe,
+                entry.candidates,
+                entry.errata,
+                entry.addressed_cves,
+                entry.potential_cves,
+                entry.caveats,
+            ]
+            for column, value in enumerate(values):
+                item = QtWidgets.QTableWidgetItem(value)
+                item.setData(QtCore.Qt.UserRole, entry.node_id)
+                self._tint_security_cell(item, column, value)
+                self.security_table.setItem(row, column, item)
+        self.security_table.resizeColumnsToContents()
+
+    def _tint_security_cell(self, item: QtWidgets.QTableWidgetItem, column: int, value: str) -> None:
+        good = QtGui.QBrush(QtGui.QColor("#87D37C"))
+        warn = QtGui.QBrush(QtGui.QColor("#E6B85C"))
+        bad = QtGui.QBrush(QtGui.QColor("#F08A8A"))
+        if column == 2:  # Identity
+            if value == "verified":
+                item.setForeground(good)
+            elif value in ("vendor-asserted", "candidate", "ambiguous"):
+                item.setForeground(warn)
+            elif value == "none":
+                item.setForeground(bad)
+        elif column == 5:  # Errata three-state
+            if value == "clean":
+                item.setForeground(good)
+            elif value == "advisory":
+                item.setForeground(warn)
+            elif value == "missing":
+                item.setForeground(bad)
+        elif column in (6, 7) and value not in ("", "-"):  # CVEs present
+            item.setForeground(warn)
+        elif column == 8 and "backport" in value:  # backport caveat
+            item.setForeground(warn)
+
+    def _security_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
+        node_id = item.data(QtCore.Qt.UserRole)
+        if node_id:
+            self._navigate_to_node(str(node_id), prefer_artifact=True)
 
     def _populate_source_table(self, subject_id: str | None = None) -> None:
         if self.result is None:

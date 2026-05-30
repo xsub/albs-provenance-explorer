@@ -50,6 +50,7 @@ def test_workbench_window_constructs_and_handles_a_result(
         assert window.artifact_list.count() > 0
         assert window.current_slice is not None       # a slice was rendered
         assert window.coverage_table.rowCount() > 0    # coverage table populated
+        assert window.security_table.rowCount() > 0    # M3 security panel populated
         assert window.current_svg                      # an SVG string was produced
     finally:
         window.close()

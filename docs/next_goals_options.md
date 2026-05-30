@@ -147,10 +147,14 @@ milestones:
 - **M2 Dependency workbench** -- group dependency claims by subject / identity /
   context / evidence; show reconciliation verdicts + conflict kinds; filters
   for runtime/build/static/test scope and "only conflicts / only unresolved".
-- **M3 Security workbench** -- CPE candidate browser, verified vs
-  vendor-asserted identity, the **errata three-state** (advisory_present /
-  confirmed_clean / not_checked, D79) surfaced in the evidence matrix, CVE-feed
-  match panel with version-range explanation, distro-backport caveat.
+- **M3 Security workbench** -- mostly **done**: the **errata three-state**
+  (advisory_present / confirmed_clean / not_checked, D79) in the evidence matrix
+  (b703443), a workbench errata-source toggle so `clean` is reachable live
+  (D96), and a dedicated **Security panel** -- CPE candidate browser (verified
+  vs vendor-asserted vs unverified guess), errata posture, addressed/potential
+  CVEs, distro-backport + reachability caveats (D97). *Remaining:* wire a live
+  CVE feed into the workbench (a feed toggle mirroring the errata one) so the
+  **Potential CVEs** column populates with version-range matches.
 - **M4 Universe workbench** -- open a SQLite universe store (D74), search
   packages, traverse dependents/dependencies, render dependency paths
   (the recursive-CTE queries are ready), save favourite slices.
