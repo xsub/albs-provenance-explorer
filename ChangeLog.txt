@@ -19,7 +19,21 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   feat(errata): port the live errata source + three-state errata
+- (this)   docs(plan): consolidate the PyQt workbench plan doc. The live
+           plan-pyqt5-investigation-workbench-app.md is now the merged
+           superset -- the 398-line architecture rewrite (Graph Interaction
+           Model, query/slice APIs, MVP/Later renderer, Follow-up Milestones
+           M2-M5, Data/State Boundaries, Why-PyQt5, Risks, Architectural
+           Payoff) PLUS an "Appendix: Current Implementation Status" that
+           salvages the older 301-line version's implementation log verbatim
+           (Gantt cascade, Evidence matrix, compare_artifacts, cyclonedx
+           filename, BuildAnalysis timeline, image-map hit-testing -- the six
+           details the rewrite had dropped). Both prior revisions kept verbatim
+           as *_deprecated-301.md and *_deprecated-398.md. Concept-coverage
+           check confirms all six dropped items are back. Docs housekeeping
+           only, no code change. (D95.)
+
+- fc0df31  feat(errata): port the live errata source + three-state errata
            status from max (527f471). The backend port (D92) predated max's
            errata work, so the branch lacked it. Brings adapters/
            errata_source.py (ErrataSource Protocol; HttpErrataSource via

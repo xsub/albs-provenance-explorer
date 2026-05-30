@@ -2515,6 +2515,31 @@ this branch-numbered entry. +15 test cases. Suite now 367.
 
 ---
 
+## D95 - Consolidate the workbench plan doc (398 architecture + salvaged 301 status)
+
+The PyQt workbench plan existed in two divergent copies: the tracked 301-line
+version on this branch, and a 398-line architecture rewrite that lived untracked
+in the `max` worktree. The rewrite was strictly better as a *plan* (it added
+Graph Interaction Model, typed backend query/slice APIs, an MVP/Later renderer
+split, Follow-up Milestones M2-M5, Data/State Boundaries, Why-PyQt5, Risks and
+Architectural Payoff sections), but it had dropped the older copy's
+"Current branch status" implementation log -- six concrete details with no
+equivalent in the rewrite (the Gantt-style timeline cascade, the Evidence
+matrix, `compare_artifacts`, the `build-<id>.cyclonedx.json` suggestion,
+`BuildAnalysis`-driven timeline, and the Graphviz image-map hit-testing
+mechanism).
+
+Decision: the live `plan-pyqt5-investigation-workbench-app.md` is now the merged
+superset -- the 398 architecture plus an "Appendix: Current Implementation
+Status (as built)" that salvages the dropped implementation log verbatim, so
+nothing is lost. Both prior revisions are preserved verbatim alongside it as
+`*_deprecated-301.md` (the old status-log version) and `*_deprecated-398.md`
+(the architecture rewrite before the merge), in case either is needed again.
+A concept-coverage check confirmed all six previously-dropped items are present
+in the live doc. This is documentation housekeeping only -- no code change.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
