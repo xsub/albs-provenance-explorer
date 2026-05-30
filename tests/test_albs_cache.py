@@ -6,6 +6,8 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+import pytest
+
 from albs_graph.adapters.albs import fetch_build_metadata
 
 
@@ -211,4 +213,79 @@ def test_fetch_build_metadata_refreshes_stale_local_cache(tmp_path: Path, monkey
     metadata = fetch_build_metadata(17812, cache_path=cache, cache_ttl_seconds=300)
 
     assert metadata.package == "nginx"
+    assert len(fake_requests.calls) == 1
+
+
+def test_fetch_build_metadata_rejects_empty_spa_html_fallback(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    # Build 57811 returns API 404 + the generic AlmaLinux SPA shell at /build/.
+    # The old parser cached that as package "AlmaLinux" with zero RPMs; the HTML
+    # fallback must now raise instead of fabricating useless metadata, and the
+    # empty shell must NOT be cached.
+    html = """
+    <!DOCTYPE html>
+    <html>
+      <head><title>AlmaLinux Build System</title></head>
+      <body><div id="q-app"></div></body>
+    </html>
+    """
+    fake_requests = FakeSequenceRequests(
+        [
+            FakeResponse(ok=False, content_type="application/json", text='{"detail":"not found"}'),
+            FakeResponse(content_type="text/html", text=html),
+        ]
+    )
+    monkeypatch.setitem(__import__("sys").modules, "requests", fake_requests)
+    cache = tmp_path / "build-57811.albs.json"
+
+    with pytest.raises(ValueError, match="did not contain build metadata"):
+        fetch_build_metadata(57811, cache_path=cache)
+
+    assert not cache.exists()
+    assert len(fake_requests.calls) == 2
+
+
+def test_fetch_build_metadata_discards_cached_empty_spa_fallback(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    # An older run may have cached the empty SPA shell as usable metadata. That
+    # poisoned cache must be discarded and the build refetched, not reused.
+    payload = {
+        "id": 57811,
+        "package": "real-package",
+        "tasks": [
+            {
+                "ref": {
+                    "url": "https://git.almalinux.org/rpms/real-package.git",
+                    "git_commit_hash": "abc123",
+                },
+                "artifacts": [],
+            }
+        ],
+    }
+    fake_requests = FakeRequests(payload)
+    monkeypatch.setitem(__import__("sys").modules, "requests", fake_requests)
+    cache = tmp_path / "build-57811.albs.json"
+    cache.write_text(
+        json.dumps(
+            {
+                "build_id": "57811",
+                "package": "AlmaLinux",
+                "source_repository": "unknown-albs-source:AlmaLinux",
+                "commit": "unknown",
+                "source_rpm": None,
+                "binary_rpms": [],
+                "source_url": "https://build.almalinux.org/build/57811",
+                "title": "AlmaLinux Build System",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    metadata = fetch_build_metadata(57811, cache_path=cache)
+
+    assert metadata.package == "real-package"
+    assert json.loads(cache.read_text(encoding="utf-8"))["package"] == "real-package"
     assert len(fake_requests.calls) == 1

@@ -1961,6 +1961,38 @@ Coverage golden byte-identical. Suite stays 263.
 
 ---
 
+## D80 - Reject empty SPA-shell HTML fallback caches (absorbed from the workbench branch)
+
+Follow-up to the HTML-fallback caching work (fd579de). Build 57811 returns an
+API 404 plus AlmaLinux's generic frontend SPA shell at ``/build/57811``; the
+fallback parser cached *that* as package ``AlmaLinux`` with zero RPMs, so any
+consumer (the PyQt workbench especially) opened a useless 5-node graph from a
+poisoned cache. The fix originated on the ``InvestigationWorkbenchApp`` branch
+(commit ``15196c1``) where it was first felt; max absorbs the backend half here
+so both branches share the hardening (per the cross-branch sync -- GUI stays on
+the workbench branch, backend flows both ways).
+
+Three changes in ``adapters/albs.py``:
+
+- ``parse_build_page`` now derives ``package`` from the source/binary RPM name
+  when the HTML carries no explicit package field, and **raises** when even that
+  yields nothing -- an empty SPA shell no longer fabricates metadata.
+- ``fetch_build_metadata`` does not cache an unusable fallback (the raise
+  happens before the write), so a poisoned cache is never created.
+- A new ``_is_unusable_html_fallback_cache`` guard detects an older poisoned
+  cache (the SPA-shell signature: ``title == "AlmaLinux Build System"``, no
+  ``tasks``, no RPMs, ``unknown`` commit / ``unknown-albs-source:`` repo) and
+  discards + refetches it instead of reusing it.
+
+Brought to max surgically (only ``adapters/albs.py`` + the two regression tests
++ a one-line ``example--full.sh`` error-message tweak), explicitly *not* the
+commit's GUI (``gui/qt_app.py``) or branch-numbered doc churn -- those belong to
+the workbench branch. +2 test cases (reject-empty-fallback raises and does not
+cache; discard-and-refetch a poisoned cache). Suite 332 -> 334. ruff + mypy
+--strict clean.
+
+---
+
 ## D79 - Live errata source + three-state errata status (no advisory != missing)
 
 User-spotted, and correct: the trust path's ``has_errata_link`` showing

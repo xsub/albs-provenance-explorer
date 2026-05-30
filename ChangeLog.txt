@@ -19,7 +19,22 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   feat(errata): live errata source + three-state errata status.
+- (this)   fix(albs): reject empty SPA-shell HTML fallback caches (absorbed
+           from the workbench branch's 15196c1). Build 57811 returns API 404
+           + AlmaLinux's generic frontend shell; the old parser cached that
+           as package "AlmaLinux" with zero RPMs (poisoned cache -> useless
+           5-node graph). parse_build_page now derives package from the RPM
+           name and RAISES when even that is empty; fetch_build_metadata
+           never writes an unusable fallback; _is_unusable_html_fallback_cache
+           discards an older poisoned cache before refetch. Brought to max
+           surgically -- only adapters/albs.py + 2 regression tests + a
+           1-line example--full.sh message tweak; NOT the commit's GUI
+           (gui/qt_app.py) or branch-numbered doc churn (those stay on the
+           workbench branch). Cross-branch sync: GUI stays off max, backend
+           hardening flows in. Suite 332 -> 334. ruff + mypy --strict clean.
+           (D80)
+
+- 527f471  feat(errata): live errata source + three-state errata status.
            User-spotted: trust path's "missing errata" is misleading --
            errata is queryable, and no advisory is the NORMAL state, not
            an incompleteness. Root cause: graph conflated "never looked"
