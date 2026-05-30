@@ -19,7 +19,16 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   ci+docs(badges): add the sensible badge set + the security scans
+- (this)   docs(readme): add a "Built for AlmaLinux" logo badge. The project
+           is entirely AlmaLinux-focused (ALBS/RPM/CAS/errata) and the author
+           is an AlmaLinux Foundation member, so the AlmaLinux logo (via Simple
+           Icons, rendered by shields.io) leads the meta badge row. Static /
+           informational, no CI change.
+
+- 2c82511  chore(gitignore): ignore coverage artifacts (.coverage,
+           coverage.xml, htmlcov/) now that CI runs pytest --cov.
+
+- 98087bd  ci+docs(badges): add the sensible badge set + the security scans
            behind them. (1) Coverage: pytest-cov added to the dev extra, the
            CI pytest step now runs `--cov=albs_graph --cov-report=xml` and
            uploads to Codecov (non-blocking; badge populates once the repo is

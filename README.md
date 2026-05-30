@@ -5,6 +5,7 @@
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/xsub/albs-provenance-explorer/badge)](https://scorecard.dev/viewer/?uri=github.com/xsub/albs-provenance-explorer)
 [![codecov](https://codecov.io/gh/xsub/albs-provenance-explorer/branch/main/graph/badge.svg)](https://codecov.io/gh/xsub/albs-provenance-explorer)
 
+[![Built for AlmaLinux](https://img.shields.io/badge/built_for-AlmaLinux-0D597F?logo=almalinux&logoColor=white)](https://almalinux.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
