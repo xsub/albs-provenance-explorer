@@ -32,6 +32,16 @@ def qapp() -> QtWidgets.QApplication:
     return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
+@pytest.fixture(autouse=True)
+def _no_modal_dialogs(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Modal message boxes would block a headless run forever; stub them so any
+    # error/info path returns immediately.
+    for name in ("warning", "information", "critical", "question", "about"):
+        monkeypatch.setattr(
+            QtWidgets.QMessageBox, name, lambda *args, **kwargs: QtWidgets.QMessageBox.Ok
+        )
+
+
 def _fixture_result() -> AnalysisResult:
     graph = build_synthetic_fixture_graph()
     return AnalysisService(pipeline=AnalysisPipeline(steps=())).analyze_graph(graph, RunSpec())
@@ -300,5 +310,115 @@ def test_workbench_universe_panel_open_search_traverse_paths(
         assert window.universe_fav_combo.count() >= 2
         window._universe_apply_favourite(window.universe_fav_combo.count() - 1)
         qapp.processEvents()
+    finally:
+        window.close()
+
+
+def test_workbench_drives_read_only_interactions(qapp: QtWidgets.QApplication) -> None:
+    window = WorkbenchWindow()
+    try:
+        window._analysis_finished(_fixture_result())
+        qapp.processEvents()
+        assert window._select_artifact(SYNTHETIC_RPM_ID) is True
+        qapp.processEvents()
+
+        # Timeline Tree <-> Gantt view switch.
+        window.timeline_view_combo.setCurrentText("Gantt")
+        window.timeline_view_combo.setCurrentText("Tree")
+        qapp.processEvents()
+
+        # Toggling a graph layer re-renders the current slice.
+        if "build" in window.layer_actions:
+            window.layer_actions["build"].trigger()
+            window.layer_actions["build"].trigger()
+            qapp.processEvents()
+        assert window.current_slice is not None
+
+        # Graph search + zoom controls.
+        window.graph_search_edit.setText("nginx")
+        window.search_current_graph()
+        window.zoom_in_graph()
+        window.zoom_out_graph()
+        window.fit_graph()
+        window.reset_graph_zoom()
+        qapp.processEvents()
+
+        # Run the selected graph query.
+        window._run_selected_query()
+        qapp.processEvents()
+        assert window.query_table.rowCount() >= 0
+
+        # Finding drill-down.
+        if window.findings_table.rowCount():
+            window._finding_activated(window.findings_table.item(0, 0))
+            qapp.processEvents()
+            assert window.finding_detail_table.rowCount() >= 0
+
+        # Apply an investigation recipe (index 0 is the "Recipes" placeholder).
+        if window.recipe_combo.count() > 1:
+            window._recipe_activated(1)
+            qapp.processEvents()
+
+        # Inspect an edge of the current slice.
+        if window.current_slice is not None and window.current_slice.graph.edges:
+            window._show_edge(0, from_slice=True)
+            qapp.processEvents()
+
+        # Artifact filter.
+        window.artifact_filter.setText("nginx")
+        window._filter_artifacts("nginx")
+        window.artifact_filter.setText("")
+        window._filter_artifacts("")
+        qapp.processEvents()
+        assert window.result is not None
+    finally:
+        window.close()
+
+
+def test_workbench_exports_bundle_and_html(
+    qapp: QtWidgets.QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    window = WorkbenchWindow()
+    try:
+        window._analysis_finished(_fixture_result())
+        qapp.processEvents()
+        for filename, export in (
+            ("bundle.json", window.export_bundle),
+            ("report.html", window.export_html_report),
+        ):
+            out = tmp_path / filename
+            monkeypatch.setattr(
+                QtWidgets.QFileDialog, "getSaveFileName", lambda *a, _o=out, **k: (str(_o), "")
+            )
+            export()
+            assert out.exists() and out.stat().st_size > 0
+    finally:
+        window.close()
+
+
+def test_workbench_save_session_writes_a_loadable_file(
+    qapp: QtWidgets.QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from albs_graph.services import WorkbenchSession
+
+    window = WorkbenchWindow()
+    try:
+        window._analysis_finished(_fixture_result())
+        qapp.processEvents()
+        window._select_artifact(SYNTHETIC_RPM_ID)
+        window.errata_feed_edit.setText("feed.json")
+        window.dep_scope_combo.setCurrentIndex(window.dep_scope_combo.findData("build"))
+
+        session_file = tmp_path / "session.json"
+        monkeypatch.setattr(
+            QtWidgets.QFileDialog, "getSaveFileName", lambda *a, **k: (str(session_file), "")
+        )
+        window.save_session()
+
+        assert session_file.exists()
+        restored = WorkbenchSession.load(session_file)
+        assert restored.errata_feed == "feed.json"
+        assert restored.dep_scope == "build"
+        assert restored.selected_artifact_id == SYNTHETIC_RPM_ID
     finally:
         window.close()

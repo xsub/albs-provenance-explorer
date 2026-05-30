@@ -318,11 +318,16 @@ The PyQt5 investigation workbench is a read-only frontend over the same
   and signal/slot typing is painful). Headless + interaction tests now drive
   construction, result-handling, slice rendering, the inspector, the M3 Security
   panel, the M2 dependency filters, the M4 universe panel (open/search/walk/
-  paths/favourites), and the M5 Markdown/PNG export + session capture/restore --
-  well above the initial ~60%. Dropping the blanket mypy ignore for targeted
-  ignores and splitting the god-object into panels/controllers remain open. The
-  rest of `gui/` is typed/tested and the analysable logic lives in the
-  well-covered, typed `services/` layer (80-97%).
+  paths/favourites), the M5 Markdown/PNG export + session capture/restore, and
+  read-only interaction paths (timeline view switch, layer filter, graph search,
+  zoom, queries, finding drill-down, recipes, edge inspect, bundle/HTML export,
+  session save) -- ~73% line coverage, up from the initial ~60%. Without the
+  blanket ignore mypy still reports ~150 errors (real `union-attr` / annotation
+  gaps, since PyQt5 is already `ignore_missing_imports`); the principled fix is
+  to split the single-class window into smaller *typed* panel classes -- each
+  easy to type-check -- rather than scatter ~150 per-line ignores. That split is
+  the remaining open work. The rest of `gui/` is typed/tested and the analysable
+  logic lives in the well-covered, typed `services/` layer (80-97%).
 - **Needs a Qt platform.** Tests run headless via `QT_QPA_PLATFORM=offscreen`;
   a real run needs a display. Graphviz (`dot`) renders the graph and degrades
   to a built-in fallback SVG when absent.

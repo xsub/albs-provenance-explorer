@@ -19,7 +19,19 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   feat(workbench): CVE-feed + CPE-verify toggles so the Security
+- (this)   test(gui): deeper qt_app interaction coverage (quality follow-up).
+           +3 GUI test cases drive the previously-untested read-only paths --
+           timeline Tree/Gantt switch, layer-filter toggle re-render, graph
+           search, zoom/fit/reset, graph query run, finding drill-down, recipe
+           apply, edge inspect, artifact filter; bundle + HTML export (via a
+           monkeypatched save dialog); and save_session writing a loadable file.
+           An autouse fixture stubs QMessageBox so no modal hangs the headless
+           run. qt_app.py 68% -> 73%. Suite 383 -> 386. limitations.md notes the
+           remaining mypy-ignore/god-object split is best done by extracting
+           typed panel classes (mypy reports ~150 real errors without the
+           blanket ignore).
+
+- 35caa05  feat(workbench): CVE-feed + CPE-verify toggles so the Security
            panel's Potential CVEs column populates (M3, closes the last gap).
            Two coordinated inputs: cpe_dict_edit -> RunSpec.verify_cpe /
            verify_cpe_url (analyze-time, the pipeline VerifyCpeStep resolves an
