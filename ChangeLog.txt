@@ -19,7 +19,20 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   feat(workbench): Dependency panel -- reconciled groups + scope/
+- (this)   feat(workbench): Universe panel -- open a SQLite store, search, walk,
+           render paths (plan milestone M4). Two new store helpers (sql_search
+           label/id substring -> (id,type,label); sql_node_labels resolve a
+           path's ids -> labels) feed a read-only services.universe.UniverseStore
+           facade (typed UniversePackageRow / UniversePathRow; store opened per
+           call so the recursive CTEs stay in SQLite). New "Universe" tab,
+           independent of the loaded build: Open Universe + package search +
+           selectable focus + Dependencies/Dependents/Reachable walks + Find
+           Paths (label-resolved chains, hop count) + a Favourites combo that
+           captures (store, search, focus, target) to re-run. Bad file -> logged
+           error, never a crash. +2 backend tests + 1 GUI test. Suite 373 -> 376.
+           decisions.md D99. Next: M5 session + report export.
+
+- fb3ffa2  feat(workbench): Dependency panel -- reconciled groups + scope/
            conflict filters (plan milestone M2). New
            services.workbench.dependency_rows turns each DEPENDENCY_RESOLUTION
            group (written by reconcile during analysis) into one row: subject +

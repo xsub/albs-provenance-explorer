@@ -2653,6 +2653,34 @@ filter-toggle assertion. Suite 372 -> 373.
 
 ---
 
+## D99 - Workbench Universe panel (open a SQLite store, search, walk, paths)
+
+Plan milestone M4. The arch-wide universe store (D74) and its recursive-CTE
+queries (`sql_dependents` / `sql_dependencies` / `sql_reachable_dependencies` /
+`sql_dependency_paths`) existed but were CLI-only; the workbench could not open
+a universe and explore it.
+
+Two new store helpers fill the gaps the GUI needs: `sql_search(db, needle,
+limit)` (label/id substring search -> `(id, type, label)`, empty needle lists
+the first N so an opened store shows something) and `sql_node_labels(db, ids)`
+(resolve a path's node ids to labels in one query). A thin read-only services
+facade, `services.universe.UniverseStore`, wraps these into typed rows
+(`UniversePackageRow`, `UniversePathRow`) -- the store is opened per call, so the
+facade is just a path holder and the CTEs still run in SQLite without ever
+loading the whole arch graph into memory; `paths()` resolves the raw id chains
+to label chains for display.
+
+GUI: a "Universe" tab, independent of the loaded build -- Open Universe (a
+SQLite file), a package search box + results table, a selectable focus, three
+walks (Dependencies / Dependents / Reachable), a target box + Find Paths
+(label-resolved chains with a hop count), and a Favourites combo that captures
+the current (store, search, focus, target) so a useful exploration can be
+re-run. A bad file degrades to a logged error rather than crashing. +2 backend
+tests (search/labels; facade search/traverse/paths) and a GUI
+open/search/traverse/paths/favourite test. Suite 373 -> 376.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

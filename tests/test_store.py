@@ -11,6 +11,7 @@ from albs_graph.provenance import (
     reachable_dependencies,
     universe_from_dot,
 )
+from albs_graph.services import UniverseStore
 from albs_graph.store import (
     load_analysis_snapshot,
     load_graph,
@@ -20,7 +21,9 @@ from albs_graph.store import (
     sql_dependencies,
     sql_dependency_paths,
     sql_dependents,
+    sql_node_labels,
     sql_reachable_dependencies,
+    sql_search,
 )
 
 _DOT = """
@@ -90,6 +93,42 @@ def test_sql_query_on_missing_name_is_empty(tmp_path: Path) -> None:
     save_graph(universe_from_dot(_DOT), db)
 
     assert sql_dependents(db, "does-not-exist") == []
+
+
+def test_sql_search_and_node_labels(tmp_path: Path) -> None:
+    db = tmp_path / "universe.db"
+    save_graph(universe_from_dot(_DOT), db)
+
+    labels = {label for _id, _type, label in sql_search(db, "nginx")}
+    assert "nginx-core" in labels
+    # An empty needle lists nodes (capped) so opening a store shows something.
+    assert sql_search(db, "", limit=2) and len(sql_search(db, "", limit=2)) <= 2
+
+    resolved = sql_node_labels(db, ["pkg:nginx-core", "pkg:glibc", "pkg:glibc"])
+    assert resolved["pkg:nginx-core"] == "nginx-core"
+    assert resolved["pkg:glibc"] == "glibc"
+    assert sql_node_labels(db, []) == {}
+
+
+def test_universe_store_facade_search_traverse_and_paths(tmp_path: Path) -> None:
+    # M4: the services facade wraps the recursive-CTE store helpers into typed
+    # rows for the Universe workbench (open a store, search, walk, render paths).
+    db = tmp_path / "universe.db"
+    save_graph(universe_from_dot(_DOT), db)
+    universe = UniverseStore(db)
+
+    assert universe.schema_version >= 3
+    assert "nginx-core" in {row.label for row in universe.search("nginx")}
+    assert universe.dependencies("nginx-core") == sql_dependencies(db, "nginx-core")
+    assert universe.dependents("glibc") == sql_dependents(db, "glibc")
+    assert "glibc" in universe.reachable("nginx-core")
+
+    paths = universe.paths("nginx-core", "glibc")
+    assert paths
+    chains = {row.display for row in paths}
+    # The transitive nginx-core -> openssl-libs -> glibc path is label-resolved.
+    assert any("openssl-libs" in chain and chain.endswith("glibc") for chain in chains)
+    assert all(row.hops >= 1 for row in paths)
 
 
 def test_schema_versioning_lifts_a_fresh_store_to_the_latest(tmp_path: Path) -> None:

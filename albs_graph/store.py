@@ -31,7 +31,7 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterable, Literal
+from typing import Any, Callable, Iterable, Literal, Sequence
 
 from albs_graph.model import Node, ProvenanceGraph
 
@@ -335,6 +335,47 @@ def sql_dependency_paths(
             [token for token in row[0].split("|") if token]
             for row in connection.execute(query, params)
         ]
+    finally:
+        connection.close()
+
+
+def sql_search(
+    db_path: str | Path, needle: str, *, limit: int = 200
+) -> list[tuple[str, str, str]]:
+    """Search nodes by label or id substring; returns ``(id, type, label)``.
+
+    Used by the Universe workbench's package search; an empty needle lists the
+    first ``limit`` nodes (label order) so opening a store shows something.
+    """
+
+    connection = sqlite3.connect(str(db_path))
+    try:
+        _ensure_schema(connection)
+        like = f"%{needle}%"
+        rows = connection.execute(
+            "SELECT id, type, label FROM nodes WHERE label LIKE ? OR id LIKE ? "
+            "ORDER BY label, id LIMIT ?",
+            (like, like, limit),
+        ).fetchall()
+        return [(row[0], row[1], row[2]) for row in rows]
+    finally:
+        connection.close()
+
+
+def sql_node_labels(db_path: str | Path, ids: Sequence[str]) -> dict[str, str]:
+    """Resolve node ids to labels in one query (e.g. to render a path)."""
+
+    unique = list(dict.fromkeys(ids))
+    if not unique:
+        return {}
+    connection = sqlite3.connect(str(db_path))
+    try:
+        _ensure_schema(connection)
+        rows = connection.execute(
+            f"SELECT id, label FROM nodes WHERE id IN ({_placeholders(unique)})",
+            tuple(unique),
+        ).fetchall()
+        return {row[0]: row[1] for row in rows}
     finally:
         connection.close()
 

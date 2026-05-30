@@ -159,9 +159,12 @@ milestones:
   CVEs, distro-backport + reachability caveats (D97). *Remaining:* wire a live
   CVE feed into the workbench (a feed toggle mirroring the errata one) so the
   **Potential CVEs** column populates with version-range matches.
-- **M4 Universe workbench** -- open a SQLite universe store (D74), search
-  packages, traverse dependents/dependencies, render dependency paths
-  (the recursive-CTE queries are ready), save favourite slices.
+- **M4 Universe workbench** -- **done** (D99): the "Universe" tab opens a SQLite
+  universe store (D74), searches packages/capabilities (`sql_search`), walks
+  Dependencies / Dependents / Reachable, finds label-resolved dependency paths
+  (the recursive-CTE queries), and saves favourite (store, search, focus,
+  target) explorations to re-run. Backed by the read-only
+  `services.universe.UniverseStore` facade so the CTEs stay in SQLite.
 - **M5 Session + report export** -- richer session save/load, Markdown/HTML
   report export, slice export (SVG/PNG), a small reproducibility appendix.
 

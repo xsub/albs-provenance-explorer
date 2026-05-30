@@ -21,7 +21,9 @@ from PyQt5 import QtWidgets
 from albs_graph.fixtures import SYNTHETIC_RPM_ID, build_synthetic_fixture_graph
 from albs_graph.gui.qt_app import WorkbenchWindow
 from albs_graph.pipeline import AnalysisPipeline, RunSpec
+from albs_graph.provenance import universe_from_dot
 from albs_graph.services import AnalysisResult, AnalysisService, GraphLoadSpec
+from albs_graph.store import save_graph
 
 
 @pytest.fixture(scope="module")
@@ -131,5 +133,53 @@ def test_workbench_errata_toggle_feeds_run_spec(
         window._set_errata_source("")
         window._apply_session(session)
         assert str(window.errata_combo.currentData() or "") == "dnf"
+    finally:
+        window.close()
+
+
+def test_workbench_universe_panel_open_search_traverse_paths(
+    qapp: QtWidgets.QApplication, tmp_path: Path
+) -> None:
+    dot = (
+        'digraph g { "nginx-core" -> "openssl-libs"; '
+        '"nginx-core" -> "glibc"; "openssl-libs" -> "glibc"; }'
+    )
+    db = tmp_path / "universe.db"
+    save_graph(universe_from_dot(dot), db)
+
+    window = WorkbenchWindow()
+    try:
+        # Open the store (path given -> no file dialog) and auto-search.
+        window.open_universe(str(db))
+        qapp.processEvents()
+        assert window.universe_store is not None
+        assert window.universe_packages_table.rowCount() > 0
+
+        labels = [
+            window.universe_packages_table.item(row, 1).text()
+            for row in range(window.universe_packages_table.rowCount())
+        ]
+        window.universe_packages_table.setCurrentCell(labels.index("nginx-core"), 0)
+        qapp.processEvents()
+        assert window.universe_focus == "nginx-core"
+
+        # Walk one-hop dependencies of the focus.
+        window._universe_traverse("dependencies")
+        deps = [
+            window.universe_results_table.item(row, 1).text()
+            for row in range(window.universe_results_table.rowCount())
+        ]
+        assert "glibc" in deps
+
+        # Find dependency paths to glibc (direct + via openssl-libs).
+        window.universe_target_edit.setText("glibc")
+        window._universe_find_paths()
+        assert window.universe_results_table.rowCount() > 0
+
+        # Save then re-apply a favourite query.
+        window._universe_save_favourite()
+        assert window.universe_fav_combo.count() >= 2
+        window._universe_apply_favourite(window.universe_fav_combo.count() - 1)
+        qapp.processEvents()
     finally:
         window.close()

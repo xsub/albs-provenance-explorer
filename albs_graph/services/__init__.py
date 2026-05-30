@@ -5,6 +5,7 @@ from .compare import ArtifactDelta, compare_artifacts
 from .findings import Finding, findings_for_analysis
 from .queries import EdgeSummary, GraphQueries, NodeSummary
 from .slices import GraphSlice, GraphSlices
+from .universe import UniversePackageRow, UniversePathRow, UniverseStore
 from .workbench import (
     CoverageRow,
     BuildDiffRow,
@@ -64,6 +65,9 @@ __all__ = [
     "TimelineRow",
     "TimelineGanttRow",
     "TimelineTreeItem",
+    "UniversePackageRow",
+    "UniversePathRow",
+    "UniverseStore",
     "WorkbenchSession",
     "compare_artifacts",
     "compare_builds",
