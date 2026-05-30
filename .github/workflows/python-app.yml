@@ -52,8 +52,20 @@ jobs:
         if: matrix.python-version == '3.11'
         run: mypy albs_graph
 
-      - name: Test (pytest)
-        run: pytest
+      - name: Test (pytest + coverage)
+        run: pytest --cov=albs_graph --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          flags: unittests
+          # Public-repo upload; don't fail the build if Codecov is unreachable
+          # or the repo isn't activated yet (the badge simply stays "unknown").
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Cross-check the documented test count
         if: matrix.python-version == '3.11'

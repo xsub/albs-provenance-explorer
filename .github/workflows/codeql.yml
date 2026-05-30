@@ -1,0 +1,39 @@
+# CodeQL static security analysis (GitHub code scanning).
+# Results land in the repo's Security tab; the badge reflects the latest run.
+name: CodeQL
+
+on:
+  push:
+    branches: ["main", "max"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    - cron: "27 3 * * 1"   # weekly, Monday 03:27 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (python)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write   # upload results to code scanning
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          # Pure-Python project: no compiled build to drive the extraction.
+          build-mode: none
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"

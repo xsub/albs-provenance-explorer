@@ -19,7 +19,22 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   test(conftest): pin deterministic Rich/Typer help rendering so the
+- (this)   ci+docs(badges): add the sensible badge set + the security scans
+           behind them. (1) Coverage: pytest-cov added to the dev extra, the
+           CI pytest step now runs `--cov=albs_graph --cov-report=xml` and
+           uploads to Codecov (non-blocking; badge populates once the repo is
+           activated on codecov.io). (2) New codeql.yml -- CodeQL static
+           security analysis (push/PR to main+max, weekly). (3) New
+           scorecard.yml -- OpenSSF Scorecard supply-chain posture on main
+           (publish_results powers the api.securityscorecards.dev badge);
+           thematically apt for a provenance tool. (4) README badge block:
+           CI + CodeQL + Scorecard + codecov + License(MIT) + Python 3.11+ +
+           Ruff + mypy-strict. Local pytest --cov: 79% over 334 tests.
+           Deferred (need external/manual steps): OpenSSF Best Practices
+           (questionnaire) and SLSA-on-release (a release workflow with
+           slsa-github-generator, once tags are cut).
+
+- 8021ee7  test(conftest): pin deterministic Rich/Typer help rendering so the
            CLI-help tests pass on CI. The first CI run went red: GitHub Actions
            sets FORCE_COLOR, so Rich interleaves ANSI escape codes through the
            --help text and `assert "--build-id" in output` no longer matches a
