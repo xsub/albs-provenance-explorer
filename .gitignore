@@ -8,6 +8,12 @@ dist/
 build/
 *.egg-info/
 
+# Coverage artifacts (pytest --cov, CI Codecov upload).
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
 # Local demo outputs generated outside the canonical examples/ paths.
 /build-17812*.svg
 /nginx-core-x86_64-trust.*
