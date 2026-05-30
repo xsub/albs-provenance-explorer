@@ -19,7 +19,19 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   feat(workbench): surface the D79 errata three-state in the evidence
+- (this)   feat(workbench): errata-source toggle so `clean` is reachable from
+           the Analyze path (plan milestone M3). A toolbar `errata_combo`
+           (off / http / dnf, userData == RunSpec.errata_source) plus an
+           `errata_feed_edit`: for http the field is an offline feed file when
+           it is an existing path (errata_feed), else a live feed URL
+           (errata_url); empty still selects http and degrades to not-consulted.
+           _run_spec was refactored so build-SBOM and errata compose on one run;
+           the toggle persists in WorkbenchSession. No new pipeline wiring
+           (ErrataSourceStep is already in DEFAULT_STEPS). +1 GUI test. Suite
+           370 -> 371. decisions.md D96. Next M3 step: the Security panel
+           (CPE verified-vs-candidate browser + CVE-feed match explanation).
+
+- b703443  feat(workbench): surface the D79 errata three-state in the evidence
            matrix (plan milestone M3, first slice). evidence_matrix_rows' errata
            column now reads `advisory` (an advisory ships this build),
            `clean` (an errata source was consulted and found none -- a normal,

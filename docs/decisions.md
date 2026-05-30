@@ -2549,6 +2549,37 @@ in the live doc. This is documentation housekeeping only -- no code change.
 
 ---
 
+## D96 - Workbench errata-source toggle (live three-state from the Analyze path)
+
+D94 ported the live errata source + the `confirmed_clean` three-state, and the
+first M3 slice surfaced it in the Evidence matrix (`_errata_cell`). But the
+matrix could only ever *show* `clean` if a run had actually consulted a source,
+and the workbench's own Analyze path never set `RunSpec.errata_source` -- so
+`clean` was unreachable from the GUI; you had to drop to the classic CLI runner.
+The display supported a state the interactive tool could not produce.
+
+Decision: a compact errata control in the toolbar, mirroring the existing
+build-SBOM input -- it affects the *next* Analyze run, not a live re-render.
+
+- An `errata_combo` with three entries whose `userData` is exactly the
+  `RunSpec.errata_source` value: `""` (off, the historical not_checked default),
+  `"http"` (the AlmaLinux errata feed) and `"dnf"` (host `updateinfo`).
+- A companion `errata_feed_edit`. For `http`, `_errata_run_kwargs` treats the
+  field as an **offline feed file when it is an existing path** (`errata_feed`),
+  otherwise as a **live feed URL** (`errata_url`); an empty field still selects
+  `http` and simply degrades to not-consulted (logged), never crashes. `dnf`
+  needs no field and degrades to not-consulted off an AlmaLinux host.
+- The toggle persists in `WorkbenchSession` (`errata_source` / `errata_feed`),
+  so a saved investigation re-runs with the same security context.
+
+`_run_spec` was refactored so the build-SBOM path and the errata path compose
+(both can be set on one run) rather than the SBOM short-circuiting. No new
+pipeline wiring: `ErrataSourceStep` is already in `DEFAULT_STEPS`, so setting the
+spec field is sufficient. +1 GUI test (off -> no fields; http+file -> feed;
+http+non-path -> url; dnf -> source only; session round-trip). Suite 370 -> 371.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

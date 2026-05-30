@@ -263,6 +263,10 @@ class WorkbenchSession:
     mode: str = "Trust Path"
     include_tests: bool = False
     artifact_filter: str = ""
+    # Live errata source (D79/M3): "" (off), "http" or "dnf". When "http",
+    # ``errata_feed`` is an offline feed file or a live feed URL.
+    errata_source: str = ""
+    errata_feed: str = ""
     selected_artifact_id: str | None = None
     selected_node_id: str | None = None
     selected_edge_index: int | None = None
@@ -275,6 +279,8 @@ class WorkbenchSession:
             "mode": self.mode,
             "include_tests": self.include_tests,
             "artifact_filter": self.artifact_filter,
+            "errata_source": self.errata_source,
+            "errata_feed": self.errata_feed,
             "selected_artifact_id": self.selected_artifact_id,
             "selected_node_id": self.selected_node_id,
             "selected_edge_index": self.selected_edge_index,
@@ -289,6 +295,8 @@ class WorkbenchSession:
             mode=str(data.get("mode") or "Trust Path"),
             include_tests=bool(data.get("include_tests")),
             artifact_filter=str(data.get("artifact_filter") or ""),
+            errata_source=str(data.get("errata_source") or ""),
+            errata_feed=str(data.get("errata_feed") or ""),
             selected_artifact_id=_optional_text(data.get("selected_artifact_id")),
             selected_node_id=_optional_text(data.get("selected_node_id")),
             selected_edge_index=_optional_int(data.get("selected_edge_index")),

@@ -393,6 +393,16 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.mode_combo.addItems(
             ["Trust Path", "Dependency Evidence", "Security Context", "Node Neighborhood"]
         )
+        # Live errata source (D79/M3): off / http feed / host dnf. The combo's
+        # userData is the RunSpec.errata_source value (""/"http"/"dnf").
+        self.errata_combo = QtWidgets.QComboBox()
+        self.errata_combo.addItem("Errata off", "")
+        self.errata_combo.addItem("Errata: http", "http")
+        self.errata_combo.addItem("Errata: dnf", "dnf")
+        self.errata_feed_edit = QtWidgets.QLineEdit()
+        self.errata_feed_edit.setPlaceholderText("errata feed file / URL")
+        self.errata_feed_edit.setClearButtonEnabled(True)
+        self.errata_feed_edit.setFixedWidth(180)
         self.recipe_combo = QtWidgets.QComboBox()
         self.recipe_combo.addItem("Recipes")
         self.recipe_combo.setFixedWidth(RECIPE_COMBO_WIDTH)
@@ -666,6 +676,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         toolbar.addWidget(self.layer_button)
         toolbar.addWidget(self.graph_search_edit)
         toolbar.addWidget(self.include_tests)
+        toolbar.addSeparator()
+        toolbar.addWidget(self.errata_combo)
+        toolbar.addWidget(self.errata_feed_edit)
 
         left = QtWidgets.QWidget()
         left_layout = QtWidgets.QVBoxLayout(left)
@@ -1131,20 +1144,44 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
     def _run_spec(self, load_spec: GraphLoadSpec) -> RunSpec:
         self._autofill_build_sbom(load_spec)
+        build_sbom_path: Path | None = None
         build_sbom = self.build_sbom_edit.text().strip()
-        if not build_sbom:
-            return RunSpec()
-        path = Path(build_sbom).expanduser()
-        if not path.exists():
-            raise ValueError(f"Build SBOM JSON does not exist: {path}")
-        expected_build_id = self._build_id_for_spec(load_spec)
-        sbom_build_id = _build_id_from_path(path)
-        if expected_build_id and sbom_build_id and expected_build_id != sbom_build_id:
-            raise ValueError(
-                f"Build SBOM appears to be for build {sbom_build_id}, "
-                f"but the current source is build {expected_build_id}."
-            )
-        return RunSpec(build_sbom=path)
+        if build_sbom:
+            build_sbom_path = Path(build_sbom).expanduser()
+            if not build_sbom_path.exists():
+                raise ValueError(f"Build SBOM JSON does not exist: {build_sbom_path}")
+            expected_build_id = self._build_id_for_spec(load_spec)
+            sbom_build_id = _build_id_from_path(build_sbom_path)
+            if expected_build_id and sbom_build_id and expected_build_id != sbom_build_id:
+                raise ValueError(
+                    f"Build SBOM appears to be for build {sbom_build_id}, "
+                    f"but the current source is build {expected_build_id}."
+                )
+        return RunSpec(build_sbom=build_sbom_path, **self._errata_run_kwargs())
+
+    def _errata_run_kwargs(self) -> dict[str, object]:
+        """RunSpec errata kwargs from the toolbar combo + feed field (D79/M3).
+
+        "" -> no errata source (not_checked stays the default). "dnf" queries
+        the host updateinfo (degrades to not-consulted off an AlmaLinux box).
+        "http" reads an offline feed file when the field is an existing path,
+        else treats it as a live feed URL; an empty field still selects http
+        but simply degrades to not-consulted (logged), never crashes.
+        """
+
+        source = str(self.errata_combo.currentData() or "")
+        if not source:
+            return {}
+        kwargs: dict[str, object] = {"errata_source": source}
+        if source == "http":
+            feed = self.errata_feed_edit.text().strip()
+            if feed:
+                candidate = Path(feed).expanduser()
+                if candidate.exists():
+                    kwargs["errata_feed"] = candidate
+                else:
+                    kwargs["errata_url"] = feed
+        return kwargs
 
     def _autofill_build_sbom(self, load_spec: GraphLoadSpec) -> None:
         if self.build_sbom_edit.text().strip():
@@ -1887,6 +1924,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.build_sbom_edit.setText(session.build_sbom)
         self.include_tests.setChecked(session.include_tests)
         self.artifact_filter.setText(session.artifact_filter)
+        self._set_errata_source(session.errata_source)
+        self.errata_feed_edit.setText(session.errata_feed)
         self.run_analysis()
 
     def _current_session(self) -> WorkbenchSession:
@@ -1898,12 +1937,20 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             mode=self.mode_combo.currentText(),
             include_tests=self.include_tests.isChecked(),
             artifact_filter=self.artifact_filter.text(),
+            errata_source=str(self.errata_combo.currentData() or ""),
+            errata_feed=self.errata_feed_edit.text(),
             selected_artifact_id=(
                 str(current.data(QtCore.Qt.UserRole)) if current is not None else None
             ),
             selected_node_id=self.selected_node_id,
             selected_edge_index=self.selected_edge_index,
         )
+
+    def _set_errata_source(self, value: str) -> None:
+        index = self.errata_combo.findData(value or "")
+        if index < 0:
+            index = self.errata_combo.findData("")
+        self.errata_combo.setCurrentIndex(max(index, 0))
 
     def _apply_session(self, session: WorkbenchSession) -> None:
         self.build_sbom_edit.setText(session.build_sbom)
@@ -1912,6 +1959,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self.mode_combo.setCurrentIndex(mode_index)
         self.include_tests.setChecked(session.include_tests)
         self.artifact_filter.setText(session.artifact_filter)
+        self._set_errata_source(session.errata_source)
+        self.errata_feed_edit.setText(session.errata_feed)
         if session.selected_artifact_id and self._select_artifact(session.selected_artifact_id):
             if session.selected_node_id:
                 self._navigate_to_node(session.selected_node_id, prefer_artifact=False)

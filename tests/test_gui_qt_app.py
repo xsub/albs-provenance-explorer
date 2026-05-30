@@ -13,13 +13,15 @@ built-in fallback when ``dot`` is absent.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from PyQt5 import QtWidgets
 
 from albs_graph.fixtures import SYNTHETIC_RPM_ID, build_synthetic_fixture_graph
 from albs_graph.gui.qt_app import WorkbenchWindow
 from albs_graph.pipeline import AnalysisPipeline, RunSpec
-from albs_graph.services import AnalysisResult, AnalysisService
+from albs_graph.services import AnalysisResult, AnalysisService, GraphLoadSpec
 
 
 @pytest.fixture(scope="module")
@@ -71,5 +73,55 @@ def test_workbench_node_inspect_and_mode_switches(qapp: QtWidgets.QApplication) 
             window.mode_combo.setCurrentText(mode)
             qapp.processEvents()
             assert window.current_slice is not None
+    finally:
+        window.close()
+
+
+def test_workbench_errata_toggle_feeds_run_spec(
+    qapp: QtWidgets.QApplication, tmp_path: Path
+) -> None:
+    window = WorkbenchWindow()
+    try:
+        # A source with no build id -> the build-SBOM autofill is a no-op, so no
+        # network or disk discovery runs while we exercise the errata toggle.
+        load_spec = GraphLoadSpec(source=tmp_path / "graph.json")
+
+        # Off (default) -> the RunSpec carries no errata source at all.
+        spec = window._run_spec(load_spec)
+        assert spec.errata_source is None
+        assert spec.errata_feed is None
+        assert spec.errata_url is None
+
+        # http + an existing feed file -> the offline feed path wins.
+        feed = tmp_path / "errata.full.json"
+        feed.write_text("[]", encoding="utf-8")
+        window._set_errata_source("http")
+        window.errata_feed_edit.setText(str(feed))
+        spec = window._run_spec(load_spec)
+        assert spec.errata_source == "http"
+        assert spec.errata_feed == feed
+        assert spec.errata_url is None
+
+        # http + a non-path value -> treated as a live feed URL.
+        url = "https://errata.almalinux.org/10/errata.full.json"
+        window.errata_feed_edit.setText(url)
+        spec = window._run_spec(load_spec)
+        assert spec.errata_source == "http"
+        assert spec.errata_feed is None
+        assert spec.errata_url == url
+
+        # dnf -> host updateinfo source, no feed/url needed.
+        window._set_errata_source("dnf")
+        spec = window._run_spec(load_spec)
+        assert spec.errata_source == "dnf"
+        assert spec.errata_feed is None
+        assert spec.errata_url is None
+
+        # The toggle round-trips through a saved session.
+        session = window._current_session()
+        assert session.errata_source == "dnf"
+        window._set_errata_source("")
+        window._apply_session(session)
+        assert str(window.errata_combo.currentData() or "") == "dnf"
     finally:
         window.close()
