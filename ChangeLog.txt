@@ -19,7 +19,15 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   fix(albs): reject empty SPA-shell HTML fallback caches (absorbed
+- (this)   docs(decisions): fix duplicate D73. The "HTML fallback metadata is
+           cacheable" entry (documenting fd579de) was accidentally swept into
+           the D78 commit f7409be from an in-progress working tree and reused
+           the D73 number already taken by "Finish D57". Renumbered to D81
+           (next free), content unchanged, with a note recording its actual
+           landing order (between D78 and D79). No code change; the only D73
+           ChangeLog reference (@ the "Finish D57" entry) is unaffected.
+
+- 7a26559  fix(albs): reject empty SPA-shell HTML fallback caches (absorbed
            from the workbench branch's 15196c1). Build 57811 returns API 404
            + AlmaLinux's generic frontend shell; the old parser cached that
            as package "AlmaLinux" with zero RPMs (poisoned cache -> useless

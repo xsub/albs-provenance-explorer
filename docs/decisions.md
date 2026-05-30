@@ -2392,7 +2392,7 @@ on both trust-path tables (lines 31 and 530). Suite unchanged at 263.
 
 ---
 
-## D73 - HTML fallback metadata is cacheable
+## D81 - HTML fallback metadata is cacheable
 
 The live ALBS API can return non-JSON or unavailable responses for some builds
 while the human build page still contains enough fallback evidence to build a
@@ -2413,6 +2413,12 @@ macOS/bash `set -u` failure when `SBOM_FILE` is absent: step 11 expanded an
 empty `sbom_args` array directly. It now uses the same guarded expansion as the
 earlier CLI steps, so builds without a committed SBOM keep running best-effort.
 Full suite passed locally.
+
+*(Numbering: this decision documents commit `fd579de`, which landed between
+D78 and D79. It was originally drafted as `D73` and accidentally swept into the
+D78 commit `f7409be` from an in-progress working tree; since `D73` was already
+taken by "Finish D57", it is renumbered to D81 -- the next free number -- with
+no change to its content. Its position among the older entries is left as-is.)*
 
 ---
 
