@@ -19,7 +19,17 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   test(gui): headless smoke test for the workbench main window.
+- (this)   feat(workbench): surface the D79 errata three-state in the evidence
+           matrix (plan milestone M3, first slice). evidence_matrix_rows' errata
+           column now reads `advisory` (an advisory ships this build),
+           `clean` (an errata source was consulted and found none -- a normal,
+           complete state) or `missing` (no source consulted), via a new
+           _errata_cell over report.errata_status, instead of a bare ok/missing.
+           The completeness count is unchanged (present OR clean already counts).
+           +1 test (advisory/clean/missing). Suite 369 -> 370. Next M3 step:
+           a workbench errata-source toggle so `clean` is reachable live.
+
+- bf51d0b  test(gui): headless smoke test for the workbench main window.
            gui/qt_app.py had 0% coverage (and `# mypy: ignore-errors`); two
            tests now construct WorkbenchWindow under offscreen Qt, drive
            _analysis_finished (populate artifacts/findings/coverage/evidence/

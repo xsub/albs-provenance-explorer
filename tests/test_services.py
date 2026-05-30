@@ -211,6 +211,33 @@ def test_workbench_evidence_matrix_reports_per_artifact_completeness() -> None:
     assert row.completeness > 0.75
 
 
+def test_workbench_evidence_matrix_surfaces_errata_three_state() -> None:
+    # D79: the errata column distinguishes advisory_present / confirmed_clean /
+    # not_checked instead of a bare ok/missing, so a consulted-and-clean package
+    # reads "clean" rather than looking like a gap.
+    graph = ProvenanceGraph()
+    for name, extra in (
+        ("adv", {}),                                       # gets an advisory edge
+        ("clean", {"errata_status": "confirmed_clean"}),   # source consulted, none found
+        ("unknown", {}),                                   # nothing consulted
+    ):
+        graph.add_node(
+            Node(
+                f"rpm:{name}:x86_64",
+                NodeType.BINARY_RPM,
+                name,
+                {"name": name, "arch": "x86_64", **extra},
+            )
+        )
+    graph.add_node(Node("errata:ALSA-1", NodeType.ERRATA, "ALSA-1", {}))
+    graph.add_edge("rpm:adv:x86_64", "errata:ALSA-1", Relation.FIXES)
+
+    cells = {row.node_id: row.errata for row in evidence_matrix_rows(graph)}
+    assert cells["rpm:adv:x86_64"] == "advisory"
+    assert cells["rpm:clean:x86_64"] == "clean"
+    assert cells["rpm:unknown:x86_64"] == "missing"
+
+
 def test_workbench_layer_filter_hides_disabled_security_context() -> None:
     graph = build_synthetic_fixture_graph()
 

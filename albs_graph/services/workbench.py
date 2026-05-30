@@ -390,7 +390,7 @@ def evidence_matrix_rows(graph: ProvenanceGraph) -> list[EvidenceMatrixRow]:
                 signature=_status(status_values["signature"]),
                 release_context=_status(status_values["release_context"]),
                 sbom=_status(status_values["sbom"]),
-                errata=_status(status_values["errata"]),
+                errata=_errata_cell(report.errata_status),
                 tests=_status(status_values["tests"]),
                 completeness=covered / len(status_values),
                 missing=", ".join(missing),
@@ -1113,6 +1113,20 @@ def _artifact_has_tests(graph: ProvenanceGraph, node_id: str) -> bool:
 
 def _status(value: bool) -> str:
     return "ok" if value else "missing"
+
+
+def _errata_cell(errata_status: str) -> str:
+    """Three-state errata for the evidence matrix (D79).
+
+    ``advisory`` = an advisory ships this exact build; ``clean`` = an errata
+    source was consulted and found none (a normal, complete state, not a gap);
+    ``missing`` = no source was consulted, so it is genuinely unknown.
+    """
+
+    return {
+        "advisory_present": "advisory",
+        "confirmed_clean": "clean",
+    }.get(errata_status, "missing")
 
 
 def _compare_evidence_matrices(
