@@ -19,7 +19,22 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   refactor(gui): extract the Universe panel into a typed module
+- (this)   refactor(gui): extract the Security panel into a typed module
+           (god-object split #2; quality follow-up). New gui/security_panel.py
+           -- a SecurityPanel(QWidget) owning the 9-col table + colour-tinting,
+           rendering the per-RPM security posture (security_rows) via a single
+           populate(graph, cve_feed=) entry + one navigate(node_id) callback. The
+           CVE feed stays a host-loaded report-time input (_ensure_cve_feed,
+           D101) passed into populate, so the panel is toolbar-free. qt_app drops
+           the table + _populate_security_table body + _tint_security_cell +
+           _security_activated + the now-unused security_rows import (2393 ->
+           2331 lines) and delegates. Typed under mypy strict, no ignore (Qt
+           Optional guarded, Qt.ItemDataRole.UserRole). No behaviour/test-count
+           change (smoke + D101 Potential-CVEs tests repointed at
+           window.security_panel.table). mypy now checks 87 files. 2/4 panels
+           extracted. decisions.md D103.
+
+- 83cd2af  refactor(gui): extract the Universe panel into a typed module
            (first god-object split; quality follow-up). New gui/universe_panel.py
            -- a UniversePanel(QWidget) owning the M4 widgets + store + focus +
            favourites + handlers, needing only injected log/show_error callbacks

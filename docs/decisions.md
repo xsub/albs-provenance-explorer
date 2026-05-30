@@ -2779,6 +2779,32 @@ stays 386; mypy now checks 86 files (the new typed module included).
 
 ---
 
+## D103 - Extract the Security panel into a typed module (god-object split #2)
+
+Second cut after D102, applying the same template to the M3 Security panel.
+`gui/security_panel.py` is a `SecurityPanel(QWidget)` that owns its 9-column
+table and the colour-tinting, and renders the per-RPM security posture
+(`security_rows`: CPE identity, the errata three-state, addressed/potential CVEs,
+caveats). It needs only one injected callback -- `navigate(node_id)` -- and a
+single `populate(graph, *, cve_feed=None)` entry point.
+
+The one coupling worth noting: the **CVE feed is a report-time input loaded from
+a toolbar field the host owns** (`_ensure_cve_feed`, D101), so the host keeps
+that loader and passes the resolved feed into `populate`; the panel stays free of
+the toolbar. `qt_app.py` drops the security table widget, the
+`_populate_security_table` body (now a one-line delegate), `_tint_security_cell`
+and `_security_activated`, plus the now-unused `security_rows` import (2393 ->
+2331 lines). The new module type-checks under **mypy strict with no ignore**
+(same `horizontalHeader()` Optional guard and `Qt.ItemDataRole.UserRole` as the
+Universe panel).
+
+No behaviour change, no test-count change -- the smoke test and the D101
+Potential-CVEs test were repointed at `window.security_panel.table`. Suite stays
+386; mypy now checks 87 files. Two of four panels extracted; dependency /
+timeline / inspector remain before the blanket ignore on `qt_app.py` can go.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

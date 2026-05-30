@@ -63,7 +63,7 @@ def test_workbench_window_constructs_and_handles_a_result(
         assert window.artifact_list.count() > 0
         assert window.current_slice is not None       # a slice was rendered
         assert window.coverage_table.rowCount() > 0    # coverage table populated
-        assert window.security_table.rowCount() > 0    # M3 security panel populated
+        assert window.security_panel.table.rowCount() > 0  # M3 security panel populated
         assert window.current_svg                      # an SVG string was produced
 
         # M2 dependency panel: toggling the filters re-runs _populate without
@@ -255,10 +255,11 @@ def test_workbench_cpe_verify_run_spec_and_cve_feed_panel(
         qapp.processEvents()
 
         # Find the nginx-core row and read its Potential CVEs cell (column 7).
+        table = window.security_panel.table
         potentials = [
-            window.security_table.item(row, 7).text()
-            for row in range(window.security_table.rowCount())
-            if window.security_table.item(row, 0).text() == "nginx-core"
+            table.item(row, 7).text()
+            for row in range(table.rowCount())
+            if table.item(row, 0).text() == "nginx-core"
         ]
         assert potentials and "CVE-2024-7777" in potentials[0]
     finally:

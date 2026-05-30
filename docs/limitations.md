@@ -326,11 +326,12 @@ The PyQt5 investigation workbench is a read-only frontend over the same
   gaps -- PyQt5 5.15 ships `.pyi` stubs, so the Qt types are real, not `Any`);
   the principled fix is to split the single-class window into smaller *typed*
   panel classes rather than scatter ~150 per-line ignores. That split is under
-  way: the M4 Universe panel is extracted to `gui/universe_panel.py`, a
-  `UniversePanel(QWidget)` that type-checks under mypy strict with no ignore
-  (D102) -- the template for retiring the blanket ignore panel-by-panel. The
-  rest of `gui/` is typed/tested and the analysable logic lives in the
-  well-covered, typed `services/` layer (80-97%).
+  way: the M4 Universe panel (`gui/universe_panel.py`, D102) and the M3 Security
+  panel (`gui/security_panel.py`, D103) are extracted as `QWidget` classes that
+  type-check under mypy strict with no ignore (2/4 panels) -- the template for
+  retiring the blanket ignore panel-by-panel. The rest of `gui/` is typed/tested
+  and the analysable logic lives in the well-covered, typed `services/` layer
+  (80-97%).
 - **Needs a Qt platform.** Tests run headless via `QT_QPA_PLATFORM=offscreen`;
   a real run needs a display. Graphviz (`dot`) renders the graph and degrades
   to a built-in fallback SVG when absent.
