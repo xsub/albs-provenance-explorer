@@ -19,7 +19,20 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   test(gui): deeper qt_app interaction coverage (quality follow-up).
+- (this)   refactor(gui): extract the Universe panel into a typed module
+           (first god-object split; quality follow-up). New gui/universe_panel.py
+           -- a UniversePanel(QWidget) owning the M4 widgets + store + focus +
+           favourites + handlers, needing only injected log/show_error callbacks
+           and a small session API (store_path/favourites/restore). It
+           type-checks under mypy strict with NO ignore (Qt Optionals guarded;
+           Qt.ItemDataRole.UserRole), unlike qt_app.py's blanket ignore. qt_app
+           drops ~225 lines (3 attrs + 8 methods + the builder) and delegates to
+           the panel. No behaviour/test-count change (the 2 universe GUI tests
+           repointed at window.universe_panel.*). mypy now checks 86 files.
+           Establishes the template to retire the blanket ignore panel-by-panel.
+           decisions.md D102.
+
+- 4f648ce  test(gui): deeper qt_app interaction coverage (quality follow-up).
            +3 GUI test cases drive the previously-untested read-only paths --
            timeline Tree/Gantt switch, layer-filter toggle re-render, graph
            search, zoom/fit/reset, graph query run, finding drill-down, recipe

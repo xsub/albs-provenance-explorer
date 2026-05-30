@@ -49,7 +49,7 @@ from albs_graph.services import (
     timeline_gantt_rows,
     timeline_tree,
 )
-from albs_graph.services.universe import UniversePathRow, UniverseStore
+from albs_graph.gui.universe_panel import UniversePanel
 
 
 RECIPE_COMBO_WIDTH = 136
@@ -376,9 +376,6 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         self.thread_pool = QtCore.QThreadPool.globalInstance()
         self._active_worker: AnalysisWorker | None = None
-        self.universe_store: UniverseStore | None = None
-        self.universe_focus: str | None = None
-        self.universe_favourites: list[dict[str, str]] = []
         # M3: a report-time CVE feed for the Security panel's Potential CVEs
         # column, cached by the source string it was loaded from.
         self.cve_feed: CveFeed | None = None
@@ -652,7 +649,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.log.setReadOnly(True)
         self.log.setMaximumBlockCount(500)
 
-        self.universe_panel = self._create_universe_panel()
+        self.universe_panel = UniversePanel(log=self._log, show_error=self._show_error)
 
         self._build_ui()
         self._connect_signals()
@@ -1607,207 +1604,6 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         if node_id:
             self._navigate_to_node(str(node_id), prefer_artifact=True)
 
-    # --- M4 Universe workbench ----------------------------------------------
-
-    def _create_universe_panel(self) -> QtWidgets.QWidget:
-        """Build the Universe tab: open a SQLite store, search, walk, find paths.
-
-        Independent of the loaded build -- it queries a separate universe store
-        (D74) through the read-only ``UniverseStore`` facade, so the recursive
-        CTEs run in SQLite and never load the whole arch graph into memory.
-        """
-
-        panel = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(panel)
-        layout.setContentsMargins(6, 4, 6, 4)
-
-        open_row = QtWidgets.QHBoxLayout()
-        open_button = QtWidgets.QPushButton("Open Universe")
-        open_button.clicked.connect(lambda _checked=False: self.open_universe())
-        self.universe_path_label = QtWidgets.QLabel("No universe store open")
-        self.universe_path_label.setObjectName("GraphMeta")
-        open_row.addWidget(open_button)
-        open_row.addWidget(self.universe_path_label, 1)
-        self.universe_fav_combo = QtWidgets.QComboBox()
-        self.universe_fav_combo.addItem("Favourites", "")
-        self.universe_fav_combo.activated.connect(self._universe_apply_favourite)
-        save_fav_button = QtWidgets.QPushButton("Save Favourite")
-        save_fav_button.clicked.connect(self._universe_save_favourite)
-        open_row.addWidget(self.universe_fav_combo)
-        open_row.addWidget(save_fav_button)
-        layout.addLayout(open_row)
-
-        search_row = QtWidgets.QHBoxLayout()
-        self.universe_search_edit = QtWidgets.QLineEdit()
-        self.universe_search_edit.setPlaceholderText("Search packages / capabilities")
-        self.universe_search_edit.returnPressed.connect(self._universe_search)
-        search_button = QtWidgets.QPushButton("Search")
-        search_button.clicked.connect(self._universe_search)
-        search_row.addWidget(self.universe_search_edit, 1)
-        search_row.addWidget(search_button)
-        layout.addLayout(search_row)
-
-        body = QtWidgets.QSplitter()
-        self.universe_packages_table = QtWidgets.QTableWidget(0, 3)
-        self.universe_packages_table.setHorizontalHeaderLabels(["Type", "Label", "Node id"])
-        self.universe_packages_table.horizontalHeader().setStretchLastSection(True)
-        self.universe_packages_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.universe_packages_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.universe_packages_table.setAlternatingRowColors(True)
-        self.universe_packages_table.itemSelectionChanged.connect(self._universe_focus_changed)
-        body.addWidget(self.universe_packages_table)
-
-        right = QtWidgets.QWidget()
-        right_layout = QtWidgets.QVBoxLayout(right)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        self.universe_focus_label = QtWidgets.QLabel("Focus: -")
-        right_layout.addWidget(self.universe_focus_label)
-        walk_row = QtWidgets.QHBoxLayout()
-        for label, kind in (("Dependencies", "dependencies"), ("Dependents", "dependents"),
-                            ("Reachable", "reachable")):
-            button = QtWidgets.QPushButton(label)
-            button.clicked.connect(lambda _checked=False, k=kind: self._universe_traverse(k))
-            walk_row.addWidget(button)
-        right_layout.addLayout(walk_row)
-        path_row = QtWidgets.QHBoxLayout()
-        self.universe_target_edit = QtWidgets.QLineEdit()
-        self.universe_target_edit.setPlaceholderText("Target package for paths")
-        self.universe_target_edit.returnPressed.connect(self._universe_find_paths)
-        paths_button = QtWidgets.QPushButton("Find Paths")
-        paths_button.clicked.connect(self._universe_find_paths)
-        path_row.addWidget(self.universe_target_edit, 1)
-        path_row.addWidget(paths_button)
-        right_layout.addLayout(path_row)
-        self.universe_results_table = QtWidgets.QTableWidget(0, 3)
-        self.universe_results_table.setHorizontalHeaderLabels(["Kind", "Result", "Detail"])
-        self.universe_results_table.horizontalHeader().setStretchLastSection(True)
-        self.universe_results_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.universe_results_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.universe_results_table.setAlternatingRowColors(True)
-        right_layout.addWidget(self.universe_results_table)
-        body.addWidget(right)
-        body.setStretchFactor(0, 1)
-        body.setStretchFactor(1, 2)
-        layout.addWidget(body)
-        return panel
-
-    def open_universe(self, path: str | None = None) -> None:
-        if not path:
-            path, _filter = QtWidgets.QFileDialog.getOpenFileName(
-                self,
-                "Open universe SQLite store",
-                str(Path.cwd()),
-                "SQLite store (*.db *.sqlite *.sqlite3);;All files (*)",
-            )
-        if not path:
-            return
-        try:
-            store = UniverseStore(path)
-            version = store.schema_version
-        except Exception as exc:  # noqa: BLE001 -- a bad file must not crash the app
-            self._show_error(f"Could not open universe store: {exc}")
-            return
-        self.universe_store = store
-        self.universe_focus = None
-        self.universe_focus_label.setText("Focus: -")
-        self.universe_results_table.setRowCount(0)
-        self.universe_path_label.setText(f"{path} (schema v{version})")
-        self._log(f"Opened universe store {path} (schema v{version})")
-        self._universe_search()
-
-    def _universe_search(self) -> None:
-        if self.universe_store is None:
-            self._show_error("Open a universe store first.")
-            return
-        needle = self.universe_search_edit.text().strip()
-        rows = self.universe_store.search(needle, limit=300)
-        self.universe_packages_table.setRowCount(len(rows))
-        for row, entry in enumerate(rows):
-            for column, value in enumerate((entry.node_type, entry.label, entry.node_id)):
-                item = QtWidgets.QTableWidgetItem(value)
-                item.setData(QtCore.Qt.UserRole, entry.label)
-                self.universe_packages_table.setItem(row, column, item)
-        self.universe_packages_table.resizeColumnsToContents()
-        self._log(f"Universe search '{needle}': {len(rows)} matches")
-
-    def _universe_focus_changed(self) -> None:
-        item = self.universe_packages_table.currentItem()
-        if item is None:
-            return
-        row = item.row()
-        label_item = self.universe_packages_table.item(row, 1)
-        if label_item is not None:
-            self.universe_focus = label_item.text()
-            self.universe_focus_label.setText(f"Focus: {self.universe_focus}")
-
-    def _universe_traverse(self, kind: str) -> None:
-        if self.universe_store is None or not self.universe_focus:
-            self._show_error("Open a store and select a focus package first.")
-            return
-        focus = self.universe_focus
-        if kind == "dependencies":
-            results = self.universe_store.dependencies(focus)
-        elif kind == "dependents":
-            results = self.universe_store.dependents(focus)
-        else:
-            results = self.universe_store.reachable(focus)
-        self.universe_results_table.setRowCount(len(results))
-        for row, label in enumerate(results):
-            for column, value in enumerate((kind, label, "")):
-                item = QtWidgets.QTableWidgetItem(value)
-                self.universe_results_table.setItem(row, column, item)
-        self.universe_results_table.resizeColumnsToContents()
-        self._log(f"Universe {kind} of {focus}: {len(results)}")
-
-    def _universe_find_paths(self) -> None:
-        if self.universe_store is None or not self.universe_focus:
-            self._show_error("Open a store and select a focus package first.")
-            return
-        target = self.universe_target_edit.text().strip()
-        if not target:
-            self._show_error("Enter a target package for the path search.")
-            return
-        rows: list[UniversePathRow] = self.universe_store.paths(self.universe_focus, target)
-        self.universe_results_table.setRowCount(len(rows))
-        for row, entry in enumerate(rows):
-            values = ("path", entry.display, f"{entry.hops} hops")
-            for column, value in enumerate(values):
-                item = QtWidgets.QTableWidgetItem(value)
-                self.universe_results_table.setItem(row, column, item)
-        self.universe_results_table.resizeColumnsToContents()
-        self._log(f"Universe paths {self.universe_focus} -> {target}: {len(rows)}")
-
-    def _universe_save_favourite(self) -> None:
-        if self.universe_store is None:
-            self._show_error("Open a universe store first.")
-            return
-        favourite = {
-            "store": str(self.universe_store.db_path),
-            "search": self.universe_search_edit.text().strip(),
-            "focus": self.universe_focus or "",
-            "target": self.universe_target_edit.text().strip(),
-        }
-        label = favourite["focus"] or favourite["search"] or favourite["store"]
-        if favourite["target"]:
-            label = f"{label} -> {favourite['target']}"
-        self.universe_favourites.append(favourite)
-        self.universe_fav_combo.addItem(label, str(len(self.universe_favourites) - 1))
-        self._log(f"Saved universe favourite: {label}")
-
-    def _universe_apply_favourite(self, index: int) -> None:
-        data = self.universe_fav_combo.itemData(index)
-        if data is None or str(data) == "":
-            return
-        favourite = self.universe_favourites[int(data)]
-        if self.universe_store is None or str(self.universe_store.db_path) != favourite["store"]:
-            self.open_universe(favourite["store"])
-        self.universe_search_edit.setText(favourite["search"])
-        self.universe_target_edit.setText(favourite["target"])
-        self._universe_search()
-        if favourite["focus"]:
-            self.universe_focus = favourite["focus"]
-            self.universe_focus_label.setText(f"Focus: {favourite['focus']}")
-
     def _populate_source_table(self, subject_id: str | None = None) -> None:
         if self.result is None:
             return
@@ -2434,24 +2230,12 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._set_dep_scope(session.dep_scope)
         self.dep_only_conflicts.setChecked(session.dep_only_conflicts)
         self.dep_only_unresolved.setChecked(session.dep_only_unresolved)
-        self._restore_universe_session(session)
+        self.universe_panel.restore(session.universe_store, session.universe_favourites)
         self.run_analysis()
 
     def _set_dep_scope(self, value: str) -> None:
         index = self.dep_scope_combo.findData(value or "")
         self.dep_scope_combo.setCurrentIndex(max(index, 0))
-
-    def _restore_universe_session(self, session: WorkbenchSession) -> None:
-        self.universe_favourites = [dict(fav) for fav in session.universe_favourites]
-        self.universe_fav_combo.clear()
-        self.universe_fav_combo.addItem("Favourites", "")
-        for index, fav in enumerate(self.universe_favourites):
-            label = fav.get("focus") or fav.get("search") or fav.get("store") or "favourite"
-            if fav.get("target"):
-                label = f"{label} -> {fav['target']}"
-            self.universe_fav_combo.addItem(label, str(index))
-        if session.universe_store and Path(session.universe_store).exists():
-            self.open_universe(session.universe_store)
 
     def _current_session(self) -> WorkbenchSession:
         current = self.artifact_list.currentItem()
@@ -2469,10 +2253,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             dep_scope=str(self.dep_scope_combo.currentData() or ""),
             dep_only_conflicts=self.dep_only_conflicts.isChecked(),
             dep_only_unresolved=self.dep_only_unresolved.isChecked(),
-            universe_store=(
-                str(self.universe_store.db_path) if self.universe_store is not None else ""
-            ),
-            universe_favourites=tuple(self.universe_favourites),
+            universe_store=self.universe_panel.store_path(),
+            universe_favourites=tuple(self.universe_panel.favourites()),
             selected_artifact_id=(
                 str(current.data(QtCore.Qt.UserRole)) if current is not None else None
             ),

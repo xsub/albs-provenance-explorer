@@ -2748,6 +2748,37 @@ workbench.
 
 ---
 
+## D102 - Extract the Universe panel into a typed module (first god-object split)
+
+Quality follow-up. `gui/qt_app.py` is a single ~2.6k-line `WorkbenchWindow`
+class under a blanket `# mypy: ignore-errors`; removing that blanket surfaces
+~150 *real* errors (PyQt5 5.15 ships `.pyi` stubs, so the Qt types are real, not
+`Any`: `union-attr` on `Optional` returns like `horizontalHeader()` /
+`currentItem()`, enum access, missing annotations). Scattering ~150 per-line
+ignores would be noise; the principled retirement of the blanket ignore is to
+**split the window into smaller panels that each type-check on their own**.
+
+First extraction: `gui/universe_panel.py` -- a `UniversePanel(QWidget)` that owns
+the M4 universe widgets, the open store, the focus and the favourites, plus all
+the open/search/walk/paths/favourite handlers. It is the natural first cut
+because it is self-contained (it queries a separate SQLite universe store via the
+`UniverseStore` facade and never touches the loaded build graph), so it needs
+only two injected callbacks from the host -- `log` and `show_error` -- and
+exposes a tiny session API (`store_path()`, `favourites()`, `restore()`). The
+new module type-checks under **mypy strict with no ignore** (the Qt `Optional`
+returns are guarded, `Qt.ItemDataRole.UserRole` replaces the flattened
+`Qt.UserRole`). `qt_app.py` drops ~225 lines (3 state attrs + 8 methods +
+the builder); the host now holds `self.universe_panel = UniversePanel(...)` and
+delegates session capture/restore to it.
+
+No behaviour change and no test-count change -- the two universe GUI tests were
+repointed at `window.universe_panel.*` and still pass. This establishes the
+template; the remaining panels (security / dependency / timeline / inspector)
+can follow the same pattern to retire the blanket ignore incrementally. Suite
+stays 386; mypy now checks 86 files (the new typed module included).
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

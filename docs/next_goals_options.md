@@ -176,6 +176,9 @@ The PyQt workbench roadmap (M2-M5) is complete, and the M3 CVE-feed toggle
 (D101) is done. Remaining genuinely open:
 
 - **quality follow-ups** (orthogonal to features): headless + interaction tests
-  now bring `gui/qt_app.py` well above its initial ~60%; deeper interaction
-  coverage, dropping the blanket `# mypy: ignore-errors` for targeted ignores,
-  and splitting the single-class main window into panels/controllers remain.
+  now bring `gui/qt_app.py` to ~73%, and the god-object split has started -- the
+  M4 Universe panel is extracted to a `gui/universe_panel.py` that type-checks
+  under mypy strict with no ignore (D102), the template for retiring the blanket
+  ignore panel-by-panel. Remaining: extract the other panels (security /
+  dependency / timeline / inspector) the same way, then drop the blanket ignore
+  from the slimmed `qt_app.py`; deeper interaction coverage continues.

@@ -189,9 +189,9 @@ def test_workbench_session_captures_dependency_and_universe_state(
     try:
         window.dep_scope_combo.setCurrentIndex(window.dep_scope_combo.findData("build"))
         window.dep_only_conflicts.setChecked(True)
-        window.open_universe(str(db))
-        window.universe_focus = "nginx-core"
-        window._universe_save_favourite()
+        window.universe_panel.open_store(str(db))
+        window.universe_panel.focus = "nginx-core"
+        window.universe_panel._save_favourite()
 
         session = window._current_session()
         assert session.dep_scope == "build"
@@ -201,11 +201,10 @@ def test_workbench_session_captures_dependency_and_universe_state(
 
         # Restoring a session rebuilds the favourites combo + dependency filters.
         window.dep_only_conflicts.setChecked(False)
-        window.universe_favourites = []
         window._set_dep_scope(session.dep_scope)
-        window._restore_universe_session(session)
+        window.universe_panel.restore(session.universe_store, session.universe_favourites)
         assert str(window.dep_scope_combo.currentData() or "") == "build"
-        assert window.universe_fav_combo.count() >= 2
+        assert window.universe_panel.fav_combo.count() >= 2
     finally:
         window.close()
 
@@ -279,36 +278,37 @@ def test_workbench_universe_panel_open_search_traverse_paths(
     window = WorkbenchWindow()
     try:
         # Open the store (path given -> no file dialog) and auto-search.
-        window.open_universe(str(db))
+        panel = window.universe_panel
+        panel.open_store(str(db))
         qapp.processEvents()
-        assert window.universe_store is not None
-        assert window.universe_packages_table.rowCount() > 0
+        assert panel.store is not None
+        assert panel.packages_table.rowCount() > 0
 
         labels = [
-            window.universe_packages_table.item(row, 1).text()
-            for row in range(window.universe_packages_table.rowCount())
+            panel.packages_table.item(row, 1).text()
+            for row in range(panel.packages_table.rowCount())
         ]
-        window.universe_packages_table.setCurrentCell(labels.index("nginx-core"), 0)
+        panel.packages_table.setCurrentCell(labels.index("nginx-core"), 0)
         qapp.processEvents()
-        assert window.universe_focus == "nginx-core"
+        assert panel.focus == "nginx-core"
 
         # Walk one-hop dependencies of the focus.
-        window._universe_traverse("dependencies")
+        panel._traverse("dependencies")
         deps = [
-            window.universe_results_table.item(row, 1).text()
-            for row in range(window.universe_results_table.rowCount())
+            panel.results_table.item(row, 1).text()
+            for row in range(panel.results_table.rowCount())
         ]
         assert "glibc" in deps
 
         # Find dependency paths to glibc (direct + via openssl-libs).
-        window.universe_target_edit.setText("glibc")
-        window._universe_find_paths()
-        assert window.universe_results_table.rowCount() > 0
+        panel.target_edit.setText("glibc")
+        panel._find_paths()
+        assert panel.results_table.rowCount() > 0
 
         # Save then re-apply a favourite query.
-        window._universe_save_favourite()
-        assert window.universe_fav_combo.count() >= 2
-        window._universe_apply_favourite(window.universe_fav_combo.count() - 1)
+        panel._save_favourite()
+        assert panel.fav_combo.count() >= 2
+        panel._apply_favourite(panel.fav_combo.count() - 1)
         qapp.processEvents()
     finally:
         window.close()
