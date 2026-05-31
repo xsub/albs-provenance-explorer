@@ -2916,6 +2916,38 @@ ignore.
 
 ---
 
+## D107 - Workbench usability fixes (toolbar overflow, Enter, file load)
+
+Field-reported regressions made the workbench "barely usable":
+
+1. **Toolbar overflow.** The M3 security inputs (errata combo + feed, CPE dict,
+   CVE feed) were appended to the single already-full toolbar, pushing the later
+   widgets (Tests, search) into Qt's `>>` extension menu where they were hard to
+   reach. Fix: the security feed inputs move to a **second toolbar row**
+   (`addToolBarBreak()` + a dedicated "Security sources" `QToolBar` with
+   `Errata` / `CPE dict` / `CVE feed` labels); the Source/SBOM fields shrink
+   (320->240 / 240->180) and the primary row leads with explicit **Open** and
+   **Analyze** action buttons (previously menu-only, so users fell back to
+   Enter).
+2. **Enter launched the classic subprocess.** `build_id` Enter was wired to
+   `run_classic_build_pipeline` (D88) -- it shells out to `example--full.sh`,
+   which needs the classic checkout + network + dnf/rpmkeys and dies with a scary
+   subprocess dialog off an AlmaLinux host. Fix: Enter in `build_id` **and**
+   `source` now runs the normal in-app analysis; the classic runner is an
+   explicit **Run > Run Classic Pipeline** menu action instead of the default.
+3. **Loading a build JSON didn't populate artifacts.** The loader prefers
+   `build_id` over `source`, so a stale build id silently shadowed a chosen
+   file, and `open_source` only filled the field without analysing. Fix:
+   `open_source` clears the build id and **auto-runs** so the artifacts appear
+   immediately; Enter-in-Source (`_analyze_source`) likewise drops a stale build
+   id so "load this file" wins. (Verified there was no parse bug -- a cached
+   build loads its real 90 RPMs through the service.)
+
++2 GUI regression tests (security inputs on a separate toolbar; a real cached
+build loads into its actual RPMs, stale build id dropped). Suite 386 -> 388.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

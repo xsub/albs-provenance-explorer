@@ -266,6 +266,55 @@ def test_workbench_cpe_verify_run_spec_and_cve_feed_panel(
         window.close()
 
 
+def test_workbench_security_inputs_live_on_a_second_toolbar(
+    qapp: QtWidgets.QApplication,
+) -> None:
+    # Regression: the errata/CPE/CVE feed inputs overflowed the single toolbar
+    # into the ">>" extension menu. They now live on a separate toolbar row so
+    # the primary inputs above never overflow.
+    window = WorkbenchWindow()
+    try:
+        toolbars = window.findChildren(QtWidgets.QToolBar)
+        assert len(toolbars) >= 2  # primary + security-sources rows
+        owners = {id(tb): tb for tb in toolbars}
+        build_id_tb = id(window.build_id_edit.parent())
+        cve_tb = id(window.cve_feed_edit.parent())
+        # The CVE feed input is not on the same toolbar as the build-id input.
+        assert build_id_tb in owners and cve_tb in owners
+        assert build_id_tb != cve_tb
+    finally:
+        window.close()
+
+
+def test_workbench_loads_a_real_build_json_into_artifacts(
+    qapp: QtWidgets.QApplication,
+) -> None:
+    # Regression: loading a build JSON did not populate the artifact list. Here
+    # a real cached build loads into its actual RPMs (not the synthetic fixture),
+    # and "load source" drops a stale build id so it cannot shadow the file.
+    fixture = Path(__file__).resolve().parents[1] / "examples/live-build-17812/build-17812.albs.json"
+    assert fixture.exists()
+
+    window = WorkbenchWindow()
+    try:
+        window.source_edit.setText(str(fixture))
+        window.build_id_edit.setText("999")  # a stale id the source must override
+        window._analyze_source()
+        assert window.build_id_edit.text() == ""  # source wins, stale id dropped
+
+        # The analysis runs on a worker thread; wait for it, then deliver the
+        # finished signal on the main thread.
+        window.thread_pool.waitForDone(10000)
+        qapp.processEvents()
+
+        assert window.artifact_list.count() > 0
+        labels = [window.artifact_list.item(i).text() for i in range(window.artifact_list.count())]
+        assert any("nginx" in label for label in labels)  # real build, not synthetic
+        assert not any("synthetic" in label for label in labels)
+    finally:
+        window.close()
+
+
 def test_workbench_universe_panel_open_search_traverse_paths(
     qapp: QtWidgets.QApplication, tmp_path: Path
 ) -> None:

@@ -19,7 +19,22 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   refactor(gui): retire the blanket # mypy: ignore-errors on qt_app.py
+- (this)   fix(gui): workbench usability regressions (toolbar overflow, Enter,
+           file load). (1) The M3 security inputs (errata/CPE/CVE) overflowed the
+           single toolbar into Qt's >> extension menu; they move to a second
+           "Security sources" toolbar row (addToolBarBreak), Source/SBOM shrink,
+           and the primary row leads with explicit Open + Analyze buttons. (2)
+           build_id Enter shelled out to the classic example--full.sh subprocess
+           (D88) which dies off an AlmaLinux host; Enter (build_id + source) now
+           runs the in-app analysis, and the classic runner is an explicit Run >
+           Run Classic Pipeline menu action. (3) Loading a build JSON did not
+           populate artifacts (a stale build id shadowed the source and
+           open_source only filled the field); open_source now clears the build
+           id and auto-runs, and Enter-in-Source drops a stale build id so the
+           file wins. No parse bug (a cached build loads its real 90 RPMs). +2
+           GUI regression tests. Suite 386 -> 388. decisions.md D107.
+
+- 9972ae0  refactor(gui): retire the blanket # mypy: ignore-errors on qt_app.py
            (quality follow-up; the GUI is now fully strict-typed). Deleting the
            blanket ignore surfaced 122 real errors (PyQt5 5.15 ships .pyi stubs);
            all fixed by category, NOT 122 per-line ignores: ~40 flattened-enum

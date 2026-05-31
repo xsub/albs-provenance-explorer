@@ -551,6 +551,12 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         export_png_action.triggered.connect(self.export_png)
         compare_action = QtWidgets.QAction("Compare", self)
         compare_action.triggered.connect(self.compare_with_source)
+        run_classic_action = QtWidgets.QAction("Run Classic Pipeline (example--full.sh)", self)
+        run_classic_action.setToolTip(
+            "Run the full classic CLI demo for the entered build id in a subprocess "
+            "(needs the classic checkout + network + dnf/rpmkeys)."
+        )
+        run_classic_action.triggered.connect(self.run_classic_build_pipeline)
         build_sbom_action = QtWidgets.QAction("SBOM", self)
         build_sbom_action.setToolTip("Choose a build CycloneDX SBOM")
         build_sbom_action.triggered.connect(self.open_build_sbom)
@@ -595,6 +601,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             export_markdown_action=export_markdown_action,
             export_png_action=export_png_action,
             compare_action=compare_action,
+            run_classic_action=run_classic_action,
             save_session_action=save_session_action,
             load_session_action=load_session_action,
             reload_program_action=reload_program_action,
@@ -605,16 +612,18 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             reset_action=reset_action,
         )
 
-        toolbar.addWidget(QtWidgets.QLabel("Source"))
-        self.source_edit.setFixedWidth(320)
-        toolbar.addWidget(self.source_edit)
-        toolbar.addAction(build_sbom_action)
-        self.build_sbom_edit.setFixedWidth(240)
-        toolbar.addWidget(self.build_sbom_edit)
+        toolbar.addAction(open_action)
+        toolbar.addAction(run_action)
         toolbar.addSeparator()
         toolbar.addWidget(QtWidgets.QLabel("Build id"))
-        self.build_id_edit.setFixedWidth(100)
+        self.build_id_edit.setFixedWidth(90)
         toolbar.addWidget(self.build_id_edit)
+        toolbar.addWidget(QtWidgets.QLabel("Source"))
+        self.source_edit.setFixedWidth(240)
+        toolbar.addWidget(self.source_edit)
+        toolbar.addAction(build_sbom_action)
+        self.build_sbom_edit.setFixedWidth(180)
+        toolbar.addWidget(self.build_sbom_edit)
         toolbar.addSeparator()
         toolbar.addWidget(QtWidgets.QLabel("Mode"))
         toolbar.addWidget(self.mode_combo)
@@ -622,11 +631,22 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         toolbar.addWidget(self.layer_button)
         toolbar.addWidget(self.graph_search_edit)
         toolbar.addWidget(self.include_tests)
-        toolbar.addSeparator()
-        toolbar.addWidget(self.errata_combo)
-        toolbar.addWidget(self.errata_feed_edit)
-        toolbar.addWidget(self.cpe_dict_edit)
-        toolbar.addWidget(self.cve_feed_edit)
+
+        # The security feed inputs (errata / CPE / CVE) live on a second row so
+        # the primary inputs above never overflow into the toolbar extension menu.
+        self.addToolBarBreak()
+        security_toolbar = QtWidgets.QToolBar("Security sources")
+        security_toolbar.setMovable(False)
+        self.addToolBar(security_toolbar)
+        security_toolbar.addWidget(QtWidgets.QLabel("Errata"))
+        security_toolbar.addWidget(self.errata_combo)
+        security_toolbar.addWidget(self.errata_feed_edit)
+        security_toolbar.addSeparator()
+        security_toolbar.addWidget(QtWidgets.QLabel("CPE dict"))
+        security_toolbar.addWidget(self.cpe_dict_edit)
+        security_toolbar.addSeparator()
+        security_toolbar.addWidget(QtWidgets.QLabel("CVE feed"))
+        security_toolbar.addWidget(self.cve_feed_edit)
 
         left = QtWidgets.QWidget()
         left_layout = QtWidgets.QVBoxLayout(left)
@@ -730,6 +750,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         export_markdown_action: QtWidgets.QAction,
         export_png_action: QtWidgets.QAction,
         compare_action: QtWidgets.QAction,
+        run_classic_action: QtWidgets.QAction,
         save_session_action: QtWidgets.QAction,
         load_session_action: QtWidgets.QAction,
         reload_program_action: QtWidgets.QAction,
@@ -759,6 +780,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         run_menu = _require(menu_bar.addMenu("Run"))
         run_menu.addAction(run_action)
         run_menu.addAction(compare_action)
+        run_menu.addSeparator()
+        run_menu.addAction(run_classic_action)
 
         view_menu = _require(menu_bar.addMenu("View"))
         view_menu.addAction(zoom_in_action)
@@ -776,7 +799,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.source_edit.textChanged.connect(lambda _text: self._update_input_tooltips())
         self.build_sbom_edit.textChanged.connect(lambda _text: self._update_input_tooltips())
         self.build_id_edit.textChanged.connect(lambda _text: self._update_input_tooltips())
-        self.build_id_edit.returnPressed.connect(self.run_classic_build_pipeline)
+        # Enter in either input runs the normal in-app analysis (the classic
+        # example--full.sh subprocess is an explicit Run-menu action now). Enter
+        # in Source means "load this file", so it drops any stale build id.
+        self.build_id_edit.returnPressed.connect(self.run_analysis)
+        self.source_edit.returnPressed.connect(self._analyze_source)
         self.artifact_list.currentItemChanged.connect(self._artifact_changed)
         self.artifact_filter.textChanged.connect(self._filter_artifacts)
         self.mode_combo.currentTextChanged.connect(lambda _text: self.render_current_slice())
@@ -929,7 +956,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         )
         if path:
             self.source_edit.setText(path)
-            self.build_id_edit.clear()
+            self.build_id_edit.clear()  # a chosen file wins over any stale build id
+            self.run_analysis()  # load it immediately so the artifacts populate
 
     def open_build_sbom(self) -> None:
         path, _filter = QtWidgets.QFileDialog.getOpenFileName(
@@ -953,6 +981,13 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             if path.exists():
                 return str(path.parent if path.is_file() else path)
         return str(Path.cwd())
+
+    def _analyze_source(self) -> None:
+        # "Load this source": a path in the Source field wins over a stale build
+        # id (the loader otherwise prefers build id), then analyse.
+        if self.source_edit.text().strip():
+            self.build_id_edit.clear()
+        self.run_analysis()
 
     def run_analysis(self) -> None:
         try:
