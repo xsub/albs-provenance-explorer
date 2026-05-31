@@ -19,7 +19,14 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): start launcher, verified build-id entry, identifier badges
+- (this)   feat(gui): build-list fetch shows live progress in the status bar
+           (D123). fetch_recent_builds gains on_progress(fetched, limit);
+           refresh_build_list feeds _build_fetch_progress which writes
+           "Fetching builds… 30/100 (30%)" + processEvents so it repaints
+           mid-loop; a _refreshing_builds guard ignores re-entrant clicks.
+           +1 case. Suite 425 -> 426. decisions.md D123.
+
+- 1f902ae  feat(gui): start launcher, verified build-id entry, identifier badges
            (D122). A bare launch opens _StartDialog (Open Saved Session / Inspect
            by ALBS Build ID / by Build ID from list / by ALBS file / by ALBS
            package / offline demo; also File > Start…); Inspect-by-Build-ID takes

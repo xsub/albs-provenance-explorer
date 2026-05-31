@@ -580,6 +580,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._deep_fetch = False  # next run pulls every host-available enrichment
         self.build_catalog = BuildCatalog()  # cached db of real build ids (D120)
         self.build_list_limit = 100  # how many recent builds a refresh fetches (D121)
+        self._refreshing_builds = False  # guards re-entrant build-list refresh (D123)
         self.current_slice: GraphSlice | None = None
         self.findings: list[Finding] = []
         self.pending_session: WorkbenchSession | None = None
@@ -1471,23 +1472,40 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
     def refresh_build_list(self, limit: int | None = None) -> None:
         # Fetch the most recent `limit` ALBS builds into the cached catalog
-        # (D121: configurable last-N from the Builds menu).
+        # (D121: configurable last-N from the Builds menu), showing live progress
+        # in the status bar as it pages (D123).
+        if self._refreshing_builds:
+            return  # ignore re-entrant clicks while a fetch is in flight
         limit = limit or self.build_list_limit
         self.build_list_limit = limit  # remember the chosen size
-        self.progress_label.setText(f"Fetching last {limit} builds…")
+        self._refreshing_builds = True
+        self.progress_label.setText(f"Fetching builds… 0/{limit} (0%)")
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
         try:
-            builds = fetch_recent_builds(self.base_url, limit=limit, progress=self._log)
+            builds = fetch_recent_builds(
+                self.base_url,
+                limit=limit,
+                progress=self._log,
+                on_progress=self._build_fetch_progress,
+            )
         except Exception as exc:  # noqa: BLE001 -- a live fetch must never crash the UI
             self.progress_label.setText("Build list unavailable")
             self._log(f"Build list refresh failed: {exc}")
             return
         finally:
             QtWidgets.QApplication.restoreOverrideCursor()
+            self._refreshing_builds = False
         merged = self.build_catalog.merge(builds)
         self._update_build_completer()
         self.progress_label.setText(f"Build catalog: {len(merged)} known builds")
         self._log(f"Fetched {len(builds)} builds; catalog now holds {len(merged)}")
+
+    def _build_fetch_progress(self, fetched: int, total: int) -> None:
+        # Live status-bar counter + percentage while paging the build list. The
+        # processEvents() repaints it mid-fetch (the loop is synchronous).
+        percent = min(100, int(fetched * 100 / total)) if total else 0
+        self.progress_label.setText(f"Fetching builds… {fetched}/{total} ({percent}%)")
+        QtWidgets.QApplication.processEvents()
 
     def _update_build_completer(self) -> None:
         ids = [str(build_id) for build_id in self.build_catalog.build_ids()]

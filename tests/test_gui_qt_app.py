@@ -571,8 +571,10 @@ def test_refresh_build_list_populates_catalog_and_completer(
     ]
     captured: dict[str, object] = {}
 
-    def _fake(_base_url, *, limit, progress=None):
+    def _fake(_base_url, *, limit, progress=None, on_progress=None):
         captured["limit"] = limit
+        if on_progress:
+            on_progress(len(builds), limit)  # report a page of progress (D123)
         return builds
 
     monkeypatch.setattr(qt_app, "fetch_recent_builds", _fake)
@@ -583,8 +585,21 @@ def test_refresh_build_list_populates_catalog_and_completer(
         assert captured["limit"] == 200
         assert window.build_list_limit == 200  # remembered as the new default
         assert window.build_catalog.build_ids() == [57812, 57810]  # cached
+        assert not window._refreshing_builds  # the guard is released
         completions = set(window._build_completer.model().stringList())
         assert {"57812", "57810"} <= completions  # autocomplete now offers them
+    finally:
+        window.close()
+
+
+def test_build_fetch_progress_shows_counter_and_percent(qapp: QtWidgets.QApplication) -> None:
+    # The status bar shows a live counter + percentage while paging (D123).
+    window = WorkbenchWindow()
+    try:
+        window._build_fetch_progress(30, 100)
+        assert window.progress_label.text() == "Fetching builds… 30/100 (30%)"
+        window._build_fetch_progress(100, 100)
+        assert "100/100 (100%)" in window.progress_label.text()
     finally:
         window.close()
 

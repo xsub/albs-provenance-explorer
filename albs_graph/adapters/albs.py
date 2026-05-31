@@ -426,6 +426,7 @@ def fetch_recent_builds(
     *,
     limit: int = 100,
     progress: Callable[[str], None] | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> list[BuildSummary]:
     """Fetch the most recent ``limit`` ALBS builds, paging the list endpoint.
 
@@ -433,6 +434,9 @@ def fetch_recent_builds(
     signals the end, or the safety cap is hit. De-dupes by id, preserving the
     newest-first order. The first page's error propagates (so the caller can
     report "unavailable"); a later page's error ends paging with what was got.
+
+    ``on_progress(fetched, limit)`` is called after each page so a UI can show a
+    live counter / percentage (``progress`` is the textual log callback).
     """
 
     collected: list[BuildSummary] = []
@@ -452,6 +456,8 @@ def fetch_recent_builds(
             if build.build_id not in seen:
                 seen.add(build.build_id)
                 collected.append(build)
+        if on_progress:
+            on_progress(min(len(collected), limit), limit)
         if len(builds) < _BUILD_LIST_PAGE_SIZE:
             break  # last page
     if progress:

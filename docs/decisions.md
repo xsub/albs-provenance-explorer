@@ -3361,6 +3361,19 @@ verification; the badge identifier text). Suite 419 -> 425.
 
 ---
 
+## D123 - Build-list fetch shows live progress in the status bar
+
+A "last N" refresh (D121) pages the list endpoint synchronously (up to 50 GETs
+for 500), which looked frozen with only a static "Fetching…". `fetch_recent_builds`
+now takes an `on_progress(fetched, limit)` callback (alongside the textual
+`progress` log one), called after each page; `refresh_build_list` feeds it
+`_build_fetch_progress`, which writes **"Fetching builds… 30/100 (30%)"** to the
+status bar and `processEvents()` so it repaints mid-loop. A `_refreshing_builds`
+guard ignores re-entrant clicks while a fetch is in flight. +1 case (the counter
++ percentage text). Suite 425 -> 426.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
