@@ -43,6 +43,7 @@ from albs_graph.adapters.errata import attach_errata_file
 from albs_graph.adapters.errata_source import (
     almalinux_errata_feed_url,
     almalinux_major_version,
+    attach_errata_cross_checked,
     attach_errata_from_source,
     errata_source_for,
 )
@@ -257,14 +258,18 @@ class ErrataSourceStep:
         # Errata is measured across every (selected) RPM, not one subject -- a
         # build's security context is "which of my artifacts carry advisories",
         # so this uses the binary-RPM selector, not ctx.subject().
-        url = ctx.spec.errata_url
-        # "http" with no explicit feed/URL defaults to the official AlmaLinux
-        # errata feed for the build's own distro version, so it just works.
-        if ctx.spec.errata_source == "http" and not ctx.spec.errata_feed and not url:
-            version = almalinux_major_version(ctx.graph)
-            if version:
-                url = almalinux_errata_feed_url(version)
-                ctx.log(f"No errata feed given; defaulting to {url}")
+        #
+        # Build-wide selector: errata spans every architecture (the lookup is a
+        # cheap dict hit per RPM). The default enrichment selector keeps only
+        # x86_64+noarch (sensible for the expensive header/payload rungs), which
+        # would leave a ppc64le/aarch64 build's RPMs "not_checked". So errata
+        # checks all archs unless one is explicitly pinned.
+        selector = make_binary_rpm_selector(
+            package=ctx.spec.package, arch=ctx.spec.arch, all_archs=ctx.spec.arch is None
+        )
+        if ctx.spec.errata_source == "both":
+            return self._cross_check(ctx, selector)
+        url = self._default_feed_url(ctx) if ctx.spec.errata_source == "http" else ctx.spec.errata_url
         source = errata_source_for(
             ctx.spec.errata_source,
             feed_file=ctx.spec.errata_feed,
@@ -275,17 +280,40 @@ class ErrataSourceStep:
         if source is None:
             ctx.log("Errata source requested but could not be built; skipping")
             return None
-        # Errata is build-wide security context -- "which of my artifacts carry
-        # advisories" spans every architecture, and the lookup is a cheap dict
-        # hit per RPM. The default enrichment selector keeps only x86_64+noarch
-        # (sensible for the expensive header/payload rungs), which would leave a
-        # ppc64le/aarch64 build's RPMs "not_checked". So errata checks all archs
-        # unless one is explicitly pinned.
-        selector = make_binary_rpm_selector(
-            package=ctx.spec.package, arch=ctx.spec.arch, all_archs=ctx.spec.arch is None
-        )
         ctx.log(f"Querying errata source {source.name} for advisory coverage")
         return attach_errata_from_source(ctx.graph, source, node_selector=selector)
+
+    def _default_feed_url(self, ctx: EnrichmentContext) -> str | None:
+        # "http" with no explicit feed/URL defaults to the official AlmaLinux
+        # errata feed for the build's own distro version, so it just works.
+        url = ctx.spec.errata_url
+        if not ctx.spec.errata_feed and not url:
+            version = almalinux_major_version(ctx.graph)
+            if version:
+                url = almalinux_errata_feed_url(version)
+                ctx.log(f"No errata feed given; defaulting to {url}")
+        return url
+
+    def _cross_check(self, ctx: EnrichmentContext, selector: NodeSelector) -> Any:
+        # "both": consult the web feed *and* dnf updateinfo, then mark each
+        # advisory the two agree on (cross_checked). Either may be unreachable --
+        # the cross-check degrades to whatever was consulted.
+        http = errata_source_for(
+            "http",
+            feed_file=ctx.spec.errata_feed,
+            url=self._default_feed_url(ctx),
+            ttl_seconds=ctx.spec.feed_ttl_seconds,
+            on_progress=ctx.on_progress,
+        )
+        dnf = errata_source_for("dnf", on_progress=ctx.on_progress)
+        sources = [source for source in (http, dnf) if source is not None]
+        ctx.log("Cross-checking errata: web feed vs dnf updateinfo (marking agreement)")
+        result = attach_errata_cross_checked(ctx.graph, sources, node_selector=selector)
+        ctx.log(
+            f"Errata cross-check: {result.corroborated} corroborated, "
+            f"{result.single_source} single-source across {result.queried} RPMs"
+        )
+        return result
 
 
 @dataclass(frozen=True)

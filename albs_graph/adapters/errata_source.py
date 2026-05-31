@@ -308,7 +308,7 @@ def attach_errata_from_source(
         if advisories:
             result.with_advisory += 1
             for advisory in advisories:
-                _attach_advisory(graph, node.id, advisory, source.name)
+                _attach_advisory(graph, node.id, advisory, (source.name,))
                 result.advisories_added += 1
         else:
             result.clean += 1
@@ -318,24 +318,144 @@ def attach_errata_from_source(
     return result
 
 
-def _attach_advisory(
-    graph: ProvenanceGraph, rpm_node_id: str, advisory: ErrataAdvisory, source: str
-) -> None:
-    errata_id = f"errata:{advisory.id}"
-    if errata_id not in graph.nodes:
-        graph.add_node(
-            Node(
-                errata_id,
-                NodeType.ERRATA,
-                advisory.id,
+@dataclass
+class ErrataCrossCheckResult:
+    """Outcome of cross-checking errata across several sources (web feed + dnf)."""
+
+    sources: list[str]
+    consulted: bool
+    queried: int = 0           # binary RPMs examined
+    with_advisory: int = 0     # RPMs carrying >= 1 advisory
+    clean: int = 0             # RPMs all sources agree are advisory-free
+    advisories_added: int = 0  # (RPM, advisory) attachments
+    corroborated: int = 0      # (RPM, advisory) confirmed by >= 2 sources
+    single_source: int = 0     # (RPM, advisory) reported by only one source
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "sources": list(self.sources),
+            "consulted": self.consulted,
+            "queried": self.queried,
+            "with_advisory": self.with_advisory,
+            "clean": self.clean,
+            "advisories_added": self.advisories_added,
+            "corroborated": self.corroborated,
+            "single_source": self.single_source,
+        }
+
+
+def attach_errata_cross_checked(
+    graph: ProvenanceGraph,
+    sources: list[ErrataSource],
+    *,
+    node_selector: NodeSelector | None = None,
+) -> ErrataCrossCheckResult:
+    """Consult several errata sources and mark each advisory they agree on.
+
+    For every (selected) binary RPM each source is asked which advisories ship
+    it. An advisory reported by >= 2 sources is **cross-checked** (``True`` on
+    both the ERRATA node and the per-RPM ``FIXES`` edge); one reported by a
+    single source is flagged as a discrepancy (``cross_checked=False``). An RPM
+    that every consulted source agrees is advisory-free is ``confirmed_clean``
+    with ``errata_cross_checked=True`` (both agree it is clean). Only sources
+    that were actually reachable count, so this degrades to the single-source
+    answer when one source is unavailable (e.g. dnf off an AlmaLinux box).
+    """
+
+    consulted = [source for source in sources if source.consulted]
+    result = ErrataCrossCheckResult(
+        sources=[source.name for source in consulted], consulted=bool(consulted)
+    )
+    if not consulted:
+        return result
+    for node in graph.find_by_type(NodeType.BINARY_RPM):
+        if node_selector and not node_selector(node):
+            continue
+        result.queried += 1
+        nevra = _node_nevra(node)
+        # advisory id -> (advisory, set of reporting source names)
+        reported: dict[str, tuple[ErrataAdvisory, set[str]]] = {}
+        for source in consulted:
+            for advisory in source.advisories_for(nevra):
+                entry = reported.setdefault(advisory.id, (advisory, set()))
+                entry[1].add(source.name)
+        if reported:
+            result.with_advisory += 1
+            for advisory, reporters in reported.values():
+                corroborated = len(reporters) >= 2
+                _attach_advisory(
+                    graph, node.id, advisory, tuple(sorted(reporters)), cross_checked=corroborated
+                )
+                result.advisories_added += 1
+                result.corroborated += int(corroborated)
+                result.single_source += int(not corroborated)
+            graph.update_metadata(
+                node.id,
                 {
-                    "type": advisory.type,
-                    "severity": advisory.severity,
-                    "source": source,
+                    "errata_sources": [source.name for source in consulted],
+                    "errata_cross_checked": all(
+                        len(reporters) >= 2 for _, reporters in reported.values()
+                    ),
                 },
             )
+        else:
+            result.clean += 1
+            graph.update_metadata(
+                node.id,
+                {
+                    "errata_status": "confirmed_clean",
+                    "errata_source": "+".join(source.name for source in consulted),
+                    "errata_sources": [source.name for source in consulted],
+                    "errata_cross_checked": len(consulted) >= 2,  # both agree it is clean
+                },
+            )
+    return result
+
+
+def _attach_advisory(
+    graph: ProvenanceGraph,
+    rpm_node_id: str,
+    advisory: ErrataAdvisory,
+    sources: tuple[str, ...],
+    *,
+    cross_checked: bool | None = None,
+) -> None:
+    """Attach an advisory to a binary RPM: ERRATA node + ``FIXES`` edge + CVEs.
+
+    ``sources`` is the set of errata sources that reported this advisory for the
+    RPM. ``cross_checked`` -- set only by the cross-check path -- records whether
+    >= 2 sources agreed, on both the ERRATA node and the per-RPM ``FIXES`` edge
+    (the "mark when correct"). The single-source path passes one name and leaves
+    ``cross_checked`` unset so existing behaviour is unchanged.
+    """
+
+    errata_id = f"errata:{advisory.id}"
+    source_label = "+".join(sources)
+    if errata_id not in graph.nodes:
+        meta: dict[str, Any] = {
+            "type": advisory.type,
+            "severity": advisory.severity,
+            "source": source_label,
+        }
+        if cross_checked is not None:
+            meta["sources"] = list(sources)
+            meta["cross_checked"] = cross_checked
+        graph.add_node(Node(errata_id, NodeType.ERRATA, advisory.id, meta))
+    elif cross_checked is not None:
+        existing = graph.nodes[errata_id]
+        merged = sorted(set(existing.metadata.get("sources") or []) | set(sources))
+        graph.update_metadata(
+            errata_id,
+            {
+                "sources": merged,
+                "source": "+".join(merged),
+                "cross_checked": bool(existing.metadata.get("cross_checked")) or cross_checked,
+            },
         )
-    graph.add_edge(rpm_node_id, errata_id, Relation.FIXES)
+    edge_meta: dict[str, Any] = {}
+    if cross_checked is not None:
+        edge_meta = {"sources": list(sources), "cross_checked": cross_checked}
+    graph.add_edge(rpm_node_id, errata_id, Relation.FIXES, **edge_meta)
     for cve in advisory.cves:
         cve_id = f"cve:{cve}"
         if cve_id not in graph.nodes:

@@ -18,6 +18,7 @@ from albs_graph.adapters.errata_source import (
     HttpErrataSource,
     almalinux_errata_feed_url,
     almalinux_major_version,
+    attach_errata_cross_checked,
     attach_errata_from_source,
     errata_source_for,
 )
@@ -343,3 +344,113 @@ def test_confirmed_clean_plus_sbom_completes_security_context(tmp_path: Path) ->
 def test_advisory_dataclass_shape() -> None:
     adv = ErrataAdvisory(id="ALSA-1", type="security", severity="Low", cves=("CVE-1",))
     assert adv.id == "ALSA-1" and adv.cves == ("CVE-1",)
+
+
+class _FakeErrataSource:
+    """A minimal in-memory ErrataSource for cross-check tests (no I/O)."""
+
+    def __init__(
+        self,
+        name: str,
+        advisories: dict[str, list[ErrataAdvisory]],
+        consulted: bool = True,
+    ) -> None:
+        self.name = name
+        self._advisories = advisories
+        self._consulted = consulted
+
+    @property
+    def consulted(self) -> bool:
+        return self._consulted
+
+    def advisories_for(self, nevra: RpmNevra) -> list[ErrataAdvisory]:
+        return list(self._advisories.get(nevra.name, []))
+
+
+def _fixes_edge_to(
+    graph: ProvenanceGraph, rpm_id: str, errata_id: str
+) -> dict[str, object] | None:
+    for edge in graph.outgoing(rpm_id):
+        if edge.target == errata_id and edge.relation == Relation.FIXES:
+            return edge.metadata
+    return None
+
+
+def test_cross_check_marks_agreement_and_flags_single_source() -> None:
+    # pkg0 carries ALSA-1 (both sources agree -> cross-checked) and ALSA-2
+    # (only the web feed -> a single-source discrepancy).
+    graph = _el_graph("1.el9")  # one rpm: rpm:0 / pkg0
+    alsa1 = ErrataAdvisory(id="ALSA-1", type="security", cves=("CVE-1",))
+    alsa2 = ErrataAdvisory(id="ALSA-2", type="bugfix")
+    web = _FakeErrataSource("almalinux-errata-feed", {"pkg0": [alsa1, alsa2]})
+    dnf = _FakeErrataSource("dnf-updateinfo", {"pkg0": [alsa1]})
+
+    result = attach_errata_cross_checked(graph, [web, dnf])
+
+    assert result.consulted and result.queried == 1 and result.with_advisory == 1
+    assert result.corroborated == 1 and result.single_source == 1
+    # ALSA-1: both agreed -> cross_checked on the node *and* the per-RPM edge.
+    assert graph.nodes["errata:ALSA-1"].metadata["cross_checked"] is True
+    assert graph.nodes["errata:ALSA-1"].metadata["sources"] == [
+        "almalinux-errata-feed",
+        "dnf-updateinfo",
+    ]
+    assert _fixes_edge_to(graph, "rpm:0", "errata:ALSA-1")["cross_checked"] is True
+    # ALSA-2: one source only -> not cross-checked.
+    assert graph.nodes["errata:ALSA-2"].metadata["cross_checked"] is False
+    assert _fixes_edge_to(graph, "rpm:0", "errata:ALSA-2")["cross_checked"] is False
+    # The RPM is not fully cross-checked because one advisory is single-source.
+    assert graph.nodes["rpm:0"].metadata["errata_cross_checked"] is False
+
+
+def test_cross_check_confirmed_clean_when_both_agree_clean() -> None:
+    # Neither source ships pkg0 -> both agree it is advisory-free: confirmed_clean
+    # with errata_cross_checked True (a corroborated clean result).
+    graph = _el_graph("1.el9")
+    web = _FakeErrataSource("almalinux-errata-feed", {})
+    dnf = _FakeErrataSource("dnf-updateinfo", {})
+
+    result = attach_errata_cross_checked(graph, [web, dnf])
+
+    assert result.clean == 1 and result.with_advisory == 0
+    meta = graph.nodes["rpm:0"].metadata
+    assert meta["errata_status"] == "confirmed_clean"
+    assert meta["errata_cross_checked"] is True
+    assert graph.trust_path_report("rpm:0").errata_status == "confirmed_clean"
+
+
+def test_cross_check_degrades_to_single_consulted_source() -> None:
+    # dnf unreachable (not consulted) -> the cross-check runs on the web feed
+    # alone; its advisory is recorded but not marked corroborated.
+    graph = _el_graph("1.el9")
+    web = _FakeErrataSource("almalinux-errata-feed", {"pkg0": [ErrataAdvisory(id="ALSA-9")]})
+    dnf = _FakeErrataSource("dnf-updateinfo", {}, consulted=False)  # e.g. dnf absent
+
+    result = attach_errata_cross_checked(graph, [web, dnf])
+
+    assert result.sources == ["almalinux-errata-feed"]  # only the consulted source
+    assert result.corroborated == 0 and result.single_source == 1
+    assert graph.nodes["errata:ALSA-9"].metadata["cross_checked"] is False
+
+
+def test_errata_step_both_routes_to_cross_check(monkeypatch) -> None:
+    # errata_source="both" consults web + dnf and returns a cross-check result.
+    web = _FakeErrataSource("almalinux-errata-feed", {"pkg0": [ErrataAdvisory(id="ALSA-1")]})
+    dnf = _FakeErrataSource("dnf-updateinfo", {"pkg0": [ErrataAdvisory(id="ALSA-1")]})
+
+    def _factory(kind, **_kwargs):
+        return {"http": web, "dnf": dnf}.get(kind)
+
+    monkeypatch.setattr("albs_graph.pipeline.errata_source_for", _factory)
+    graph = _el_graph("1.el9")  # rpm:0 / pkg0
+    ctx = EnrichmentContext(
+        graph=graph,
+        spec=RunSpec(errata_source="both"),
+        selector=lambda _node: True,
+        on_progress=None,
+    )
+
+    result = ErrataSourceStep().run(ctx)
+
+    assert result.corroborated == 1  # both sources agreed on ALSA-1
+    assert graph.nodes["errata:ALSA-1"].metadata["cross_checked"] is True

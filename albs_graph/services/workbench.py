@@ -554,7 +554,9 @@ def security_rows(
                 identity=_identity_label(identity),
                 cpe=_cpe_display(identity),
                 candidates=_candidate_summary(identity),
-                errata=_errata_cell(trust.errata_status),
+                errata=_errata_cell(
+                    trust.errata_status, bool(node.metadata.get("errata_cross_checked"))
+                ),
                 addressed_cves="; ".join(assessment.addressed_cves) or "-",
                 potential_cves="; ".join(assessment.potentially_affected_cves) or "-",
                 caveats=_security_caveats(assessment),
@@ -1428,18 +1430,22 @@ def _status(value: bool) -> str:
     return "ok" if value else "missing"
 
 
-def _errata_cell(errata_status: str) -> str:
+def _errata_cell(errata_status: str, cross_checked: bool = False) -> str:
     """Three-state errata for the evidence matrix (D79).
 
     ``advisory`` = an advisory ships this exact build; ``clean`` = an errata
     source was consulted and found none (a normal, complete state, not a gap);
-    ``missing`` = no source was consulted, so it is genuinely unknown.
+    ``missing`` = no source was consulted, so it is genuinely unknown. A trailing
+    ``[x-checked]`` marks a result the web feed and dnf agreed on (D119).
     """
 
-    return {
+    cell = {
         "advisory_present": "advisory",
         "confirmed_clean": "clean",
     }.get(errata_status, "missing")
+    if cross_checked and cell != "missing":
+        cell = f"{cell} [x-checked]"
+    return cell
 
 
 def _compare_evidence_matrices(

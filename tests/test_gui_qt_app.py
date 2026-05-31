@@ -526,6 +526,26 @@ def test_errata_default_source_is_host_aware(
         window.close()
 
 
+def test_errata_both_cross_check_option_feeds_the_run_spec(
+    qapp: QtWidgets.QApplication,
+) -> None:
+    # The "both (cross-check)" errata option is selectable and drives the RunSpec
+    # errata_source="both", still passing the feed-field value to the http side.
+    window = WorkbenchWindow()
+    try:
+        index = window.errata_combo.findData("both")
+        assert index >= 0  # the cross-check option exists
+        window.errata_combo.setCurrentIndex(index)
+        window.errata_feed_edit.setText("https://errata.example/9/errata.full.json")
+        kwargs = window._errata_run_kwargs()
+        assert kwargs["errata_source"] == "both"
+        assert kwargs["errata_url"] == "https://errata.example/9/errata.full.json"
+        # The ERRATA badge tooltip reflects the cross-check.
+        assert "cross-checked" in window._errata_source_uri()
+    finally:
+        window.close()
+
+
 def test_worker_routes_a_missing_build_to_build_not_found(
     qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:

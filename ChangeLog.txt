@@ -19,7 +19,18 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   fix(gui): a missing build is "not found", not "Analysis failed". A
+- (this)   feat(errata): cross-check the web feed against dnf and mark the
+           advisories both confirm. A fourth errata mode "both" consults
+           errata.almalinux.org *and* dnf updateinfo; attach_errata_cross_checked
+           records sources=[...] + a cross_checked flag on each ERRATA node and
+           per-RPM FIXES edge (true when >=2 agree, false for a single-source
+           discrepancy); a clean both agree on is errata_cross_checked. Degrades
+           to one source if the other is unreachable. GUI: combo "both
+           (cross-check)", Security "Errata" cell gets a [x-checked] suffix,
+           badge tooltip + inspector show it. Three-state (D79) untouched.
+           +5 tests. Suite 405 -> 410. decisions.md D119.
+
+- ef2fe64  fix(gui): a missing build is "not found", not "Analysis failed". A
            sparse-id 404 (ALBS ids are not sequential: 57809 does not exist,
            57810 does) popped a red failure. fetch_build_metadata now raises a
            dedicated BuildNotFoundError (a ValueError subclass); the worker

@@ -411,15 +411,17 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.mode_combo.addItems(
             ["Trust Path", "Dependency Evidence", "Security Context", "Node Neighborhood"]
         )
-        # Live errata source (D79/M3): off / http feed / host dnf. The combo's
-        # userData is the RunSpec.errata_source value (""/"http"/"dnf").
+        # Live errata source (D79/M3): off / http feed / host dnf / both (D119,
+        # cross-check the two and mark agreement). The combo's userData is the
+        # RunSpec.errata_source value (""/"http"/"dnf"/"both").
         self.errata_combo = QtWidgets.QComboBox()
         # The "Errata" toolbar label already provides context, so keep the items
         # short -- and wide enough that the selection is never truncated.
         self.errata_combo.addItem("off", "")
         self.errata_combo.addItem("http (almalinux.org)", "http")
         self.errata_combo.addItem("dnf (host)", "dnf")
-        self.errata_combo.setMinimumWidth(150)
+        self.errata_combo.addItem("both (cross-check)", "both")
+        self.errata_combo.setMinimumWidth(165)
         self.errata_feed_edit = QtWidgets.QLineEdit()
         self.errata_feed_edit.setPlaceholderText("blank = errata.almalinux.org")
         self.errata_feed_edit.setToolTip(
@@ -1306,14 +1308,16 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         the host updateinfo (degrades to not-consulted off an AlmaLinux box).
         "http" reads an offline feed file when the field is an existing path,
         else treats it as a live feed URL; an empty field still selects http
-        but simply degrades to not-consulted (logged), never crashes.
+        but simply degrades to not-consulted (logged), never crashes. "both"
+        cross-checks the web feed against dnf and marks the advisories they
+        agree on (D119) -- the feed field still feeds the http side.
         """
 
         source = str(self.errata_combo.currentData() or "")
         if not source:
             return {}
         kwargs: dict[str, object] = {"errata_source": source}
-        if source == "http":
+        if source in ("http", "both"):
             feed = self.errata_feed_edit.text().strip()
             if feed:
                 candidate = Path(feed).expanduser()
@@ -1466,8 +1470,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         )
 
     def _errata_source_uri(self) -> str:
-        if str(self.errata_combo.currentData() or "") == "dnf":
+        selected = str(self.errata_combo.currentData() or "")
+        if selected == "dnf":
             return "dnf updateinfo (host)"
+        if selected == "both":
+            return "web feed + dnf updateinfo (cross-checked)"
         feed = self.errata_feed_edit.text().strip()
         if feed:
             return feed

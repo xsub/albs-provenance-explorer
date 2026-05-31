@@ -3241,6 +3241,38 @@ Suite 403 -> 405.
 
 ---
 
+## D119 - Errata cross-check: web feed vs dnf, mark the advisories both confirm
+
+Manual errata toggling (off / http / dnf) and the host-aware default (D117)
+already let you choose a source. The new ask: an **option to cross-check the
+two and mark when they agree**. AlmaLinux publishes advisories twice -- the
+`errata.almalinux.org` feed and the host `dnf updateinfo` -- so corroboration
+across both is a real signal that an advisory match is correct.
+
+A fourth errata mode **`both`** consults *both* sources and records, per
+(RPM, advisory), which sources reported it:
+`attach_errata_cross_checked(graph, sources)` writes `sources=[...]` and a
+`cross_checked` boolean onto **both the ERRATA node and the per-RPM `FIXES`
+edge** -- `True` when >= 2 sources agree, `False` for a single-source
+discrepancy. An RPM every consulted source agrees is advisory-free is
+`confirmed_clean` with `errata_cross_checked=True` (a corroborated clean). The
+unified `_attach_advisory` carries the sources tuple + optional flag, so the
+single-source path is byte-for-byte unchanged. It **degrades gracefully**: if
+dnf is unreachable the cross-check runs on the feed alone (nothing is marked
+corroborated). The three-state contract (advisory_present / confirmed_clean /
+not_checked, D79) is untouched -- cross-check only *adds* metadata.
+
+`ErrataSourceStep` grows a `both` branch; `RunSpec.errata_source` accepts
+`"both"` (no model change). In the workbench the errata combo gains
+**"both (cross-check)"**, the Security panel's Errata cell shows a
+`[x-checked]` suffix when the two agreed, the ERRATA badge tooltip reads
+"web feed + dnf updateinfo (cross-checked)", and the node/edge inspector shows
+the `cross_checked` + `sources` metadata. +5 cases (agreement + single-source +
+corroborated-clean + graceful degrade + the step's `both` routing; the GUI
+option feeds the RunSpec). Suite 405 -> 410.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

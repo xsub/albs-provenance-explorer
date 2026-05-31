@@ -99,12 +99,12 @@ def _tint_cell(item: QtWidgets.QTableWidgetItem, column: int, value: str) -> Non
             item.setForeground(warn)
         elif value == "none":
             item.setForeground(bad)
-    elif column == 5:  # Errata three-state
-        if value == "clean":
+    elif column == 5:  # Errata three-state (may carry a " [x-checked]" suffix, D119)
+        if value.startswith("clean"):
             item.setForeground(good)
-        elif value == "advisory":
+        elif value.startswith("advisory"):
             item.setForeground(warn)
-        elif value == "missing":
+        elif value.startswith("missing"):
             item.setForeground(bad)
     elif column in (6, 7) and value not in ("", "-"):  # addressed / potential CVEs present
         item.setForeground(warn)
