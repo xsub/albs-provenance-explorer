@@ -346,6 +346,22 @@ def test_advisory_dataclass_shape() -> None:
     assert adv.id == "ALSA-1" and adv.cves == ("CVE-1",)
 
 
+def test_advisory_to_cve_edge_is_not_duplicated_across_rpms() -> None:
+    # One advisory covering several RPMs is the same advisory->CVE fact: the
+    # CVE node must accrue ONE "fixes" edge, not one per RPM (the bug that made a
+    # CVE node sprout dozens of identical edges).
+    graph = _el_graph("1.el9", "1.el9")  # rpm:0/pkg0, rpm:1/pkg1
+    advisory = ErrataAdvisory(id="ALSA-9", cves=("CVE-1",))
+    source = _FakeErrataSource("almalinux-errata-feed", {"pkg0": [advisory], "pkg1": [advisory]})
+
+    attach_errata_from_source(graph, source)
+
+    cve_edges = [e for e in graph.outgoing("errata:ALSA-9") if e.target == "cve:CVE-1"]
+    assert len(cve_edges) == 1  # one advisory -> CVE edge, not one per RPM
+    rpm_edges = [e for e in graph.incoming("errata:ALSA-9") if e.relation == Relation.FIXES]
+    assert len(rpm_edges) == 2  # each RPM still links to the advisory (legitimate)
+
+
 class _FakeErrataSource:
     """A minimal in-memory ErrataSource for cross-check tests (no I/O)."""
 

@@ -19,7 +19,16 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): badges -- errata NET/DNF, a CAS badge, an AlmaLinux host
+- (this)   fix: show the log while fetching; errata "checked-clean"; dedup CVE
+           edges (D126). run_analysis switches to the Log tab so progress is
+           visible. The ERRATA badge is active once errata was *consulted*
+           (_errata_consulted), reading "ERRATA: NET (clean)" / "(3)", so a clean
+           build no longer looks unfetched. _attach_advisory now adds the
+           errata->cve FIXES edge once (guarded by _has_fixes_edge) instead of
+           once per RPM -- a CVE node no longer sprouts dozens of identical
+           edges. +3 cases. Suite 429 -> 432. decisions.md D126.
+
+- 43001c9  feat(gui): badges -- errata NET/DNF, a CAS badge, an AlmaLinux host
            badge (D125). ERRATA names its source (NET feed / DNF host / NET+DNF
            cross-check); a CAS badge appears only when the `cas` tool is on the
            host and shows the externally-verified count (click -> use_cas); an

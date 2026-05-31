@@ -455,12 +455,24 @@ def _attach_advisory(
     edge_meta: dict[str, Any] = {}
     if cross_checked is not None:
         edge_meta = {"sources": list(sources), "cross_checked": cross_checked}
-    graph.add_edge(rpm_node_id, errata_id, Relation.FIXES, **edge_meta)
+    if not _has_fixes_edge(graph, rpm_node_id, errata_id):
+        graph.add_edge(rpm_node_id, errata_id, Relation.FIXES, **edge_meta)
     for cve in advisory.cves:
         cve_id = f"cve:{cve}"
         if cve_id not in graph.nodes:
             graph.add_node(Node(cve_id, NodeType.CVE, cve, {"source": "errata"}))
-        graph.add_edge(errata_id, cve_id, Relation.FIXES)
+        # The advisory->CVE edge is a property of the advisory, not of each RPM
+        # it ships. Add it once, or a CVE fixed by an advisory covering N RPMs
+        # accrues N identical "fixes" edges.
+        if not _has_fixes_edge(graph, errata_id, cve_id):
+            graph.add_edge(errata_id, cve_id, Relation.FIXES)
+
+
+def _has_fixes_edge(graph: ProvenanceGraph, source_id: str, target_id: str) -> bool:
+    return any(
+        edge.target == target_id and edge.relation == Relation.FIXES
+        for edge in graph.outgoing(source_id)
+    )
 
 
 # --- parsing helpers ---------------------------------------------------------

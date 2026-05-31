@@ -1,6 +1,6 @@
 # Test guide
 
-The suite has **429 tests** across `tests/`. They are **fully offline** — no test
+The suite has **432 tests** across `tests/`. They are **fully offline** — no test
 touches the network or a host RPM tool: network adapters are exercised through
 injected fetchers / a hand-built RPM byte structure, `dnf` / `rpmkeys` through
 injected runners, and the PyQt GUI headless under `QT_QPA_PLATFORM=offscreen`.
@@ -13,7 +13,7 @@ QT_QPA_PLATFORM=offscreen pytest         # required for the GUI tests
 ```
 
 The per-file counts below are a map, not a contract; the only cross-checked
-figure is the **429** total (`scripts/check-test-count.sh`).
+figure is the **432** total (`scripts/check-test-count.sh`).
 
 ---
 
@@ -84,7 +84,7 @@ figure is the **429** total (`scripts/check-test-count.sh`).
 | `test_cve_feed.py` | 3 | `CveFeed` parsing + version-range matching (vendor/product/version). |
 | `test_live_feeds.py` | 11 | Live CPE/CVE feed fetcher (D76): HttpCache + TTL + graceful degradation; the descriptive User-Agent (D108). |
 | `test_errata.py` | 2 | File-based errata/CVE attachment. |
-| `test_errata_source.py` | 22 | Live errata source + three-state status (D79): http feed / dnf updateinfo, advisory_present/confirmed_clean/not_checked, the AlmaLinux default-URL + version inference (D108), and the web-vs-dnf cross-check marking agreement / single-source / corroborated-clean (D119). |
+| `test_errata_source.py` | 23 | Live errata source + three-state status (D79): http feed / dnf updateinfo, advisory_present/confirmed_clean/not_checked, the AlmaLinux default-URL + version inference (D108), the web-vs-dnf cross-check marking agreement / single-source / corroborated-clean (D119), and the advisory→CVE edge de-duplication (D126). |
 
 ## CAS attestation
 
@@ -133,7 +133,7 @@ figure is the **429** total (`scripts/check-test-count.sh`).
 
 | File | Cases | Covers |
 | --- | --: | --- |
-| `test_gui_qt_app.py` | 35 | Headless main-window smoke + interaction: construction, result-handling, slice render, inspector, the errata/CVE/CPE run-spec toggles, the Security/Dependency/Universe panels, Markdown/PNG export + session capture/restore, the two-toolbar layout, a real build loading into artifacts, the interactive cache-aware source badges (state probe + click-to-fetch), the build-id fetch-all host enrichments, the context-sensitive Analyze action, the host-aware errata default (dnf/http), the errata "both (cross-check)" option, the build-catalog refresh/browse + the filterable picker dialog (D120/D121), the start launcher + verified-build-id entry + identifier badges (D122), the missing-build "not found" routing (informational, not a failure), the un-clipped Timeline view switch + non-overlapping columns + reveal-node-on-click (D124), the build-list fetch progress counter (D123), the Inspect-Build-Id menu action, and the Inspect-Binary host-RPM gating. |
+| `test_gui_qt_app.py` | 37 | Headless main-window smoke + interaction: construction, result-handling, slice render, inspector, the errata/CVE/CPE run-spec toggles, the Security/Dependency/Universe panels, Markdown/PNG export + session capture/restore, the two-toolbar layout, a real build loading into artifacts, the interactive cache-aware source badges (state probe + click-to-fetch), the build-id fetch-all host enrichments, the context-sensitive Analyze action, the host-aware errata default (dnf/http), the errata "both (cross-check)" option, the build-catalog refresh/browse + the filterable picker dialog (D120/D121), the start launcher + verified-build-id entry + identifier badges (D122), the missing-build "not found" routing (informational, not a failure), the un-clipped Timeline view switch + non-overlapping columns + reveal-node-on-click (D124), the build-list fetch progress counter (D123), the Inspect-Build-Id menu action, and the Inspect-Binary host-RPM gating. |
 | `test_gui_render.py` | 5 | `workbench_graph_to_dot` theming/label wrapping/clickable URLs + the cmapx-vs-SVG coordinate alignment (D112). |
 | `test_gui_hitmap.py` | 3 | Parsing the Graphviz image map (cmapx) into node/edge hit regions + point-in-region testing. |
 | `test_gui_inspect.py` | 3 | The node/edge inspector view models. |

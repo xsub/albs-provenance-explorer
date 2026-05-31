@@ -3418,6 +3418,30 @@ it to assert the CAS + AlmaLinux badges and the NET/DNF/NET+DNF errata labels.
 
 ---
 
+## D126 - Show the log while fetching; errata "checked-clean"; dedup CVE edges
+
+Three field-reported fixes.
+
+- **Switch to Log on fetch.** When an analysis starts, `run_analysis` now selects
+  the bottom **Log** tab so the user watches the progress stream live instead of
+  a stale results table.
+- **ERRATA badge: checked vs not-fetched.** The badge greyed out whenever no
+  advisory matched -- even though errata *was* consulted and the build is simply
+  clean (confirmed_clean). It is now **active once errata was consulted**
+  (`_errata_consulted`: any errata node *or* any RPM with an `errata_status`),
+  and reads `ERRATA: NET (clean)` / `ERRATA: NET (3)` so "checked, none" no
+  longer looks like "not loaded". (SBOM staying grey is correct -- the GUI cannot
+  synthesise a build SBOM; that needs `alma-sbom` / run.sh.)
+- **Dedup advisory→CVE edges.** `_attach_advisory` added the `errata -> cve`
+  `FIXES` edge on every call, i.e. once per RPM the advisory ships -- so a CVE
+  fixed by an advisory covering N RPMs sprouted N identical edges (dozens
+  converging on one red CVE node). The advisory→CVE edge (and the rpm→errata
+  edge) is now added once, guarded by `_has_fixes_edge`. +3 cases (the Log
+  switch; the consulted-clean badge; one advisory over two RPMs -> a single
+  CVE edge). Suite 429 -> 432.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -832,6 +832,44 @@ def test_cas_and_almalinux_badges_appear_on_an_almalinux_host(
         window.close()
 
 
+def test_run_analysis_switches_to_the_log_tab(
+    qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # When a fetch starts, the bottom view switches to Log so the user sees what
+    # is happening (D126). The worker is stubbed so nothing hits the network.
+    window = WorkbenchWindow()
+    try:
+        window.build_id_edit.setText("57810")
+        monkeypatch.setattr(window.thread_pool, "start", lambda _worker: None)
+        window.output_tabs.setCurrentWidget(window.findings_table)  # start elsewhere
+        window.run_analysis()
+        assert window.output_tabs.currentWidget() is window.log
+    finally:
+        window.close()
+
+
+def test_errata_badge_is_active_when_consulted_clean(qapp: QtWidgets.QApplication) -> None:
+    # Errata consulted but no advisory matched (confirmed_clean) must read as
+    # "checked", not greyed-out "not fetched" (D126).
+    graph = ProvenanceGraph()
+    graph.add_node(
+        Node("rpm:x", NodeType.BINARY_RPM, "x-1-1.x86_64",
+             {"name": "x", "errata_status": "confirmed_clean"})
+    )
+    result = AnalysisService(pipeline=AnalysisPipeline(steps=())).analyze_graph(graph, RunSpec())
+
+    window = WorkbenchWindow()
+    try:
+        window.result = result
+        assert window._errata_consulted() is True
+        state, _uri = window._source_state("ERRATA", "57810")
+        assert state == "active"  # checked, even though clean
+        window.errata_combo.setCurrentIndex(window.errata_combo.findData("http"))
+        assert window._source_badge_text("ERRATA", "57810", state) == "ERRATA: NET (clean)"
+    finally:
+        window.close()
+
+
 def test_worker_routes_a_missing_build_to_build_not_found(
     qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -1340,6 +1340,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         self.progress_label.setText("Analyzing...")
         self.log.clear()
+        self.output_tabs.setCurrentWidget(self.log)  # show the live log while fetching (D126)
         self._log("Starting analysis")
         if run_spec.build_sbom is not None:
             self._log(f"Using build SBOM {run_spec.build_sbom}")
@@ -1812,8 +1813,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         if state == _STATE_MISSING:
             return name
         if name == _SOURCE_ERRATA:
-            label = self._errata_source_label()
-            return f"ERRATA: {label}" if label else "ERRATA"
+            label = self._errata_source_label() or "?"
+            count = len(self.result.graph.find_by_type("errata")) if self.result else 0
+            return f"ERRATA: {label} ({count if count else 'clean'})"
         if name == _SOURCE_SBOM:
             ident = self._sbom_identifier(build_id)
             return f"SBOM: {ident}" if ident else "SBOM"
@@ -1836,6 +1838,20 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 return "+".join(sorted(sources))
         return {"http": "NET", "dnf": "DNF", "both": "NET+DNF"}.get(
             str(self.errata_combo.currentData() or ""), ""
+        )
+
+    def _errata_consulted(self) -> bool:
+        # True once an errata source was actually queried -- advisories matched
+        # (errata nodes) *or* RPMs were marked confirmed_clean. The "checked,
+        # clean" case must not look like "not fetched".
+        if self.result is None:
+            return False
+        graph = self.result.graph
+        if graph.find_by_type("errata"):
+            return True
+        return any(
+            node.metadata.get("errata_status") in ("confirmed_clean", "advisory_present")
+            for node in graph.find_by_type("binary_rpm")
         )
 
     def _cas_verified_count(self) -> int:
@@ -1892,8 +1908,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             return state, uri
         if name == _SOURCE_ERRATA:
             uri = self._errata_source_uri()
-            present = self.result is not None and bool(self.result.graph.find_by_type("errata"))
-            return (_STATE_ACTIVE if present else _STATE_MISSING), uri
+            # Active once errata was *consulted* -- not only when an advisory
+            # matched. "Checked, none" (confirmed_clean) is a real result, so the
+            # badge must not look unfetched just because the build is clean.
+            return (_STATE_ACTIVE if self._errata_consulted() else _STATE_MISSING), uri
         if name == _SOURCE_SBOM:
             candidate = self._discovered_build_sbom(build_id)
             if candidate is not None:
