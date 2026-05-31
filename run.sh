@@ -63,16 +63,16 @@ echo "== run.sh: full inspection for ALBS build ${BUILD_ID} =="
 echo "   tools: dnf=$(have dnf && echo yes || echo no) rpmkeys=$(have rpmkeys && echo yes || echo no) dot=$(have dot && echo yes || echo no)"
 echo "   out:   ${OUT_DIR}"
 
-echo "-- coverage (every source rung) --"
-g coverage "${cover[@]}" --format json --output "${OUT_DIR}/coverage.json" --verbose
+echo "-- coverage (every source rung; prints the report, writes the metadata cache) --"
+g coverage "${cover[@]}" --verbose | tee "${OUT_DIR}/coverage.txt"
 
 echo "-- vulnerability report --"
-g vuln "${vuln[@]}" --format json --output "${OUT_DIR}/vuln.json"
+g vuln "${vuln[@]}" --format json | tee "${OUT_DIR}/vuln.json"
 
 echo "-- license rollup --"
-g license --source "$CACHE" --format json --output "${OUT_DIR}/license.json"
+g license --source "$CACHE" --format json | tee "${OUT_DIR}/license.json"
 
 echo "-- SLSA / in-toto provenance --"
 g slsa --source "$CACHE" --output "${OUT_DIR}/slsa.intoto.json"
 
-echo "== done. artifacts in ${OUT_DIR}: coverage.json vuln.json license.json slsa.intoto.json =="
+echo "== done. artifacts in ${OUT_DIR}: coverage.txt vuln.json license.json slsa.intoto.json =="

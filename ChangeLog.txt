@@ -19,7 +19,14 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): run.sh full-inspection template + status-bar source badges
+- (this)   fix(run.sh): correct the CLI output flags. coverage prints its report
+           to stdout (no --format/--output) and writes the metadata cache via
+           --cache; vuln/license take --format only (no --output); slsa takes
+           --output. run.sh now pipes coverage/vuln/license through tee (shown in
+           the GUI subprocess dialog + saved) and passes slsa --output. Verified
+           the el10 run reached the coverage rungs. No test change (shell).
+
+- c0cbebe  feat(gui): run.sh full-inspection template + status-bar source badges
            + Inspect-Build-Id menu. (1) New top-level run.sh <build_id> runs a
            complete inspection pulling from every source the host supports
            (ALBS fetch, coverage with headers/payloads/dnf/sonames/sigs +
