@@ -373,7 +373,7 @@ Status is tracked in three honest buckets. "Couldn't resolve" is a deliverable h
 ### Partial
 
 - PyPI dependencies can be resolved through pip's dry-run report, but higher-level frontends such as uv/Poetry are not wired yet
-- CPE verification and CVE-feed matching can consume supplied files or cached live NVD feeds; the live errata feed (errata.almalinux.org) is fetched and matched per-RPM, defaulting on for a build-id fetch-all
+- CPE verification and CVE-feed matching can consume supplied files or cached live NVD feeds; errata is matched per-RPM and turned on by a build-id fetch-all, defaulting to the host `dnf updateinfo` on an AlmaLinux box and the errata.almalinux.org HTTP feed elsewhere
 - vault URL reconstruction is a heuristic over known AlmaLinux repo layouts, not an exhaustive mirror map
 - SQLite is a deliberately lightweight persistence layer for the PoC, not the final production graph platform
 

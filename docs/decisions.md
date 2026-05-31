@@ -3201,6 +3201,24 @@ light + does not override errata). Suite 401 -> 402.
 
 ---
 
+## D117 - Errata default is host-aware: dnf on AlmaLinux, http elsewhere
+
+When a fetch-all turns errata on it now picks the source the host is best placed
+to answer with, rather than always the HTTP feed: `_default_errata_source()`
+returns **`dnf`** on an AlmaLinux / RHEL-family host with `dnf`
+(`shutil.which("dnf") and _is_almalinux_family_host()`) -- the local
+`dnf updateinfo` is the authoritative, already-configured advisory source there
+-- and **`http`** (errata.almalinux.org) otherwise (e.g. macOS, where there is
+no `dnf`). `_select_default_errata` applies that default but still respects an
+explicit combo choice (only switches from `off`), and the ERRATA badge tooltip
+reads `dnf updateinfo (host)` when dnf is selected. The combo's startup default
+stays `off` so the offline synthetic-fixture launch never reaches for the
+network. +1 GUI test (the host-aware default both ways + the explicit-choice
+guard); two badge/analyze tests pin `_is_almalinux_family_host -> False` so their
+`http` assertions are host-independent on an AlmaLinux CI box. Suite 402 -> 403.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

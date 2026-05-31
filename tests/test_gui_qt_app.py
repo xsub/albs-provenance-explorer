@@ -391,8 +391,13 @@ def test_source_badge_click_fetches_for_build_id(
     # Clicking a badge fetches just that resource for the current build id; with
     # no build id it errors rather than hitting the network. Build id + Enter
     # turns every source on for a single sweeping fetch (D114).
+    from albs_graph.gui import qt_app
+
     window = WorkbenchWindow()
     try:
+        # Force the non-AlmaLinux errata default (http) so the assertions are
+        # host-independent (on an AlmaLinux CI box the default would be dnf).
+        monkeypatch.setattr(qt_app, "_is_almalinux_family_host", lambda: False)
         runs: list[bool] = []
         errors: list[str] = []
         monkeypatch.setattr(window, "run_analysis", lambda: runs.append(True))
@@ -464,8 +469,11 @@ def test_primary_analyze_is_context_sensitive(
     # The Analyze button fetches all host sources for a live build id, but for a
     # cached source file (no build id) it just (re)analyses offline -- no deep
     # enrichment, no errata override, so a local file never pulls the network.
+    from albs_graph.gui import qt_app
+
     window = WorkbenchWindow()
     try:
+        monkeypatch.setattr(qt_app, "_is_almalinux_family_host", lambda: False)  # http default
         runs: list[bool] = []
         monkeypatch.setattr(window, "run_analysis", lambda: runs.append(True))
 
@@ -482,6 +490,38 @@ def test_primary_analyze_is_context_sensitive(
         assert window._deep_fetch is False  # cached file -> plain offline run
         assert window.errata_combo.currentData() == ""  # errata not overridden
         assert runs == [True, True]
+    finally:
+        window.close()
+
+
+def test_errata_default_source_is_host_aware(
+    qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Errata defaults to dnf on an AlmaLinux-family host (local updateinfo is
+    # authoritative) and to the errata.almalinux.org http feed elsewhere.
+    from albs_graph.gui import qt_app
+
+    window = WorkbenchWindow()
+    try:
+        monkeypatch.setattr(qt_app.shutil, "which", lambda name: f"/usr/bin/{name}")
+        monkeypatch.setattr(qt_app, "_is_almalinux_family_host", lambda: True)
+        assert window._default_errata_source() == "dnf"
+
+        monkeypatch.setattr(qt_app, "_is_almalinux_family_host", lambda: False)
+        assert window._default_errata_source() == "http"  # non-AlmaLinux host
+
+        monkeypatch.setattr(qt_app.shutil, "which", lambda _name: None)
+        monkeypatch.setattr(qt_app, "_is_almalinux_family_host", lambda: True)
+        assert window._default_errata_source() == "http"  # no dnf binary -> http
+
+        # _select_default_errata applies that default but respects an explicit pick.
+        monkeypatch.setattr(qt_app.shutil, "which", lambda name: f"/usr/bin/{name}")
+        window.errata_combo.setCurrentIndex(window.errata_combo.findData(""))
+        window._select_default_errata()
+        assert window.errata_combo.currentData() == "dnf"
+        window.errata_combo.setCurrentIndex(window.errata_combo.findData("http"))
+        window._select_default_errata()
+        assert window.errata_combo.currentData() == "http"  # explicit choice kept
     finally:
         window.close()
 

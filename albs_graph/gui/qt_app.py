@@ -1458,6 +1458,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         )
 
     def _errata_source_uri(self) -> str:
+        if str(self.errata_combo.currentData() or "") == "dnf":
+            return "dnf updateinfo (host)"
         feed = self.errata_feed_edit.text().strip()
         if feed:
             return feed
@@ -1497,7 +1499,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         if name == _SOURCE_ALBS:
             self._pending_refresh = True  # force a refetch of the build metadata
         elif name == _SOURCE_ERRATA:
-            self._select_errata_http()
+            self._select_default_errata()
         elif name == _SOURCE_SBOM:
             self.build_sbom_edit.clear()  # re-discover from the build-id convention
         self.run_analysis()
@@ -1514,20 +1516,29 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
     def _fetch_all_sources(self) -> None:
         # Build id + Enter: pull every build-id source the host can in one run --
-        # ALBS (base) + errata(http) + SBOM autodiscovery + the host-available
-        # enrichments (RPM headers, dnf/sonames, cas). The heavy RPM-download
-        # rungs (payloads/ELF, signature checksig) and SBOM *generation* stay in
-        # Run > Run Full Inspection (run.sh).
-        self._select_errata_http()
+        # ALBS (base) + errata (host default) + SBOM autodiscovery + the
+        # host-available enrichments (RPM headers, dnf/sonames, cas). The heavy
+        # RPM-download rungs (payloads/ELF, signature checksig) and SBOM
+        # *generation* stay in Run > Run Full Inspection (run.sh).
+        self._select_default_errata()
         self._deep_fetch = True
         self.run_analysis()
 
-    def _select_errata_http(self) -> None:
-        # Turn errata on for a fetch-all, but respect an explicit choice already
-        # made: only switch when the combo is "off" (don't clobber a host "dnf").
+    def _default_errata_source(self) -> str:
+        # On an AlmaLinux / RHEL-family host the local `dnf updateinfo` is the
+        # authoritative errata source; off such a host (e.g. macOS) fall back to
+        # the errata.almalinux.org HTTP feed.
+        if shutil.which("dnf") and _is_almalinux_family_host():
+            return "dnf"
+        return "http"
+
+    def _select_default_errata(self) -> None:
+        # Turn errata on for a fetch-all using the host-appropriate default
+        # (dnf on AlmaLinux, http elsewhere), but respect an explicit choice
+        # already made: only switch when the combo is "off".
         if str(self.errata_combo.currentData() or ""):
             return
-        index = self.errata_combo.findData("http")
+        index = self.errata_combo.findData(self._default_errata_source())
         if index >= 0:
             self.errata_combo.setCurrentIndex(index)
 

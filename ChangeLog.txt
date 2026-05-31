@@ -19,7 +19,16 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): the primary Analyze action fetches all for a build id.
+- (this)   feat(gui): errata default is host-aware -- dnf on AlmaLinux, http
+           elsewhere. A fetch-all that turns errata on now picks
+           _default_errata_source(): dnf (local updateinfo, authoritative) on an
+           AlmaLinux/RHEL-family host with dnf, the errata.almalinux.org HTTP
+           feed otherwise (e.g. macOS). _select_default_errata respects an
+           explicit combo choice; the ERRATA badge tooltip reads "dnf
+           updateinfo (host)" when dnf is picked. +1 GUI test. Suite 402 -> 403.
+           decisions.md D117.
+
+- b467044  feat(gui): the primary Analyze action fetches all for a build id.
            The sparse result a user hit came from the toolbar Analyze button
            (Ctrl+R) running a plain run_analysis (errata off, no enrichment) --
            only Enter did the fetch-all. Analyze is now context-sensitive
