@@ -3111,6 +3111,46 @@ The os-release parsing is split into a pure `_os_release_ids` for testability.
 
 ---
 
+## D114 - Interactive, cache-aware source badges (click a source to fetch it)
+
+Field request: the status-bar badges should not just *report* what a finished
+run happened to contact (D110) -- they should **represent each build-id source,
+grey out when its data is stale or absent, and fetch that one source on click**.
+"Build id + Enter fetches everything in sequence; build id + click on a badge
+fetches just that resource."
+
+This **supersedes the static-badge bullet of D110**. The badges are now
+persistent, clickable `QToolButton`s created once for the three sources that a
+build id alone can pull:
+
+- **ALBS** -- the build metadata. State comes from the on-disk metadata cache
+  (`_workbench_cache_path`, the same `INSPECTION_TMP_ROOT/build-<id>/` convention
+  `run.sh` uses): a pure `_cache_file_state` returns `active` (fresh JSON whose
+  embedded id matches), `stale` (present but older than the TTL) or `missing`
+  (absent / wrong build id) -- the same guard `fetch_build_metadata` applies. To
+  give the badge a file to probe, `_load_spec` now caches build-id fetches under
+  that path; a click sets `refresh_cache` to force a refetch.
+- **ERRATA** -- `active` once the result graph carries `errata` nodes, else
+  `missing`; a click selects the `http` errata source (the default
+  errata.almalinux.org feed) and re-runs.
+- **SBOM** -- `active` when `discover_build_sbom` (D78) finds a
+  `build-<id>.cyclonedx.json`, else `missing`; a click clears the field to
+  re-discover by convention.
+
+Greying = amber for a stale cache, grey for missing; the tooltip carries the
+resource URI plus a one-line "click to fetch / refresh" hint. The badges
+recolour on every build-id keystroke and after each run. `DNF` / `SIG` / `CPE` /
+`CVE` are **not** in the row -- they need host tooling or an external dictionary,
+not a build id, so they stay toolbar-driven enrichments (visible in the log and
+the Security panel). `Enter` in the build-id field now calls `_fetch_all_sources`
+(turn the optional sources on, one sweeping run); a badge click calls
+`_fetch_source` (that source only, additive). The now-unused `_last_load_spec` /
+`_last_run_spec` handles were dropped. +1 net GUI test (cache-state probe +
+click-fetch guard; the old contacted-sources test was rewritten). Suite
+398 -> 399.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

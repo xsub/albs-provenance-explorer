@@ -19,7 +19,18 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): File > Inspect Binary (RPM) -- pick a local .rpm and run
+- (this)   feat(gui): interactive, cache-aware source badges. The status-bar
+           ALBS/ERRATA/SBOM badges are now persistent clickable buttons that
+           grey out (amber=stale cache, grey=missing) when a source's data is
+           absent or older than the TTL for the current build id; clicking one
+           fetches just that resource, while build id + Enter fetches them all in
+           one sweep. ALBS state reads the metadata cache (_cache_file_state)
+           under the run.sh OUT_DIR convention, which _load_spec now writes; a
+           click forces a refetch. Supersedes the static badges of D110; drops
+           the dead _last_load_spec/_last_run_spec. +1 net GUI test. Suite
+           398 -> 399. decisions.md D114.
+
+- a5adab3  feat(gui): File > Inspect Binary (RPM) -- pick a local .rpm and run
            the CLI inspect-rpm on it (package/provide/require + header facts) in
            the subprocess console dialog. Enabled only on an AlmaLinux /
            RHEL-family host with rpm (_is_almalinux_family_host checks

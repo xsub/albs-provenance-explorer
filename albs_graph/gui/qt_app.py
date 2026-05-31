@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import signal
 import sys
+import time
 from typing import Any, TypeVar
 
 from PyQt5 import QtCore, QtGui, QtSvg, QtWidgets
@@ -118,6 +119,53 @@ def _build_id_from_path(path: Path) -> str | None:
 def _prepend_env_path(path: Path, existing: str) -> str:
     prefix = str(path)
     return f"{prefix}{os.pathsep}{existing}" if existing else prefix
+
+
+# Interactive status-bar source badges (D114): the external sources fetchable
+# from a build id alone. A badge greys out when its data is missing or its cache
+# is stale for the current build id; clicking it fetches just that resource,
+# while build id + Enter fetches them all in sequence.
+_SOURCE_ALBS = "ALBS"
+_SOURCE_ERRATA = "ERRATA"
+_SOURCE_SBOM = "SBOM"
+_SOURCE_BADGES: tuple[str, ...] = (_SOURCE_ALBS, _SOURCE_ERRATA, _SOURCE_SBOM)
+_SOURCE_ACTIVE_COLORS = {
+    _SOURCE_ALBS: "#2F6FED",
+    _SOURCE_ERRATA: "#C0563F",
+    _SOURCE_SBOM: "#B07D3A",
+}
+_BADGE_STALE_COLOR = "#B8860B"  # amber: cache present but older than the TTL
+_BADGE_MISSING_COLOR = "#586069"  # grey: not fetched / no data for this build
+
+_STATE_ACTIVE = "active"
+_STATE_STALE = "stale"
+_STATE_MISSING = "missing"
+
+
+def _cache_file_state(path: Path, ttl_seconds: int, build_id: str | None) -> str:
+    """Return ``active`` / ``stale`` / ``missing`` for an on-disk JSON cache file.
+
+    A file present but older than the TTL is ``stale``; a file whose embedded
+    build id does not match the requested one counts as ``missing`` for that id
+    (the same guard ``fetch_build_metadata`` applies before trusting a cache).
+    """
+
+    try:
+        stat = path.stat()
+    except OSError:
+        return _STATE_MISSING
+    if build_id is not None:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return _STATE_MISSING
+        cached_id = data.get("id")
+        if cached_id is None:
+            cached_id = data.get("build_id")
+        if cached_id is not None and str(cached_id) != str(build_id):
+            return _STATE_MISSING
+    age = time.time() - stat.st_mtime
+    return _STATE_STALE if age > ttl_seconds else _STATE_ACTIVE
 
 
 class AnalysisSignals(QtCore.QObject):
@@ -330,9 +378,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.cve_feed: CveFeed | None = None
         self._cve_feed_source: str | None = None
         self.result: AnalysisResult | None = None
-        self._last_load_spec: GraphLoadSpec | None = None
-        self._last_run_spec: RunSpec | None = None
-        self._source_badges: list[QtWidgets.QLabel] = []
+        self._source_badges: dict[str, QtWidgets.QToolButton] = {}
+        self.cache_ttl_seconds = 300  # ALBS metadata cache freshness (badge state)
+        self._pending_refresh = False  # next build-id fetch forces a refetch
         self.current_slice: GraphSlice | None = None
         self.findings: list[Finding] = []
         self.pending_session: WorkbenchSession | None = None
@@ -759,6 +807,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.output_dock = dock
         self.addDockWidget(QtCore.Qt.DockWidgetArea.BottomDockWidgetArea, dock)
         _require(self.statusBar()).addWidget(self.progress_label)
+        self._install_source_badges()
 
     def _configure_actions(
         self,
@@ -850,10 +899,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.source_edit.textChanged.connect(lambda _text: self._update_input_tooltips())
         self.build_sbom_edit.textChanged.connect(lambda _text: self._update_input_tooltips())
         self.build_id_edit.textChanged.connect(lambda _text: self._update_input_tooltips())
-        # Enter in either input runs the normal in-app analysis (the classic
-        # example--full.sh subprocess is an explicit Run-menu action now). Enter
-        # in Source means "load this file", so it drops any stale build id.
-        self.build_id_edit.returnPressed.connect(self.run_analysis)
+        self.build_id_edit.textChanged.connect(lambda _text: self._refresh_source_badges())
+        # Enter in the build-id field fetches every build-id source in sequence
+        # (D114); the classic example--full.sh subprocess is an explicit Run-menu
+        # action. Enter in Source means "load this file" (drops any stale id).
+        self.build_id_edit.returnPressed.connect(self._fetch_all_sources)
         self.source_edit.returnPressed.connect(self._analyze_source)
         self.artifact_list.currentItemChanged.connect(self._artifact_changed)
         self.artifact_filter.textChanged.connect(self._filter_artifacts)
@@ -1048,8 +1098,6 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self._show_error(str(exc))
             return
 
-        self._last_load_spec = load_spec
-        self._last_run_spec = run_spec  # for the status-bar source badges
         self.progress_label.setText("Analyzing...")
         self.log.clear()
         self._log("Starting analysis")
@@ -1168,7 +1216,17 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         build_id = self.build_id_edit.text().strip()
         source = self.source_edit.text().strip()
         if build_id:
-            return GraphLoadSpec(build_id=int(build_id), base_url=self.base_url)
+            refresh = self._pending_refresh
+            self._pending_refresh = False
+            # Cache the metadata under the shared OUT_DIR convention so the ALBS
+            # badge has a file to probe for freshness on the next refresh (D114).
+            return GraphLoadSpec(
+                build_id=int(build_id),
+                base_url=self.base_url,
+                cache=self._workbench_cache_path(build_id),
+                cache_ttl_seconds=self.cache_ttl_seconds,
+                refresh_cache=refresh,
+            )
         if not source:
             raise ValueError("Choose a source JSON or enter a build id.")
         path = Path(source).expanduser()
@@ -1284,7 +1342,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._log("Analysis complete")
         for warning in result.warnings:
             self._log(warning.message)
-        self._update_source_badges()
+        self._refresh_source_badges()
         self._populate_artifacts()
         self._populate_findings()
         self._populate_coverage_table()
@@ -1302,61 +1360,144 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         elif self.artifact_list.count():
             self.artifact_list.setCurrentRow(0)
 
-    def _update_source_badges(self) -> None:
-        # Status-bar badges for the external sources this run actually contacted;
-        # the resource URI / path is on hover.
+    def _install_source_badges(self) -> None:
+        # Persistent, clickable status-bar badges for the build-id sources (D114).
+        # They live for the window's lifetime; _refresh_source_badges recolours
+        # them as the cache state for the current build id changes.
         bar = _require(self.statusBar())
-        for badge in self._source_badges:
-            bar.removeWidget(badge)
-            badge.deleteLater()
-        self._source_badges = []
-        load_spec, run_spec = self._last_load_spec, self._last_run_spec
-        if self.result is None or load_spec is None or run_spec is None:
-            return
-        entries: list[tuple[str, str, str]] = []  # (label, hover-uri, colour)
-        if load_spec.build_id is not None:
-            entries.append(
-                ("ALBS", f"{self.base_url}/api/v1/builds/{load_spec.build_id}/", "#2F6FED")
-            )
-        elif load_spec.source is not None:
-            entries.append(("ALBS", f"cached metadata: {load_spec.source}", "#52616F"))
-        if run_spec.build_sbom is not None:
-            entries.append(("SBOM", str(run_spec.build_sbom), "#B07D3A"))
-        if run_spec.errata_source == "http":
-            entries.append(("ERRATA", self._errata_badge_uri(run_spec), "#C0563F"))
-        elif run_spec.errata_source == "dnf":
-            entries.append(("ERRATA", "dnf updateinfo (host)", "#C0563F"))
-        if run_spec.use_dnf:
-            entries.append(("DNF", "dnf repoquery / --whatprovides (host)", "#3E7CA0"))
-        if run_spec.verify_signatures:
-            entries.append(("SIG", "rpmkeys --checksig (host + RPM download)", "#7E5AA2"))
-        if run_spec.verify_cpe is not None or run_spec.verify_cpe_url is not None:
-            uri = str(run_spec.verify_cpe_url or run_spec.verify_cpe)
-            entries.append(("CPE", uri, "#4B7190"))
-        for label, uri, color in entries:
-            badge = self._make_badge(label, uri, color)
+        for name in _SOURCE_BADGES:
+            badge = QtWidgets.QToolButton()
+            badge.setText(name)
+            badge.setAutoRaise(True)
+            badge.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+            badge.clicked.connect(lambda _checked=False, source=name: self._fetch_source(source))
             bar.addPermanentWidget(badge)
-            self._source_badges.append(badge)
+            self._source_badges[name] = badge
+        self._refresh_source_badges()
 
-    def _errata_badge_uri(self, run_spec: RunSpec) -> str:
-        if run_spec.errata_url:
-            return run_spec.errata_url
-        if run_spec.errata_feed is not None:
-            return str(run_spec.errata_feed)
+    def _refresh_source_badges(self) -> None:
+        # Recolour each badge from its source's cache state for the current build
+        # id: active (data fresh), stale (cache older than the TTL) or missing
+        # (greyed out -- not fetched / no data). The resource URI is on hover.
+        build_id = self._current_build_id()
+        for name, badge in self._source_badges.items():
+            state, uri = self._source_state(name, build_id)
+            self._style_source_badge(badge, name, state, uri)
+
+    def _current_build_id(self) -> str | None:
+        # The build id under investigation: the entered id, else the one inferred
+        # from a loaded source path (build-<id>.albs.json).
+        build_id = self.build_id_edit.text().strip()
+        if build_id:
+            return build_id
+        source = self.source_edit.text().strip()
+        if source:
+            return _build_id_from_path(Path(source))
+        return None
+
+    def _source_state(self, name: str, build_id: str | None) -> tuple[str, str]:
+        """Return ``(state, hover-uri)`` for a source badge."""
+
+        if name == _SOURCE_ALBS:
+            uri = (
+                f"{self.base_url}/api/v1/builds/{build_id}/"
+                if build_id
+                else f"{self.base_url}/api/v1/builds/"
+            )
+            if build_id is None:
+                return _STATE_MISSING, uri
+            state = _cache_file_state(
+                self._workbench_cache_path(build_id), self.cache_ttl_seconds, build_id
+            )
+            if state == _STATE_MISSING:
+                # An explicitly loaded source file counts as fetched-and-fresh.
+                source = self.source_edit.text().strip()
+                if source and _build_id_from_path(Path(source)) == build_id:
+                    state = _cache_file_state(Path(source), self.cache_ttl_seconds, build_id)
+            return state, uri
+        if name == _SOURCE_ERRATA:
+            uri = self._errata_source_uri()
+            present = self.result is not None and bool(self.result.graph.find_by_type("errata"))
+            return (_STATE_ACTIVE if present else _STATE_MISSING), uri
+        if name == _SOURCE_SBOM:
+            candidate = self._discovered_build_sbom(build_id)
+            if candidate is not None:
+                return _STATE_ACTIVE, str(candidate)
+            label = f"build-{build_id}.cyclonedx.json" if build_id else "build SBOM"
+            return _STATE_MISSING, f"no build SBOM discovered ({label})"
+        return _STATE_MISSING, name
+
+    def _style_source_badge(
+        self, badge: QtWidgets.QToolButton, name: str, state: str, uri: str
+    ) -> None:
+        if state == _STATE_ACTIVE:
+            color, fg, note = _SOURCE_ACTIVE_COLORS[name], "#FFFFFF", "fetched"
+        elif state == _STATE_STALE:
+            color, fg, note = _BADGE_STALE_COLOR, "#FFFFFF", "stale cache -- click to refresh"
+        else:
+            color, fg, note = _BADGE_MISSING_COLOR, "#C9CFD6", "not fetched -- click to fetch"
+        badge.setToolTip(f"{uri}\n({note})")
+        badge.setStyleSheet(
+            f"QToolButton{{background:{color};color:{fg};border:none;border-radius:7px;"
+            "padding:1px 8px;margin:0 2px;font-size:11px;font-weight:600;}"
+            "QToolButton:hover{border:1px solid #FFFFFF;}"
+        )
+
+    def _errata_source_uri(self) -> str:
+        feed = self.errata_feed_edit.text().strip()
+        if feed:
+            return feed
         if self.result is not None:
             version = almalinux_major_version(self.result.graph)
             if version:
                 return almalinux_errata_feed_url(version)
         return "errata.almalinux.org"
 
-    def _make_badge(self, label: str, uri: str, color: str) -> QtWidgets.QLabel:
-        badge = QtWidgets.QLabel(label)
-        badge.setToolTip(uri)
-        badge.setStyleSheet(
-            f"QLabel{{background:{color};color:#FFFFFF;border-radius:7px;"
-            "padding:1px 8px;margin:0 2px;font-size:11px;font-weight:600;}"
+    def _workbench_cache_path(self, build_id: str) -> Path:
+        # Where a build-id fetch caches its ALBS metadata (shared with run.sh's
+        # OUT_DIR convention) so the ALBS badge has a file to probe.
+        return INSPECTION_TMP_ROOT / f"build-{build_id}" / f"build-{build_id}.albs.json"
+
+    def _discovered_build_sbom(self, build_id: str | None) -> Path | None:
+        current = self.build_sbom_edit.text().strip()
+        if current:
+            candidate = Path(current).expanduser()
+            if candidate.exists():
+                sbom_id = _build_id_from_path(candidate)
+                if not (build_id and sbom_id and build_id != sbom_id):
+                    return candidate
+        if build_id is None or not build_id.isdigit():
+            return None
+        source = self.source_edit.text().strip()
+        return discover_build_sbom(
+            int(build_id),
+            cache_path=Path(source) if source else None,
+            search_dirs=(_repo_root() / "examples", self._workbench_cache_path(build_id).parent),
         )
-        return badge
+
+    def _fetch_source(self, name: str) -> None:
+        # Click a badge to (re)fetch just that resource for the current build id.
+        if self._current_build_id() is None:
+            self._show_error("Enter a build id first, then click a source to fetch it.")
+            return
+        if name == _SOURCE_ALBS:
+            self._pending_refresh = True  # force a refetch of the build metadata
+        elif name == _SOURCE_ERRATA:
+            self._select_errata_http()
+        elif name == _SOURCE_SBOM:
+            self.build_sbom_edit.clear()  # re-discover from the build-id convention
+        self.run_analysis()
+
+    def _fetch_all_sources(self) -> None:
+        # Build id + Enter: fetch every build-id source in sequence (ALBS is the
+        # base load; turn the optional ones on so the single run pulls them too).
+        self._select_errata_http()
+        self.run_analysis()
+
+    def _select_errata_http(self) -> None:
+        index = self.errata_combo.findData("http")
+        if index >= 0:
+            self.errata_combo.setCurrentIndex(index)
 
     def _analysis_failed(self, message: str) -> None:
         self.progress_label.setText("Analysis failed")

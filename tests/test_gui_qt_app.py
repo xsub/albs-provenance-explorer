@@ -13,6 +13,8 @@ built-in fallback when ``dot`` is absent.
 
 from __future__ import annotations
 
+import os
+import time
 from pathlib import Path
 
 import pytest
@@ -350,23 +352,68 @@ def test_workbench_loads_a_real_build_json_into_artifacts(
         window.close()
 
 
-def test_workbench_status_badges_reflect_contacted_sources(
-    qapp: QtWidgets.QApplication,
+def test_source_badges_reflect_cache_state(
+    qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    # The ALBS/ERRATA/SBOM badges are persistent, clickable QToolButtons; the
+    # ALBS badge greys out unless the build's metadata cache is fresh (D114).
+    from albs_graph.gui import qt_app
+
+    cache = tmp_path / "build-57810.albs.json"
+    cache.write_text('{"id": 57810}', encoding="utf-8")
+    assert qt_app._cache_file_state(cache, 300, "57810") == "active"
+    aged = time.time() - 10_000
+    os.utime(cache, (aged, aged))
+    assert qt_app._cache_file_state(cache, 300, "57810") == "stale"  # older than the TTL
+    assert qt_app._cache_file_state(cache, 300, "999") == "missing"  # wrong build id
+    assert qt_app._cache_file_state(tmp_path / "absent.json", 300, "57810") == "missing"
+
     window = WorkbenchWindow()
     try:
-        window._last_load_spec = GraphLoadSpec(build_id=57810)
-        window._last_run_spec = RunSpec(
-            errata_source="http", use_dnf=True, verify_signatures=True
-        )
-        window._analysis_finished(_fixture_result())
-        qapp.processEvents()
+        assert set(window._source_badges) == {"ALBS", "ERRATA", "SBOM"}
+        assert all(isinstance(b, QtWidgets.QToolButton) for b in window._source_badges.values())
 
-        badges = {badge.text(): badge.toolTip() for badge in window._source_badges}
-        assert "57810" in badges["ALBS"]  # live ALBS build URL on hover
-        assert "errata.almalinux.org" in badges["ERRATA"]
-        assert "DNF" in badges
-        assert "SIG" in badges
+        fresh = tmp_path / "build-57810" / "build-57810.albs.json"
+        fresh.parent.mkdir(parents=True)
+        fresh.write_text('{"id": 57810}', encoding="utf-8")
+        monkeypatch.setattr(window, "_workbench_cache_path", lambda _bid: fresh)
+        state, uri = window._source_state("ALBS", "57810")
+        assert state == "active"
+        assert "57810" in uri  # live ALBS build URL on hover
+        assert window._source_state("ALBS", None)[0] == "missing"  # nothing to fetch yet
+    finally:
+        window.close()
+
+
+def test_source_badge_click_fetches_for_build_id(
+    qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Clicking a badge fetches just that resource for the current build id; with
+    # no build id it errors rather than hitting the network. Build id + Enter
+    # turns every source on for a single sweeping fetch (D114).
+    window = WorkbenchWindow()
+    try:
+        runs: list[bool] = []
+        errors: list[str] = []
+        monkeypatch.setattr(window, "run_analysis", lambda: runs.append(True))
+        monkeypatch.setattr(window, "_show_error", lambda message: errors.append(message))
+
+        window._fetch_source("ERRATA")
+        assert runs == [] and errors  # no build id -> guarded, no run
+
+        window.build_id_edit.setText("57810")
+        window._fetch_source("ERRATA")
+        assert window.errata_combo.currentData() == "http"  # this one source turned on
+        assert runs == [True]
+
+        window._fetch_source("ALBS")
+        assert window._pending_refresh is True  # forces a metadata refetch
+        assert runs == [True, True]
+
+        window.errata_combo.setCurrentIndex(window.errata_combo.findData(""))
+        window._fetch_all_sources()  # Enter in the build-id field
+        assert window.errata_combo.currentData() == "http"
+        assert runs == [True, True, True]
     finally:
         window.close()
 
