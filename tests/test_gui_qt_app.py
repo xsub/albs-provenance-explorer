@@ -337,6 +337,48 @@ def test_workbench_loads_a_real_build_json_into_artifacts(
         window.close()
 
 
+def test_workbench_status_badges_reflect_contacted_sources(
+    qapp: QtWidgets.QApplication,
+) -> None:
+    window = WorkbenchWindow()
+    try:
+        window._last_load_spec = GraphLoadSpec(build_id=57810)
+        window._last_run_spec = RunSpec(
+            errata_source="http", use_dnf=True, verify_signatures=True
+        )
+        window._analysis_finished(_fixture_result())
+        qapp.processEvents()
+
+        badges = {badge.text(): badge.toolTip() for badge in window._source_badges}
+        assert "57810" in badges["ALBS"]  # live ALBS build URL on hover
+        assert "errata.almalinux.org" in badges["ERRATA"]
+        assert "DNF" in badges
+        assert "SIG" in badges
+    finally:
+        window.close()
+
+
+def test_workbench_inspect_build_id_menu_action(
+    qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    window = WorkbenchWindow()
+    try:
+        window.source_edit.setText("/tmp/stale.json")
+        analyses: list[bool] = []
+        monkeypatch.setattr(window, "run_analysis", lambda: analyses.append(True))
+        monkeypatch.setattr(
+            QtWidgets.QInputDialog, "getText", staticmethod(lambda *a, **k: ("57810", True))
+        )
+
+        window.prompt_inspect_build_id()
+
+        assert window.build_id_edit.text() == "57810"
+        assert window.source_edit.text() == ""  # the build id is the explicit choice
+        assert analyses == [True]  # it kicked off an in-app analysis
+    finally:
+        window.close()
+
+
 def test_workbench_universe_panel_open_search_traverse_paths(
     qapp: QtWidgets.QApplication, tmp_path: Path
 ) -> None:

@@ -6,10 +6,11 @@ from pathlib import Path
 import re
 import signal
 import sys
-from typing import Any, TypedDict, TypeVar
+from typing import Any, TypeVar
 
 from PyQt5 import QtCore, QtGui, QtSvg, QtWidgets
 
+from albs_graph.adapters.errata_source import almalinux_errata_feed_url, almalinux_major_version
 from albs_graph.adapters.sbom import discover_build_sbom
 from albs_graph.gui.inspect import (
     InspectorEdge,
@@ -56,8 +57,7 @@ RECIPE_COMBO_WIDTH = 136
 RECIPE_POPUP_MIN_WIDTH = 460
 BOTTOM_DOCK_MIN_HEIGHT = 96
 BOTTOM_PAGE_MIN_HEIGHT = 0
-CLASSIC_ROOT_ENV = "ALBS_EXPLORER_CLASSIC_ROOT"
-CLASSIC_TMP_ROOT = Path("/private/tmp/albs-provenance-workbench")
+INSPECTION_TMP_ROOT = Path("/private/tmp/albs-provenance-workbench")
 
 _T = TypeVar("_T")
 
@@ -73,17 +73,6 @@ def _require(value: _T | None) -> _T:
 
     assert value is not None
     return value
-
-
-class _ClassicRequest(TypedDict):
-    """The resolved inputs for one classic full-pipeline subprocess run."""
-
-    classic_root: Path
-    script: Path
-    environment: QtCore.QProcessEnvironment
-    cache: Path
-    sbom_file: Path | None
-    intro: str
 
 
 def _repo_root() -> Path:
@@ -310,6 +299,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.cve_feed: CveFeed | None = None
         self._cve_feed_source: str | None = None
         self.result: AnalysisResult | None = None
+        self._last_load_spec: GraphLoadSpec | None = None
+        self._last_run_spec: RunSpec | None = None
+        self._source_badges: list[QtWidgets.QLabel] = []
         self.current_slice: GraphSlice | None = None
         self.findings: list[Finding] = []
         self.pending_session: WorkbenchSession | None = None
@@ -559,12 +551,17 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         export_png_action.triggered.connect(self.export_png)
         compare_action = QtWidgets.QAction("Compare", self)
         compare_action.triggered.connect(self.compare_with_source)
-        run_classic_action = QtWidgets.QAction("Run Classic Pipeline (example--full.sh)", self)
+        run_classic_action = QtWidgets.QAction("Run Full Inspection (run.sh)…", self)
         run_classic_action.setToolTip(
-            "Run the full classic CLI demo for the entered build id in a subprocess "
-            "(needs the classic checkout + network + dnf/rpmkeys)."
+            "Run run.sh for the entered build id in a subprocess -- a complete "
+            "inspection pulling from every source the host supports (ALBS, dnf, "
+            "RPM headers/payloads, GPG signatures, SBOM, errata.almalinux.org), "
+            "then load the result."
         )
-        run_classic_action.triggered.connect(self.run_classic_build_pipeline)
+        run_classic_action.triggered.connect(self.run_full_inspection)
+        inspect_build_action = QtWidgets.QAction("Inspect Build Id…", self)
+        inspect_build_action.setToolTip("Prompt for an ALBS build id and analyse it in-app.")
+        inspect_build_action.triggered.connect(self.prompt_inspect_build_id)
         build_sbom_action = QtWidgets.QAction("SBOM", self)
         build_sbom_action.setToolTip("Choose a build CycloneDX SBOM")
         build_sbom_action.triggered.connect(self.open_build_sbom)
@@ -610,6 +607,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             export_png_action=export_png_action,
             compare_action=compare_action,
             run_classic_action=run_classic_action,
+            inspect_build_action=inspect_build_action,
             save_session_action=save_session_action,
             load_session_action=load_session_action,
             reload_program_action=reload_program_action,
@@ -759,6 +757,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         export_png_action: QtWidgets.QAction,
         compare_action: QtWidgets.QAction,
         run_classic_action: QtWidgets.QAction,
+        inspect_build_action: QtWidgets.QAction,
         save_session_action: QtWidgets.QAction,
         load_session_action: QtWidgets.QAction,
         reload_program_action: QtWidgets.QAction,
@@ -787,6 +786,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         run_menu = _require(menu_bar.addMenu("Run"))
         run_menu.addAction(run_action)
+        run_menu.addAction(inspect_build_action)
         run_menu.addAction(compare_action)
         run_menu.addSeparator()
         run_menu.addAction(run_classic_action)
@@ -1005,6 +1005,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self._show_error(str(exc))
             return
 
+        self._last_load_spec = load_spec
+        self._last_run_spec = run_spec  # for the status-bar source badges
         self.progress_label.setText("Analyzing...")
         self.log.clear()
         self._log("Starting analysis")
@@ -1017,110 +1019,81 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._active_worker = worker  # keep a handle so closeEvent can detach it
         self.thread_pool.start(worker)
 
-    def run_classic_build_pipeline(self) -> None:
+    def prompt_inspect_build_id(self) -> None:
+        # Menu entry point: ask for a build id, then analyse it in-app (the fast
+        # path, no subprocess). A blank source means the build id wins.
+        current = self.build_id_edit.text().strip()
+        build_id, ok = QtWidgets.QInputDialog.getText(
+            self, "Inspect Build Id", "ALBS build id:", text=current
+        )
+        if not ok:
+            return
+        build_id = build_id.strip()
+        if not build_id.isdigit():
+            self._show_error("Build id must be a number.")
+            return
+        self.build_id_edit.setText(build_id)
+        self.source_edit.clear()  # the build id is the explicit choice now
+        self.run_analysis()
+
+    def run_full_inspection(self) -> None:
+        # Run run.sh -- the full-inspection template -- for the entered build id
+        # in a subprocess (it pulls from every source the host supports), then
+        # load its cached ALBS metadata back into the workbench.
         build_id = self.build_id_edit.text().strip()
         if not build_id:
+            self._show_error("Enter a build id to run the full inspection.")
             return
         if not build_id.isdigit():
             self._show_error("Build id must be a number.")
             return
-        try:
-            request = self._classic_build_request(build_id)
-        except ValueError as exc:
-            self._show_error(str(exc))
+        script = _repo_root() / "run.sh"
+        if not script.exists():
+            self._show_error(f"Inspection script not found: {script}")
             return
 
+        out_dir = INSPECTION_TMP_ROOT / f"build-{build_id}"
+        cache = out_dir / f"build-{build_id}.albs.json"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        environment = QtCore.QProcessEnvironment.systemEnvironment()
+        environment.insert("BUILD_ID", build_id)
+        environment.insert("OUT_DIR", str(out_dir))
+        environment.insert("CACHE", str(cache))
+        environment.insert(
+            "PYTHONPATH", _prepend_env_path(_repo_root(), environment.value("PYTHONPATH"))
+        )
+        environment.insert(
+            "PATH", _prepend_env_path(Path(sys.executable).parent, environment.value("PATH"))
+        )
+        intro = "\n".join(
+            [
+                f"[workbench] inspection script: {script}",
+                f"[workbench] build id: {build_id}",
+                f"[workbench] output dir: {out_dir}",
+                f"[workbench] command: bash run.sh {build_id}",
+            ]
+        )
         dialog = ConsoleProcessDialog(
-            title=f"Classic ALBS provenance run for build {build_id}",
+            title=f"Full inspection for build {build_id}",
             program="/bin/bash",
-            arguments=[str(request["script"])],
-            cwd=request["classic_root"],
-            environment=request["environment"],
-            intro=str(request["intro"]),
+            arguments=[str(script), build_id],
+            cwd=_repo_root(),
+            environment=environment,
+            intro=intro,
             parent=self,
         )
         dialog.exec_()
 
-        cache = request["cache"]
         if dialog.exit_code != 0:
-            self._show_error("Classic ALBS provenance run did not finish successfully.")
+            self._show_error("Full inspection did not finish successfully (see the log).")
             return
         if not cache.exists():
-            self._show_error(f"Classic run finished but did not create {cache}.")
+            self._show_error(f"Inspection finished but did not create {cache}.")
             return
-
         self.source_edit.setText(str(cache))
         self.build_id_edit.clear()
-        sbom = request["sbom_file"]
-        if sbom is not None and sbom.exists():
-            self.build_sbom_edit.setText(str(sbom))
-        self._log(f"Opening classic CLI cache {cache}")
+        self._log(f"Loading inspected build cache {cache}")
         self.run_analysis()
-
-    def _classic_build_request(self, build_id: str) -> _ClassicRequest:
-        classic_root = self._classic_root()
-        script = classic_root / "example--full.sh"
-        if not script.exists():
-            raise ValueError(f"Classic example runner does not exist: {script}")
-
-        run_root = CLASSIC_TMP_ROOT / f"build-{build_id}"
-        live_dir = run_root / "live"
-        out_dir = run_root / "demo"
-        cache = live_dir / f"build-{build_id}.albs.json"
-        live_dir.mkdir(parents=True, exist_ok=True)
-        out_dir.mkdir(parents=True, exist_ok=True)
-
-        sbom_file = self._classic_sbom_file(build_id, classic_root)
-        environment = QtCore.QProcessEnvironment.systemEnvironment()
-        environment.insert("BUILD_ID", build_id)
-        environment.insert("LIVE_DIR", str(live_dir))
-        environment.insert("OUT_DIR", str(out_dir))
-        environment.insert("CACHE", str(cache))
-        environment.insert("PYTHONPATH", _prepend_env_path(classic_root, environment.value("PYTHONPATH")))
-        environment.insert("PATH", _prepend_env_path(Path(sys.executable).parent, environment.value("PATH")))
-        if sbom_file is not None:
-            environment.insert("SBOM_FILE", str(sbom_file))
-
-        intro = "\n".join(
-            [
-                f"[workbench] classic root: {classic_root}",
-                f"[workbench] output root: {run_root}",
-                f"[workbench] cache target: {cache}",
-                f"[workbench] command: BUILD_ID={build_id} /bin/bash {script}",
-            ]
-        )
-        return {
-            "classic_root": classic_root,
-            "script": script,
-            "environment": environment,
-            "cache": cache,
-            "sbom_file": sbom_file,
-            "intro": intro,
-        }
-
-    def _classic_root(self) -> Path:
-        configured = os.environ.get(CLASSIC_ROOT_ENV)
-        candidates = []
-        if configured:
-            candidates.append(Path(configured).expanduser())
-        candidates.append(_repo_root())
-        candidates.append(_repo_root().parent / "albs-provenance-explorer")
-        for candidate in candidates:
-            if (candidate / "example--full.sh").exists():
-                return candidate
-        raise ValueError(
-            "Could not find the classic max checkout. Set "
-            f"{CLASSIC_ROOT_ENV} to the albs-provenance-explorer path."
-        )
-
-    def _classic_sbom_file(self, build_id: str, classic_root: Path) -> Path | None:
-        for candidate in (
-            _repo_root() / "examples" / f"build-{build_id}.cyclonedx.json",
-            classic_root / "examples" / f"build-{build_id}.cyclonedx.json",
-        ):
-            if candidate.exists():
-                return candidate
-        return None
 
     def _load_spec(self) -> GraphLoadSpec:
         build_id = self.build_id_edit.text().strip()
@@ -1242,6 +1215,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._log("Analysis complete")
         for warning in result.warnings:
             self._log(warning.message)
+        self._update_source_badges()
         self._populate_artifacts()
         self._populate_findings()
         self._populate_coverage_table()
@@ -1258,6 +1232,62 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self.pending_session = None
         elif self.artifact_list.count():
             self.artifact_list.setCurrentRow(0)
+
+    def _update_source_badges(self) -> None:
+        # Status-bar badges for the external sources this run actually contacted;
+        # the resource URI / path is on hover.
+        bar = _require(self.statusBar())
+        for badge in self._source_badges:
+            bar.removeWidget(badge)
+            badge.deleteLater()
+        self._source_badges = []
+        load_spec, run_spec = self._last_load_spec, self._last_run_spec
+        if self.result is None or load_spec is None or run_spec is None:
+            return
+        entries: list[tuple[str, str, str]] = []  # (label, hover-uri, colour)
+        if load_spec.build_id is not None:
+            entries.append(
+                ("ALBS", f"{self.base_url}/api/v1/builds/{load_spec.build_id}/", "#2F6FED")
+            )
+        elif load_spec.source is not None:
+            entries.append(("ALBS", f"cached metadata: {load_spec.source}", "#52616F"))
+        if run_spec.build_sbom is not None:
+            entries.append(("SBOM", str(run_spec.build_sbom), "#B07D3A"))
+        if run_spec.errata_source == "http":
+            entries.append(("ERRATA", self._errata_badge_uri(run_spec), "#C0563F"))
+        elif run_spec.errata_source == "dnf":
+            entries.append(("ERRATA", "dnf updateinfo (host)", "#C0563F"))
+        if run_spec.use_dnf:
+            entries.append(("DNF", "dnf repoquery / --whatprovides (host)", "#3E7CA0"))
+        if run_spec.verify_signatures:
+            entries.append(("SIG", "rpmkeys --checksig (host + RPM download)", "#7E5AA2"))
+        if run_spec.verify_cpe is not None or run_spec.verify_cpe_url is not None:
+            uri = str(run_spec.verify_cpe_url or run_spec.verify_cpe)
+            entries.append(("CPE", uri, "#4B7190"))
+        for label, uri, color in entries:
+            badge = self._make_badge(label, uri, color)
+            bar.addPermanentWidget(badge)
+            self._source_badges.append(badge)
+
+    def _errata_badge_uri(self, run_spec: RunSpec) -> str:
+        if run_spec.errata_url:
+            return run_spec.errata_url
+        if run_spec.errata_feed is not None:
+            return str(run_spec.errata_feed)
+        if self.result is not None:
+            version = almalinux_major_version(self.result.graph)
+            if version:
+                return almalinux_errata_feed_url(version)
+        return "errata.almalinux.org"
+
+    def _make_badge(self, label: str, uri: str, color: str) -> QtWidgets.QLabel:
+        badge = QtWidgets.QLabel(label)
+        badge.setToolTip(uri)
+        badge.setStyleSheet(
+            f"QLabel{{background:{color};color:#FFFFFF;border-radius:7px;"
+            "padding:1px 8px;margin:0 2px;font-size:11px;font-weight:600;}"
+        )
+        return badge
 
     def _analysis_failed(self, message: str) -> None:
         self.progress_label.setText("Analysis failed")

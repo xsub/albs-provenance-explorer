@@ -19,7 +19,21 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   fix(gui): a mismatched build SBOM no longer blocks analysis + errata
+- (this)   feat(gui): run.sh full-inspection template + status-bar source badges
+           + Inspect-Build-Id menu. (1) New top-level run.sh <build_id> runs a
+           complete inspection pulling from every source the host supports
+           (ALBS fetch, coverage with headers/payloads/dnf/sonames/sigs +
+           errata http + optional CPE, then vuln/license/slsa), writing JSON to
+           OUT_DIR; only the build id is required. The workbench's "Run Classic
+           Pipeline" becomes "Run Full Inspection (run.sh)" -> bash run.sh <id>
+           from this repo (drops the dead _classic_root/_ClassicRequest max-
+           checkout machinery). (2) After a run, status-bar badges (ALBS/SBOM/
+           ERRATA/DNF/SIG/CPE) show which external sources were contacted, with
+           the resource URI on hover. (3) Run > Inspect Build Id... prompts for a
+           build id and analyses it in-app. +2 GUI tests. Suite 393 -> 395.
+           decisions.md D110.
+
+- 0c6aead  fix(gui): a mismatched build SBOM no longer blocks analysis + errata
            combo readability. A build id of 57812 with a stale 57810 Source/SBOM
            raised "Build SBOM appears to be for build 57810..." as a modal that
            stopped the whole run, so flipping the errata toggle + re-analysing

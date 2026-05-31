@@ -3012,6 +3012,46 @@ dropped and the errata source still set). Suite 392 -> 393.
 
 ---
 
+## D110 - run.sh template, source badges, and an Inspect-Build-Id menu
+
+Three workbench-driving improvements requested together:
+
+- **`run.sh` (full-inspection template).** A new top-level `run.sh <build_id>`
+  runs a *complete* inspection pulling from every source the host supports --
+  it fetches the ALBS metadata then runs `coverage` (with `--with-rpm-headers`,
+  `--with-rpm-payloads` when zstandard is present, `--use-dnf
+  --resolve-sonames` when dnf is present, `--verify-signatures` when rpmkeys is
+  present, `--errata-source http`, and optional `--verify-cpe-url`) plus `vuln`,
+  `license` and `slsa`, writing JSON artifacts to `OUT_DIR`. Env knobs
+  (`ARCH` / `ALL_ARCHS` / `ERRATA_SOURCE` / `VERIFY_CPE_URL` / `CVE_FEED_URL`)
+  parameterise it; the only required input is the build id. It is the focused
+  production counterpart to the narrated `example--full.sh` demo.
+
+  The workbench's old "Run Classic Pipeline" (which shelled out to
+  `example--full.sh` in a separate *max* checkout via the `_classic_root` /
+  `_ClassicRequest` machinery) is replaced by **`run_full_inspection`** ->
+  `bash run.sh <id>` from this repo (this branch already ships the CLI), then
+  loads the produced cache. The dead classic-checkout discovery
+  (`_classic_root` / `_classic_sbom_file` / `_ClassicRequest` / the
+  `ALBS_EXPLORER_CLASSIC_ROOT` env) is removed.
+
+- **Status-bar source badges.** After a run, small coloured badges (`ALBS`,
+  `SBOM`, `ERRATA`, `DNF`, `SIG`, `CPE`) appear in the status bar for exactly the
+  external sources that run contacted; hovering a badge reveals the resource URI
+  -- the live ALBS build URL, the SBOM path, the resolved
+  errata.almalinux.org feed URL, etc. Built from the load/run spec stored when
+  the analysis started.
+
+- **`Run > Inspect Build Id…`.** A menu action that prompts for a build id and
+  analyses it in-app (the fast path, no subprocess), so build-id inspection is a
+  first-class menu entry, not only the toolbar field.
+
++2 GUI tests (badges reflect the contacted sources with URIs; the menu action
+sets the build id, clears a stale source and starts an analysis). Suite
+393 -> 395.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
