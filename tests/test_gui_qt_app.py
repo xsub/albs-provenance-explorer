@@ -67,6 +67,17 @@ def _isolate_cache(
     monkeypatch.setenv("ALBS_HTTP_CACHE", str(tmp_path_factory.mktemp("albs-cache")))
 
 
+@pytest.fixture(autouse=True)
+def _baseline_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Deterministic host at window construction: no host tools on PATH, so the
+    # CAS / AlmaLinux badges (D125) and the real _is_almalinux_family_host stay
+    # absent regardless of the CI box (e.g. the AlmaLinux VPS). Tests that need a
+    # host tool / AlmaLinux override these afterwards.
+    from albs_graph.gui import qt_app
+
+    monkeypatch.setattr(qt_app.shutil, "which", lambda _name: None)
+
+
 def _fixture_result() -> AnalysisResult:
     graph = build_synthetic_fixture_graph()
     return AnalysisService(pipeline=AnalysisPipeline(steps=())).analyze_graph(graph, RunSpec())
@@ -789,6 +800,34 @@ def test_source_badges_show_identifiers(qapp: QtWidgets.QApplication) -> None:
         assert window._source_badge_text("ALBS", "57810", "missing") == "ALBS: 57810"
         assert window._source_badge_text("ALBS", None, "missing") == "ALBS"
         assert window._source_badge_text("ERRATA", "57810", "missing") == "ERRATA"
+        # Baseline host (no cas / not AlmaLinux): no CAS or AlmaLinux badge.
+        assert set(window._source_badges) == {"ALBS", "ERRATA", "SBOM"}
+        assert window._host_badge is None
+    finally:
+        window.close()
+
+
+def test_cas_and_almalinux_badges_appear_on_an_almalinux_host(
+    qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # On an AlmaLinux host with `cas`, a CAS badge and an AlmaLinux indicator
+    # appear, and the ERRATA badge names its source NET / DNF (D125).
+    from albs_graph.gui import qt_app
+
+    monkeypatch.setattr(qt_app.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(qt_app, "_is_almalinux_family_host", lambda: True)
+    window = WorkbenchWindow()
+    try:
+        assert "CAS" in window._source_badges  # the cas tool is present
+        assert window._host_badge is not None
+        assert window._host_badge.text() == "AlmaLinux"  # rightmost host indicator
+
+        window.errata_combo.setCurrentIndex(window.errata_combo.findData("dnf"))
+        assert window._errata_source_label() == "DNF"
+        window.errata_combo.setCurrentIndex(window.errata_combo.findData("http"))
+        assert window._errata_source_label() == "NET"
+        window.errata_combo.setCurrentIndex(window.errata_combo.findData("both"))
+        assert window._errata_source_label() == "NET+DNF"
     finally:
         window.close()
 

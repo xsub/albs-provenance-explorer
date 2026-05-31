@@ -135,12 +135,15 @@ def _prepend_env_path(path: Path, existing: str) -> str:
 _SOURCE_ALBS = "ALBS"
 _SOURCE_ERRATA = "ERRATA"
 _SOURCE_SBOM = "SBOM"
+_SOURCE_CAS = "CAS"  # only when the `cas` tool is on the host (D125)
 _SOURCE_BADGES: tuple[str, ...] = (_SOURCE_ALBS, _SOURCE_ERRATA, _SOURCE_SBOM)
 _SOURCE_ACTIVE_COLORS = {
     _SOURCE_ALBS: "#2F6FED",
     _SOURCE_ERRATA: "#C0563F",
     _SOURCE_SBOM: "#B07D3A",
+    _SOURCE_CAS: "#5A8F7B",
 }
+_ALMALINUX_BADGE_COLOR = "#0D597F"  # the host-is-AlmaLinux indicator (D125)
 _BADGE_STALE_COLOR = "#B8860B"  # amber: cache present but older than the TTL
 _BADGE_MISSING_COLOR = "#586069"  # grey: not fetched / no data for this build
 
@@ -575,6 +578,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._cve_feed_source: str | None = None
         self.result: AnalysisResult | None = None
         self._source_badges: dict[str, QtWidgets.QToolButton] = {}
+        self._host_badge: QtWidgets.QLabel | None = None  # AlmaLinux indicator (D125)
+        self._pending_cas = False  # next run verifies CAS (clicked CAS badge, D125)
         self.cache_ttl_seconds = 300  # ALBS metadata cache freshness (badge state)
         self._pending_refresh = False  # next build-id fetch forces a refetch
         self._deep_fetch = False  # next run pulls every host-available enrichment
@@ -1328,7 +1333,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             load_spec = self._load_spec()
             run_spec = self._run_spec(load_spec)
         except ValueError as exc:
-            self._deep_fetch = False  # the one-shot did not reach _run_spec
+            self._deep_fetch = False  # the one-shots did not reach _run_spec
+            self._pending_cas = False
             self._show_error(str(exc))
             return
 
@@ -1619,6 +1625,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _run_spec(self, load_spec: GraphLoadSpec) -> RunSpec:
         deep_fetch = self._deep_fetch  # capture + clear up front (one-shot)
         self._deep_fetch = False
+        pending_cas = self._pending_cas  # CAS badge click -> verify this run (D125)
+        self._pending_cas = False
         self._autofill_build_sbom(load_spec)
         build_sbom_path: Path | None = None
         build_sbom = self.build_sbom_edit.text().strip()
@@ -1643,6 +1651,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             deep_kwargs = self._host_enrichment_kwargs()
             enabled = ", ".join(sorted(deep_kwargs))
             self._log(f"Fetch all: pulling every host-available source ({enabled})")
+        if pending_cas:
+            deep_kwargs["use_cas"] = True  # the CAS badge click verifies attestations
         return RunSpec(
             build_sbom=build_sbom_path,
             **self._errata_run_kwargs(),
@@ -1756,9 +1766,14 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _install_source_badges(self) -> None:
         # Persistent, clickable status-bar badges for the build-id sources (D114).
         # They live for the window's lifetime; _refresh_source_badges recolours
-        # them as the cache state for the current build id changes.
+        # them as the cache state for the current build id changes. CAS is added
+        # only when the `cas` tool is on the host; an AlmaLinux indicator badge
+        # sits last on the right when the host is AlmaLinux-family (D125).
         bar = _require(self.statusBar())
-        for name in _SOURCE_BADGES:
+        names = list(_SOURCE_BADGES)
+        if shutil.which("cas"):
+            names.append(_SOURCE_CAS)
+        for name in names:
             badge = QtWidgets.QToolButton()
             badge.setText(name)
             badge.setAutoRaise(True)
@@ -1766,6 +1781,15 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             badge.clicked.connect(lambda _checked=False, source=name: self._fetch_source(source))
             bar.addPermanentWidget(badge)
             self._source_badges[name] = badge
+        if _is_almalinux_family_host():
+            host = QtWidgets.QLabel("AlmaLinux")
+            host.setToolTip("Running on an AlmaLinux / RHEL-family host (dnf, rpm, cas available).")
+            host.setStyleSheet(
+                f"QLabel{{background:{_ALMALINUX_BADGE_COLOR};color:#FFFFFF;border-radius:7px;"
+                "padding:1px 8px;margin:0 2px;font-size:11px;font-weight:600;}"
+            )
+            bar.addPermanentWidget(host)  # added last -> rightmost
+            self._host_badge = host
         self._refresh_source_badges()
 
     def _refresh_source_badges(self) -> None:
@@ -1779,21 +1803,49 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self._style_source_badge(badge, name, state, uri)
 
     def _source_badge_text(self, name: str, build_id: str | None, state: str) -> str:
-        # Show the source's identifier inline (ALBS: <id>, SBOM: <serial/id>,
-        # ERRATA: <count>). ALBS always names its build id (so you can see which
-        # build the grey/active badge is for); ERRATA/SBOM show their value only
-        # once present (there is no id to show before they are fetched).
+        # Show the source's identifier inline. ALBS always names its build id (so
+        # you can see which build the grey/active badge is for); ERRATA names its
+        # source (NET / DNF); SBOM its serial/id; CAS the verified count. The rest
+        # show their value only once present.
         if name == _SOURCE_ALBS:
             return f"ALBS: {build_id}" if build_id else "ALBS"
         if state == _STATE_MISSING:
             return name
         if name == _SOURCE_ERRATA:
-            count = len(self.result.graph.find_by_type("errata")) if self.result else 0
-            return f"ERRATA: {count}" if count else "ERRATA"
+            label = self._errata_source_label()
+            return f"ERRATA: {label}" if label else "ERRATA"
         if name == _SOURCE_SBOM:
             ident = self._sbom_identifier(build_id)
             return f"SBOM: {ident}" if ident else "SBOM"
+        if name == _SOURCE_CAS:
+            return f"CAS: {self._cas_verified_count()}"
         return name
+
+    def _errata_source_label(self) -> str:
+        # NET (errata.almalinux.org feed) / DNF (host updateinfo) / NET+DNF, from
+        # the attached errata evidence when present, else the combo selection.
+        if self.result is not None:
+            sources: set[str] = set()
+            for node in self.result.graph.find_by_type("errata"):
+                source = str(node.metadata.get("source") or "")
+                if "errata-feed" in source:
+                    sources.add("NET")
+                if "dnf" in source:
+                    sources.add("DNF")
+            if sources:
+                return "+".join(sorted(sources))
+        return {"http": "NET", "dnf": "DNF", "both": "NET+DNF"}.get(
+            str(self.errata_combo.currentData() or ""), ""
+        )
+
+    def _cas_verified_count(self) -> int:
+        if self.result is None:
+            return 0
+        return sum(
+            1
+            for node in self.result.graph.find_by_type("cas_attestation")
+            if node.metadata.get("externally_verified")
+        )
 
     def _sbom_identifier(self, build_id: str | None) -> str | None:
         # The SBOM's serial number (a hash, shortened) when the graph carries an
@@ -1848,6 +1900,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 return _STATE_ACTIVE, str(candidate)
             label = f"build-{build_id}.cyclonedx.json" if build_id else "build SBOM"
             return _STATE_MISSING, f"no build SBOM discovered ({label})"
+        if name == _SOURCE_CAS:
+            uri = "cas authenticate (host) -- click to verify CAS attestations"
+            return (_STATE_ACTIVE if self._cas_verified_count() else _STATE_MISSING), uri
         return _STATE_MISSING, name
 
     def _style_source_badge(
@@ -1914,6 +1969,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self._select_default_errata()
         elif name == _SOURCE_SBOM:
             self.build_sbom_edit.clear()  # re-discover from the build-id convention
+        elif name == _SOURCE_CAS:
+            self._pending_cas = True  # verify CAS attestations on the next run
         self.run_analysis()
 
     def _analyze_or_fetch_all(self) -> None:

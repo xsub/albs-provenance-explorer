@@ -3394,6 +3394,30 @@ reveals + an off-timeline node is safe). Suite 426 -> 428.
 
 ---
 
+## D125 - Badges: errata NET/DNF, a CAS badge, an AlmaLinux host badge
+
+On request, the status-bar badges (D114/D122) gained source identity.
+
+- **ERRATA names its source**: `ERRATA: NET` (errata.almalinux.org feed) /
+  `ERRATA: DNF` (host updateinfo) / `ERRATA: NET+DNF` (cross-check), derived from
+  the attached errata evidence's `source` metadata when present, else the combo
+  selection (`_errata_source_label`).
+- **A CAS badge**, added only when the `cas` tool is on the host
+  (`shutil.which("cas")`). It greys out until CAS attestations are *externally
+  verified* (`externally_verified` on the `cas_attestation` nodes), then shows
+  `CAS: <count>`; clicking it sets a one-shot that runs with `use_cas=True`.
+- **An AlmaLinux indicator badge**, last on the right, shown only on an
+  AlmaLinux / RHEL-family host (`_is_almalinux_family_host`) -- a static label,
+  not a source.
+
+The badge set is now host-dependent, so a `_baseline_host` autouse test fixture
+pins `shutil.which -> None` (no cas, real `_is_almalinux_family_host` -> False)
+for deterministic construction regardless of the CI box; the new test overrides
+it to assert the CAS + AlmaLinux badges and the NET/DNF/NET+DNF errata labels.
++1 case. Suite 428 -> 429.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -19,7 +19,15 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   fix(gui): timeline -- no column overlap + reveal a node on click
+- (this)   feat(gui): badges -- errata NET/DNF, a CAS badge, an AlmaLinux host
+           badge (D125). ERRATA names its source (NET feed / DNF host / NET+DNF
+           cross-check); a CAS badge appears only when the `cas` tool is on the
+           host and shows the externally-verified count (click -> use_cas); an
+           AlmaLinux indicator badge sits last on the right on an AlmaLinux-family
+           host. A _baseline_host autouse fixture keeps construction deterministic
+           on any CI box. +1 case. Suite 428 -> 429. decisions.md D125.
+
+- 7e8a85a  fix(gui): timeline -- no column overlap + reveal a node on click
            (D124). The tree's long "Stage" labels overflowed into "Status";
            column 0 is now ResizeToContents and text elides (ElideRight).
            Clicking a graph node also locates it in the timeline:

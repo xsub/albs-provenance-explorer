@@ -45,10 +45,12 @@ then lets you explore the result without leaving the graph:
   points: open a saved session, inspect a build id (entered + **verified live**
   against ALBS, so a sparse-id 404 is caught up front), pick a build from the
   catalog list, open a build-metadata file or a local RPM, or the offline demo.
-- **Live source badges** — `ALBS: <id>` / `ERRATA: <count>` / `SBOM: <id>` chips
+- **Live source badges** — `ALBS: <id>` / `ERRATA: NET|DNF` / `SBOM: <id>` chips
   in the status bar that grey out when a source is stale or missing for the
   current build id; click one to fetch just that source, or type a build id and
-  press Enter to fetch everything the host can in one sweep.
+  press Enter to fetch everything the host can in one sweep. On an AlmaLinux host
+  a `CAS` badge (when the `cas` tool is present) and an `AlmaLinux` indicator
+  appear too.
 - **Build catalog** — a cached db of real ALBS build numbers: the `Builds` menu
   browses a filterable, build-time-sorted list (with a short description per
   build) and refreshes the last *N* (50/100/200/500); the build-id field
