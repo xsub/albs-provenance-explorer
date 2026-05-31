@@ -19,7 +19,20 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   feat(errata): make the live errata.almalinux.org fetch work + default.
+- (this)   fix(gui): a mismatched build SBOM no longer blocks analysis + errata
+           combo readability. A build id of 57812 with a stale 57810 Source/SBOM
+           raised "Build SBOM appears to be for build 57810..." as a modal that
+           stopped the whole run, so flipping the errata toggle + re-analysing
+           never happened (the errata-less result stayed). The SBOM is auxiliary:
+           _autofill_build_sbom now re-discovers the right build-<id>.cyclonedx
+           when the current one is for a different build (drops the stale one),
+           and _run_spec drops a surviving mismatch with a log note instead of
+           raising. Also the errata-source combo was too narrow to read its
+           selection -- items shorten to off / http (almalinux.org) / dnf (host)
+           with a min width (the "Errata" label gives context). +1 GUI test.
+           Suite 392 -> 393. decisions.md D109.
+
+- 821ecb5  feat(errata): make the live errata.almalinux.org fetch work + default.
            "Errata: missing" is the not_checked default; pointing the D79 http
            source at the real feed exposed three blockers, all fixed: (1)
            errata_source=http with no feed/URL now defaults to the canonical

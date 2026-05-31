@@ -335,9 +335,12 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         # Live errata source (D79/M3): off / http feed / host dnf. The combo's
         # userData is the RunSpec.errata_source value (""/"http"/"dnf").
         self.errata_combo = QtWidgets.QComboBox()
-        self.errata_combo.addItem("Errata off", "")
-        self.errata_combo.addItem("Errata: http", "http")
-        self.errata_combo.addItem("Errata: dnf", "dnf")
+        # The "Errata" toolbar label already provides context, so keep the items
+        # short -- and wide enough that the selection is never truncated.
+        self.errata_combo.addItem("off", "")
+        self.errata_combo.addItem("http (almalinux.org)", "http")
+        self.errata_combo.addItem("dnf (host)", "dnf")
+        self.errata_combo.setMinimumWidth(150)
         self.errata_feed_edit = QtWidgets.QLineEdit()
         self.errata_feed_edit.setPlaceholderText("blank = errata.almalinux.org")
         self.errata_feed_edit.setToolTip(
@@ -1136,16 +1139,21 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         build_sbom_path: Path | None = None
         build_sbom = self.build_sbom_edit.text().strip()
         if build_sbom:
-            build_sbom_path = Path(build_sbom).expanduser()
-            if not build_sbom_path.exists():
-                raise ValueError(f"Build SBOM JSON does not exist: {build_sbom_path}")
+            candidate = Path(build_sbom).expanduser()
+            if not candidate.exists():
+                raise ValueError(f"Build SBOM JSON does not exist: {candidate}")
             expected_build_id = self._build_id_for_spec(load_spec)
-            sbom_build_id = _build_id_from_path(build_sbom_path)
+            sbom_build_id = _build_id_from_path(candidate)
             if expected_build_id and sbom_build_id and expected_build_id != sbom_build_id:
-                raise ValueError(
-                    f"Build SBOM appears to be for build {sbom_build_id}, "
-                    f"but the current source is build {expected_build_id}."
+                # The SBOM is auxiliary evidence: a mismatch should not block the
+                # whole analysis (that left users stuck behind a modal). Drop it
+                # with a log note and analyse the build anyway.
+                self._log(
+                    f"Ignoring build SBOM for build {sbom_build_id} "
+                    f"(current build is {expected_build_id})"
                 )
+            else:
+                build_sbom_path = candidate
         return RunSpec(
             build_sbom=build_sbom_path,
             **self._errata_run_kwargs(),
@@ -1194,8 +1202,16 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         return kwargs
 
     def _autofill_build_sbom(self, load_spec: GraphLoadSpec) -> None:
-        if self.build_sbom_edit.text().strip():
-            return
+        expected = self._build_id_for_spec(load_spec)
+        current = self.build_sbom_edit.text().strip()
+        if current:
+            sbom_id = _build_id_from_path(Path(current).expanduser())
+            if not (expected and sbom_id and expected != sbom_id):
+                return  # the current SBOM is consistent (or we can't tell) -- keep it
+            # A stale SBOM for a different build -- drop it and re-discover the
+            # right one below so switching builds does not get stuck on it.
+            self._log(f"Build SBOM was for build {sbom_id}, not {expected}; re-discovering")
+            self.build_sbom_edit.clear()
         candidate = self._suggest_build_sbom(load_spec)
         if candidate is not None:
             self.build_sbom_edit.setText(str(candidate))

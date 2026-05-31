@@ -99,6 +99,28 @@ def test_workbench_node_inspect_and_mode_switches(qapp: QtWidgets.QApplication) 
         window.close()
 
 
+def test_workbench_mismatched_sbom_does_not_block_analysis(
+    qapp: QtWidgets.QApplication, tmp_path: Path
+) -> None:
+    # Regression: a build SBOM for a different build raised a modal that blocked
+    # the whole analysis (so e.g. an errata re-run never happened). Now the
+    # mismatched SBOM is dropped with a log note and the build is analysed.
+    window = WorkbenchWindow()
+    try:
+        sbom = tmp_path / "build-57810.cyclonedx.json"
+        sbom.write_text("{}", encoding="utf-8")
+        window.build_id_edit.setText("57812")  # current build...
+        window.build_sbom_edit.setText(str(sbom))  # ...SBOM is for 57810
+        window._set_errata_source("http")
+
+        spec = window._run_spec(GraphLoadSpec(build_id=57812))
+
+        assert spec.build_sbom is None  # the 57810 SBOM was dropped, not fatal
+        assert spec.errata_source == "http"  # the analysis (with errata) proceeds
+    finally:
+        window.close()
+
+
 def test_workbench_errata_toggle_feeds_run_spec(
     qapp: QtWidgets.QApplication, tmp_path: Path
 ) -> None:

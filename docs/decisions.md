@@ -2986,6 +2986,32 @@ URL builder, the http default-URL wiring, the User-Agent). Suite 388 -> 392.
 
 ---
 
+## D109 - A mismatched build SBOM must not block analysis
+
+Field-reported: with `Build id 57812` but a `build-57810` Source + SBOM still in
+the fields, `_run_spec` raised "Build SBOM appears to be for build 57810, but the
+current source is build 57812" and `run_analysis` turned that into a **modal that
+stopped the whole run** -- so e.g. flipping the errata toggle and re-analysing
+never happened, and the stale (errata-less) result stayed on screen.
+
+The build SBOM is *auxiliary* evidence (it adds vendor CPEs); a mismatch should
+never prevent loading the build. Two changes:
+
+- `_autofill_build_sbom` now **re-discovers** when the current SBOM is for a
+  different build than the one being loaded: it drops the stale one and looks for
+  the right `build-<id>.cyclonedx.json`, so switching builds does not get stuck.
+- `_run_spec` no longer raises on a surviving mismatch (e.g. a hand-picked SBOM):
+  it **drops the SBOM with a log note and analyses anyway**.
+
+Also a readability fix flagged in the same screenshot: the errata-source combo
+was too narrow to read its selection ("Errata c..."). The "Errata" toolbar label
+already gives context, so the items shorten to `off` / `http (almalinux.org)` /
+`dnf (host)` with a minimum width, so the chosen mode is always legible. +1 GUI
+regression test (a 57810 SBOM under build 57812 yields a RunSpec with the SBOM
+dropped and the errata source still set). Suite 392 -> 393.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
