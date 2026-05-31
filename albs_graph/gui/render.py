@@ -104,7 +104,11 @@ def workbench_graph_rendering(
         note = svg_result.stderr.strip() or "Graphviz failed to render SVG"
         return _fallback_rendering(graph, dark=dark, note=note)
 
-    cmap_result = _run_dot(dot, "cmapx")
+    # Render the image map at 72 dpi so its coordinates share the SVG's point
+    # space (the SVG viewBox is in points). Graphviz's cmapx defaults to ~96 dpi,
+    # which left the hit regions ~1.3x larger than the SVG -- so clicks only
+    # landed near the top-left and "barely reacted" anywhere else.
+    cmap_result = _run_dot(dot, "cmapx", "-Gdpi=72")
     regions = (
         graph_regions_from_cmap(cmap_result.stdout)
         if cmap_result.returncode == 0
@@ -168,9 +172,9 @@ def workbench_graph_to_dot(
     return "\n".join(lines) + "\n"
 
 
-def _run_dot(dot: str, output_format: str) -> subprocess.CompletedProcess[str]:
+def _run_dot(dot: str, output_format: str, *extra_args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["dot", f"-T{output_format}"],
+        ["dot", f"-T{output_format}", *extra_args],
         input=dot,
         text=True,
         capture_output=True,

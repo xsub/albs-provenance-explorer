@@ -3076,6 +3076,26 @@ so one failing does not abort the inspection. Suite 395 -> 396.
 
 ---
 
+## D112 - Fix graph hit-testing (the "barely clickable" nodes/edges)
+
+Field-reported: clicking nodes/edges in the rendered graph barely reacted -- a
+hit registered near the top-left but almost nowhere else. Root cause: the
+clickable image map and the SVG are two `dot` renders of the same graph in
+*different coordinate spaces*. Graphviz emits SVG in 72-dpi **points** (the
+`viewBox` is e.g. `0 0 1897 554`) but `cmapx` at ~96 dpi (its regions ran to
+~2496x704). `GraphSvgWidget` maps a click into the SVG's point space and tests
+it against the cmapx regions, so the ~1.3x-larger regions only overlapped near
+the origin -- hence "sometimes hits, mostly not".
+
+Fix: render the image map at the SVG's dpi -- `_run_dot(dot, "cmapx",
+"-Gdpi=72")` (`_run_dot` now takes extra dot flags). The regions then share the
+SVG's point space (measured: `25..1872 x 25..528` inside `1897x554`), so the
+existing click transform lines up and every node/edge is reliably clickable. +1
+test (graphviz-gated) asserting all region coordinates fall within the SVG
+viewBox. Suite 396 -> 397.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

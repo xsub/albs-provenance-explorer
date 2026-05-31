@@ -19,7 +19,17 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   fix(albs+run.sh): report a missing build plainly + run.sh report
+- (this)   fix(gui): graph nodes/edges are now reliably clickable. The cmapx
+           image map rendered at ~96 dpi (regions to ~2496x704) while the SVG is
+           72-dpi points (viewBox 1897x554), so the click transform (in SVG
+           space) only overlapped the ~1.3x-larger hit regions near the top-left
+           -- "barely reacts". _run_dot now takes extra dot flags and the cmapx
+           is rendered with -Gdpi=72, so the regions share the SVG point space
+           (25..1872 x 25..528 inside 1897x554) and every node/edge hits. +1
+           graphviz-gated test (all region coords within the SVG viewBox). Suite
+           396 -> 397. decisions.md D112.
+
+- d9d06e2  fix(albs+run.sh): report a missing build plainly + run.sh report
            flags. fetch_build_metadata special-cases a 404 -- "Inspect Build Id"
            for a non-existent build (e.g. 57809) now raises the API's own
            "...is not found" detail instead of falling through to the HTML

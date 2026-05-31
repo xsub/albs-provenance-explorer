@@ -1,7 +1,30 @@
 from __future__ import annotations
 
+import re
+import shutil
+
+import pytest
+
 from albs_graph.fixtures import build_synthetic_fixture_graph
-from albs_graph.gui.render import workbench_graph_to_dot
+from albs_graph.gui.render import workbench_graph_rendering, workbench_graph_to_dot
+
+
+@pytest.mark.skipif(shutil.which("dot") is None, reason="graphviz 'dot' not installed")
+def test_cmapx_regions_share_the_svg_coordinate_space() -> None:
+    # Regression: the clickable image map (cmapx) defaulted to ~96 dpi while the
+    # SVG is in 72-dpi points, so the hit regions were ~1.3x too large and clicks
+    # only ever landed near the top-left ("barely reacts"). Every region
+    # coordinate must lie within the SVG viewBox.
+    rendering = workbench_graph_rendering(build_synthetic_fixture_graph(), dark=False)
+    regions = rendering.node_regions + rendering.edge_regions
+    assert regions  # graphviz produced a real image map
+    match = re.search(r'viewBox="[\d.]+ [\d.]+ ([\d.]+) ([\d.]+)"', rendering.svg)
+    assert match is not None
+    width, height = float(match.group(1)), float(match.group(2))
+    xs = [c for region in regions for c in region.coords[0::2]]
+    ys = [c for region in regions for c in region.coords[1::2]]
+    assert max(xs) <= width * 1.02 and min(xs) >= -2  # a few px of node margin
+    assert max(ys) <= height * 1.02 and min(ys) >= -2
 
 
 def test_workbench_dot_uses_dark_theme() -> None:
