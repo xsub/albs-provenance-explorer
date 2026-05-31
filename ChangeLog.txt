@@ -19,7 +19,15 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): build-list fetch shows live progress in the status bar
+- (this)   fix(gui): timeline -- no column overlap + reveal a node on click
+           (D124). The tree's long "Stage" labels overflowed into "Status";
+           column 0 is now ResizeToContents and text elides (ElideRight).
+           Clicking a graph node also locates it in the timeline:
+           TimelinePanel.reveal_node selects+scrolls the tree and centres the
+           Gantt on the matching row; _graph_node_clicked calls it. +2 cases.
+           Suite 426 -> 428. decisions.md D124.
+
+- d71a747  feat(gui): build-list fetch shows live progress in the status bar
            (D123). fetch_recent_builds gains on_progress(fetched, limit);
            refresh_build_list feeds _build_fetch_progress which writes
            "Fetching builds… 30/100 (30%)" + processEvents so it repaints

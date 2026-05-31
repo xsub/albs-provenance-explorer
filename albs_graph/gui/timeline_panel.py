@@ -79,6 +79,15 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
             item = item.parentItem()
         super().mousePressEvent(event)
 
+    def reveal_node(self, node_id: str) -> bool:
+        """Centre the Gantt on the row for ``node_id`` (D124). Returns a hit."""
+
+        for item in self._scene.items():
+            if str(item.data(0) or "") == node_id:
+                self.centerOn(item)
+                return True
+        return False
+
     def _draw_gantt_axis(
         self,
         palette: dict[str, QtGui.QColor],
@@ -150,6 +159,16 @@ class TimelinePanel(QtWidgets.QWidget):
         self.tree.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.tree.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.tree.setAlternatingRowColors(True)
+        # The "Stage" labels (e.g. build_done_stats.logs_processing) are long and
+        # were overflowing into "Status". Auto-fit column 0 to its content and
+        # elide anything that still does not fit, so columns never overlap.
+        self.tree.setTextElideMode(QtCore.Qt.TextElideMode.ElideRight)
+        tree_header = self.tree.header()
+        if tree_header is not None:
+            tree_header.setSectionResizeMode(
+                0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+            )
+            tree_header.setStretchLastSection(True)
         self.view_combo = QtWidgets.QComboBox()
         self.view_combo.addItems(["Tree", "Gantt"])
         # Without a minimum the combo gets squeezed to "Ga…" in a narrow dock.
@@ -185,7 +204,8 @@ class TimelinePanel(QtWidgets.QWidget):
             self.tree.addTopLevelItem(self._tree_item(event))
         self.gantt.set_events(graph, build_analysis, dark=dark)
         self.tree.expandToDepth(1)
-        for column in range(self.tree.columnCount()):
+        # Column 0 auto-fits via ResizeToContents; size the rest to their content.
+        for column in range(1, self.tree.columnCount()):
             self.tree.resizeColumnToContents(column)
 
     def _tree_item(self, event: TimelineTreeItem) -> QtWidgets.QTreeWidgetItem:
@@ -209,6 +229,31 @@ class TimelinePanel(QtWidgets.QWidget):
         node_id = item.data(0, QtCore.Qt.ItemDataRole.UserRole)
         if node_id:
             self._navigate(str(node_id))
+
+    def reveal_node(self, node_id: str) -> bool:
+        """Select + scroll the tree *and* centre the Gantt on ``node_id`` (D124),
+        so clicking a graph node reveals it in the timeline. Returns a hit."""
+
+        if not node_id:
+            return False
+        item = self._find_tree_item(node_id)
+        if item is not None:
+            self.tree.setCurrentItem(item)
+            self.tree.scrollToItem(
+                item, QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter
+            )
+        found_in_gantt = self.gantt.reveal_node(node_id)
+        return item is not None or found_in_gantt
+
+    def _find_tree_item(self, node_id: str) -> QtWidgets.QTreeWidgetItem | None:
+        iterator = QtWidgets.QTreeWidgetItemIterator(self.tree)
+        while True:
+            item = iterator.value()
+            if item is None:
+                return None
+            if str(item.data(0, QtCore.Qt.ItemDataRole.UserRole) or "") == node_id:
+                return item
+            iterator += 1
 
 
 def _scene_text(scene: QtWidgets.QGraphicsScene, text: str) -> QtWidgets.QGraphicsTextItem:

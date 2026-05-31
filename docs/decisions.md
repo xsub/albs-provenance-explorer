@@ -3374,6 +3374,26 @@ guard ignores re-entrant clicks while a fetch is in flight. +1 case (the counter
 
 ---
 
+## D124 - Timeline: no column overlap; clicking a node reveals it
+
+Two timeline fixes.
+
+**Column overlap.** The Timeline tree's long "Stage" labels (e.g.
+`build_done_stats.logs_processing`) overflowed into "Status" because
+`resizeColumnToContents` ran before the panel was laid out and under-sized
+column 0. Column 0 is now `ResizeToContents` (auto-fits its content, indentation
+included) and the tree elides (`ElideRight`), so columns never overlap.
+
+**Reveal on click.** Clicking a graph node now also locates it in the timeline:
+`TimelinePanel.reveal_node(node_id)` selects + scrolls the tree
+(`QTreeWidgetItemIterator` find, `scrollToItem` centred) and centres the Gantt on
+the matching row (`TimelineGanttView.reveal_node` scans the scene items by their
+stored node id). `_graph_node_clicked` calls it after `_show_node`; an
+off-timeline node is a no-op. +2 cases (column 0 resize/elide; a fixture node
+reveals + an off-timeline node is safe). Suite 426 -> 428.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

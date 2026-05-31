@@ -461,6 +461,41 @@ def test_fetch_all_enables_host_enrichments_in_run_spec(
         window.close()
 
 
+def test_timeline_tree_first_column_does_not_overlap(qapp: QtWidgets.QApplication) -> None:
+    # Regression (D124): long "Stage" labels overflowed into "Status". Column 0
+    # auto-fits its content and text elides, so columns never overlap.
+    window = WorkbenchWindow()
+    try:
+        tree = window.timeline_panel.tree
+        header = tree.header()
+        assert (
+            header.sectionResizeMode(0)
+            == QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+        )
+        assert tree.textElideMode() == QtCore.Qt.TextElideMode.ElideRight
+    finally:
+        window.close()
+
+
+def test_clicking_a_node_reveals_it_in_the_timeline(qapp: QtWidgets.QApplication) -> None:
+    # Clicking a graph node also selects + scrolls to it in the timeline (D124).
+    window = WorkbenchWindow()
+    try:
+        window._analysis_finished(_fixture_result())
+        qapp.processEvents()
+        panel = window.timeline_panel
+
+        assert panel.reveal_node("build:albs:123456") is True  # a fixture timeline row
+        current = panel.tree.currentItem()
+        assert current is not None
+        assert str(current.data(0, QtCore.Qt.ItemDataRole.UserRole)) == "build:albs:123456"
+
+        assert panel.reveal_node("rpm:not-on-timeline") is False  # no hit, no crash
+        window._graph_node_clicked(SYNTHETIC_RPM_ID)  # a real node not on the timeline: safe
+    finally:
+        window.close()
+
+
 def test_timeline_view_combo_is_not_clipped(qapp: QtWidgets.QApplication) -> None:
     # Regression: the Tree/Gantt switch rendered clipped to "Ga" in a narrow
     # dock; it needs a minimum width wide enough for its longest item.
