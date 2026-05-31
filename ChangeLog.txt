@@ -19,7 +19,14 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   fix(gui): graph nodes/edges are now reliably clickable. The cmapx
+- (this)   docs(tests): add docs/tests.md -- a guide to the 397-test suite
+           grouped by type (graph model, ALBS ingestion, RPM analysis, native
+           tooling, dependency/reconcile/resolvers, SBOM, security feeds, CAS,
+           provenance analyses, universe/store, pipeline/services, render/CLI,
+           PyQt GUI), one row per test file with a count + a brief of what it
+           covers, plus the offline-only principle and how to run. No code.
+
+- 2c810ae  fix(gui): graph nodes/edges are now reliably clickable. The cmapx
            image map rendered at ~96 dpi (regions to ~2496x704) while the SVG is
            72-dpi points (viewBox 1897x554), so the click transform (in SVG
            space) only overlapped the ~1.3x-larger hit regions near the top-left
