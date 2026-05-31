@@ -66,13 +66,15 @@ echo "   out:   ${OUT_DIR}"
 echo "-- coverage (every source rung; prints the report, writes the metadata cache) --"
 g coverage "${cover[@]}" --verbose | tee "${OUT_DIR}/coverage.txt"
 
+# The downstream reports are best-effort: one failing must not abort the rest.
 echo "-- vulnerability report --"
-g vuln "${vuln[@]}" --format json | tee "${OUT_DIR}/vuln.json"
+g vuln "${vuln[@]}" --format json | tee "${OUT_DIR}/vuln.json" || echo "(vuln report failed; continuing)"
 
-echo "-- license rollup --"
-g license --source "$CACHE" --format json | tee "${OUT_DIR}/license.json"
+echo "-- license rollup (real RPM licenses from headers) --"
+g license --source "$CACHE" --rpm-licenses --format json | tee "${OUT_DIR}/license.json" \
+  || echo "(license rollup failed; continuing)"
 
 echo "-- SLSA / in-toto provenance --"
-g slsa --source "$CACHE" --output "${OUT_DIR}/slsa.intoto.json"
+g slsa --source "$CACHE" --output "${OUT_DIR}/slsa.intoto.json" || echo "(slsa export failed; continuing)"
 
 echo "== done. artifacts in ${OUT_DIR}: coverage.txt vuln.json license.json slsa.intoto.json =="

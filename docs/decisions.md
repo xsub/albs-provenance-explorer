@@ -3052,6 +3052,30 @@ sets the build id, clears a stale source and starts an analysis). Suite
 
 ---
 
+## D111 - Report a missing ALBS build plainly; run.sh report flags
+
+Field-reported: inspecting build 57809 popped "ALBS HTML fallback for build
+57809 did not contain build metadata". The ALBS API actually returns a clean
+`404 {"detail":"Build with build_id=57809 is not found"}` -- the build just does
+not exist (a valid build like 57810 fetches fine). The adapter treated *any*
+non-200 as "API JSON unavailable" and fell through to the HTML fallback (D90/D93,
+for when the SPA is up but the API is down), which then failed with that
+confusing message. `fetch_build_metadata` now special-cases a **404**: it raises
+the API's own "...is not found" detail (or a plain "build N not found") and never
+touches the HTML fallback. +1 offline test (a 404 raises plainly and the
+fallback URL is never fetched). The HTML fallback still covers genuine
+API-unavailable cases.
+
+Also fixed `run.sh`'s downstream report flags, found by running it live on el10:
+`coverage` prints its report to stdout (no `--format`/`--output`; the cache is
+written via `--cache`), `vuln`/`license` take `--format` only, `license`
+requires `--rpm-licenses` (or `--sbom`), and `slsa` takes `--output`. run.sh now
+pipes coverage/vuln/license through `tee` (shown in the GUI subprocess dialog and
+saved) and the three downstream reports are best-effort (`|| echo …continuing`)
+so one failing does not abort the inspection. Suite 395 -> 396.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

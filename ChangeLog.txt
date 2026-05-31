@@ -19,7 +19,18 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   fix(run.sh): correct the CLI output flags. coverage prints its report
+- (this)   fix(albs+run.sh): report a missing build plainly + run.sh report
+           flags. fetch_build_metadata special-cases a 404 -- "Inspect Build Id"
+           for a non-existent build (e.g. 57809) now raises the API's own
+           "...is not found" detail instead of falling through to the HTML
+           fallback and dying with "HTML fallback did not contain build
+           metadata"; a valid build (57810) fetches fine. +1 offline test. Also,
+           live el10 run.sh exposed report-flag bugs: license needs
+           --rpm-licenses, and the downstream reports are now best-effort
+           (|| echo continuing) so one failure (license) no longer aborts slsa.
+           Suite 395 -> 396. decisions.md D111.
+
+- c503208  fix(run.sh): correct the CLI output flags. coverage prints its report
            to stdout (no --format/--output) and writes the metadata cache via
            --cache; vuln/license take --format only (no --output); slsa takes
            --output. run.sh now pipes coverage/vuln/license through tee (shown in

@@ -19,11 +19,13 @@ class FakeResponse:
         data: dict[str, Any] | None = None,
         *,
         ok: bool = True,
+        status_code: int = 200,
         content_type: str = "application/json",
         text: str = "",
     ) -> None:
         self._data = data
         self.ok = ok
+        self.status_code = status_code
         self.headers = {"content-type": content_type}
         self.text = text
 
@@ -83,6 +85,24 @@ def test_fetch_build_metadata_reuses_fresh_local_cache(tmp_path: Path, monkeypat
     assert second.source_cas_hash == "cas123"
     assert cache.exists()
     assert len(fake_requests.calls) == 1
+
+
+def test_fetch_build_metadata_reports_404_plainly(tmp_path: Path, monkeypatch: Any) -> None:
+    # A non-existent build id returns a clean 404 from the API; surface it as a
+    # plain "not found" rather than falling through to the HTML fallback (which
+    # would fail later with a confusing "HTML fallback did not contain metadata").
+    not_found = FakeResponse(
+        {"detail": "Build with build_id=57809 is not found"}, ok=False, status_code=404
+    )
+    fake_requests = FakeSequenceRequests([not_found])
+    monkeypatch.setitem(__import__("sys").modules, "requests", fake_requests)
+
+    with pytest.raises(ValueError, match="57809 is not found"):
+        fetch_build_metadata(57809, cache_path=tmp_path / "build-57809.albs.json")
+
+    # The HTML fallback URL was never even fetched -- only the API was hit.
+    assert len(fake_requests.calls) == 1
+    assert "/api/v1/builds/57809/" in fake_requests.calls[0]
 
 
 def test_fetch_build_metadata_caches_html_fallback(

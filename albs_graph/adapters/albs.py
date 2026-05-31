@@ -209,6 +209,17 @@ def fetch_build_metadata(
             progress("Parsing ALBS API JSON response")
         return parse_build_metadata(data)
 
+    # A 404 is a *definitive* "no such build" -- report it plainly rather than
+    # falling through to the HTML fallback, which would only fail later with a
+    # confusing "HTML fallback did not contain build metadata" message.
+    if api_response.status_code == 404:
+        detail = ""
+        try:
+            detail = str(api_response.json().get("detail") or "")
+        except Exception:  # noqa: BLE001 -- a non-JSON 404 body is fine to ignore
+            detail = ""
+        raise ValueError(detail or f"ALBS build {build_id} not found.")
+
     url = f"{root}/build/{build_id}"
     if progress:
         progress(f"ALBS API JSON unavailable; fetching HTML fallback from {url}")
