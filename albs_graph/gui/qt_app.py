@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from pathlib import Path
 import re
 import signal
@@ -73,6 +74,36 @@ def _require(value: _T | None) -> _T:
 
     assert value is not None
     return value
+
+
+_EL_FAMILY_IDS = frozenset({"almalinux", "rhel", "centos", "rocky", "fedora", "el"})
+
+
+def _os_release_ids(text: str) -> set[str]:
+    """The ``ID`` + ``ID_LIKE`` tokens from an ``/etc/os-release`` body."""
+
+    ids: set[str] = set()
+    for line in text.splitlines():
+        if line.startswith(("ID=", "ID_LIKE=")):
+            ids.update(line.split("=", 1)[1].strip().strip('"').split())
+    return ids
+
+
+def _is_almalinux_family_host() -> bool:
+    """True on an AlmaLinux / RHEL-family host with ``rpm`` available.
+
+    Gates host-RPM-only features (Inspect Binary). macOS and non-EL distros
+    return False -- no matching ``/etc/os-release`` ``ID`` / ``ID_LIKE`` or no
+    ``rpm`` on PATH -- so the action greys out there.
+    """
+
+    if shutil.which("rpm") is None:
+        return False
+    try:
+        text = Path("/etc/os-release").read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return bool(_os_release_ids(text) & _EL_FAMILY_IDS)
 
 
 def _repo_root() -> Path:
@@ -565,6 +596,15 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         build_sbom_action = QtWidgets.QAction("SBOM", self)
         build_sbom_action.setToolTip("Choose a build CycloneDX SBOM")
         build_sbom_action.triggered.connect(self.open_build_sbom)
+        inspect_binary_action = QtWidgets.QAction("Inspect Binary (RPM)…", self)
+        if _is_almalinux_family_host():
+            inspect_binary_action.setToolTip("Inspect a local RPM with the host RPM tooling.")
+            inspect_binary_action.triggered.connect(self.inspect_binary)
+        else:
+            inspect_binary_action.setEnabled(False)  # host RPM tooling only
+            inspect_binary_action.setToolTip(
+                "Available only on an AlmaLinux / RHEL-family host (rpm required)."
+            )
         save_session_action = QtWidgets.QAction("Save Session", self)
         save_session_action.triggered.connect(self.save_session)
         load_session_action = QtWidgets.QAction("Load Session", self)
@@ -608,6 +648,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             compare_action=compare_action,
             run_classic_action=run_classic_action,
             inspect_build_action=inspect_build_action,
+            inspect_binary_action=inspect_binary_action,
             save_session_action=save_session_action,
             load_session_action=load_session_action,
             reload_program_action=reload_program_action,
@@ -758,6 +799,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         compare_action: QtWidgets.QAction,
         run_classic_action: QtWidgets.QAction,
         inspect_build_action: QtWidgets.QAction,
+        inspect_binary_action: QtWidgets.QAction,
         save_session_action: QtWidgets.QAction,
         load_session_action: QtWidgets.QAction,
         reload_program_action: QtWidgets.QAction,
@@ -771,6 +813,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         file_menu = _require(menu_bar.addMenu("File"))
         file_menu.addAction(open_action)
         file_menu.addAction(build_sbom_action)
+        file_menu.addAction(inspect_binary_action)
         file_menu.addSeparator()
         file_menu.addAction(save_session_action)
         file_menu.addAction(load_session_action)
@@ -1018,6 +1061,32 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         worker.signals.finished.connect(self._analysis_finished)
         self._active_worker = worker  # keep a handle so closeEvent can detach it
         self.thread_pool.start(worker)
+
+    def inspect_binary(self) -> None:
+        # Host-RPM-only (AlmaLinux/RHEL family): inspect a local RPM via the CLI
+        # inspect-rpm command in a subprocess dialog.
+        path, _filter = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            "Inspect a binary RPM",
+            self._dialog_start_dir(),
+            "RPM files (*.rpm);;All files (*)",
+        )
+        if not path:
+            return
+        environment = QtCore.QProcessEnvironment.systemEnvironment()
+        environment.insert(
+            "PYTHONPATH", _prepend_env_path(_repo_root(), environment.value("PYTHONPATH"))
+        )
+        dialog = ConsoleProcessDialog(
+            title=f"Inspect binary: {Path(path).name}",
+            program=sys.executable,
+            arguments=["-m", "albs_graph.cli.main", "inspect-rpm", path],
+            cwd=_repo_root(),
+            environment=environment,
+            intro=f"[workbench] inspecting RPM: {path}",
+            parent=self,
+        )
+        dialog.exec_()
 
     def prompt_inspect_build_id(self) -> None:
         # Menu entry point: ask for a build id, then analyse it in-app (the fast

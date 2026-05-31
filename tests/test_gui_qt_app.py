@@ -32,6 +32,19 @@ def qapp() -> QtWidgets.QApplication:
     return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
+def test_inspect_binary_host_gating(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The Inspect Binary action is enabled only on an AlmaLinux / RHEL-family
+    # host with rpm; elsewhere (macOS / CI) it greys out.
+    from albs_graph.gui import qt_app
+
+    assert qt_app._EL_FAMILY_IDS & qt_app._os_release_ids('ID="almalinux"\nID_LIKE="rhel"\n')
+    assert qt_app._EL_FAMILY_IDS & qt_app._os_release_ids("ID=rhel\n")
+    assert not (qt_app._EL_FAMILY_IDS & qt_app._os_release_ids("ID=ubuntu\nID_LIKE=debian\n"))
+    # No rpm on PATH -> not a host RPM box, regardless of os-release.
+    monkeypatch.setattr(qt_app.shutil, "which", lambda _name: None)
+    assert qt_app._is_almalinux_family_host() is False
+
+
 @pytest.fixture(autouse=True)
 def _no_modal_dialogs(monkeypatch: pytest.MonkeyPatch) -> None:
     # Modal message boxes would block a headless run forever; stub them so any

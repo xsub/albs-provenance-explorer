@@ -16,10 +16,22 @@ Conventions:
     via `git log main --oneline` if needed.
 
 ----------------------------------------------------------------------
+2026-05-31
+----------------------------------------------------------------------
+
+- (this)   feat(gui): File > Inspect Binary (RPM) -- pick a local .rpm and run
+           the CLI inspect-rpm on it (package/provide/require + header facts) in
+           the subprocess console dialog. Enabled only on an AlmaLinux /
+           RHEL-family host with rpm (_is_almalinux_family_host checks
+           shutil.which("rpm") + /etc/os-release ID/ID_LIKE against
+           {almalinux,rhel,centos,rocky,fedora,el}); greyed out with a tooltip
+           elsewhere. +1 test. Suite 397 -> 398. decisions.md D113.
+
+----------------------------------------------------------------------
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   docs(tests): add docs/tests.md -- a guide to the 397-test suite
+- 27253e3  docs(tests): add docs/tests.md -- a guide to the 397-test suite
            grouped by type (graph model, ALBS ingestion, RPM analysis, native
            tooling, dependency/reconcile/resolvers, SBOM, security feeds, CAS,
            provenance analyses, universe/store, pipeline/services, render/CLI,

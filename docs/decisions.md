@@ -3096,6 +3096,21 @@ viewBox. Suite 396 -> 397.
 
 ---
 
+## D113 - Inspect Binary action (host-RPM-gated)
+
+A `File > Inspect Binary (RPM)…` action that picks a local `.rpm` and runs the
+CLI `inspect-rpm` on it (package/provide/require + header facts) in the existing
+subprocess console dialog. It is **enabled only on an AlmaLinux / RHEL-family
+host with rpm** -- `_is_almalinux_family_host()` checks `shutil.which("rpm")`
+plus the `/etc/os-release` `ID` / `ID_LIKE` tokens against
+`{almalinux, rhel, centos, rocky, fedora, el}`. On macOS / other distros the
+action greys out with an explanatory tooltip rather than failing at click time.
+The os-release parsing is split into a pure `_os_release_ids` for testability.
++1 test (the EL-family recognition + the no-rpm greyed-out case). Suite
+397 -> 398.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
