@@ -3330,6 +3330,37 @@ picker describes + filters in place). Suite 417 -> 419.
 
 ---
 
+## D122 - Start launcher, verified build-id entry, identifier badges
+
+Three connected entry/identity improvements, on request.
+
+**A start launcher.** A bare launch (no `--source` / `--build-id`) now opens
+`_StartDialog` instead of auto-loading: *Open Saved Session*, *Inspect by ALBS
+Build ID*, *Inspect by ALBS Build ID (choose from list)*, *Inspect by ALBS file
+(build metadata JSON)*, *Inspect by ALBS package (local RPM)*, and *the offline
+demo (synthetic fixture)*. `_dispatch_start_choice` routes each to its existing
+entry point; the package option greys out off an AlmaLinux host (same gate as
+Inspect Binary, D113). It is also reachable any time from **File ▸ Start…**.
+`entry.py`'s `--source` default dropped to `None` so the launcher, not the
+synthetic fixture, is the bare-launch default.
+
+**Verified build-id entry.** *Inspect by ALBS Build ID* takes an **arbitrary
+number** and **verifies it against ALBS up front** -- `fetch_build_summary`
+(the per-build detail endpoint, summarised by the list parser) returns the
+build's name/desc, so `_InspectBuildIdDialog` shows e.g. "Verified: 57810
+nghttp2 +12  AlmaLinux-10" and only enables *Inspect* once verification
+succeeds; a 404 reads "not found", editing re-locks it. The cached catalog
+(D120) answers instantly; an unknown id is verified live and recorded.
+
+**Identifier badges.** The status-bar badges now name their source inline:
+**ALBS: \<build-id\>** (always, so you can see which build a grey/active badge
+is for), **SBOM: \<serial-hash or build-id\>** and **ERRATA: \<advisory count\>**
+once present. +6 cases (fetch_build_summary verify + 404; the launcher options +
+dispatch + host gating; the verify-before-enable dialog; catalog-then-live
+verification; the badge identifier text). Suite 419 -> 425.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -380,6 +380,43 @@ def fetch_build_list(
     return parse_build_list(response.json())
 
 
+def fetch_build_summary(
+    build_id: int | str,
+    base_url: str = "https://build.almalinux.org",
+    *,
+    progress: Callable[[str], None] | None = None,
+) -> BuildSummary:
+    """Verify a build id exists and return its one-line summary (name/desc).
+
+    Used by the "Inspect by Build ID" entry to confirm an arbitrary number is a
+    real build before analysing it. Raises :class:`BuildNotFoundError` on a 404
+    (the id does not exist) and ``ValueError`` if the API is otherwise
+    unreachable -- so the UI can show "not found" vs "verification failed".
+    """
+
+    import requests
+
+    url = f"{base_url.rstrip('/')}/api/v1/builds/{build_id}/"
+    if progress:
+        progress(f"Verifying build {build_id} at {url}")
+    response = requests.get(url, timeout=20)
+    if response.status_code == 404:
+        detail = ""
+        try:
+            detail = str(response.json().get("detail") or "")
+        except Exception:  # noqa: BLE001 -- a non-JSON 404 body is fine to ignore
+            detail = ""
+        raise BuildNotFoundError(detail or f"ALBS build {build_id} not found.")
+    if not (response.ok and "application/json" in response.headers.get("content-type", "")):
+        raise ValueError(f"ALBS build {build_id} could not be verified (HTTP {response.status_code})")
+    # The per-build detail is one build object -- the same shape the list endpoint
+    # returns, so the list parser summarises it (id, packages, platforms, time).
+    summaries = parse_build_list([response.json()])
+    if not summaries:
+        raise ValueError(f"ALBS build {build_id} returned no summarisable data")
+    return summaries[0]
+
+
 _BUILD_LIST_PAGE_SIZE = 10  # the ALBS list endpoint returns ~10 builds per page
 _BUILD_LIST_MAX_PAGES = 200  # safety cap so a misbehaving API cannot loop forever
 

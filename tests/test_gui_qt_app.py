@@ -638,6 +638,111 @@ def test_build_picker_dialog_describes_and_filters(qapp: QtWidgets.QApplication)
         dialog.deleteLater()
 
 
+def test_start_dialog_options_and_dispatch(
+    qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The launcher offers each entry point and routes the choice to its method.
+    from albs_graph.gui.qt_app import _StartDialog
+
+    window = WorkbenchWindow()
+    try:
+        targets = [
+            "load_session", "inspect_build_id_verified", "browse_builds",
+            "open_source", "inspect_binary", "_load_synthetic_demo",
+        ]
+        calls: list[str] = []
+        for name in targets:
+            monkeypatch.setattr(window, name, lambda n=name: calls.append(n))
+        for choice in ("session", "build_id", "browse", "file", "package", "synthetic"):
+            window._dispatch_start_choice(choice)
+        assert calls == targets
+        window._dispatch_start_choice(None)  # cancel -> no-op
+        assert len(calls) == len(targets)
+
+        assert len(_StartDialog.OPTIONS) == 6
+        gated = _StartDialog(window, package_enabled=False)
+        pkg_button = next(
+            b for b in gated.findChildren(QtWidgets.QPushButton)
+            if b.text().startswith("Inspect by ALBS package")
+        )
+        assert not pkg_button.isEnabled()  # host RPM tooling only
+    finally:
+        window.close()
+
+
+def test_inspect_build_id_dialog_verifies_before_enabling(qapp: QtWidgets.QApplication) -> None:
+    # "Inspect" enables only once a verification succeeds; editing re-locks it.
+    from albs_graph.gui.qt_app import _InspectBuildIdDialog
+
+    answers = {"57810": (True, "Verified: 57810 nghttp2"), "57809": (False, "not found")}
+    dialog = _InspectBuildIdDialog(lambda build_id: answers[build_id])
+    try:
+        dialog.build_id_edit.setText("57809")
+        dialog.verify_now()
+        assert dialog.selected_build_id is None and not dialog._ok.isEnabled()
+
+        dialog.build_id_edit.setText("57810")
+        dialog.verify_now()
+        assert dialog.selected_build_id == "57810" and dialog._ok.isEnabled()
+
+        dialog.build_id_edit.setText("578101")  # editing invalidates the check
+        assert dialog.selected_build_id is None and not dialog._ok.isEnabled()
+    finally:
+        dialog.deleteLater()
+
+
+def test_verify_build_id_catalog_then_live(
+    qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Verification answers from the cached catalog instantly, else live (and
+    # records the result); a 404 is reported as not found (D122).
+    from albs_graph.gui import qt_app
+
+    window = WorkbenchWindow()
+    try:
+        window.build_catalog.record(
+            BuildSummary(build_id=57810, packages=("buildah",), created_at="2026-05-20T08:00:00")
+        )
+        ok, desc = window._verify_build_id("57810")
+        assert ok and "buildah" in desc  # catalog hit, no network
+
+        monkeypatch.setattr(
+            qt_app,
+            "fetch_build_summary",
+            lambda bid, base, progress=None: BuildSummary(build_id=int(bid), packages=("nginx",)),
+        )
+        ok2, desc2 = window._verify_build_id("99999")
+        assert ok2 and "nginx" in desc2
+        assert 99999 in window.build_catalog.build_ids()  # recorded for next time
+
+        def _missing(bid: int, base: str, progress: object = None) -> BuildSummary:
+            raise qt_app.BuildNotFoundError("nope")
+
+        monkeypatch.setattr(qt_app, "fetch_build_summary", _missing)
+        ok3, desc3 = window._verify_build_id("12345")
+        assert not ok3 and "not found" in desc3.lower()
+    finally:
+        window.close()
+
+
+def test_source_badges_show_identifiers(qapp: QtWidgets.QApplication) -> None:
+    # Badges name their source's identifier: ALBS always shows the build id;
+    # ERRATA/SBOM show their value only when present (D122).
+    window = WorkbenchWindow()
+    try:
+        window.build_id_edit.setText("99999")  # no committed example SBOM for it
+        window._refresh_source_badges()
+        assert window._source_badges["ALBS"].text() == "ALBS: 99999"  # always names the id
+        assert window._source_badges["ERRATA"].text() == "ERRATA"  # nothing fetched yet
+        assert window._source_badges["SBOM"].text() == "SBOM"  # none discovered
+        # The pure text helper: ALBS names the id even while missing (grey).
+        assert window._source_badge_text("ALBS", "57810", "missing") == "ALBS: 57810"
+        assert window._source_badge_text("ALBS", None, "missing") == "ALBS"
+        assert window._source_badge_text("ERRATA", "57810", "missing") == "ERRATA"
+    finally:
+        window.close()
+
+
 def test_worker_routes_a_missing_build_to_build_not_found(
     qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:

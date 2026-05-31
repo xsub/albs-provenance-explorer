@@ -15,8 +15,10 @@ from typing import Any
 import pytest
 
 from albs_graph.adapters.albs import (
+    BuildNotFoundError,
     BuildSummary,
     fetch_build_list,
+    fetch_build_summary,
     fetch_recent_builds,
     parse_build_list,
 )
@@ -105,6 +107,62 @@ def test_fetch_recent_builds_pages_until_limit(monkeypatch: pytest.MonkeyPatch) 
 
     capped = fetch_recent_builds("https://build.almalinux.org", limit=4)
     assert len(capped) == 4  # the limit caps the result
+
+
+def _requests_module(response: object) -> ModuleType:
+    class _Requests(ModuleType):
+        def __init__(self) -> None:
+            super().__init__("requests")
+            self.calls: list[str] = []
+
+        def get(self, url: str, timeout: int) -> object:
+            self.calls.append(url)
+            return response
+
+    return _Requests()
+
+
+def test_fetch_build_summary_verifies_and_summarises(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The per-build detail endpoint is summarised the same way the list is.
+    detail = {
+        "id": 57810,
+        "created_at": "2026-05-20T08:00:00",
+        "owner": {"username": "eabd"},
+        "tasks": [
+            {"ref": {"url": "https://git.almalinux.org/rpms/nghttp2.git"},
+             "platform": {"name": "AlmaLinux-10"}},
+        ],
+    }
+
+    class _Resp:
+        ok = True
+        status_code = 200
+        headers = {"content-type": "application/json"}
+
+        def json(self) -> dict[str, Any]:
+            return detail
+
+    fake = _requests_module(_Resp())
+    monkeypatch.setitem(sys.modules, "requests", fake)
+
+    summary = fetch_build_summary(57810, "https://build.almalinux.org")
+    assert summary.build_id == 57810 and summary.packages == ("nghttp2",)
+    assert summary.platforms == ("AlmaLinux-10",)
+    assert "/api/v1/builds/57810/" in fake.calls[0]
+
+
+def test_fetch_build_summary_raises_build_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _Resp:
+        ok = False
+        status_code = 404
+        headers = {"content-type": "application/json"}
+
+        def json(self) -> dict[str, Any]:
+            return {"detail": "Build with build_id=57809 is not found"}
+
+    monkeypatch.setitem(sys.modules, "requests", _requests_module(_Resp()))
+    with pytest.raises(BuildNotFoundError, match="57809"):
+        fetch_build_summary(57809)
 
 
 def _summary(build_id: int, package: str = "pkg") -> BuildSummary:

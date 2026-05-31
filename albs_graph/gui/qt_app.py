@@ -8,13 +8,14 @@ import re
 import signal
 import sys
 import time
-from typing import Any, TypeVar
+from typing import Any, Callable, TypeVar
 
 from PyQt5 import QtCore, QtGui, QtSvg, QtWidgets
 
 from albs_graph.adapters.albs import (
     BuildNotFoundError,
     BuildSummary,
+    fetch_build_summary,
     fetch_recent_builds,
 )
 from albs_graph.adapters.errata_source import almalinux_errata_feed_url, almalinux_major_version
@@ -444,6 +445,113 @@ class _BuildPickerDialog(QtWidgets.QDialog):
         if item is not None and not item.isHidden():
             self.selected_build_id = str(item.data(QtCore.Qt.ItemDataRole.UserRole))
         super().accept()
+
+
+VerifyFn = Callable[[str], tuple[bool, str]]
+
+
+class _InspectBuildIdDialog(QtWidgets.QDialog):
+    """Enter an arbitrary ALBS build id and verify it exists (fetch its
+    name/desc) before analysing -- so a sparse-id 404 is caught up front, and
+    the user confirms it is the build they meant (D122). ``Inspect`` enables
+    only once a verification succeeds."""
+
+    def __init__(self, verify: VerifyFn, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Inspect by ALBS Build ID")
+        self.resize(440, 160)
+        self._verify = verify
+        self.selected_build_id: str | None = None
+
+        self.build_id_edit = QtWidgets.QLineEdit()
+        self.build_id_edit.setPlaceholderText("ALBS build id (a number)")
+        self.status = QtWidgets.QLabel("Enter a build id, then Verify.")
+        self.status.setWordWrap(True)
+        verify_button = QtWidgets.QPushButton("Verify")
+        self._buttons = QtWidgets.QDialogButtonBox()
+        self._ok = _require(self._buttons.addButton(QtWidgets.QDialogButtonBox.StandardButton.Open))
+        self._buttons.addButton(QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+        self._ok.setText("Inspect")
+        self._ok.setEnabled(False)
+
+        entry = QtWidgets.QHBoxLayout()
+        entry.addWidget(self.build_id_edit)
+        entry.addWidget(verify_button)
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addLayout(entry)
+        layout.addWidget(self.status)
+        layout.addWidget(self._buttons)
+
+        verify_button.clicked.connect(self.verify_now)
+        self.build_id_edit.returnPressed.connect(self.verify_now)
+        self.build_id_edit.textChanged.connect(self._invalidate)
+        self._buttons.accepted.connect(self.accept)
+        self._buttons.rejected.connect(self.reject)
+
+    def _invalidate(self, _text: str = "") -> None:
+        self._ok.setEnabled(False)
+        self.selected_build_id = None
+
+    def verify_now(self) -> None:
+        build_id = self.build_id_edit.text().strip()
+        if not build_id.isdigit():
+            self.status.setText("Build id must be a number.")
+            return
+        self.status.setText(f"Verifying build {build_id}…")
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
+        QtWidgets.QApplication.processEvents()
+        try:
+            ok, description = self._verify(build_id)
+        finally:
+            QtWidgets.QApplication.restoreOverrideCursor()
+        self.status.setText(description)
+        self._ok.setEnabled(ok)
+        self.selected_build_id = build_id if ok else None
+
+    def accept(self) -> None:
+        if self.selected_build_id:  # only a verified id may proceed
+            super().accept()
+
+
+class _StartDialog(QtWidgets.QDialog):
+    """The startup launcher: choose how to begin an investigation (D122)."""
+
+    OPTIONS = (
+        ("session", "Open Saved Session…"),
+        ("build_id", "Inspect by ALBS Build ID…"),
+        ("browse", "Inspect by ALBS Build ID (choose from list)…"),
+        ("file", "Inspect by ALBS file (build metadata JSON)…"),
+        ("package", "Inspect by ALBS package (local RPM)…"),
+        ("synthetic", "Open the offline demo (synthetic fixture)"),
+    )
+
+    def __init__(
+        self, parent: QtWidgets.QWidget | None = None, *, package_enabled: bool = True
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("ALBS Provenance Investigation Workbench")
+        self.choice: str | None = None
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(QtWidgets.QLabel("How would you like to begin?"))
+        for key, label in self.OPTIONS:
+            button = QtWidgets.QPushButton(label)
+            button.setMinimumHeight(34)
+            if key == "package" and not package_enabled:
+                button.setEnabled(False)  # host RPM tooling only (Inspect Binary)
+                button.setToolTip(
+                    "Available only on an AlmaLinux / RHEL-family host (rpm required)."
+                )
+            button.clicked.connect(lambda _checked=False, choice=key: self._choose(choice))
+            layout.addWidget(button)
+        cancel = QtWidgets.QDialogButtonBox()
+        cancel.addButton(QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+        cancel.rejected.connect(self.reject)
+        layout.addWidget(cancel)
+
+    def _choose(self, choice: str) -> None:
+        self.choice = choice
+        self.accept()
 
 
 class WorkbenchWindow(QtWidgets.QMainWindow):
@@ -964,6 +1072,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     ) -> None:
         menu_bar = _require(self.menuBar())
         file_menu = _require(menu_bar.addMenu("File"))
+        start_action = QtWidgets.QAction("Start…", self)
+        start_action.setToolTip("Choose how to begin: saved session, build id, file, package…")
+        start_action.triggered.connect(self.present_start_dialog)
+        file_menu.addAction(start_action)
+        file_menu.addSeparator()
         file_menu.addAction(open_action)
         file_menu.addAction(build_sbom_action)
         file_menu.addAction(inspect_binary_action)
@@ -1273,6 +1386,59 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.build_id_edit.setText(build_id)
         self.source_edit.clear()  # the build id is the explicit choice now
         self.run_analysis()
+
+    def present_start_dialog(self) -> None:
+        # The startup launcher (D122): choose how to begin. Also reachable from
+        # File > Start…. Dispatches the choice to the matching entry point.
+        dialog = _StartDialog(self, package_enabled=_is_almalinux_family_host())
+        dialog.exec_()
+        self._dispatch_start_choice(dialog.choice)
+
+    def _dispatch_start_choice(self, choice: str | None) -> None:
+        actions: dict[str, Callable[[], None]] = {
+            "session": self.load_session,
+            "build_id": self.inspect_build_id_verified,
+            "browse": self.browse_builds,
+            "file": self.open_source,
+            "package": self.inspect_binary,
+            "synthetic": self._load_synthetic_demo,
+        }
+        action = actions.get(choice or "")
+        if action is not None:
+            action()
+
+    def inspect_build_id_verified(self) -> None:
+        # Enter an arbitrary build id, verify it against ALBS (name/desc), then
+        # analyse it -- "Inspect by ALBS Build ID" (D122).
+        dialog = _InspectBuildIdDialog(self._verify_build_id, self)
+        if dialog.exec_() == QtWidgets.QDialog.DialogCode.Accepted and dialog.selected_build_id:
+            self.build_id_edit.setText(dialog.selected_build_id)
+            self.source_edit.clear()  # the build id is the explicit choice now
+            self._analyze_or_fetch_all()
+
+    def _verify_build_id(self, build_id: str) -> tuple[bool, str]:
+        # Confirm a build id exists. The cached catalog answers instantly; an
+        # unknown id is verified live (and recorded so next time is instant).
+        known = {build.build_id: build for build in self.build_catalog.load()}.get(int(build_id))
+        if known is not None and (known.packages or known.created_at):
+            return True, f"Verified: {known.label()}"
+        try:
+            summary = fetch_build_summary(int(build_id), self.base_url, progress=self._log)
+        except BuildNotFoundError:
+            return False, f"Build {build_id} not found on ALBS."
+        except Exception as exc:  # noqa: BLE001 -- a live verify must not crash the UI
+            return False, f"Verification failed: {exc}"
+        self.build_catalog.record(summary)
+        self._update_build_completer()
+        return True, f"Verified: {summary.label()}"
+
+    def _load_synthetic_demo(self) -> None:
+        # The offline demo: load the bundled synthetic fixture (D122).
+        from albs_graph.gui.entry import default_source_path
+
+        self.build_id_edit.clear()
+        self.source_edit.setText(str(default_source_path()))
+        self._analyze_source()
 
     def browse_builds(self) -> None:
         # Pick a known build id from the cached catalog (D120/D121) -- a
@@ -1591,7 +1757,37 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         build_id = self._current_build_id()
         for name, badge in self._source_badges.items():
             state, uri = self._source_state(name, build_id)
+            badge.setText(self._source_badge_text(name, build_id, state))
             self._style_source_badge(badge, name, state, uri)
+
+    def _source_badge_text(self, name: str, build_id: str | None, state: str) -> str:
+        # Show the source's identifier inline (ALBS: <id>, SBOM: <serial/id>,
+        # ERRATA: <count>). ALBS always names its build id (so you can see which
+        # build the grey/active badge is for); ERRATA/SBOM show their value only
+        # once present (there is no id to show before they are fetched).
+        if name == _SOURCE_ALBS:
+            return f"ALBS: {build_id}" if build_id else "ALBS"
+        if state == _STATE_MISSING:
+            return name
+        if name == _SOURCE_ERRATA:
+            count = len(self.result.graph.find_by_type("errata")) if self.result else 0
+            return f"ERRATA: {count}" if count else "ERRATA"
+        if name == _SOURCE_SBOM:
+            ident = self._sbom_identifier(build_id)
+            return f"SBOM: {ident}" if ident else "SBOM"
+        return name
+
+    def _sbom_identifier(self, build_id: str | None) -> str | None:
+        # The SBOM's serial number (a hash, shortened) when the graph carries an
+        # SBOM node, else the build id the discovered SBOM file belongs to.
+        if self.result is not None:
+            for node in self.result.graph.find_by_type("sbom"):
+                raw = node.id.split(":", 1)[1] if ":" in node.id else node.id
+                if raw.lower().startswith("urn:uuid:"):
+                    return raw.rsplit(":", 1)[-1][:8]  # short serial hash
+                match = re.search(r"build[-_](\d+)", raw)
+                return match.group(1) if match else (build_id or raw)
+        return build_id
 
     def _current_build_id(self) -> str | None:
         # The build id under investigation: the entered id, else the one inferred
@@ -2633,4 +2829,7 @@ def run(
     )
     window._signal_timer = signal_timer
     window.show()
+    if source is None and build_id is None:
+        # A bare launch: offer the start launcher (D122) rather than auto-loading.
+        window.present_start_dialog()
     return int(app.exec_())

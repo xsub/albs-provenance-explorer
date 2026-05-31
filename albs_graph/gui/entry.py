@@ -17,8 +17,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--source",
         type=Path,
-        default=default_source_path(),
-        help="ALBS build metadata JSON to open on startup.",
+        default=None,
+        help="ALBS build metadata JSON to open on startup. Omit to get the "
+        "start launcher (choose a session / build id / file / package).",
     )
     parser.add_argument(
         "--build-id",

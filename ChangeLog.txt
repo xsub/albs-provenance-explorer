@@ -19,7 +19,17 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   feat(builds): build catalog UX -- a filterable list, time-sorted,
+- (this)   feat(gui): start launcher, verified build-id entry, identifier badges
+           (D122). A bare launch opens _StartDialog (Open Saved Session / Inspect
+           by ALBS Build ID / by Build ID from list / by ALBS file / by ALBS
+           package / offline demo; also File > Start…); Inspect-by-Build-ID takes
+           an arbitrary number and verifies it live (fetch_build_summary ->
+           name/desc) before enabling Inspect; the badges name their source
+           inline (ALBS: <id>, SBOM: <serial/id>, ERRATA: <count>). entry.py
+           --source default -> None. +6 cases. Suite 419 -> 425. decisions.md
+           D122.
+
+- 3b28d9c  feat(builds): build catalog UX -- a filterable list, time-sorted,
            configurable last-N (D121). Browse is now a _BuildPickerDialog
            (QListWidget with a one-line description per build + an in-place
            filter), the catalog sorts by build time (created_at desc, fallback
