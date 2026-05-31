@@ -152,6 +152,11 @@ class TimelinePanel(QtWidgets.QWidget):
         self.tree.setAlternatingRowColors(True)
         self.view_combo = QtWidgets.QComboBox()
         self.view_combo.addItems(["Tree", "Gantt"])
+        # Without a minimum the combo gets squeezed to "Ga…" in a narrow dock.
+        self.view_combo.setMinimumWidth(96)
+        self.view_combo.setSizeAdjustPolicy(
+            QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents
+        )
         self.gantt = TimelineGanttView()
         self.stack = QtWidgets.QStackedWidget()
         self.stack.addWidget(self.tree)

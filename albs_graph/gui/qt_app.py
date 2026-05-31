@@ -381,6 +381,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._source_badges: dict[str, QtWidgets.QToolButton] = {}
         self.cache_ttl_seconds = 300  # ALBS metadata cache freshness (badge state)
         self._pending_refresh = False  # next build-id fetch forces a refetch
+        self._deep_fetch = False  # next run pulls every host-available enrichment
         self.current_slice: GraphSlice | None = None
         self.findings: list[Finding] = []
         self.pending_session: WorkbenchSession | None = None
@@ -1095,6 +1096,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             load_spec = self._load_spec()
             run_spec = self._run_spec(load_spec)
         except ValueError as exc:
+            self._deep_fetch = False  # the one-shot did not reach _run_spec
             self._show_error(str(exc))
             return
 
@@ -1235,6 +1237,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         return GraphLoadSpec(source=path)
 
     def _run_spec(self, load_spec: GraphLoadSpec) -> RunSpec:
+        deep_fetch = self._deep_fetch  # capture + clear up front (one-shot)
+        self._deep_fetch = False
         self._autofill_build_sbom(load_spec)
         build_sbom_path: Path | None = None
         build_sbom = self.build_sbom_edit.text().strip()
@@ -1254,10 +1258,16 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 )
             else:
                 build_sbom_path = candidate
+        deep_kwargs: dict[str, Any] = {}
+        if deep_fetch:
+            deep_kwargs = self._host_enrichment_kwargs()
+            enabled = ", ".join(sorted(deep_kwargs))
+            self._log(f"Fetch all: pulling every host-available source ({enabled})")
         return RunSpec(
             build_sbom=build_sbom_path,
             **self._errata_run_kwargs(),
             **self._verify_cpe_run_kwargs(),
+            **deep_kwargs,
         )
 
     def _verify_cpe_run_kwargs(self) -> dict[str, Any]:
@@ -1489,15 +1499,37 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.run_analysis()
 
     def _fetch_all_sources(self) -> None:
-        # Build id + Enter: fetch every build-id source in sequence (ALBS is the
-        # base load; turn the optional ones on so the single run pulls them too).
+        # Build id + Enter: pull every build-id source the host can in one run --
+        # ALBS (base) + errata(http) + SBOM autodiscovery + the host-available
+        # enrichments (RPM headers, dnf/sonames, cas). The heavy RPM-download
+        # rungs (payloads/ELF, signature checksig) and SBOM *generation* stay in
+        # Run > Run Full Inspection (run.sh).
         self._select_errata_http()
+        self._deep_fetch = True
         self.run_analysis()
 
     def _select_errata_http(self) -> None:
         index = self.errata_combo.findData("http")
         if index >= 0:
             self.errata_combo.setCurrentIndex(index)
+
+    def _host_enrichment_kwargs(self) -> dict[str, Any]:
+        """The richer enrichments a fetch-all pulls, each gated on its host tool.
+
+        RPM headers are an HTTP range read (light, always on). ``dnf`` /
+        ``cas`` are consulted only when present so the run degrades gracefully
+        off an AlmaLinux box (the same shape ``run.sh`` uses). The heavy
+        full-RPM-download rungs (payloads, signature checksig) are deliberately
+        left out of the one-keystroke path.
+        """
+
+        kwargs: dict[str, Any] = {"with_rpm_headers": True}
+        if shutil.which("dnf"):
+            kwargs["use_dnf"] = True
+            kwargs["resolve_sonames"] = True
+        if shutil.which("cas"):
+            kwargs["use_cas"] = True
+        return kwargs
 
     def _analysis_failed(self, message: str) -> None:
         self.progress_label.setText("Analysis failed")

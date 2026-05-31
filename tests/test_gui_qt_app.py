@@ -413,7 +413,47 @@ def test_source_badge_click_fetches_for_build_id(
         window.errata_combo.setCurrentIndex(window.errata_combo.findData(""))
         window._fetch_all_sources()  # Enter in the build-id field
         assert window.errata_combo.currentData() == "http"
+        # Fetch-all enables the host-available enrichments in addition to errata.
+        assert window._deep_fetch is True
         assert runs == [True, True, True]
+    finally:
+        window.close()
+
+
+def test_fetch_all_enables_host_enrichments_in_run_spec(
+    qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A build-id fetch-all merges the host-available enrichments into the
+    # RunSpec (RPM headers always; dnf/sonames/cas gated on the host tool), then
+    # clears the one-shot flag so a later plain run stays light.
+    from albs_graph.gui import qt_app
+
+    window = WorkbenchWindow()
+    try:
+        monkeypatch.setattr(qt_app.shutil, "which", lambda name: f"/usr/bin/{name}")
+        window.build_id_edit.setText("57810")
+        window._deep_fetch = True
+        spec = window._run_spec(window._load_spec())
+        assert spec.with_rpm_headers and spec.use_dnf and spec.resolve_sonames and spec.use_cas
+        assert window._deep_fetch is False  # one-shot, reset after building the spec
+
+        # No host tools -> only the network-light header rung is enabled.
+        monkeypatch.setattr(qt_app.shutil, "which", lambda _name: None)
+        window._deep_fetch = True
+        light = window._run_spec(window._load_spec())
+        assert light.with_rpm_headers and not light.use_dnf and not light.use_cas
+    finally:
+        window.close()
+
+
+def test_timeline_view_combo_is_not_clipped(qapp: QtWidgets.QApplication) -> None:
+    # Regression: the Tree/Gantt switch rendered clipped to "Ga" in a narrow
+    # dock; it needs a minimum width wide enough for its longest item.
+    window = WorkbenchWindow()
+    try:
+        combo = window.timeline_panel.view_combo
+        assert [combo.itemText(i) for i in range(combo.count())] == ["Tree", "Gantt"]
+        assert combo.minimumWidth() >= combo.fontMetrics().horizontalAdvance("Gantt")
     finally:
         window.close()
 

@@ -12,7 +12,7 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Typed: mypy strict](https://img.shields.io/badge/mypy-strict-blue)](https://mypy-lang.org/)
 
-![PyQt investigation workbench showing dependency evidence for build 57810](examples/demo-build-57810/pyqt-investigation-workbench.png)
+![ALBS Provenance Investigation Workbench: a build's source-to-artifact trust-path graph with errata/CVE, the per-RPM evidence matrix, and the live ALBS / SBOM / ERRATA source badges in the status bar (build 57810)](examples/demo-build-57810/pyqt-investigation-workbench.png)
 
 The **`InvestigationWorkbenchApp` branch is the GUI version of
 [`albs-provenance-explorer`](#albs-provenance-explorer).** It builds on the same
@@ -40,7 +40,11 @@ then lets you explore the result without leaving the graph:
   dependents / dependencies / reachable, render dependency paths, save
   favourites.
 - **Timeline** (tree + Gantt), **graph queries**, **finding drill-down**,
-  **build compare**, a classic full-pipeline runner, and session save/load.
+  **build compare**, the full-inspection runner (`run.sh`), and session save/load.
+- **Live source badges** — `ALBS` / `ERRATA` / `SBOM` chips in the status bar
+  that grey out when a source is stale or missing for the current build id;
+  click one to fetch just that source, or type a build id and press Enter to
+  fetch everything the host can in one sweep.
 - **Export** — a slice as SVG/PNG, plus a JSON evidence bundle / HTML / Markdown
   report with a reproducibility appendix.
 
@@ -369,7 +373,7 @@ Status is tracked in three honest buckets. "Couldn't resolve" is a deliverable h
 ### Partial
 
 - PyPI dependencies can be resolved through pip's dry-run report, but higher-level frontends such as uv/Poetry are not wired yet
-- CPE verification and CVE-feed matching can consume supplied files or cached live NVD feeds; live errata fetch is still future
+- CPE verification and CVE-feed matching can consume supplied files or cached live NVD feeds; the live errata feed (errata.almalinux.org) is fetched and matched per-RPM, defaulting on for a build-id fetch-all
 - vault URL reconstruction is a heuristic over known AlmaLinux repo layouts, not an exhaustive mirror map
 - SQLite is a deliberately lightweight persistence layer for the PoC, not the final production graph platform
 

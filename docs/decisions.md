@@ -3151,6 +3151,41 @@ click-fetch guard; the old contacted-sources test was rewritten). Suite
 
 ---
 
+## D115 - A build-id fetch-all pulls every host-available enrichment in-app
+
+Field report: typing a build id and pressing Enter did not reproduce the rich
+result a `run.sh` full inspection produces -- "there must be a way that allows
+the GUI to fetch all data for a given build id." (The triggering screenshot used
+build 17811, which genuinely 404s; 17812 is the committed fixture. The reported
+"not found" is correct, D111.)
+
+A build-id fetch-all (Enter, `_fetch_all_sources`) now sets a one-shot
+`_deep_fetch` flag that `_run_spec` consumes to merge
+`_host_enrichment_kwargs()` into the `RunSpec`: **RPM headers always** (an HTTP
+range read, light), plus **`dnf` repoquery + soname resolution** and **`cas`
+authentication** *only when the host tool is present* (`shutil.which`), so the
+run degrades gracefully off an AlmaLinux box -- the same gating `run.sh` uses.
+This is on top of the always-present ALBS base load, the errata(http) default
+and SBOM autodiscovery, so one keystroke pulls everything the host can.
+
+The two **heavy full-RPM-download rungs are deliberately excluded** from the
+one-keystroke path -- payloads/ELF (rung 4) and signature `--checksig` -- as is
+SBOM *generation* (`alma-sbom`); those remain in `Run > Run Full Inspection
+(run.sh)`. The flag is captured-and-cleared at the top of `_run_spec` (and on the
+`run_analysis` `ValueError` path) so a later plain run stays light. The richest
+fully-automatic path is still `run.sh` (it adds the heavy rungs + generates the
+SBOM); the in-app fetch-all is the snappy "as much as this host can" version.
+
+Also in this change: the Timeline **Tree/Gantt view switch** was rendering
+clipped to "Ga" in a narrow dock -- `view_combo` got a `setMinimumWidth(96)` +
+`AdjustToContents`. And the README workbench screenshot caption was refreshed
+(trust path + errata/CVE + the live source badges) and the stale "live errata
+fetch is still future" limitation corrected (it shipped in D108). +2 GUI tests
+(fetch-all merges the host enrichments + resets; the view combo is not clipped).
+Suite 399 -> 401.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
