@@ -458,6 +458,34 @@ def test_timeline_view_combo_is_not_clipped(qapp: QtWidgets.QApplication) -> Non
         window.close()
 
 
+def test_primary_analyze_is_context_sensitive(
+    qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The Analyze button fetches all host sources for a live build id, but for a
+    # cached source file (no build id) it just (re)analyses offline -- no deep
+    # enrichment, no errata override, so a local file never pulls the network.
+    window = WorkbenchWindow()
+    try:
+        runs: list[bool] = []
+        monkeypatch.setattr(window, "run_analysis", lambda: runs.append(True))
+
+        window.build_id_edit.setText("57810")
+        window._analyze_or_fetch_all()
+        assert window._deep_fetch is True  # build id -> fetch-all
+        assert window.errata_combo.currentData() == "http"
+
+        window.build_id_edit.clear()
+        window.source_edit.setText("/tmp/build-57810.albs.json")
+        window.errata_combo.setCurrentIndex(window.errata_combo.findData(""))
+        window._deep_fetch = False
+        window._analyze_or_fetch_all()
+        assert window._deep_fetch is False  # cached file -> plain offline run
+        assert window.errata_combo.currentData() == ""  # errata not overridden
+        assert runs == [True, True]
+    finally:
+        window.close()
+
+
 def test_workbench_inspect_build_id_menu_action(
     qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:

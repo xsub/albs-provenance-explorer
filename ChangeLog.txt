@@ -19,7 +19,16 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): a build-id fetch-all pulls every host-available source
+- (this)   feat(gui): the primary Analyze action fetches all for a build id.
+           The sparse result a user hit came from the toolbar Analyze button
+           (Ctrl+R) running a plain run_analysis (errata off, no enrichment) --
+           only Enter did the fetch-all. Analyze is now context-sensitive
+           (_analyze_or_fetch_all): a live build id -> fetch every host source;
+           a cached source file -> a plain offline run (no surprise network).
+           _select_errata_http now respects an explicit errata choice (only
+           off -> http). +1 GUI test. Suite 401 -> 402. decisions.md D116.
+
+- d54bd41  feat(gui): a build-id fetch-all pulls every host-available source
            in-app. Enter sets a one-shot _deep_fetch that _run_spec merges into
            the RunSpec -- RPM headers always, dnf/sonames + cas only when the
            host tool exists (shutil.which) -- on top of the ALBS base, errata

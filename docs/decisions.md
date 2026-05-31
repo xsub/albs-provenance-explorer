@@ -3186,6 +3186,21 @@ Suite 399 -> 401.
 
 ---
 
+## D116 - The primary Analyze action fetches all for a build id
+
+Follow-up to D115. The sparse result in the field screenshot came from the
+toolbar **Analyze** button (and `Ctrl+R`), which ran a plain `run_analysis`
+(errata off, no enrichment) -- only Enter triggered the fetch-all. The Analyze
+action is now context-sensitive (`_analyze_or_fetch_all`): a live **build id ->
+`_fetch_all_sources`** (every host-available source), a cached **source file ->
+a plain offline run**, so working from a local `.albs.json` never triggers a
+surprise network pull. `_select_errata_http` was tightened to respect an
+explicit errata choice -- it only switches `off -> http`, never clobbering a
+host `dnf` selection. +1 GUI test (build id fetches all, cached file stays
+light + does not override errata). Suite 401 -> 402.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

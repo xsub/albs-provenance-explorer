@@ -610,7 +610,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             "Analyze",
             self,
         )
-        run_action.triggered.connect(self.run_analysis)
+        run_action.setToolTip(
+            "Analyze: for a build id, fetch every host-available source; "
+            "for a cached source file, (re)analyse it offline."
+        )
+        run_action.triggered.connect(self._analyze_or_fetch_all)
         export_action = QtWidgets.QAction(
             _require(self.style()).standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DialogSaveButton),
             "Export SVG",
@@ -1498,6 +1502,16 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self.build_sbom_edit.clear()  # re-discover from the build-id convention
         self.run_analysis()
 
+    def _analyze_or_fetch_all(self) -> None:
+        # The primary Analyze action (toolbar + Ctrl+R). For a live build id it
+        # fetches every host-available source (the rich result); for an already
+        # cached source file it just (re)analyses it offline -- so working from a
+        # local file never triggers a surprise network pull.
+        if self.build_id_edit.text().strip():
+            self._fetch_all_sources()
+        else:
+            self.run_analysis()
+
     def _fetch_all_sources(self) -> None:
         # Build id + Enter: pull every build-id source the host can in one run --
         # ALBS (base) + errata(http) + SBOM autodiscovery + the host-available
@@ -1509,6 +1523,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.run_analysis()
 
     def _select_errata_http(self) -> None:
+        # Turn errata on for a fetch-all, but respect an explicit choice already
+        # made: only switch when the combo is "off" (don't clobber a host "dnf").
+        if str(self.errata_combo.currentData() or ""):
+            return
         index = self.errata_combo.findData("http")
         if index >= 0:
             self.errata_combo.setCurrentIndex(index)
