@@ -13,6 +13,15 @@ from albs_graph.nevra import RpmNevra, rpm_metadata_from_filename
 from albs_graph.security import cpe_security_identity
 
 
+class BuildNotFoundError(ValueError):
+    """A definitive 404 from ALBS: that build id does not exist.
+
+    A subclass of ``ValueError`` so existing ``except ValueError`` callers keep
+    working, while UIs can distinguish "no such build" (build ids are sparse --
+    most numbers have no build) from a genuine fetch/parse failure.
+    """
+
+
 @dataclass(frozen=True)
 class AlbsBuildMetadata:
     build_id: str
@@ -218,7 +227,7 @@ def fetch_build_metadata(
             detail = str(api_response.json().get("detail") or "")
         except Exception:  # noqa: BLE001 -- a non-JSON 404 body is fine to ignore
             detail = ""
-        raise ValueError(detail or f"ALBS build {build_id} not found.")
+        raise BuildNotFoundError(detail or f"ALBS build {build_id} not found.")
 
     url = f"{root}/build/{build_id}"
     if progress:

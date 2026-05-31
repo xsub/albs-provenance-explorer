@@ -12,6 +12,7 @@ from typing import Any, TypeVar
 
 from PyQt5 import QtCore, QtGui, QtSvg, QtWidgets
 
+from albs_graph.adapters.albs import BuildNotFoundError
 from albs_graph.adapters.errata_source import almalinux_errata_feed_url, almalinux_major_version
 from albs_graph.adapters.sbom import discover_build_sbom
 from albs_graph.gui.inspect import (
@@ -172,6 +173,7 @@ class AnalysisSignals(QtCore.QObject):
     progress = QtCore.pyqtSignal(str)
     finished = QtCore.pyqtSignal(object)
     failed = QtCore.pyqtSignal(str)
+    build_not_found = QtCore.pyqtSignal(str)  # the missing build id (a sparse-id 404)
 
 
 class AnalysisWorker(QtCore.QRunnable):
@@ -189,6 +191,11 @@ class AnalysisWorker(QtCore.QRunnable):
                 self.run_spec,
                 on_progress=self.signals.progress.emit,
             )
+        except BuildNotFoundError:
+            # A sparse-id 404 is not a tool failure -- route it to a calm
+            # "build not found" path rather than the red "Analysis failed".
+            self.signals.build_not_found.emit(str(self.load_spec.build_id or ""))
+            return
         except Exception as exc:
             self.signals.failed.emit(str(exc))
             return
@@ -1112,6 +1119,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         worker = AnalysisWorker(load_spec, run_spec)
         worker.signals.progress.connect(self._log)
         worker.signals.failed.connect(self._analysis_failed)
+        worker.signals.build_not_found.connect(self._build_not_found)
         worker.signals.finished.connect(self._analysis_finished)
         self._active_worker = worker  # keep a handle so closeEvent can detach it
         self.thread_pool.start(worker)
@@ -1564,6 +1572,25 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.progress_label.setText("Analysis failed")
         self._log(f"ERROR: {message}")
         self._show_error(message)
+
+    def _build_not_found(self, build_id: str) -> None:
+        # A sparse-id 404: the build simply does not exist. Treat it as an
+        # informational outcome, not a red "Analysis failed" -- the previous
+        # result (if any) stays so the user does not lose their place.
+        label = f"build {build_id}" if build_id else "that build id"
+        self.progress_label.setText(f"Build {build_id} not found".strip())
+        self._log(
+            f"ALBS {label} was not found on {self.base_url}. "
+            "Build ids are not sequential -- most numbers have no build."
+        )
+        self._refresh_source_badges()  # ALBS greys out for the missing id
+        QtWidgets.QMessageBox.information(
+            self,
+            "Build not found",
+            f"ALBS {label} was not found on {self.base_url}.\n\n"
+            "ALBS build ids are not sequential -- most numbers have no build. "
+            "Check the id on build.almalinux.org and enter one that exists.",
+        )
 
     def _populate_artifacts(self) -> None:
         self.artifact_list.clear()

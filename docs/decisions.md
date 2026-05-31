@@ -3219,6 +3219,28 @@ guard); two badge/analyze tests pin `_is_almalinux_family_host -> False` so thei
 
 ---
 
+## D118 - A missing build is "not found", not "Analysis failed"
+
+Field report ("pobranie po numerze builda sie wali"): entering build 57809 popped
+a red **Analysis failed**. But 57809 genuinely does not exist -- ALBS build ids
+are **sparse**, not sequential (verified live: 57808/57809/57811 -> HTTP 404,
+57810/57812 -> 200). The fetch worked; the id was empty. The scary "failed"
+framing (plus the previous build's graph still on screen) read as a tool crash.
+
+`fetch_build_metadata` now raises a dedicated **`BuildNotFoundError`** on a 404
+(a `ValueError` subclass, so every existing `except ValueError` and the D111
+"report a 404 plainly" behaviour keep working). The GUI worker catches it and
+emits a separate **`build_not_found`** signal carrying the id; the window's
+`_build_not_found` handler shows a calm status ("Build 57809 not found") + an
+**information** dialog that explains ids are sparse and to check
+build.almalinux.org -- *not* the red failure path. The previous result stays so
+the user does not lose their place. +2 GUI tests (the worker routes
+`BuildNotFoundError` to `build_not_found`; the handler is informational, not a
+failure) and the albs 404 test now asserts the `BuildNotFoundError` type.
+Suite 403 -> 405.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from albs_graph.adapters.albs import fetch_build_metadata
+from albs_graph.adapters.albs import BuildNotFoundError, fetch_build_metadata
 
 
 class FakeResponse:
@@ -97,7 +97,9 @@ def test_fetch_build_metadata_reports_404_plainly(tmp_path: Path, monkeypatch: A
     fake_requests = FakeSequenceRequests([not_found])
     monkeypatch.setitem(__import__("sys").modules, "requests", fake_requests)
 
-    with pytest.raises(ValueError, match="57809 is not found"):
+    # BuildNotFoundError (a ValueError subclass) lets UIs distinguish "no such
+    # build" from a genuine fetch/parse failure.
+    with pytest.raises(BuildNotFoundError, match="57809 is not found"):
         fetch_build_metadata(57809, cache_path=tmp_path / "build-57809.albs.json")
 
     # The HTML fallback URL was never even fetched -- only the API was hit.

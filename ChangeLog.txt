@@ -19,7 +19,17 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): errata default is host-aware -- dnf on AlmaLinux, http
+- (this)   fix(gui): a missing build is "not found", not "Analysis failed". A
+           sparse-id 404 (ALBS ids are not sequential: 57809 does not exist,
+           57810 does) popped a red failure. fetch_build_metadata now raises a
+           dedicated BuildNotFoundError (a ValueError subclass); the worker
+           routes it to a build_not_found signal and _build_not_found shows a
+           calm "Build N not found" status + an info dialog (check the id on
+           build.almalinux.org), keeping the previous result. +2 GUI tests; the
+           albs 404 test now asserts the type. Suite 403 -> 405. decisions.md
+           D118.
+
+- 77e9922  feat(gui): errata default is host-aware -- dnf on AlmaLinux, http
            elsewhere. A fetch-all that turns errata on now picks
            _default_errata_source(): dnf (local updateinfo, authoritative) on an
            AlmaLinux/RHEL-family host with dnf, the errata.almalinux.org HTTP

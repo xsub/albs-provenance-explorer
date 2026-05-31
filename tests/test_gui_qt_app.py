@@ -526,6 +526,43 @@ def test_errata_default_source_is_host_aware(
         window.close()
 
 
+def test_worker_routes_a_missing_build_to_build_not_found(
+    qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A sparse-id 404 (BuildNotFoundError) is routed to the calm build_not_found
+    # signal carrying the id -- not the red "failed" signal.
+    from albs_graph.gui import qt_app
+
+    def _raise(*_args: object, **_kwargs: object) -> None:
+        raise qt_app.BuildNotFoundError("Build with build_id=57809 is not found")
+
+    monkeypatch.setattr(qt_app.AnalysisService, "analyze", _raise)
+    worker = qt_app.AnalysisWorker(GraphLoadSpec(build_id=57809), RunSpec())
+    not_found: list[str] = []
+    failed: list[str] = []
+    worker.signals.build_not_found.connect(not_found.append)
+    worker.signals.failed.connect(failed.append)
+    worker.run()
+    assert not_found == ["57809"]
+    assert failed == []  # not surfaced as a generic failure
+
+
+def test_build_not_found_is_informational_not_a_failure(
+    qapp: QtWidgets.QApplication,
+) -> None:
+    # The missing-build handler reports "not found" in the status bar (not the
+    # red "Analysis failed") and keeps the previous result in place.
+    window = WorkbenchWindow()
+    try:
+        window.build_id_edit.setText("57809")
+        window._build_not_found("57809")
+        text = window.progress_label.text()
+        assert "57809" in text and "not found" in text.lower()
+        assert text != "Analysis failed"
+    finally:
+        window.close()
+
+
 def test_workbench_inspect_build_id_menu_action(
     qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
