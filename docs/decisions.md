@@ -2874,6 +2874,48 @@ a follow-up in its own right, not a free consequence of the panel split.
 
 ---
 
+## D106 - Retire the blanket `# mypy: ignore-errors` on `qt_app.py`
+
+The follow-up D105 flagged: with the four panels extracted, the residual
+main-window shell was made to type-check under **mypy strict** and the blanket
+`# mypy: ignore-errors` was deleted. Removing it surfaced **122 real errors**
+(PyQt5 5.15 ships `.pyi` stubs, so the Qt types are real, not `Any`); all were
+fixed -- *not* by scattering 122 per-line ignores, the noise D102 set out to
+avoid, but by category:
+
+- **~40 flattened-enum `attr-defined`** -> scoped enum access
+  (`Qt.UserRole` -> `Qt.ItemDataRole.UserRole`, `QStyle.SP_*` ->
+  `QStyle.StandardPixmap.SP_*`, `QProcess.NotRunning` ->
+  `QProcess.ProcessState.NotRunning`, ...); both forms work at runtime in 5.15.
+- **54 `union-attr`** on Optional Qt accessors -> one generic
+  `_require(x: T | None) -> T` narrower (a single assert) wrapped around
+  `menuBar()` / `horizontalHeader()` / `style()` / `statusBar()` /
+  `QThreadPool.globalInstance()` / `bottom.widget(i)` / `list.item(i)` /
+  `combo.view()` / `svg_widget.renderer()` / `scroll.viewport()` etc.
+- **6 `override`** -> event handlers (`mousePressEvent` / `mouseMoveEvent` /
+  `leaveEvent` / two `closeEvent`s) take the supertype's nullable arg with a
+  guard.
+- **12 `arg-type` from `RunSpec(**dict[str, object])`** -> the
+  `_errata_run_kwargs` / `_verify_cpe_run_kwargs` helpers now return
+  `dict[str, Any]`, so `**`-unpacking type-checks.
+- the classic-runner `dict[str, object]` -> a `_ClassicRequest` `TypedDict`
+  (fixing the `cwd`/`environment` `arg-type` and the `.exists()` `attr-defined`).
+- the remaining handful -> `self.findings: list[Finding]`, two parameter
+  annotations, `_current_bundle -> dict[str, Any]`, and a
+  `Qt.TextInteractionFlags(...)` construction.
+
+**Exactly one** `# type: ignore[arg-type]` remains -- connecting `QWidget.close`
+(which returns `bool`) to a void `triggered` signal, an idiomatic PyQt pattern
+the stubs reject; that is the "targeted ignore" the goal explicitly endorsed
+over the blanket one. `qt_app.py` (now 2062 lines) type-checks under
+`mypy --strict` with the rest of the package; no behaviour change (the asserts
+narrow values that are never None here, enum scoping is runtime-equivalent, the
+guards cover only the never-taken None branches) and the full suite stays 386.
+The whole `gui/` package is now strict-typed -- no module carries a blanket
+ignore.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

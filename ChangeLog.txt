@@ -19,7 +19,25 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   refactor(gui): extract the Timeline panel into a typed module
+- (this)   refactor(gui): retire the blanket # mypy: ignore-errors on qt_app.py
+           (quality follow-up; the GUI is now fully strict-typed). Deleting the
+           blanket ignore surfaced 122 real errors (PyQt5 5.15 ships .pyi stubs);
+           all fixed by category, NOT 122 per-line ignores: ~40 flattened-enum
+           attr-defined -> scoped enums (Qt.UserRole -> Qt.ItemDataRole.UserRole,
+           QStyle.SP_* -> QStyle.StandardPixmap.SP_*, ...); 54 union-attr -> one
+           generic _require(x: T|None)->T narrower wrapped around the Optional Qt
+           accessors (menuBar/horizontalHeader/style/statusBar/globalInstance/
+           widget(i)/item(i)/view()/renderer()/viewport()); 6 override -> nullable
+           event-handler args + guards; 12 RunSpec(**dict[str,object]) arg-type ->
+           the kwargs helpers return dict[str, Any]; the classic-runner
+           dict[str,object] -> a _ClassicRequest TypedDict; plus findings/param
+           annotations + a TextInteractionFlags() construction. EXACTLY ONE
+           targeted # type: ignore[arg-type] remains (idiomatic QWidget.close ->
+           void signal). qt_app.py type-checks under mypy --strict (strict=true,
+           only the zstandard override); no behaviour change, suite stays 386.
+           decisions.md D106.
+
+- 22f3777  refactor(gui): extract the Timeline panel into a typed module
            (god-object split #4; quality follow-up). New gui/timeline_panel.py
            bundles the whole build-task timeline: the custom ~100-line
            TimelineGanttView (QGraphicsView), the tree view, the Tree/Gantt

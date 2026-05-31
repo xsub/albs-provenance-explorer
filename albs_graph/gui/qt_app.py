@@ -1,4 +1,3 @@
-# mypy: ignore-errors
 from __future__ import annotations
 
 import json
@@ -7,6 +6,7 @@ from pathlib import Path
 import re
 import signal
 import sys
+from typing import Any, TypedDict, TypeVar
 
 from PyQt5 import QtCore, QtGui, QtSvg, QtWidgets
 
@@ -29,6 +29,7 @@ from albs_graph.services import (
     evidence_report_markdown,
     GraphLoadSpec,
     GraphQueries,
+    Finding,
     GraphSlice,
     GraphSlices,
     WorkbenchSession,
@@ -57,6 +58,32 @@ BOTTOM_DOCK_MIN_HEIGHT = 96
 BOTTOM_PAGE_MIN_HEIGHT = 0
 CLASSIC_ROOT_ENV = "ALBS_EXPLORER_CLASSIC_ROOT"
 CLASSIC_TMP_ROOT = Path("/private/tmp/albs-provenance-workbench")
+
+_T = TypeVar("_T")
+
+
+def _require(value: _T | None) -> _T:
+    """Narrow an Optional Qt accessor that never returns None in this app.
+
+    ``menuBar()`` / ``horizontalHeader()`` / ``style()`` / ``statusBar()`` and
+    friends are typed ``X | None`` in the PyQt5 stubs but are always present
+    here. Wrapping the call in ``_require`` narrows it with a single assert,
+    so the module stays free of the blanket ``# mypy: ignore-errors``.
+    """
+
+    assert value is not None
+    return value
+
+
+class _ClassicRequest(TypedDict):
+    """The resolved inputs for one classic full-pipeline subprocess run."""
+
+    classic_root: Path
+    script: Path
+    environment: QtCore.QProcessEnvironment
+    cache: Path
+    sbom_file: Path | None
+    intro: str
 
 
 def _repo_root() -> Path:
@@ -116,8 +143,11 @@ class GraphSvgWidget(QtSvg.QSvgWidget):
         self._node_regions = node_regions
         self._edge_regions = edge_regions
 
-    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-        if event.button() == QtCore.Qt.LeftButton:
+    def mousePressEvent(self, event: QtGui.QMouseEvent | None) -> None:
+        if event is None:
+            super().mousePressEvent(event)
+            return
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
             node_id = self._node_id_at(event.pos())
             if node_id is not None:
                 self.nodeClicked.emit(node_id)
@@ -130,24 +160,27 @@ class GraphSvgWidget(QtSvg.QSvgWidget):
                 return
         super().mousePressEvent(event)
 
-    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent | None) -> None:
+        if event is None:
+            super().mouseMoveEvent(event)
+            return
         cursor = (
-            QtCore.Qt.PointingHandCursor
+            QtCore.Qt.CursorShape.PointingHandCursor
             if self._node_id_at(event.pos()) is not None
             or self._edge_index_at(event.pos()) is not None
-            else QtCore.Qt.ArrowCursor
+            else QtCore.Qt.CursorShape.ArrowCursor
         )
         self.setCursor(cursor)
         super().mouseMoveEvent(event)
 
-    def leaveEvent(self, event: QtCore.QEvent) -> None:
+    def leaveEvent(self, event: QtCore.QEvent | None) -> None:
         self.unsetCursor()
         super().leaveEvent(event)
 
     def _node_id_at(self, point: QtCore.QPoint) -> str | None:
         if not self._node_regions:
             return None
-        size = self.renderer().defaultSize()
+        size = _require(self.renderer()).defaultSize()
         if not size.isValid() or self.width() <= 0 or self.height() <= 0:
             return None
         x = point.x() * size.width() / self.width()
@@ -157,7 +190,7 @@ class GraphSvgWidget(QtSvg.QSvgWidget):
     def _edge_index_at(self, point: QtCore.QPoint) -> int | None:
         if not self._edge_regions:
             return None
-        size = self.renderer().defaultSize()
+        size = _require(self.renderer()).defaultSize()
         if not size.isValid() or self.width() <= 0 or self.height() <= 0:
             return None
         x = point.x() * size.width() / self.width()
@@ -187,7 +220,8 @@ class ConsoleProcessDialog(QtWidgets.QDialog):
         self.output.setReadOnly(True)
         self.output.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
         self.output.setTextInteractionFlags(
-            QtCore.Qt.TextSelectableByMouse | QtCore.Qt.TextSelectableByKeyboard
+            QtCore.Qt.TextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
+            | QtCore.Qt.TextInteractionFlag.TextSelectableByKeyboard
         )
 
         self.ok_button = QtWidgets.QPushButton("OK")
@@ -208,7 +242,7 @@ class ConsoleProcessDialog(QtWidgets.QDialog):
         self.process = QtCore.QProcess(self)
         self.process.setWorkingDirectory(str(cwd))
         self.process.setProcessEnvironment(environment)
-        self.process.setProcessChannelMode(QtCore.QProcess.MergedChannels)
+        self.process.setProcessChannelMode(QtCore.QProcess.ProcessChannelMode.MergedChannels)
         self.process.readyReadStandardOutput.connect(self._read_output)
         self.process.finished.connect(self._finished)
         self.process.errorOccurred.connect(self._failed)
@@ -217,17 +251,18 @@ class ConsoleProcessDialog(QtWidgets.QDialog):
         self.process.start(program, arguments)
 
     def stop_process(self) -> None:
-        if self.process.state() == QtCore.QProcess.NotRunning:
+        if self.process.state() == QtCore.QProcess.ProcessState.NotRunning:
             return
         self._append("\n[workbench] stopping subprocess...\n")
         self.process.terminate()
         if not self.process.waitForFinished(3000):
             self.process.kill()
 
-    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        if self.process.state() != QtCore.QProcess.NotRunning:
+    def closeEvent(self, event: QtGui.QCloseEvent | None) -> None:
+        if self.process.state() != QtCore.QProcess.ProcessState.NotRunning:
             self.stop_process()
-        event.accept()
+        if event is not None:
+            event.accept()
 
     def _read_output(self) -> None:
         data = bytes(self.process.readAllStandardOutput()).decode(errors="replace")
@@ -242,7 +277,7 @@ class ConsoleProcessDialog(QtWidgets.QDialog):
     def _finished(self, exit_code: int, exit_status: QtCore.QProcess.ExitStatus) -> None:
         self.exit_code = exit_code
         self.exit_status = exit_status
-        status = "ok" if exit_code == 0 and exit_status == QtCore.QProcess.NormalExit else "failed"
+        status = "ok" if exit_code == 0 and exit_status == QtCore.QProcess.ExitStatus.NormalExit else "failed"
         self._append(f"\n[workbench] subprocess finished: {status} (exit code {exit_code})\n")
         self.stop_button.setEnabled(False)
         self.ok_button.setEnabled(True)
@@ -268,7 +303,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("ALBS Provenance Investigation Workbench")
         self.resize(1500, 930)
 
-        self.thread_pool = QtCore.QThreadPool.globalInstance()
+        self.thread_pool = _require(QtCore.QThreadPool.globalInstance())
         self._active_worker: AnalysisWorker | None = None
         # M3: a report-time CVE feed for the Security panel's Potential CVEs
         # column, cached by the source string it was loaded from.
@@ -276,7 +311,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._cve_feed_source: str | None = None
         self.result: AnalysisResult | None = None
         self.current_slice: GraphSlice | None = None
-        self.findings = []
+        self.findings: list[Finding] = []
         self.pending_session: WorkbenchSession | None = None
         self.selected_node_id: str | None = None
         self.selected_edge_index: int | None = None
@@ -324,15 +359,15 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             QtWidgets.QSizePolicy.Fixed,
             QtWidgets.QSizePolicy.Fixed,
         )
-        self.recipe_combo.view().setTextElideMode(QtCore.Qt.ElideNone)
-        self.recipe_combo.view().setMinimumWidth(RECIPE_POPUP_MIN_WIDTH)
+        _require(self.recipe_combo.view()).setTextElideMode(QtCore.Qt.TextElideMode.ElideNone)
+        _require(self.recipe_combo.view()).setMinimumWidth(RECIPE_POPUP_MIN_WIDTH)
         self.layer_button = QtWidgets.QToolButton()
         self.layer_button.setText("Layers")
         self.layer_button.setPopupMode(QtWidgets.QToolButton.InstantPopup)
         self.layer_menu = QtWidgets.QMenu(self.layer_button)
         self.layer_actions: dict[str, QtWidgets.QAction] = {}
         for layer in graph_layers():
-            action = self.layer_menu.addAction(layer.label)
+            action = _require(self.layer_menu.addAction(layer.label))
             action.setCheckable(True)
             action.setChecked(True)
             self.layer_actions[layer.code] = action
@@ -351,7 +386,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.artifact_list.setSpacing(2)
         self.slice_nodes = QtWidgets.QTableWidget(0, 3)
         self.slice_nodes.setHorizontalHeaderLabels(["Type", "Label", "Node id"])
-        self.slice_nodes.horizontalHeader().setStretchLastSection(True)
+        _require(self.slice_nodes.horizontalHeader()).setStretchLastSection(True)
         self.slice_nodes.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.slice_nodes.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 
@@ -376,7 +411,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.raw_inspector = QtWidgets.QPlainTextEdit()
         self.raw_inspector.setReadOnly(True)
         for table in (self.summary_table, self.metadata_table, self.edges_table):
-            table.horizontalHeader().setStretchLastSection(True)
+            _require(table.horizontalHeader()).setStretchLastSection(True)
             table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
             table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
             table.setAlternatingRowColors(True)
@@ -387,13 +422,13 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         self.findings_table = QtWidgets.QTableWidget(0, 4)
         self.findings_table.setHorizontalHeaderLabels(["Severity", "Code", "Subject", "Detail"])
-        self.findings_table.horizontalHeader().setStretchLastSection(True)
+        _require(self.findings_table.horizontalHeader()).setStretchLastSection(True)
         self.findings_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.findings_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 
         self.coverage_table = QtWidgets.QTableWidget(0, 5)
         self.coverage_table.setHorizontalHeaderLabels(["Axis", "Covered", "Total", "Ratio", "Status"])
-        self.coverage_table.horizontalHeader().setStretchLastSection(True)
+        _require(self.coverage_table.horizontalHeader()).setStretchLastSection(True)
         self.coverage_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.evidence_table = QtWidgets.QTableWidget(0, 15)
         self.evidence_table.setHorizontalHeaderLabels(
@@ -415,7 +450,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 "Missing",
             ]
         )
-        self.evidence_table.horizontalHeader().setStretchLastSection(True)
+        _require(self.evidence_table.horizontalHeader()).setStretchLastSection(True)
         self.evidence_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.evidence_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.evidence_table.setAlternatingRowColors(True)
@@ -427,7 +462,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         )
         self.source_table = QtWidgets.QTableWidget(0, 4)
         self.source_table.setHorizontalHeaderLabels(["Category", "Label", "Node id", "Detail"])
-        self.source_table.horizontalHeader().setStretchLastSection(True)
+        _require(self.source_table.horizontalHeader()).setStretchLastSection(True)
         self.source_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.source_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.source_table.setAlternatingRowColors(True)
@@ -437,7 +472,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.query_run_button = QtWidgets.QPushButton("Run")
         self.query_table = QtWidgets.QTableWidget(0, 4)
         self.query_table.setHorizontalHeaderLabels(["Kind", "Label", "Node id", "Detail"])
-        self.query_table.horizontalHeader().setStretchLastSection(True)
+        _require(self.query_table.horizontalHeader()).setStretchLastSection(True)
         self.query_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.query_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.query_table.setAlternatingRowColors(True)
@@ -452,7 +487,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         query_layout.addWidget(self.query_table)
         self.finding_detail_table = QtWidgets.QTableWidget(0, 4)
         self.finding_detail_table.setHorizontalHeaderLabels(["Kind", "Label", "Node id", "Detail"])
-        self.finding_detail_table.horizontalHeader().setStretchLastSection(True)
+        _require(self.finding_detail_table.horizontalHeader()).setStretchLastSection(True)
         self.finding_detail_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.finding_detail_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.finding_detail_table.setAlternatingRowColors(True)
@@ -461,7 +496,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         )
         self.compare_table = QtWidgets.QTableWidget(0, 6)
         self.compare_table.setHorizontalHeaderLabels(["Area", "Change", "Key", "Left", "Right", "Detail"])
-        self.compare_table.horizontalHeader().setStretchLastSection(True)
+        _require(self.compare_table.horizontalHeader()).setStretchLastSection(True)
         self.compare_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.compare_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 
@@ -485,25 +520,25 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.addToolBar(toolbar)
 
         open_action = QtWidgets.QAction(
-            self.style().standardIcon(QtWidgets.QStyle.SP_DialogOpenButton),
+            _require(self.style()).standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DialogOpenButton),
             "Open",
             self,
         )
         open_action.triggered.connect(self.open_source)
         run_action = QtWidgets.QAction(
-            self.style().standardIcon(QtWidgets.QStyle.SP_MediaPlay),
+            _require(self.style()).standardIcon(QtWidgets.QStyle.StandardPixmap.SP_MediaPlay),
             "Analyze",
             self,
         )
         run_action.triggered.connect(self.run_analysis)
         export_action = QtWidgets.QAction(
-            self.style().standardIcon(QtWidgets.QStyle.SP_DialogSaveButton),
+            _require(self.style()).standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DialogSaveButton),
             "Export SVG",
             self,
         )
         export_action.triggered.connect(self.export_svg)
         export_bundle_action = QtWidgets.QAction(
-            self.style().standardIcon(QtWidgets.QStyle.SP_DriveFDIcon),
+            _require(self.style()).standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DriveFDIcon),
             "Export Bundle",
             self,
         )
@@ -526,7 +561,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         reload_program_action = QtWidgets.QAction("Reload Program", self)
         reload_program_action.triggered.connect(self.reload_program)
         exit_action = QtWidgets.QAction("Exit", self)
-        exit_action.triggered.connect(self.close)
+        # QWidget.close() returns bool; connecting it to a void signal is idiomatic
+        # but trips the PyQt5 stub's Callable[..., None] expectation.
+        exit_action.triggered.connect(self.close)  # type: ignore[arg-type]
         zoom_in_action = QtWidgets.QAction("Zoom In", self)
         zoom_in_action.triggered.connect(self.zoom_in_graph)
         zoom_out_action = QtWidgets.QAction("Zoom Out", self)
@@ -599,7 +636,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         left_layout.addWidget(self.artifact_list)
         left_layout.addWidget(self.coverage_label)
 
-        center = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        center = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
         graph_panel = QtWidgets.QWidget()
         graph_layout = QtWidgets.QVBoxLayout(graph_panel)
         graph_layout.setContentsMargins(0, 0, 0, 0)
@@ -650,11 +687,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         dock.setMinimumHeight(BOTTOM_DOCK_MIN_HEIGHT)
         dock.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Ignored)
         dock.setWidget(bottom)
-        dock.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
+        dock.setAllowedAreas(QtCore.Qt.DockWidgetArea.BottomDockWidgetArea)
         self.output_tabs = bottom
         self.output_dock = dock
-        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock)
-        self.statusBar().addWidget(self.progress_label)
+        self.addDockWidget(QtCore.Qt.DockWidgetArea.BottomDockWidgetArea, dock)
+        _require(self.statusBar()).addWidget(self.progress_label)
 
     def _configure_actions(
         self,
@@ -702,13 +739,14 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         fit_action: QtWidgets.QAction,
         reset_action: QtWidgets.QAction,
     ) -> None:
-        file_menu = self.menuBar().addMenu("File")
+        menu_bar = _require(self.menuBar())
+        file_menu = _require(menu_bar.addMenu("File"))
         file_menu.addAction(open_action)
         file_menu.addAction(build_sbom_action)
         file_menu.addSeparator()
         file_menu.addAction(save_session_action)
         file_menu.addAction(load_session_action)
-        export_menu = file_menu.addMenu("Export")
+        export_menu = _require(file_menu.addMenu("Export"))
         export_menu.addAction(export_action)
         export_menu.addAction(export_png_action)
         export_menu.addAction(export_bundle_action)
@@ -718,11 +756,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         file_menu.addAction(reload_program_action)
         file_menu.addAction(exit_action)
 
-        run_menu = self.menuBar().addMenu("Run")
+        run_menu = _require(menu_bar.addMenu("Run"))
         run_menu.addAction(run_action)
         run_menu.addAction(compare_action)
 
-        view_menu = self.menuBar().addMenu("View")
+        view_menu = _require(menu_bar.addMenu("View"))
         view_menu.addAction(zoom_in_action)
         view_menu.addAction(zoom_out_action)
         view_menu.addAction(fit_action)
@@ -730,7 +768,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
     def _relax_bottom_panel_minimums(self, bottom: QtWidgets.QTabWidget) -> None:
         for index in range(bottom.count()):
-            page = bottom.widget(index)
+            page = _require(bottom.widget(index))
             page.setMinimumHeight(BOTTOM_PAGE_MIN_HEIGHT)
             page.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Ignored)
 
@@ -976,7 +1014,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._log(f"Opening classic CLI cache {cache}")
         self.run_analysis()
 
-    def _classic_build_request(self, build_id: str) -> dict[str, object]:
+    def _classic_build_request(self, build_id: str) -> _ClassicRequest:
         classic_root = self._classic_root()
         script = classic_root / "example--full.sh"
         if not script.exists():
@@ -1074,7 +1112,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             **self._verify_cpe_run_kwargs(),
         )
 
-    def _verify_cpe_run_kwargs(self) -> dict[str, object]:
+    def _verify_cpe_run_kwargs(self) -> dict[str, Any]:
         """RunSpec CPE-verify kwargs from the toolbar field (D101/M3).
 
         An NVD-style CPE dictionary resolves a candidate to an official CPE, so
@@ -1091,7 +1129,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             return {"verify_cpe": candidate}
         return {"verify_cpe_url": value}
 
-    def _errata_run_kwargs(self) -> dict[str, object]:
+    def _errata_run_kwargs(self) -> dict[str, Any]:
         """RunSpec errata kwargs from the toolbar combo + feed field (D79/M3).
 
         "" -> no errata source (not_checked stays the default). "dnf" queries
@@ -1179,8 +1217,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             name = summary.metadata.get("name") or summary.label
             arch = summary.metadata.get("arch") or "?"
             item = QtWidgets.QListWidgetItem(f"{name}  [{arch}]")
-            item.setData(QtCore.Qt.UserRole, summary.id)
-            item.setData(QtCore.Qt.UserRole + 1, f"{name} {arch} {summary.id}".casefold())
+            item.setData(QtCore.Qt.ItemDataRole.UserRole, summary.id)
+            item.setData(QtCore.Qt.ItemDataRole.UserRole + 1, f"{name} {arch} {summary.id}".casefold())
             item.setToolTip(summary.id)
             self.artifact_list.addItem(item)
 
@@ -1189,8 +1227,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         visible = 0
         first_visible: QtWidgets.QListWidgetItem | None = None
         for index in range(self.artifact_list.count()):
-            item = self.artifact_list.item(index)
-            haystack = str(item.data(QtCore.Qt.UserRole + 1))
+            item = _require(self.artifact_list.item(index))
+            haystack = str(item.data(QtCore.Qt.ItemDataRole.UserRole + 1))
             hidden = bool(needle) and needle not in haystack
             item.setHidden(hidden)
             if not hidden:
@@ -1218,7 +1256,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             ]
             for column, value in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(value)
-                item.setData(QtCore.Qt.UserRole, finding.subject or "")
+                item.setData(QtCore.Qt.ItemDataRole.UserRole, finding.subject or "")
                 self.findings_table.setItem(row, column, item)
         self.findings_table.resizeColumnsToContents()
 
@@ -1262,7 +1300,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             ]
             for column, value in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(value)
-                item.setData(QtCore.Qt.UserRole, evidence.node_id)
+                item.setData(QtCore.Qt.ItemDataRole.UserRole, evidence.node_id)
                 if value == "missing" or value == "incomplete":
                     item.setForeground(QtGui.QBrush(QtGui.QColor("#F08A8A")))
                 elif value == "ok" or value == "complete":
@@ -1332,13 +1370,13 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         )
         self._populate_query_like_table(self.query_table, rows)
 
-    def _populate_finding_detail(self, finding) -> None:
+    def _populate_finding_detail(self, finding: Finding) -> None:
         if self.result is None:
             return
         rows = finding_drilldown_rows(self.result.graph, finding)
         self._populate_query_like_table(self.finding_detail_table, rows)
 
-    def _populate_query_like_table(self, table: QtWidgets.QTableWidget, rows) -> None:
+    def _populate_query_like_table(self, table: QtWidgets.QTableWidget, rows: list[Any]) -> None:
         table.setRowCount(len(rows))
         for row, item_data in enumerate(rows):
             values = [
@@ -1349,14 +1387,14 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             ]
             for column, value in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(str(value))
-                item.setData(QtCore.Qt.UserRole, item_data.node_id)
+                item.setData(QtCore.Qt.ItemDataRole.UserRole, item_data.node_id)
                 table.setItem(row, column, item)
         table.resizeColumnsToContents()
 
     def _current_subject_id(self) -> str | None:
         current = self.artifact_list.currentItem()
         if current is not None:
-            return str(current.data(QtCore.Qt.UserRole))
+            return str(current.data(QtCore.Qt.ItemDataRole.UserRole))
         return self.selected_node_id
 
     def _populate_timeline(self) -> None:
@@ -1384,7 +1422,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             ),
             default=0,
         )
-        self.recipe_combo.view().setMinimumWidth(max(RECIPE_POPUP_MIN_WIDTH, widest_item + 72))
+        _require(self.recipe_combo.view()).setMinimumWidth(max(RECIPE_POPUP_MIN_WIDTH, widest_item + 72))
 
     def _update_coverage(self) -> None:
         assert self.result is not None
@@ -1397,7 +1435,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _artifact_changed(self, current: QtWidgets.QListWidgetItem | None) -> None:
         if current is None:
             return
-        self.selected_node_id = str(current.data(QtCore.Qt.UserRole))
+        self.selected_node_id = str(current.data(QtCore.Qt.ItemDataRole.UserRole))
         self.render_current_slice()
 
     def render_current_slice(self) -> None:
@@ -1406,7 +1444,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         current = self.artifact_list.currentItem()
         if current is None:
             return
-        subject_id = current.data(QtCore.Qt.UserRole)
+        subject_id = current.data(QtCore.Qt.ItemDataRole.UserRole)
         slices = GraphSlices(self.result.graph)
         try:
             mode = self.mode_combo.currentText()
@@ -1488,7 +1526,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     ) -> None:
         self.svg_widget.load(QtCore.QByteArray(svg.encode("utf-8")))
         self.svg_widget.set_regions(node_regions, edge_regions)
-        renderer = self.svg_widget.renderer()
+        renderer = _require(self.svg_widget.renderer())
         size = renderer.defaultSize()
         if not size.isValid() or size.width() <= 0 or size.height() <= 0:
             size = QtCore.QSize(900, 560)
@@ -1497,7 +1535,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.svg_widget.setFixedSize(target)
 
     def _graph_target_size(self, size: QtCore.QSize) -> QtCore.QSize:
-        viewport = self.svg_scroll.viewport().size()
+        viewport = _require(self.svg_scroll.viewport()).size()
         if self.graph_fit_to_view:
             scale = min(
                 viewport.width() / max(1, size.width()),
@@ -1562,7 +1600,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             values = [str(node.type), node.label, node.id]
             for column, value in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(value)
-                item.setData(QtCore.Qt.UserRole, node.id)
+                item.setData(QtCore.Qt.ItemDataRole.UserRole, node.id)
                 self.slice_nodes.setItem(row, column, item)
         self.slice_nodes.resizeColumnsToContents()
 
@@ -1570,7 +1608,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         selected = self.slice_nodes.selectedItems()
         if not selected:
             return
-        node_id = selected[0].data(QtCore.Qt.UserRole)
+        node_id = selected[0].data(QtCore.Qt.ItemDataRole.UserRole)
         if node_id:
             self._show_node(str(node_id))
 
@@ -1584,27 +1622,27 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         row = item.row()
         if 0 <= row < len(self.findings):
             self._populate_finding_detail(self.findings[row])
-        subject = item.data(QtCore.Qt.UserRole)
+        subject = item.data(QtCore.Qt.ItemDataRole.UserRole)
         if subject:
             self._navigate_to_node(str(subject), prefer_artifact=True)
 
     def _edge_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
-        edge_index = item.data(QtCore.Qt.UserRole)
+        edge_index = item.data(QtCore.Qt.ItemDataRole.UserRole)
         if edge_index is not None:
             self._show_edge(int(edge_index), from_slice=False)
 
     def _evidence_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
-        node_id = item.data(QtCore.Qt.UserRole)
+        node_id = item.data(QtCore.Qt.ItemDataRole.UserRole)
         if node_id:
             self._navigate_to_node(str(node_id), prefer_artifact=True)
 
     def _source_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
-        node_id = item.data(QtCore.Qt.UserRole)
+        node_id = item.data(QtCore.Qt.ItemDataRole.UserRole)
         if node_id:
             self._navigate_to_node(str(node_id), prefer_artifact=False)
 
     def _query_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
-        node_id = item.data(QtCore.Qt.UserRole)
+        node_id = item.data(QtCore.Qt.ItemDataRole.UserRole)
         if node_id:
             self._navigate_to_node(str(node_id), prefer_artifact=True)
 
@@ -1626,7 +1664,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.recipe_combo.setCurrentIndex(0)
 
     def _compare_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
-        node_id = item.data(QtCore.Qt.UserRole)
+        node_id = item.data(QtCore.Qt.ItemDataRole.UserRole)
         if node_id:
             self._navigate_to_node(str(node_id), prefer_artifact=True)
 
@@ -1675,7 +1713,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _select_slice_node(self, node_id: str) -> None:
         for row in range(self.slice_nodes.rowCount()):
             item = self.slice_nodes.item(row, 0)
-            if item is not None and item.data(QtCore.Qt.UserRole) == node_id:
+            if item is not None and item.data(QtCore.Qt.ItemDataRole.UserRole) == node_id:
                 self.slice_nodes.blockSignals(True)
                 self.slice_nodes.selectRow(row)
                 self.slice_nodes.blockSignals(False)
@@ -1701,8 +1739,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
     def _select_artifact(self, node_id: str) -> bool:
         for row in range(self.artifact_list.count()):
-            item = self.artifact_list.item(row)
-            if item.data(QtCore.Qt.UserRole) == node_id:
+            item = _require(self.artifact_list.item(row))
+            if item.data(QtCore.Qt.ItemDataRole.UserRole) == node_id:
                 if self.artifact_list.currentItem() is item:
                     self.render_current_slice()
                 else:
@@ -1731,7 +1769,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             ]
             for column, value in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(value)
-                item.setData(QtCore.Qt.UserRole, edge.index)
+                item.setData(QtCore.Qt.ItemDataRole.UserRole, edge.index)
                 self.edges_table.setItem(row, column, item)
         self.edges_table.resizeColumnsToContents()
 
@@ -1766,7 +1804,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         Path(path).write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         self._log(f"Exported evidence bundle to {path}")
 
-    def _current_bundle(self) -> dict:
+    def _current_bundle(self) -> dict[str, Any]:
         assert self.result is not None
         return evidence_bundle(
             graph=self.result.graph,
@@ -1832,7 +1870,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         if not size.isValid() or size.isEmpty():
             size = self.svg_default_size
         image = QtGui.QImage(size, QtGui.QImage.Format_ARGB32)
-        image.fill(QtCore.Qt.white)
+        image.fill(QtCore.Qt.GlobalColor.white)
         painter = QtGui.QPainter(image)
         try:
             renderer.render(painter)
@@ -1871,7 +1909,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             values = [delta.area, delta.change, delta.key, delta.left, delta.right, delta.detail]
             for column, value in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(value)
-                item.setData(QtCore.Qt.UserRole, delta.left_node_id or delta.right_node_id or "")
+                item.setData(QtCore.Qt.ItemDataRole.UserRole, delta.left_node_id or delta.right_node_id or "")
                 self.compare_table.setItem(row, column, item)
         self.compare_table.resizeColumnsToContents()
         self._log(f"Compared current graph with {path}: {len(deltas)} build deltas")
@@ -1934,7 +1972,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             universe_store=self.universe_panel.store_path(),
             universe_favourites=tuple(self.universe_panel.favourites()),
             selected_artifact_id=(
-                str(current.data(QtCore.Qt.UserRole)) if current is not None else None
+                str(current.data(QtCore.Qt.ItemDataRole.UserRole)) if current is not None else None
             ),
             selected_node_id=self.selected_node_id,
             selected_edge_index=self.selected_edge_index,
@@ -1980,7 +2018,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             return
         self.close()
 
-    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+    def closeEvent(self, event: QtGui.QCloseEvent | None) -> None:
         # A running analysis worker cannot be interrupted mid-fetch; detach its
         # signals so a late emit does not target the half-destroyed window, then
         # drop queued work. We do not block the close on a network fetch.
@@ -1996,7 +2034,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                     pass
         self.thread_pool.clear()
         self.thread_pool.waitForDone(100)
-        event.accept()
+        if event is not None:
+            event.accept()
 
 
 def run(

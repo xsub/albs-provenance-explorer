@@ -313,28 +313,21 @@ stated "thousands of applications":
 The PyQt5 investigation workbench is a read-only frontend over the same
 `services` facade; its current limits:
 
-- **`gui/qt_app.py` is the untyped, single-class file.** The main window
-  (a single class) carries `# mypy: ignore-errors` (PyQt5 stubs are imperfect
-  and signal/slot typing is painful). Headless + interaction tests now drive
-  construction, result-handling, slice rendering, the inspector, the M3 Security
-  panel, the M2 dependency filters, the M4 universe panel (open/search/walk/
-  paths/favourites), the M5 Markdown/PNG export + session capture/restore, and
-  read-only interaction paths (timeline view switch, layer filter, graph search,
-  zoom, queries, finding drill-down, recipes, edge inspect, bundle/HTML export,
-  session save) -- ~73% line coverage, up from the initial ~60%. Without the
-  blanket ignore mypy still reports ~150 errors (real `union-attr` / annotation
-  gaps -- PyQt5 5.15 ships `.pyi` stubs, so the Qt types are real, not `Any`);
-  the principled fix is to split the single-class window into smaller *typed*
-  panel classes rather than scatter ~150 per-line ignores. That split is under
-  way: the M4 Universe (`gui/universe_panel.py`, D102), M3 Security
-  (`gui/security_panel.py`, D103), M2 Dependency (`gui/dependency_panel.py`,
-  D104) and build-task Timeline (`gui/timeline_panel.py`, D105) panels are all
-  extracted as `QWidget` classes that type-check under mypy strict with no
-  ignore (4/4 panels). What still blocks removing the blanket ignore is the
-  residual main-window *shell* (toolbar/menus, artifact list + graph SVG widget,
-  inspector, queries / source / evidence / compare tabs, navigation, session),
-  which carries the same Optional/enum frictions and is the bulk of the file --
-  a follow-up in its own right. The rest of `gui/` is typed/tested and the
+- **`gui/qt_app.py` is large but now fully typed.** The main window was a
+  single ~2.6k-line class under a blanket `# mypy: ignore-errors`. It has been
+  split into typed `QWidget` panel modules -- Universe (`gui/universe_panel.py`,
+  D102), Security (`gui/security_panel.py`, D103), Dependency
+  (`gui/dependency_panel.py`, D104), Timeline (`gui/timeline_panel.py`, D105) --
+  and the residual shell was then made strict-clean and the **blanket ignore
+  retired** (D106): `qt_app.py` (now ~2k lines) type-checks under `mypy
+  --strict` with the rest of the package, with **exactly one** targeted
+  `# type: ignore[arg-type]` (the idiomatic `QWidget.close` -> void signal). The
+  remaining limit is interaction *coverage*, not typing: headless + interaction
+  tests drive construction, result-handling, slice rendering, the inspector, the
+  four panels, the M5 Markdown/PNG export + session capture/restore and the
+  read-only paths (view switch, layer filter, graph search, zoom, queries,
+  finding drill-down, recipes, edge inspect, bundle/HTML export, session save) --
+  ~73% line coverage; deeper interaction coverage is the open follow-up. The
   analysable logic lives in the well-covered, typed `services/` layer (80-97%).
 - **Needs a Qt platform.** Tests run headless via `QT_QPA_PLATFORM=offscreen`;
   a real run needs a display. Graphviz (`dot`) renders the graph and degrades
