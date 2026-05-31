@@ -339,7 +339,12 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.errata_combo.addItem("Errata: http", "http")
         self.errata_combo.addItem("Errata: dnf", "dnf")
         self.errata_feed_edit = QtWidgets.QLineEdit()
-        self.errata_feed_edit.setPlaceholderText("errata feed file / URL")
+        self.errata_feed_edit.setPlaceholderText("blank = errata.almalinux.org")
+        self.errata_feed_edit.setToolTip(
+            "Errata feed file or URL for 'Errata: http'. Leave blank to use the "
+            "official AlmaLinux feed for the build's distro "
+            "(errata.almalinux.org/<N>/errata.full.json)."
+        )
         self.errata_feed_edit.setClearButtonEnabled(True)
         self.errata_feed_edit.setFixedWidth(180)
         # M3: CPE dictionary (verify candidates -> official CPE) feeds RunSpec;

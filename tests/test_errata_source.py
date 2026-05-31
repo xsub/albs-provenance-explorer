@@ -16,11 +16,64 @@ from albs_graph.adapters.errata_source import (
     DnfErrataSource,
     ErrataAdvisory,
     HttpErrataSource,
+    almalinux_errata_feed_url,
+    almalinux_major_version,
     attach_errata_from_source,
     errata_source_for,
 )
 from albs_graph.model import Node, NodeType, ProvenanceGraph, Relation
 from albs_graph.nevra import RpmNevra
+from albs_graph.pipeline import EnrichmentContext, ErrataSourceStep, RunSpec
+
+
+def _el_graph(*releases: str) -> ProvenanceGraph:
+    graph = ProvenanceGraph()
+    for index, release in enumerate(releases):
+        graph.add_node(
+            Node(
+                f"rpm:{index}",
+                NodeType.BINARY_RPM,
+                f"pkg{index}",
+                {"name": f"pkg{index}", "release": release, "arch": "x86_64"},
+            )
+        )
+    return graph
+
+
+def test_almalinux_major_version_picks_the_dominant_el_token() -> None:
+    graph = _el_graph("16.el9_4.1", "14.el9_2", "3.el9", "1.el8")  # el9 dominates
+    assert almalinux_major_version(graph) == "9"
+    assert almalinux_major_version(ProvenanceGraph()) is None  # nothing to infer
+
+
+def test_almalinux_errata_feed_url_is_the_canonical_feed() -> None:
+    assert almalinux_errata_feed_url("9") == "https://errata.almalinux.org/9/errata.full.json"
+    assert almalinux_errata_feed_url(10) == "https://errata.almalinux.org/10/errata.full.json"
+
+
+def test_errata_step_defaults_http_feed_to_almalinux(monkeypatch) -> None:
+    # "http" with no feed/URL must default to the official AlmaLinux feed for the
+    # build's own distro version, derived from the RPM releases.
+    captured: dict[str, object] = {}
+
+    def _recorder(kind, *, feed_file, url, ttl_seconds, on_progress):
+        captured["kind"] = kind
+        captured["url"] = url
+        return None  # short-circuit: the step logs "skipping" and returns
+
+    monkeypatch.setattr("albs_graph.pipeline.errata_source_for", _recorder)
+    graph = _el_graph("16.el9_4.1", "14.el9_2")
+    ctx = EnrichmentContext(
+        graph=graph,
+        spec=RunSpec(errata_source="http"),
+        selector=lambda _node: True,
+        on_progress=None,
+    )
+
+    ErrataSourceStep().run(ctx)
+
+    assert captured["kind"] == "http"
+    assert captured["url"] == "https://errata.almalinux.org/9/errata.full.json"
 
 _FEED = {
     "data": [

@@ -33,6 +33,7 @@ import json
 import re
 import shutil
 import subprocess
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Protocol, runtime_checkable
@@ -46,6 +47,36 @@ Fetcher = Callable[[str], bytes]
 # A dnf runner takes argv and returns (returncode, stdout); injectable for tests.
 Runner = Callable[[list[str]], tuple[int, str]]
 NodeSelector = Callable[[Node], bool]
+
+# The official AlmaLinux errata feed: one full JSON per distro major version.
+# https://errata.almalinux.org/9/errata.full.json is the canonical "is this
+# NEVRA in an advisory?" source the three-state errata check (D79) consults.
+ALMALINUX_ERRATA_FEED_URL = "https://errata.almalinux.org/{version}/errata.full.json"
+_EL_RELEASE = re.compile(r"\.el(\d+)")
+
+
+def almalinux_errata_feed_url(version: str | int) -> str:
+    """Canonical AlmaLinux ``errata.full.json`` URL for a distro major version."""
+
+    return ALMALINUX_ERRATA_FEED_URL.format(version=version)
+
+
+def almalinux_major_version(graph: ProvenanceGraph) -> str | None:
+    """Infer the distro major version (``8`` / ``9`` / ``10``) from the build.
+
+    Reads the ``.elN`` token out of the binary RPM release strings and returns
+    the dominant one, so the right errata feed can be defaulted without the
+    caller knowing which AlmaLinux release the build targets.
+    """
+
+    counts: Counter[str] = Counter()
+    for node in graph.find_by_type(NodeType.BINARY_RPM):
+        match = _EL_RELEASE.search(str(node.metadata.get("release") or ""))
+        if match:
+            counts[match.group(1)] += 1
+    if not counts:
+        return None
+    return counts.most_common(1)[0][0]
 
 
 @dataclass(frozen=True)

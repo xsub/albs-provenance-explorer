@@ -19,7 +19,23 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   fix(gui): workbench usability regressions (toolbar overflow, Enter,
+- (this)   feat(errata): make the live errata.almalinux.org fetch work + default.
+           "Errata: missing" is the not_checked default; pointing the D79 http
+           source at the real feed exposed three blockers, all fixed: (1)
+           errata_source=http with no feed/URL now defaults to the canonical
+           AlmaLinux feed for the build's own distro -- almalinux_major_version
+           reads the dominant .elN from RPM releases, almalinux_errata_feed_url
+           builds errata.almalinux.org/<N>/errata.full.json; (2) the feed 403s
+           the default Python-urllib agent, so _default_http_get now sends a
+           descriptive User-Agent; (3) macOS framework Python has no CA bundle,
+           so the fetcher uses a certifi-backed ssl context (certifi declared
+           explicitly), system store on Linux. Plus errata now scopes to ALL
+           arches (the default x86_64+noarch selector left ppc64le/aarch64 RPMs
+           not_checked). Verified live (build 17812 el9): all 90 RPMs consulted ->
+           confirmed_clean. Our _index_feed already parsed the real format. +4
+           test cases. Suite 388 -> 392. decisions.md D108.
+
+- 6665efc  fix(gui): workbench usability regressions (toolbar overflow, Enter,
            file load). (1) The M3 security inputs (errata/CPE/CVE) overflowed the
            single toolbar into Qt's >> extension menu; they move to a second
            "Security sources" toolbar row (addToolBarBreak), Source/SBOM shrink,

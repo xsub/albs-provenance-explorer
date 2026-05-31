@@ -2948,6 +2948,44 @@ build loads into its actual RPMs, stale build id dropped). Suite 386 -> 388.
 
 ---
 
+## D108 - Make the live errata.almalinux.org fetch actually work (and default)
+
+"Why is errata shown as missing?" -- because the three-state default is
+``not_checked``: no source had been consulted. D79/D94 built the `http` source,
+but pointing it at the real feed surfaced three blockers, all now fixed so the
+official feed *just works*:
+
+1. **Default URL + version.** `errata_source="http"` with no feed/URL now
+   defaults to the canonical AlmaLinux feed for the *build's own* distro:
+   `almalinux_major_version(graph)` reads the dominant `.elN` token out of the
+   RPM releases and `almalinux_errata_feed_url(version)` builds
+   `https://errata.almalinux.org/<N>/errata.full.json`. The workbench toggle's
+   feed field can stay blank.
+2. **User-Agent.** `errata.almalinux.org` returns **403** to the default
+   `Python-urllib` agent; `live_feeds._default_http_get` now sends a descriptive
+   `User-Agent` (`HTTP_USER_AGENT`). (Helps the NVD feeds too.)
+3. **macOS TLS.** macOS framework Python has no system CA bundle, so the fetch
+   then failed `CERTIFICATE_VERIFY_FAILED`. The fetcher uses a **certifi**-backed
+   `ssl` context when available (certifi is declared explicitly now, and already
+   arrives via `requests`), falling back to the system store on Linux.
+
+Plus an **all-architecture** scope for errata: the default enrichment selector
+keeps only `x86_64`+`noarch` (right for the expensive header/payload rungs), so a
+`ppc64le`/`aarch64` build's RPMs stayed `not_checked` even after consulting the
+feed. Errata is build-wide security context and a cheap dict lookup, so the step
+now checks every arch unless one is pinned. Our existing `_index_feed` parser
+already handled the real `errata.full.json` shape (`{"schema_version","data":[
+{id,type,severity,packages:[{name,epoch,version,release,arch}],references:[{id,
+type}]} ]}`) unchanged.
+
+Verified end to end against the live feed (build 17812, el9): the source is
+consulted across all **90** RPMs and every one resolves to `confirmed_clean`
+(its exact NEVRAs are newer than the advisories in the feed -- correctly *not*
+falsely flagged; matching stays exact-NEVRA). +4 test cases (version inference,
+URL builder, the http default-URL wiring, the User-Agent). Suite 388 -> 392.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

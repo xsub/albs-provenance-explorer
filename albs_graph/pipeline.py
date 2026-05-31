@@ -40,7 +40,12 @@ from albs_graph.adapters.dnf import (
     resolve_soname_claims,
 )
 from albs_graph.adapters.errata import attach_errata_file
-from albs_graph.adapters.errata_source import attach_errata_from_source, errata_source_for
+from albs_graph.adapters.errata_source import (
+    almalinux_errata_feed_url,
+    almalinux_major_version,
+    attach_errata_from_source,
+    errata_source_for,
+)
 from albs_graph.adapters.pylang import attach_python_imports, attach_python_requirements
 from albs_graph.adapters.rpm_payload import enrich_graph_with_rpm_payloads
 from albs_graph.adapters.rpm_remote import enrich_graph_with_rpm_headers
@@ -252,18 +257,35 @@ class ErrataSourceStep:
         # Errata is measured across every (selected) RPM, not one subject -- a
         # build's security context is "which of my artifacts carry advisories",
         # so this uses the binary-RPM selector, not ctx.subject().
+        url = ctx.spec.errata_url
+        # "http" with no explicit feed/URL defaults to the official AlmaLinux
+        # errata feed for the build's own distro version, so it just works.
+        if ctx.spec.errata_source == "http" and not ctx.spec.errata_feed and not url:
+            version = almalinux_major_version(ctx.graph)
+            if version:
+                url = almalinux_errata_feed_url(version)
+                ctx.log(f"No errata feed given; defaulting to {url}")
         source = errata_source_for(
             ctx.spec.errata_source,
             feed_file=ctx.spec.errata_feed,
-            url=ctx.spec.errata_url,
+            url=url,
             ttl_seconds=ctx.spec.feed_ttl_seconds,
             on_progress=ctx.on_progress,
         )
         if source is None:
             ctx.log("Errata source requested but could not be built; skipping")
             return None
+        # Errata is build-wide security context -- "which of my artifacts carry
+        # advisories" spans every architecture, and the lookup is a cheap dict
+        # hit per RPM. The default enrichment selector keeps only x86_64+noarch
+        # (sensible for the expensive header/payload rungs), which would leave a
+        # ppc64le/aarch64 build's RPMs "not_checked". So errata checks all archs
+        # unless one is explicitly pinned.
+        selector = make_binary_rpm_selector(
+            package=ctx.spec.package, arch=ctx.spec.arch, all_archs=ctx.spec.arch is None
+        )
         ctx.log(f"Querying errata source {source.name} for advisory coverage")
-        return attach_errata_from_source(ctx.graph, source, node_selector=ctx.selector)
+        return attach_errata_from_source(ctx.graph, source, node_selector=selector)
 
 
 @dataclass(frozen=True)

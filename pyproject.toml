@@ -24,7 +24,8 @@ dependencies = [
   "cyclonedx-python-lib>=7.0",
   "spdx-tools>=0.8",
   "beautifulsoup4>=4.12",
-  "lxml>=5.0"
+  "lxml>=5.0",
+  "certifi>=2024.0"
 ]
 
 [project.optional-dependencies]

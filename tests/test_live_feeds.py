@@ -211,3 +211,37 @@ def test_unparseable_response_raises_a_clear_error(tmp_path: Path) -> None:
         fetcher=lambda _url: b"not json",
     )
     assert none_result is None
+
+
+def test_default_http_get_sends_a_descriptive_user_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+    # errata.almalinux.org returns 403 to the default "Python-urllib" agent, so
+    # the stdlib fetcher must send a real User-Agent.
+    import urllib.request
+
+    from albs_graph.security.live_feeds import HTTP_USER_AGENT, _default_http_get
+
+    captured: dict[str, str | None] = {}
+
+    class _Resp:
+        def __enter__(self) -> "_Resp":
+            return self
+
+        def __exit__(self, *_: object) -> bool:
+            return False
+
+        def read(self) -> bytes:
+            return b"{}"
+
+    def _fake_urlopen(
+        request: urllib.request.Request, timeout: float = 0, context: object = None
+    ) -> _Resp:
+        captured["ua"] = request.get_header("User-agent")
+        return _Resp()
+
+    monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen)
+
+    body = _default_http_get("https://errata.almalinux.org/9/errata.full.json")
+
+    assert body == b"{}"
+    assert captured["ua"] == HTTP_USER_AGENT
+    assert captured["ua"] and "albs-provenance-explorer" in captured["ua"]

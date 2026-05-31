@@ -34,6 +34,7 @@ mtime check on top to enforce a TTL since feeds *do* change upstream.
 from __future__ import annotations
 
 import json
+import ssl
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -196,14 +197,39 @@ def _within_ttl(path: Path, ttl_seconds: float | None) -> bool:
     return age <= ttl_seconds
 
 
+# A descriptive User-Agent is mandatory for some feeds: errata.almalinux.org
+# returns 403 to the default ``Python-urllib`` agent, so a live errata fetch
+# fails without this. Harmless for the NVD CPE/CVE feeds.
+HTTP_USER_AGENT = "albs-provenance-explorer/0.1 (+https://github.com/AlmaLinux)"
+
+
 def _default_http_get(url: str) -> bytes:
     """Stdlib HTTP GET. Inlined here so the security module stays adapter-free."""
 
     from urllib.request import Request, urlopen  # lazy import (no top-level network)
 
-    request = Request(url, headers={"Accept": "application/json"})
-    with urlopen(request, timeout=30) as response:  # noqa: S310 -- caller passes URL
+    request = Request(
+        url, headers={"Accept": "application/json", "User-Agent": HTTP_USER_AGENT}
+    )
+    with urlopen(request, timeout=30, context=_ssl_context()) as response:  # noqa: S310
         return bytes(response.read())
+
+
+def _ssl_context() -> ssl.SSLContext:
+    """A verifying SSL context that works on macOS too.
+
+    macOS framework Python has no system CA bundle, so the default context fails
+    ``CERTIFICATE_VERIFY_FAILED`` against e.g. errata.almalinux.org. Prefer
+    certifi's bundle when present (it is a near-ubiquitous transitive dep); fall
+    back to the system default on Linux, which already verifies.
+    """
+
+    try:
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:  # noqa: BLE001 -- certifi absent or unreadable -> system default
+        return ssl.create_default_context()
 
 
 def _cpe_dictionary_from_bytes(body: bytes) -> CpeDictionary:
