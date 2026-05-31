@@ -20,6 +20,7 @@ from pathlib import Path
 import pytest
 from PyQt5 import QtWidgets
 
+from albs_graph.adapters.albs import BuildSummary
 from albs_graph.fixtures import SYNTHETIC_RPM_ID, build_synthetic_fixture_graph
 from albs_graph.gui.qt_app import WorkbenchWindow
 from albs_graph.model import Node, NodeType, ProvenanceGraph
@@ -55,6 +56,15 @@ def _no_modal_dialogs(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             QtWidgets.QMessageBox, name, lambda *args, **kwargs: QtWidgets.QMessageBox.Ok
         )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_cache(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Keep the build-catalog / http-cache writes (D120) out of the real ~/.cache
+    # so analysing a build in a test never touches the developer's machine.
+    monkeypatch.setenv("ALBS_HTTP_CACHE", str(tmp_path_factory.mktemp("albs-cache")))
 
 
 def _fixture_result() -> AnalysisResult:
@@ -542,6 +552,57 @@ def test_errata_both_cross_check_option_feeds_the_run_spec(
         assert kwargs["errata_url"] == "https://errata.example/9/errata.full.json"
         # The ERRATA badge tooltip reflects the cross-check.
         assert "cross-checked" in window._errata_source_uri()
+    finally:
+        window.close()
+
+
+def test_refresh_build_list_populates_catalog_and_completer(
+    qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Refresh fetches the recent ALBS builds into the cached catalog and feeds
+    # the build-id autocomplete (D120). The fetch is stubbed -> fully offline.
+    from albs_graph.gui import qt_app
+
+    builds = [
+        BuildSummary(build_id=57812, packages=("buildah",), platforms=("AlmaLinux-10",)),
+        BuildSummary(build_id=57810, packages=("nginx",), platforms=("AlmaLinux-9",)),
+    ]
+    monkeypatch.setattr(qt_app, "fetch_build_list", lambda *a, **k: builds)
+
+    window = WorkbenchWindow()
+    try:
+        window.refresh_build_list()
+        assert window.build_catalog.build_ids() == [57812, 57810]  # cached, newest first
+        completions = set(window._build_completer.model().stringList())
+        assert {"57812", "57810"} <= completions  # autocomplete now offers them
+    finally:
+        window.close()
+
+
+def test_browse_builds_picks_a_catalog_id_and_runs(
+    qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Browsing the catalog picks a real build id (no sparse-id guessing) and
+    # kicks off the analysis for it.
+    window = WorkbenchWindow()
+    try:
+        window.build_catalog.record(
+            BuildSummary(build_id=57810, packages=("buildah",), platforms=("AlmaLinux-10",))
+        )
+        runs: list[bool] = []
+        monkeypatch.setattr(window, "_analyze_or_fetch_all", lambda: runs.append(True))
+        # The picker returns the chosen label; the build id is its leading token.
+        monkeypatch.setattr(
+            QtWidgets.QInputDialog,
+            "getItem",
+            staticmethod(lambda *a, **k: ("57810  buildah  AlmaLinux-10", True)),
+        )
+
+        window.browse_builds()
+
+        assert window.build_id_edit.text() == "57810"
+        assert window.source_edit.text() == ""  # the build id is the explicit choice
+        assert runs == [True]
     finally:
         window.close()
 

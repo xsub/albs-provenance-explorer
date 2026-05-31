@@ -19,7 +19,17 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   feat(errata): cross-check the web feed against dnf and mark the
+- (this)   feat(builds): a cached catalog of real build numbers (D120) so a
+           sparse-id guess (a 404) is avoidable. adapters.albs gains
+           fetch_build_list/parse_build_list/BuildSummary off the ALBS list
+           endpoint; services.BuildCatalog persists them as a JSON db under
+           default_cache_root (upsert-by-id, tolerant of missing/corrupt). GUI:
+           a Builds menu (Browse Builds... picker + Refresh Build List), a
+           QCompleter on the build-id field, and record-on-analysis. Startup
+           stays offline. +7 tests (an autouse fixture isolates the cache dir).
+           Suite 410 -> 417. decisions.md D120.
+
+- c112d6c  feat(errata): cross-check the web feed against dnf and mark the
            advisories both confirm. A fourth errata mode "both" consults
            errata.almalinux.org *and* dnf updateinfo; attach_errata_cross_checked
            records sources=[...] + a cross_checked flag on each ERRATA node and

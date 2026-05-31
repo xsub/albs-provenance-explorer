@@ -1,6 +1,6 @@
 # Test guide
 
-The suite has **410 tests** across `tests/`. They are **fully offline** — no test
+The suite has **417 tests** across `tests/`. They are **fully offline** — no test
 touches the network or a host RPM tool: network adapters are exercised through
 injected fetchers / a hand-built RPM byte structure, `dnf` / `rpmkeys` through
 injected runners, and the PyQt GUI headless under `QT_QPA_PLATFORM=offscreen`.
@@ -13,7 +13,7 @@ QT_QPA_PLATFORM=offscreen pytest         # required for the GUI tests
 ```
 
 The per-file counts below are a map, not a contract; the only cross-checked
-figure is the **410** total (`scripts/check-test-count.sh`).
+figure is the **417** total (`scripts/check-test-count.sh`).
 
 ---
 
@@ -32,6 +32,7 @@ figure is the **410** total (`scripts/check-test-count.sh`).
 | --- | --: | --- |
 | `test_albs_metadata.py` | 8 | Parsing `build.almalinux.org` API JSON into the provenance backbone (source pkg, git commit, CAS, tasks, artifacts). |
 | `test_albs_cache.py` | 9 | The on-disk metadata cache: TTL freshness, build-id guard against cache reuse, HTML-fallback handling, and a 404 reported plainly (D111). |
+| `test_build_catalog.py` | 5 | The cached build-number catalog (D120): parsing the ALBS builds-list endpoint into `BuildSummary` (packages from git/SRPM refs), the injected-requests fetch, and the JSON `BuildCatalog` (upsert-by-id, record, missing/corrupt tolerance). |
 | `test_artifact_inventory.py` | 4 | The per-build artifact matrix (RPMs × arch × type). |
 | `test_build_analysis.py` | 2 | Per-task build/sign/processing timing derived from raw ALBS metadata (the timeline). |
 | `test_multi_build.py` | 2 | The pipeline is not build-specific — works across several build ids / packages / arches. |
@@ -132,7 +133,7 @@ figure is the **410** total (`scripts/check-test-count.sh`).
 
 | File | Cases | Covers |
 | --- | --: | --- |
-| `test_gui_qt_app.py` | 24 | Headless main-window smoke + interaction: construction, result-handling, slice render, inspector, the errata/CVE/CPE run-spec toggles, the Security/Dependency/Universe panels, Markdown/PNG export + session capture/restore, the two-toolbar layout, a real build loading into artifacts, the interactive cache-aware source badges (state probe + click-to-fetch), the build-id fetch-all host enrichments, the context-sensitive Analyze action, the host-aware errata default (dnf/http), the errata "both (cross-check)" option, the missing-build "not found" routing (informational, not a failure), the un-clipped Timeline view switch, the Inspect-Build-Id menu action, and the Inspect-Binary host-RPM gating. |
+| `test_gui_qt_app.py` | 26 | Headless main-window smoke + interaction: construction, result-handling, slice render, inspector, the errata/CVE/CPE run-spec toggles, the Security/Dependency/Universe panels, Markdown/PNG export + session capture/restore, the two-toolbar layout, a real build loading into artifacts, the interactive cache-aware source badges (state probe + click-to-fetch), the build-id fetch-all host enrichments, the context-sensitive Analyze action, the host-aware errata default (dnf/http), the errata "both (cross-check)" option, the build-catalog refresh/browse (D120), the missing-build "not found" routing (informational, not a failure), the un-clipped Timeline view switch, the Inspect-Build-Id menu action, and the Inspect-Binary host-RPM gating. |
 | `test_gui_render.py` | 5 | `workbench_graph_to_dot` theming/label wrapping/clickable URLs + the cmapx-vs-SVG coordinate alignment (D112). |
 | `test_gui_hitmap.py` | 3 | Parsing the Graphviz image map (cmapx) into node/edge hit regions + point-in-region testing. |
 | `test_gui_inspect.py` | 3 | The node/edge inspector view models. |

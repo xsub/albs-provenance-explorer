@@ -45,6 +45,9 @@ then lets you explore the result without leaving the graph:
   that grey out when a source is stale or missing for the current build id;
   click one to fetch just that source, or type a build id and press Enter to
   fetch everything the host can in one sweep.
+- **Build catalog** — a cached db of real ALBS build numbers (the `Builds` menu
+  browses + refreshes it; the build-id field autocompletes from it), so you pick
+  an id that exists instead of guessing a sparse one.
 - **Export** — a slice as SVG/PNG, plus a JSON evidence bundle / HTML / Markdown
   report with a reproducibility appendix.
 

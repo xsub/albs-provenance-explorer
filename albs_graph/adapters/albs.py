@@ -248,6 +248,138 @@ def fetch_build_metadata(
     return metadata
 
 
+@dataclass(frozen=True)
+class BuildSummary:
+    """A one-line summary of an ALBS build for the build-number catalog.
+
+    Built from the ``/api/v1/builds/`` *list* endpoint (not the per-build
+    detail), so the workbench can offer real, existing build ids to pick from
+    rather than the user guessing sparse numbers.
+    """
+
+    build_id: int
+    created_at: str | None = None
+    finished_at: str | None = None
+    owner: str | None = None
+    packages: tuple[str, ...] = ()
+    platforms: tuple[str, ...] = ()
+
+    def label(self) -> str:
+        package = self.packages[0] if self.packages else "?"
+        extra = f" +{len(self.packages) - 1}" if len(self.packages) > 1 else ""
+        platform = self.platforms[0] if self.platforms else ""
+        date = (self.created_at or "")[:10]
+        return f"{self.build_id}  {package}{extra}  {platform}  {date}".rstrip()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "build_id": self.build_id,
+            "created_at": self.created_at,
+            "finished_at": self.finished_at,
+            "owner": self.owner,
+            "packages": list(self.packages),
+            "platforms": list(self.platforms),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "BuildSummary":
+        return cls(
+            build_id=int(data["build_id"]),
+            created_at=_opt_text(data.get("created_at")),
+            finished_at=_opt_text(data.get("finished_at")),
+            owner=_opt_text(data.get("owner")),
+            packages=tuple(str(p) for p in (data.get("packages") or [])),
+            platforms=tuple(str(p) for p in (data.get("platforms") or [])),
+        )
+
+
+def _opt_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _package_from_ref_url(url: Any) -> str | None:
+    """The source package name from a task's git ref or SRPM ref.
+
+    ``https://git.almalinux.org/rpms/nginx.git`` -> ``nginx``; an SRPM upload
+    ref like ``kdepim-addons-25.12.3-1.el10_2.src.rpm`` -> ``kdepim-addons``.
+    """
+
+    if not url:
+        return None
+    name = urlparse(str(url)).path.rstrip("/").rsplit("/", 1)[-1]
+    if name.endswith(".git"):
+        return name[:-4] or None
+    if name.endswith(".rpm"):
+        nevra = RpmNevra.from_filename(name)
+        if nevra and nevra.name:
+            return nevra.name
+    return name or None
+
+
+def parse_build_list(data: Any) -> list[BuildSummary]:
+    """Parse the ``/api/v1/builds/`` list JSON into :class:`BuildSummary` rows.
+
+    Tolerant of the shape: a top-level ``{"builds": [...]}`` (the live API) or a
+    bare list. Each build's source packages come from its tasks' git refs and
+    its platforms from the tasks' ``platform.name``.
+    """
+
+    builds = data.get("builds") if isinstance(data, dict) else data
+    out: list[BuildSummary] = []
+    for entry in builds if isinstance(builds, list) else []:
+        if not isinstance(entry, dict) or entry.get("id") is None:
+            continue
+        packages: list[str] = []
+        platforms: list[str] = []
+        for task in entry.get("tasks") or []:
+            if not isinstance(task, dict):
+                continue
+            name = _package_from_ref_url((task.get("ref") or {}).get("url"))
+            if name and name not in packages:
+                packages.append(name)
+            platform = _opt_text((task.get("platform") or {}).get("name"))
+            if platform and platform not in platforms:
+                platforms.append(platform)
+        out.append(
+            BuildSummary(
+                build_id=int(entry["id"]),
+                created_at=_opt_text(entry.get("created_at")),
+                finished_at=_opt_text(entry.get("finished_at")),
+                owner=_opt_text((entry.get("owner") or {}).get("username")),
+                packages=tuple(packages),
+                platforms=tuple(platforms),
+            )
+        )
+    return out
+
+
+def fetch_build_list(
+    base_url: str = "https://build.almalinux.org",
+    *,
+    page: int = 1,
+    progress: Callable[[str], None] | None = None,
+) -> list[BuildSummary]:
+    """Fetch one page (~10) of the most recent ALBS builds as summaries.
+
+    Persistence is the caller's job (the workbench ``BuildCatalog`` merges +
+    caches these); this is a pure live fetch. Raises ``ValueError`` if the API
+    is unreachable or not JSON, so the caller can degrade to the cached catalog.
+    """
+
+    import requests
+
+    url = f"{base_url.rstrip('/')}/api/v1/builds/?pageNumber={page}"
+    if progress:
+        progress(f"Fetching ALBS build list from {url}")
+    response = requests.get(url, timeout=20)
+    if not (response.ok and "application/json" in response.headers.get("content-type", "")):
+        raise ValueError(f"ALBS build list unavailable (HTTP {response.status_code})")
+    return parse_build_list(response.json())
+
+
 def parse_build_metadata(data: dict[str, Any]) -> AlbsBuildMetadata:
     first_task = _first_task(data)
     first_ref = first_task.get("ref", {}) if first_task else {}

@@ -12,7 +12,7 @@ from typing import Any, TypeVar
 
 from PyQt5 import QtCore, QtGui, QtSvg, QtWidgets
 
-from albs_graph.adapters.albs import BuildNotFoundError
+from albs_graph.adapters.albs import BuildNotFoundError, BuildSummary, fetch_build_list
 from albs_graph.adapters.errata_source import almalinux_errata_feed_url, almalinux_major_version
 from albs_graph.adapters.sbom import discover_build_sbom
 from albs_graph.gui.inspect import (
@@ -29,6 +29,7 @@ from albs_graph.gui.render import workbench_graph_rendering
 from albs_graph.services import (
     AnalysisResult,
     AnalysisService,
+    BuildCatalog,
     evidence_report_html,
     evidence_report_markdown,
     GraphLoadSpec,
@@ -389,6 +390,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.cache_ttl_seconds = 300  # ALBS metadata cache freshness (badge state)
         self._pending_refresh = False  # next build-id fetch forces a refetch
         self._deep_fetch = False  # next run pulls every host-available enrichment
+        self.build_catalog = BuildCatalog()  # cached db of real build ids (D120)
         self.current_slice: GraphSlice | None = None
         self.findings: list[Finding] = []
         self.pending_session: WorkbenchSession | None = None
@@ -404,6 +406,12 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.source_edit = QtWidgets.QLineEdit(str(initial_source or ""))
         self.build_id_edit = QtWidgets.QLineEdit(str(initial_build_id or ""))
         self.build_id_edit.setPlaceholderText("Enter build id")
+        # Autocomplete build ids from the cached catalog (D120) so a real id is a
+        # keystroke away, not a guess.
+        self._build_completer = QtWidgets.QCompleter([], self)
+        self._build_completer.setCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
+        self._build_completer.setFilterMode(QtCore.Qt.MatchFlag.MatchContains)
+        self.build_id_edit.setCompleter(self._build_completer)
         self.build_sbom_edit = QtWidgets.QLineEdit(str(initial_build_sbom or ""))
         self.build_sbom_edit.setPlaceholderText("Build SBOM")
         self.build_sbom_edit.setClearButtonEnabled(True)
@@ -822,6 +830,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.addDockWidget(QtCore.Qt.DockWidgetArea.BottomDockWidgetArea, dock)
         _require(self.statusBar()).addWidget(self.progress_label)
         self._install_source_badges()
+        self._update_build_completer()  # seed build-id autocomplete from the cached catalog
 
     def _configure_actions(
         self,
@@ -896,6 +905,18 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         run_menu.addAction(compare_action)
         run_menu.addSeparator()
         run_menu.addAction(run_classic_action)
+
+        # Builds menu: a cached catalog of real build ids to pick from, so a
+        # sparse-id guess (a 404) is avoidable (D120).
+        builds_menu = _require(menu_bar.addMenu("Builds"))
+        browse_builds_action = QtWidgets.QAction("Browse Builds…", self)
+        browse_builds_action.setToolTip("Pick a known build id from the cached catalog.")
+        browse_builds_action.triggered.connect(self.browse_builds)
+        refresh_builds_action = QtWidgets.QAction("Refresh Build List from ALBS", self)
+        refresh_builds_action.setToolTip("Fetch the most recent ALBS builds into the catalog.")
+        refresh_builds_action.triggered.connect(self.refresh_build_list)
+        builds_menu.addAction(browse_builds_action)
+        builds_menu.addAction(refresh_builds_action)
 
         view_menu = _require(menu_bar.addMenu("View"))
         view_menu.addAction(zoom_in_action)
@@ -1169,6 +1190,68 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.source_edit.clear()  # the build id is the explicit choice now
         self.run_analysis()
 
+    def browse_builds(self) -> None:
+        # Pick a known build id from the cached catalog (D120) instead of guessing
+        # a sparse number. Offers to refresh from ALBS when the catalog is empty.
+        builds = self.build_catalog.load()
+        if not builds:
+            answer = QtWidgets.QMessageBox.question(
+                self,
+                "No cached builds",
+                "The build catalog is empty. Fetch the most recent ALBS builds now?",
+            )
+            if answer == QtWidgets.QMessageBox.StandardButton.Yes:
+                self.refresh_build_list()
+                builds = self.build_catalog.load()
+            if not builds:
+                return
+        labels = [build.label() for build in builds]
+        choice, ok = QtWidgets.QInputDialog.getItem(
+            self, "Browse builds", "Pick a build:", labels, 0, False
+        )
+        if not ok or not choice:
+            return
+        build_id = choice.split()[0]  # the leading token is the build id
+        self.build_id_edit.setText(build_id)
+        self.source_edit.clear()  # the build id is the explicit choice now
+        self._analyze_or_fetch_all()
+
+    def refresh_build_list(self) -> None:
+        # Fetch the most recent ALBS builds into the cached catalog (D120).
+        self.progress_label.setText("Fetching build list…")
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
+        try:
+            builds = fetch_build_list(self.base_url, progress=self._log)
+        except Exception as exc:  # noqa: BLE001 -- a live fetch must never crash the UI
+            self.progress_label.setText("Build list unavailable")
+            self._log(f"Build list refresh failed: {exc}")
+            return
+        finally:
+            QtWidgets.QApplication.restoreOverrideCursor()
+        merged = self.build_catalog.merge(builds)
+        self._update_build_completer()
+        self.progress_label.setText(f"Build catalog: {len(merged)} known builds")
+        self._log(f"Fetched {len(builds)} builds; catalog now holds {len(merged)}")
+
+    def _update_build_completer(self) -> None:
+        ids = [str(build_id) for build_id in self.build_catalog.build_ids()]
+        self._build_completer.setModel(QtCore.QStringListModel(ids, self))
+
+    def _record_analyzed_build(self) -> None:
+        # Remember a build the user actually analyzed, so it is in the catalog
+        # even if it has aged off the recent-builds page (D120).
+        build_id = self._current_build_id()
+        if not build_id or not build_id.isdigit() or self.result is None:
+            return
+        graph = self.result.graph
+        packages = tuple(node.label for node in graph.find_by_type("source_package"))
+        major = almalinux_major_version(graph)
+        platforms = (f"AlmaLinux-{major}",) if major else ()
+        self.build_catalog.record(
+            BuildSummary(build_id=int(build_id), packages=packages, platforms=platforms)
+        )
+        self._update_build_completer()
+
     def run_full_inspection(self) -> None:
         # Run run.sh -- the full-inspection template -- for the entered build id
         # in a subprocess (it pulls from every source the host supports), then
@@ -1368,6 +1451,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._log("Analysis complete")
         for warning in result.warnings:
             self._log(warning.message)
+        self._record_analyzed_build()  # remember this build id in the catalog (D120)
         self._refresh_source_badges()
         self._populate_artifacts()
         self._populate_findings()

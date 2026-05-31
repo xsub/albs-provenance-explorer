@@ -1,6 +1,7 @@
 """App-facing service layer for CLI and future desktop frontends."""
 
 from .analysis import AnalysisResult, AnalysisService, GraphLoadSpec, ServiceWarning
+from .build_catalog import BuildCatalog
 from .compare import ArtifactDelta, compare_artifacts
 from .findings import Finding, findings_for_analysis
 from .queries import EdgeSummary, GraphQueries, NodeSummary
@@ -45,6 +46,7 @@ __all__ = [
     "AnalysisResult",
     "AnalysisService",
     "ArtifactDelta",
+    "BuildCatalog",
     "BuildDiffRow",
     "CoverageRow",
     "DependencyRow",

@@ -3273,6 +3273,36 @@ option feeds the RunSpec). Suite 405 -> 410.
 
 ---
 
+## D120 - A cached catalog of real build numbers (browse + autocomplete)
+
+The recurring sparse-id pain (D118: 57809/17811 do not exist) has a structural
+fix: **don't make the user guess**. ALBS exposes a list endpoint
+(`/api/v1/builds/?pageNumber=N` -> `{builds: [...]}`, ~10 newest per page), so
+the workbench can offer real, existing ids to pick from.
+
+`adapters.albs` gains `fetch_build_list` + `parse_build_list` + a `BuildSummary`
+(build id, created/finished, owner, source packages from the tasks' git/SRPM
+refs, platforms). A `services.BuildCatalog` persists these as a small JSON db
+under `default_cache_root()` (`~/.cache/albs-provenance-explorer/`,
+`$ALBS_HTTP_CACHE`-overridable), upsert-by-id, newest first, tolerant of a
+missing/corrupt file (-> empty, never fatal). The GUI:
+
+- a **Builds menu** -- *Browse Builds…* (a `QInputDialog` picker of
+  `id  package  platform  date`, which fills the build id and analyses it) and
+  *Refresh Build List from ALBS* (fetch the recent page, merge, save);
+- a **`QCompleter`** on the build-id field seeded from the catalog (MatchContains)
+  so a real id is a keystroke away;
+- **record-on-analysis**: a build the user actually analyzed is upserted into the
+  catalog (so it stays even after it ages off the recent page).
+
+Startup stays offline (the catalog loads from disk; refresh is an explicit
+action). +7 cases (parse/fetch via injected requests; catalog merge/record/load
+tolerance; the GUI refresh feeds the completer; browse picks an id and runs). An
+autouse fixture points `$ALBS_HTTP_CACHE` at a temp dir so a test analysing a
+build never writes the developer's real `~/.cache`. Suite 410 -> 417.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
