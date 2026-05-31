@@ -19,7 +19,26 @@ Conventions:
 2026-05-30
 ----------------------------------------------------------------------
 
-- (this)   refactor(gui): extract the Dependency panel into a typed module
+- (this)   refactor(gui): extract the Timeline panel into a typed module
+           (god-object split #4; quality follow-up). New gui/timeline_panel.py
+           bundles the whole build-task timeline: the custom ~100-line
+           TimelineGanttView (QGraphicsView), the tree view, the Tree/Gantt
+           switch + stack, the recursive tree-item builder, both activation
+           paths, and the _format_seconds / _gantt_palette helpers. Host drives
+           it with populate(graph, build_analysis, dark=) + one navigate
+           callback. First extraction to hit the "targeted, not blanket" half of
+           the goal: the Gantt drawing's Optional scene-adds + nullable
+           mousePressEvent are fixed with a _scene_text assert-helper + a
+           None-guard + a nullable override -- strict-clean with ZERO
+           type:ignore. qt_app drops the class + assembly + _populate_timeline
+           body + _timeline_item + _timeline_activated + min-height fixups + the
+           2 helpers + GANTT_MIN_HEIGHT + 2 imports (2331 -> 2023 lines). No
+           behaviour/test-count change (view-switch test repointed at
+           window.timeline_panel.view_combo). mypy now checks 89 files. ALL 4
+           panels extracted; retiring the blanket ignore on the residual shell
+           is a separate follow-up. decisions.md D105.
+
+- 931e5da  refactor(gui): extract the Dependency panel into a typed module
            (god-object split #3; quality follow-up). New gui/dependency_panel.py
            -- a DependencyPanel(QWidget) owning the scope / only-conflicts /
            only-unresolved filters AND the 11-col table; it caches the last

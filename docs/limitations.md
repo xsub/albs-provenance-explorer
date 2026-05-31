@@ -326,13 +326,16 @@ The PyQt5 investigation workbench is a read-only frontend over the same
   gaps -- PyQt5 5.15 ships `.pyi` stubs, so the Qt types are real, not `Any`);
   the principled fix is to split the single-class window into smaller *typed*
   panel classes rather than scatter ~150 per-line ignores. That split is under
-  way: the M4 Universe panel (`gui/universe_panel.py`, D102), the M3 Security
-  panel (`gui/security_panel.py`, D103) and the M2 Dependency panel
-  (`gui/dependency_panel.py`, D104) are extracted as `QWidget` classes that
-  type-check under mypy strict with no ignore (3/4 panels; only the
-  timeline/inspector cluster remains) -- the template for retiring the blanket
-  ignore panel-by-panel. The rest of `gui/` is typed/tested and the analysable
-  logic lives in the well-covered, typed `services/` layer (80-97%).
+  way: the M4 Universe (`gui/universe_panel.py`, D102), M3 Security
+  (`gui/security_panel.py`, D103), M2 Dependency (`gui/dependency_panel.py`,
+  D104) and build-task Timeline (`gui/timeline_panel.py`, D105) panels are all
+  extracted as `QWidget` classes that type-check under mypy strict with no
+  ignore (4/4 panels). What still blocks removing the blanket ignore is the
+  residual main-window *shell* (toolbar/menus, artifact list + graph SVG widget,
+  inspector, queries / source / evidence / compare tabs, navigation, session),
+  which carries the same Optional/enum frictions and is the bulk of the file --
+  a follow-up in its own right. The rest of `gui/` is typed/tested and the
+  analysable logic lives in the well-covered, typed `services/` layer (80-97%).
 - **Needs a Qt platform.** Tests run headless via `QT_QPA_PLATFORM=offscreen`;
   a real run needs a display. Graphviz (`dot`) renders the graph and degrades
   to a built-in fallback SVG when absent.

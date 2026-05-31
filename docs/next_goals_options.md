@@ -177,10 +177,11 @@ The PyQt workbench roadmap (M2-M5) is complete, and the M3 CVE-feed toggle
 
 - **quality follow-ups** (orthogonal to features): headless + interaction tests
   now bring `gui/qt_app.py` to ~73%, and the god-object split is underway -- the
-  M4 Universe panel (D102), the M3 Security panel (D103) and the M2 Dependency
-  panel (D104) are extracted into `gui/universe_panel.py` /
-  `gui/security_panel.py` / `gui/dependency_panel.py`, each type-checking under
-  mypy strict with no ignore (3/4 panels done), the template for retiring the
-  blanket ignore panel-by-panel. Remaining: extract the timeline / inspector
-  cluster the same way, then drop the blanket ignore from the slimmed
-  `qt_app.py`; deeper interaction coverage continues.
+  M4 Universe (D102), M3 Security (D103), M2 Dependency (D104) and Timeline
+  (D105) panels are all extracted into typed `gui/*_panel.py` modules, each
+  type-checking under mypy strict with no ignore (4/4 panels done; `qt_app.py`
+  2331 -> 2023 lines). Remaining: the residual main-window shell (toolbar/menus,
+  artifact list + graph SVG, inspector, queries / source / evidence / compare,
+  navigation, session) still carries the Optional/enum frictions, so dropping
+  the blanket `# mypy: ignore-errors` is now a focused follow-up on that shell;
+  deeper interaction coverage continues.

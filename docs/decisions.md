@@ -2835,6 +2835,45 @@ before the blanket ignore on `qt_app.py` can be retired.
 
 ---
 
+## D105 - Extract the Timeline panel into a typed module (god-object split #4)
+
+Fourth and largest cut. `gui/timeline_panel.py` bundles the whole build-task
+timeline that was scattered across `qt_app.py`: the `TimelineGanttView` (a
+custom ~100-line `QGraphicsView` that draws the Gantt cascade), the tree view,
+the Tree/Gantt switch + stacked widget, the recursive tree-item builder, the
+two activation paths, and the module-scope `_format_seconds` / `_gantt_palette`
+helpers. The host drives it with `populate(graph, build_analysis, *, dark)` (the
+dark flag comes from the window's detected palette) and one `navigate` callback;
+both views call it.
+
+This is the first extraction where the **"targeted ignores, not blanket"** half
+of the quality goal showed up concretely. The Gantt drawing hits two genuine
+PyQt5-stub frictions: `QGraphicsScene.addText/addPath` are typed `Optional`
+(never None in practice) and `mousePressEvent`'s arg is `QMouseEvent | None` in
+the supertype. Rather than a blanket ignore, the module stays strict-clean with
+*real* fixes -- a one-line `_scene_text` assert-helper concentrates the
+Optional-narrowing, the path item is None-guarded, and the override takes the
+nullable arg and early-returns. No `# type: ignore` was needed at all.
+
+`qt_app.py` drops the `TimelineGanttView` class, the timeline widget assembly,
+`_populate_timeline`'s body (now a delegate), `_timeline_item`,
+`_timeline_activated`, the `timeline_*` minimum-height fix-ups, the two
+module helpers, the `GANTT_MIN_HEIGHT` constant and the `timeline_tree` /
+`timeline_gantt_rows` imports -- **2331 -> 2023 lines**. No behaviour change, no
+test-count change (the view-switch test repointed at
+`window.timeline_panel.view_combo`). Suite stays 386; mypy now checks 89 files.
+
+**All four panels are now extracted** (universe / security / dependency /
+timeline), each a typed `QWidget` with no ignore. What remains before the
+blanket `# mypy: ignore-errors` on `qt_app.py` can actually be removed is the
+residual main-window *shell* -- the toolbar/menus, the artifact list + graph
+SVG widget, the inspector tables, the queries / source / evidence / compare
+tabs, navigation and session -- which still carries the same Optional/enum
+frictions and is the bulk of the file. Retiring the blanket ignore is therefore
+a follow-up in its own right, not a free consequence of the panel split.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

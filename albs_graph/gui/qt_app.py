@@ -44,11 +44,10 @@ from albs_graph.services import (
     investigation_recipes,
     run_graph_query,
     source_evidence_rows,
-    timeline_gantt_rows,
-    timeline_tree,
 )
 from albs_graph.gui.dependency_panel import DependencyPanel
 from albs_graph.gui.security_panel import SecurityPanel
+from albs_graph.gui.timeline_panel import TimelinePanel
 from albs_graph.gui.universe_panel import UniversePanel
 
 
@@ -56,7 +55,6 @@ RECIPE_COMBO_WIDTH = 136
 RECIPE_POPUP_MIN_WIDTH = 460
 BOTTOM_DOCK_MIN_HEIGHT = 96
 BOTTOM_PAGE_MIN_HEIGHT = 0
-GANTT_MIN_HEIGHT = 48
 CLASSIC_ROOT_ENV = "ALBS_EXPLORER_CLASSIC_ROOT"
 CLASSIC_TMP_ROOT = Path("/private/tmp/albs-provenance-workbench")
 
@@ -165,110 +163,6 @@ class GraphSvgWidget(QtSvg.QSvgWidget):
         x = point.x() * size.width() / self.width()
         y = point.y() * size.height() / self.height()
         return edge_at(self._edge_regions, x, y)
-
-
-class TimelineGanttView(QtWidgets.QGraphicsView):
-    nodeActivated = QtCore.pyqtSignal(str)
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._scene = QtWidgets.QGraphicsScene(self)
-        self.setScene(self._scene)
-        self.setRenderHint(QtGui.QPainter.Antialiasing, True)
-        self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
-        self.setMinimumHeight(GANTT_MIN_HEIGHT)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Ignored)
-
-    def set_events(self, graph, build_analysis, *, dark: bool) -> None:
-        rows = timeline_gantt_rows(graph, build_analysis)
-        self._scene.clear()
-        if not rows:
-            self._scene.addText("No timeline data")
-            return
-        palette = _gantt_palette(dark)
-        label_width = 330
-        left = label_width + 36
-        top = 42
-        row_height = 28
-        timeline_width = 920
-        span = max((row.offset_seconds + row.duration_seconds for row in rows), default=1.0)
-        span = max(span, 1.0)
-        scale = timeline_width / span
-        self._draw_gantt_axis(palette, left, top, timeline_width, span, scale)
-        for index, row in enumerate(rows):
-            y = top + 22 + index * row_height
-            self._draw_gantt_row(palette, row, y, left, label_width, scale, row_height)
-        self._scene.setSceneRect(0, 0, left + timeline_width + 180, top + 48 + len(rows) * row_height)
-
-    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-        item = self.itemAt(event.pos())
-        while item is not None:
-            node_id = item.data(0)
-            if node_id:
-                self.nodeActivated.emit(str(node_id))
-                return
-            item = item.parentItem()
-        super().mousePressEvent(event)
-
-    def _draw_gantt_axis(
-        self,
-        palette: dict[str, QtGui.QColor],
-        left: int,
-        top: int,
-        width: int,
-        span: float,
-        scale: float,
-    ) -> None:
-        pen = QtGui.QPen(palette["grid"])
-        self._scene.addLine(left, top, left + width, top, pen)
-        tick_count = 5
-        for index in range(tick_count + 1):
-            seconds = span * index / tick_count
-            x = left + seconds * scale
-            self._scene.addLine(x, top - 5, x, top + 9000, pen)
-            label = self._scene.addText(_format_seconds(seconds))
-            label.setDefaultTextColor(palette["muted"])
-            label.setPos(x - 18, 12)
-
-    def _draw_gantt_row(
-        self,
-        palette: dict[str, QtGui.QColor],
-        row,
-        y: float,
-        left: int,
-        label_width: int,
-        scale: float,
-        row_height: int,
-    ) -> None:
-        text = "  " * row.depth + row.label
-        label = self._scene.addText(text)
-        label.setDefaultTextColor(palette["text"])
-        label.setPos(8, y - 7)
-        if row.node_id:
-            label.setData(0, row.node_id)
-        detail = self._scene.addText(row.status or row.kind)
-        detail.setDefaultTextColor(palette["muted"])
-        detail.setPos(label_width - 120, y - 7)
-        x = left + row.offset_seconds * scale
-        width = max(5.0, row.duration_seconds * scale) if row.duration_seconds else 7.0
-        rect = QtCore.QRectF(x, y - 7, width, 16)
-        fill = palette.get(row.kind, palette["bar"])
-        path = QtGui.QPainterPath()
-        path.addRoundedRect(rect, 4, 4)
-        item = self._scene.addPath(
-            path,
-            QtGui.QPen(palette["bar_border"]),
-            QtGui.QBrush(fill),
-        )
-        if row.node_id:
-            item.setData(0, row.node_id)
-            item.setToolTip(row.node_id)
-        duration = _format_seconds(row.duration_seconds)
-        if duration:
-            duration_text = self._scene.addText(duration)
-            duration_text.setDefaultTextColor(palette["muted"])
-            duration_text.setPos(x + width + 6, y - 7)
-        self._scene.addLine(0, y + row_height / 2 - 1, left + 920, y + row_height / 2 - 1, QtGui.QPen(palette["row"]))
 
 
 class ConsoleProcessDialog(QtWidgets.QDialog):
@@ -562,28 +456,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.finding_detail_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.finding_detail_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.finding_detail_table.setAlternatingRowColors(True)
-        self.timeline_table = QtWidgets.QTreeWidget()
-        self.timeline_table.setHeaderLabels(
-            ["Stage", "Status", "Duration", "Started", "Finished", "Graph node", "Detail"]
+        self.timeline_panel = TimelinePanel(
+            navigate=lambda node_id: self._navigate_to_node(node_id, prefer_artifact=False)
         )
-        self.timeline_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.timeline_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.timeline_table.setAlternatingRowColors(True)
-        self.timeline_view_combo = QtWidgets.QComboBox()
-        self.timeline_view_combo.addItems(["Tree", "Gantt"])
-        self.timeline_gantt = TimelineGanttView()
-        self.timeline_stack = QtWidgets.QStackedWidget()
-        self.timeline_stack.addWidget(self.timeline_table)
-        self.timeline_stack.addWidget(self.timeline_gantt)
-        self.timeline_panel = QtWidgets.QWidget()
-        timeline_layout = QtWidgets.QVBoxLayout(self.timeline_panel)
-        timeline_layout.setContentsMargins(0, 0, 0, 0)
-        timeline_header = QtWidgets.QHBoxLayout()
-        timeline_header.setContentsMargins(6, 4, 6, 4)
-        timeline_header.addStretch(1)
-        timeline_header.addWidget(self.timeline_view_combo)
-        timeline_layout.addLayout(timeline_header)
-        timeline_layout.addWidget(self.timeline_stack)
         self.compare_table = QtWidgets.QTableWidget(0, 6)
         self.compare_table.setHorizontalHeaderLabels(["Area", "Change", "Key", "Left", "Right", "Detail"])
         self.compare_table.horizontalHeader().setStretchLastSection(True)
@@ -858,8 +733,6 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             page = bottom.widget(index)
             page.setMinimumHeight(BOTTOM_PAGE_MIN_HEIGHT)
             page.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Ignored)
-        self.timeline_stack.setMinimumHeight(BOTTOM_PAGE_MIN_HEIGHT)
-        self.timeline_panel.setMinimumHeight(BOTTOM_PAGE_MIN_HEIGHT)
 
     def _connect_signals(self) -> None:
         self.source_edit.textChanged.connect(lambda _text: self._update_input_tooltips())
@@ -877,12 +750,6 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.findings_table.itemDoubleClicked.connect(self._finding_activated)
         self.edges_table.itemActivated.connect(self._edge_activated)
         self.edges_table.itemDoubleClicked.connect(self._edge_activated)
-        self.timeline_table.itemActivated.connect(self._timeline_activated)
-        self.timeline_table.itemDoubleClicked.connect(self._timeline_activated)
-        self.timeline_gantt.nodeActivated.connect(
-            lambda node_id: self._navigate_to_node(node_id, prefer_artifact=False)
-        )
-        self.timeline_view_combo.currentIndexChanged.connect(self.timeline_stack.setCurrentIndex)
         self.evidence_table.itemActivated.connect(self._evidence_activated)
         self.evidence_table.itemDoubleClicked.connect(self._evidence_activated)
         self.cve_feed_edit.editingFinished.connect(self._refresh_security_table)
@@ -1494,34 +1361,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
     def _populate_timeline(self) -> None:
         assert self.result is not None
-        self.timeline_table.clear()
-        for event in timeline_tree(self.result.graph, self.result.build_analysis):
-            self.timeline_table.addTopLevelItem(self._timeline_item(event))
-        self.timeline_gantt.set_events(
-            self.result.graph,
-            self.result.build_analysis,
-            dark=self.dark_mode,
+        self.timeline_panel.populate(
+            self.result.graph, self.result.build_analysis, dark=self.dark_mode
         )
-        self.timeline_table.expandToDepth(1)
-        for column in range(self.timeline_table.columnCount()):
-            self.timeline_table.resizeColumnToContents(column)
-
-    def _timeline_item(self, event) -> QtWidgets.QTreeWidgetItem:
-        item = QtWidgets.QTreeWidgetItem(
-            [
-                event.label,
-                event.status,
-                _format_seconds(event.duration_seconds),
-                event.started_at or "",
-                event.finished_at or "",
-                event.node_id,
-                event.detail,
-            ]
-        )
-        item.setData(0, QtCore.Qt.UserRole, event.node_id)
-        for child in event.children:
-            item.addChild(self._timeline_item(child))
-        return item
 
     def _populate_recipes(self) -> None:
         assert self.result is not None
@@ -1750,11 +1592,6 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         edge_index = item.data(QtCore.Qt.UserRole)
         if edge_index is not None:
             self._show_edge(int(edge_index), from_slice=False)
-
-    def _timeline_activated(self, item: QtWidgets.QTreeWidgetItem, _column: int = 0) -> None:
-        node_id = item.data(0, QtCore.Qt.UserRole)
-        if node_id:
-            self._navigate_to_node(str(node_id), prefer_artifact=False)
 
     def _evidence_activated(self, item: QtWidgets.QTableWidgetItem) -> None:
         node_id = item.data(QtCore.Qt.UserRole)
@@ -2184,51 +2021,3 @@ def run(
     window._signal_timer = signal_timer
     window.show()
     return int(app.exec_())
-
-
-def _format_seconds(value: float | None) -> str:
-    if value is None:
-        return ""
-    if value < 60:
-        return f"{value:.2f}s"
-    minutes, seconds = divmod(value, 60)
-    if minutes < 60:
-        return f"{int(minutes)}m {seconds:.1f}s"
-    hours, minutes = divmod(minutes, 60)
-    return f"{int(hours)}h {int(minutes)}m {seconds:.0f}s"
-
-
-def _gantt_palette(dark: bool) -> dict[str, QtGui.QColor]:
-    if dark:
-        return {
-            "text": QtGui.QColor("#EEF2F6"),
-            "muted": QtGui.QColor("#AAB5C2"),
-            "grid": QtGui.QColor("#3C4652"),
-            "row": QtGui.QColor("#252B33"),
-            "bar": QtGui.QColor("#2F6FED"),
-            "bar_border": QtGui.QColor("#8AB4FF"),
-            "build_task": QtGui.QColor("#5A3B66"),
-            "build_step": QtGui.QColor("#2F6FED"),
-            "test_tasks": QtGui.QColor("#35546B"),
-            "test_step": QtGui.QColor("#4B7190"),
-            "artifacts": QtGui.QColor("#4B4F5C"),
-            "artifact_group": QtGui.QColor("#6B5B38"),
-            "sign_task": QtGui.QColor("#6B4C2F"),
-            "sign_step": QtGui.QColor("#8A633F"),
-        }
-    return {
-        "text": QtGui.QColor("#17212B"),
-        "muted": QtGui.QColor("#52616F"),
-        "grid": QtGui.QColor("#D8DDE6"),
-        "row": QtGui.QColor("#EEF2F6"),
-        "bar": QtGui.QColor("#2F6FED"),
-        "bar_border": QtGui.QColor("#174EA6"),
-        "build_task": QtGui.QColor("#DCC8E8"),
-        "build_step": QtGui.QColor("#8EB7FF"),
-        "test_tasks": QtGui.QColor("#BFD7EA"),
-        "test_step": QtGui.QColor("#9AC2E0"),
-        "artifacts": QtGui.QColor("#DDD7C8"),
-        "artifact_group": QtGui.QColor("#E6D5A9"),
-        "sign_task": QtGui.QColor("#E8C9A5"),
-        "sign_step": QtGui.QColor("#D9AA76"),
-    }

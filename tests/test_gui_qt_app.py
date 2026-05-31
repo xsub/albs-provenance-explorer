@@ -324,8 +324,8 @@ def test_workbench_drives_read_only_interactions(qapp: QtWidgets.QApplication) -
         qapp.processEvents()
 
         # Timeline Tree <-> Gantt view switch.
-        window.timeline_view_combo.setCurrentText("Gantt")
-        window.timeline_view_combo.setCurrentText("Tree")
+        window.timeline_panel.view_combo.setCurrentText("Gantt")
+        window.timeline_panel.view_combo.setCurrentText("Tree")
         qapp.processEvents()
 
         # Toggling a graph layer re-renders the current slice.
