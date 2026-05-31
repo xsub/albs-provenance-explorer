@@ -14,7 +14,12 @@ from typing import Any
 
 import pytest
 
-from albs_graph.adapters.albs import BuildSummary, fetch_build_list, parse_build_list
+from albs_graph.adapters.albs import (
+    BuildSummary,
+    fetch_build_list,
+    fetch_recent_builds,
+    parse_build_list,
+)
 from albs_graph.services import BuildCatalog
 
 _LIST = {
@@ -80,6 +85,26 @@ def test_fetch_build_list_via_injected_requests(monkeypatch: pytest.MonkeyPatch)
 
     assert [b.build_id for b in builds] == [100, 99]
     assert "/api/v1/builds/?pageNumber=2" in fake.calls[0]
+
+
+def test_fetch_recent_builds_pages_until_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Pages the 10-per-page list endpoint until `limit` builds are collected;
+    # a short final page ends paging. De-dupes by id, newest-first order.
+    def _page(_base_url, *, page, progress=None):
+        if page == 1:
+            return [BuildSummary(build_id=200 - i) for i in range(10)]  # full page
+        if page == 2:
+            return [BuildSummary(build_id=190 - i) for i in range(5)]   # short -> last page
+        raise AssertionError("should not page past the short page")
+
+    monkeypatch.setattr("albs_graph.adapters.albs.fetch_build_list", _page)
+
+    builds = fetch_recent_builds("https://build.almalinux.org", limit=100)
+    assert [b.build_id for b in builds][:3] == [200, 199, 198]
+    assert len(builds) == 15  # 10 + 5, then the short page stopped paging
+
+    capped = fetch_recent_builds("https://build.almalinux.org", limit=4)
+    assert len(capped) == 4  # the limit caps the result
 
 
 def _summary(build_id: int, package: str = "pkg") -> BuildSummary:

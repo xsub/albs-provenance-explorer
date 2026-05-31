@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 import pytest
-from PyQt5 import QtWidgets
+from PyQt5 import QtCore, QtWidgets
 
 from albs_graph.adapters.albs import BuildSummary
 from albs_graph.fixtures import SYNTHETIC_RPM_ID, build_synthetic_fixture_graph
@@ -559,20 +559,30 @@ def test_errata_both_cross_check_option_feeds_the_run_spec(
 def test_refresh_build_list_populates_catalog_and_completer(
     qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # Refresh fetches the recent ALBS builds into the cached catalog and feeds
-    # the build-id autocomplete (D120). The fetch is stubbed -> fully offline.
+    # Refresh fetches the last-N recent ALBS builds into the cached catalog and
+    # feeds the build-id autocomplete (D120/D121). The fetch is stubbed offline.
     from albs_graph.gui import qt_app
 
     builds = [
-        BuildSummary(build_id=57812, packages=("buildah",), platforms=("AlmaLinux-10",)),
-        BuildSummary(build_id=57810, packages=("nginx",), platforms=("AlmaLinux-9",)),
+        BuildSummary(build_id=57812, packages=("buildah",), platforms=("AlmaLinux-10",),
+                     created_at="2026-05-31T10:00:00"),
+        BuildSummary(build_id=57810, packages=("nginx",), platforms=("AlmaLinux-9",),
+                     created_at="2026-05-30T09:00:00"),
     ]
-    monkeypatch.setattr(qt_app, "fetch_build_list", lambda *a, **k: builds)
+    captured: dict[str, object] = {}
+
+    def _fake(_base_url, *, limit, progress=None):
+        captured["limit"] = limit
+        return builds
+
+    monkeypatch.setattr(qt_app, "fetch_recent_builds", _fake)
 
     window = WorkbenchWindow()
     try:
-        window.refresh_build_list()
-        assert window.build_catalog.build_ids() == [57812, 57810]  # cached, newest first
+        window.refresh_build_list(200)  # the configurable last-N
+        assert captured["limit"] == 200
+        assert window.build_list_limit == 200  # remembered as the new default
+        assert window.build_catalog.build_ids() == [57812, 57810]  # cached
         completions = set(window._build_completer.model().stringList())
         assert {"57812", "57810"} <= completions  # autocomplete now offers them
     finally:
@@ -591,12 +601,7 @@ def test_browse_builds_picks_a_catalog_id_and_runs(
         )
         runs: list[bool] = []
         monkeypatch.setattr(window, "_analyze_or_fetch_all", lambda: runs.append(True))
-        # The picker returns the chosen label; the build id is its leading token.
-        monkeypatch.setattr(
-            QtWidgets.QInputDialog,
-            "getItem",
-            staticmethod(lambda *a, **k: ("57810  buildah  AlmaLinux-10", True)),
-        )
+        monkeypatch.setattr(window, "_pick_build", lambda _builds: "57810")  # the list dialog
 
         window.browse_builds()
 
@@ -605,6 +610,32 @@ def test_browse_builds_picks_a_catalog_id_and_runs(
         assert runs == [True]
     finally:
         window.close()
+
+
+def test_build_picker_dialog_describes_and_filters(qapp: QtWidgets.QApplication) -> None:
+    # The picker lists each build with a short description and filters in place.
+    from albs_graph.gui.qt_app import _BuildPickerDialog, _describe_build
+
+    builds = [
+        BuildSummary(build_id=57812, packages=("buildah", "buildah-tests"),
+                     platforms=("AlmaLinux-10",), created_at="2026-05-31T15:24:33", owner="eabd"),
+        BuildSummary(build_id=57810, packages=("nginx",), platforms=("AlmaLinux-9",)),
+    ]
+    described = _describe_build(builds[0])
+    assert "57812" in described and "buildah +1" in described
+    assert "AlmaLinux-10" in described and "2026-05-31 15:24" in described and "eabd" in described
+
+    dialog = _BuildPickerDialog(builds)
+    try:
+        assert dialog.list.count() == 2
+        dialog.filter_edit.setText("nginx")  # filter in place
+        visible = [i for i in range(dialog.list.count()) if not dialog.list.item(i).isHidden()]
+        assert len(visible) == 1
+        assert dialog.list.item(visible[0]).data(QtCore.Qt.ItemDataRole.UserRole) == "57810"
+        dialog.accept()
+        assert dialog.selected_build_id == "57810"  # the visible/selected row
+    finally:
+        dialog.deleteLater()
 
 
 def test_worker_routes_a_missing_build_to_build_not_found(

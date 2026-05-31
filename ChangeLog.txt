@@ -19,7 +19,16 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   feat(builds): a cached catalog of real build numbers (D120) so a
+- (this)   feat(builds): build catalog UX -- a filterable list, time-sorted,
+           configurable last-N (D121). Browse is now a _BuildPickerDialog
+           (QListWidget with a one-line description per build + an in-place
+           filter), the catalog sorts by build time (created_at desc, fallback
+           id), and the Builds menu offers Refresh from ALBS > Last 50/100/200/500
+           via fetch_recent_builds (pages the 10/page endpoint to N, default
+           100). _record_analyzed_build preserves created_at so the sort holds.
+           +2 cases. Suite 417 -> 419. decisions.md D121.
+
+- 71ca34c  feat(builds): a cached catalog of real build numbers (D120) so a
            sparse-id guess (a 404) is avoidable. adapters.albs gains
            fetch_build_list/parse_build_list/BuildSummary off the ALBS list
            endpoint; services.BuildCatalog persists them as a JSON db under

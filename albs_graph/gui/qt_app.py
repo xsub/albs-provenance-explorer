@@ -12,7 +12,11 @@ from typing import Any, TypeVar
 
 from PyQt5 import QtCore, QtGui, QtSvg, QtWidgets
 
-from albs_graph.adapters.albs import BuildNotFoundError, BuildSummary, fetch_build_list
+from albs_graph.adapters.albs import (
+    BuildNotFoundError,
+    BuildSummary,
+    fetch_recent_builds,
+)
 from albs_graph.adapters.errata_source import almalinux_errata_feed_url, almalinux_major_version
 from albs_graph.adapters.sbom import discover_build_sbom
 from albs_graph.gui.inspect import (
@@ -366,6 +370,82 @@ class ConsoleProcessDialog(QtWidgets.QDialog):
         self.output.ensureCursorVisible()
 
 
+def _describe_build(build: BuildSummary) -> str:
+    """One-line description of a build for the catalog list (D121)."""
+
+    package = build.packages[0] if build.packages else "?"
+    extra = f" +{len(build.packages) - 1}" if len(build.packages) > 1 else ""
+    platform = build.platforms[0] if build.platforms else ""
+    when = (build.created_at or "")[:16].replace("T", " ")  # YYYY-MM-DD HH:MM
+    owner = f"  ·  {build.owner}" if build.owner else ""
+    return f"{build.build_id}   {package}{extra}   {platform}   {when}{owner}".rstrip()
+
+
+class _BuildPickerDialog(QtWidgets.QDialog):
+    """A filterable list of catalog builds (id + short description), sorted by
+    build time (the catalog hands them over newest-first). Returns the picked
+    build id via ``selected_build_id`` (D121)."""
+
+    def __init__(
+        self, builds: list[BuildSummary], parent: QtWidgets.QWidget | None = None
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Browse builds")
+        self.resize(600, 440)
+        self.selected_build_id: str | None = None
+
+        self.filter_edit = QtWidgets.QLineEdit()
+        self.filter_edit.setPlaceholderText("Filter by id / package / platform / owner")
+        self.filter_edit.setClearButtonEnabled(True)
+        self.list = QtWidgets.QListWidget()
+        for build in builds:
+            item = QtWidgets.QListWidgetItem(_describe_build(build))
+            item.setData(QtCore.Qt.ItemDataRole.UserRole, str(build.build_id))
+            haystack = " ".join(
+                [str(build.build_id), *build.packages, *build.platforms, build.owner or ""]
+            )
+            item.setData(QtCore.Qt.ItemDataRole.UserRole + 1, haystack.casefold())
+            self.list.addItem(item)
+        if self.list.count():
+            self.list.setCurrentRow(0)
+        buttons = QtWidgets.QDialogButtonBox()
+        buttons.addButton(QtWidgets.QDialogButtonBox.StandardButton.Open)
+        buttons.addButton(QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        header = QtWidgets.QLabel(f"{len(builds)} known builds (newest first)")
+        layout.addWidget(header)
+        layout.addWidget(self.filter_edit)
+        layout.addWidget(self.list)
+        layout.addWidget(buttons)
+
+        self.filter_edit.textChanged.connect(self._filter)
+        self.list.itemActivated.connect(lambda _item: self.accept())
+        self.list.itemDoubleClicked.connect(lambda _item: self.accept())
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+
+    def _filter(self, text: str) -> None:
+        needle = text.casefold().strip()
+        first_visible: QtWidgets.QListWidgetItem | None = None
+        for index in range(self.list.count()):
+            item = _require(self.list.item(index))
+            haystack = str(item.data(QtCore.Qt.ItemDataRole.UserRole + 1))
+            hidden = bool(needle) and needle not in haystack
+            item.setHidden(hidden)
+            if not hidden and first_visible is None:
+                first_visible = item
+        current = self.list.currentItem()
+        if first_visible is not None and (current is None or current.isHidden()):
+            self.list.setCurrentItem(first_visible)
+
+    def accept(self) -> None:
+        item = self.list.currentItem()
+        if item is not None and not item.isHidden():
+            self.selected_build_id = str(item.data(QtCore.Qt.ItemDataRole.UserRole))
+        super().accept()
+
+
 class WorkbenchWindow(QtWidgets.QMainWindow):
     def __init__(
         self,
@@ -391,6 +471,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._pending_refresh = False  # next build-id fetch forces a refetch
         self._deep_fetch = False  # next run pulls every host-available enrichment
         self.build_catalog = BuildCatalog()  # cached db of real build ids (D120)
+        self.build_list_limit = 100  # how many recent builds a refresh fetches (D121)
         self.current_slice: GraphSlice | None = None
         self.findings: list[Finding] = []
         self.pending_session: WorkbenchSession | None = None
@@ -907,16 +988,19 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         run_menu.addAction(run_classic_action)
 
         # Builds menu: a cached catalog of real build ids to pick from, so a
-        # sparse-id guess (a 404) is avoidable (D120).
+        # sparse-id guess (a 404) is avoidable (D120/D121).
         builds_menu = _require(menu_bar.addMenu("Builds"))
         browse_builds_action = QtWidgets.QAction("Browse Builds…", self)
         browse_builds_action.setToolTip("Pick a known build id from the cached catalog.")
         browse_builds_action.triggered.connect(self.browse_builds)
-        refresh_builds_action = QtWidgets.QAction("Refresh Build List from ALBS", self)
-        refresh_builds_action.setToolTip("Fetch the most recent ALBS builds into the catalog.")
-        refresh_builds_action.triggered.connect(self.refresh_build_list)
         builds_menu.addAction(browse_builds_action)
-        builds_menu.addAction(refresh_builds_action)
+        builds_menu.addSeparator()
+        # Refresh ▸ Last N: fetch the N most recent ALBS builds (configurable).
+        refresh_menu = _require(builds_menu.addMenu("Refresh from ALBS"))
+        for count in (50, 100, 200, 500):
+            action = QtWidgets.QAction(f"Last {count} builds", self)
+            action.triggered.connect(lambda _checked=False, n=count: self.refresh_build_list(n))
+            refresh_menu.addAction(action)
 
         view_menu = _require(menu_bar.addMenu("View"))
         view_menu.addAction(zoom_in_action)
@@ -1191,8 +1275,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.run_analysis()
 
     def browse_builds(self) -> None:
-        # Pick a known build id from the cached catalog (D120) instead of guessing
-        # a sparse number. Offers to refresh from ALBS when the catalog is empty.
+        # Pick a known build id from the cached catalog (D120/D121) -- a
+        # filterable list sorted by build time -- instead of guessing a sparse
+        # number. Offers to refresh from ALBS when the catalog is empty.
         builds = self.build_catalog.load()
         if not builds:
             answer = QtWidgets.QMessageBox.question(
@@ -1205,23 +1290,28 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 builds = self.build_catalog.load()
             if not builds:
                 return
-        labels = [build.label() for build in builds]
-        choice, ok = QtWidgets.QInputDialog.getItem(
-            self, "Browse builds", "Pick a build:", labels, 0, False
-        )
-        if not ok or not choice:
+        build_id = self._pick_build(builds)
+        if not build_id:
             return
-        build_id = choice.split()[0]  # the leading token is the build id
         self.build_id_edit.setText(build_id)
         self.source_edit.clear()  # the build id is the explicit choice now
         self._analyze_or_fetch_all()
 
-    def refresh_build_list(self) -> None:
-        # Fetch the most recent ALBS builds into the cached catalog (D120).
-        self.progress_label.setText("Fetching build list…")
+    def _pick_build(self, builds: list[BuildSummary]) -> str | None:
+        dialog = _BuildPickerDialog(builds, self)
+        if dialog.exec_() == QtWidgets.QDialog.DialogCode.Accepted:
+            return dialog.selected_build_id
+        return None
+
+    def refresh_build_list(self, limit: int | None = None) -> None:
+        # Fetch the most recent `limit` ALBS builds into the cached catalog
+        # (D121: configurable last-N from the Builds menu).
+        limit = limit or self.build_list_limit
+        self.build_list_limit = limit  # remember the chosen size
+        self.progress_label.setText(f"Fetching last {limit} builds…")
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
         try:
-            builds = fetch_build_list(self.base_url, progress=self._log)
+            builds = fetch_recent_builds(self.base_url, limit=limit, progress=self._log)
         except Exception as exc:  # noqa: BLE001 -- a live fetch must never crash the UI
             self.progress_label.setText("Build list unavailable")
             self._log(f"Build list refresh failed: {exc}")
@@ -1239,7 +1329,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
     def _record_analyzed_build(self) -> None:
         # Remember a build the user actually analyzed, so it is in the catalog
-        # even if it has aged off the recent-builds page (D120).
+        # even if it has aged off the recent-builds page (D120). Preserve any
+        # build time already known for it so the time sort (D121) stays correct.
         build_id = self._current_build_id()
         if not build_id or not build_id.isdigit() or self.result is None:
             return
@@ -1247,8 +1338,16 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         packages = tuple(node.label for node in graph.find_by_type("source_package"))
         major = almalinux_major_version(graph)
         platforms = (f"AlmaLinux-{major}",) if major else ()
+        known = {build.build_id: build for build in self.build_catalog.load()}.get(int(build_id))
         self.build_catalog.record(
-            BuildSummary(build_id=int(build_id), packages=packages, platforms=platforms)
+            BuildSummary(
+                build_id=int(build_id),
+                created_at=known.created_at if known else None,
+                finished_at=known.finished_at if known else None,
+                owner=known.owner if known else None,
+                packages=packages,
+                platforms=platforms,
+            )
         )
         self._update_build_completer()
 

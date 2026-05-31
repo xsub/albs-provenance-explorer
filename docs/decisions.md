@@ -3303,6 +3303,33 @@ build never writes the developer's real `~/.cache`. Suite 410 -> 417.
 
 ---
 
+## D121 - Build catalog: a filterable list, time-sorted, configurable last-N
+
+Follow-up to D120. Browsing was a plain `QInputDialog` dropdown of one page
+(~10) of builds. Three improvements, on request:
+
+- **A filterable list with a short description.** `_BuildPickerDialog` is a
+  `QListWidget` where each row reads `<id>   <package>[ +N]   <platform>
+  <YYYY-MM-DD HH:MM>   · <owner>` (`_describe_build`), with an in-place filter
+  over id / package / platform / owner and double-click-to-open. `browse_builds`
+  routes through `_pick_build` (the dialog) so it stays headlessly testable.
+- **Sorted by build time.** `BuildCatalog.load` now sorts by `created_at`
+  descending (falling back to the build id, which tracks time, for a recorded
+  build with no timestamp); `_record_analyzed_build` preserves a build's known
+  `created_at` so upserting one you analyzed does not drop it down the list.
+- **Configurable last-N.** `fetch_recent_builds(base_url, limit=N)` pages the
+  10-per-page list endpoint until N builds are collected (de-duped, newest
+  first; first-page error propagates, a later-page error keeps the partial,
+  with a hard page cap). The Builds menu's **Refresh from ALBS ▸ Last
+  50 / 100 / 200 / 500** picks N and remembers it (`build_list_limit`,
+  default 100).
+
+The fetch stays synchronous behind a wait cursor -- an explicit, bounded
+action. +2 cases (the paging stops on a short page + caps at the limit; the
+picker describes + filters in place). Suite 417 -> 419.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

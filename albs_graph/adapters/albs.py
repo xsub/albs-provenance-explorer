@@ -380,6 +380,48 @@ def fetch_build_list(
     return parse_build_list(response.json())
 
 
+_BUILD_LIST_PAGE_SIZE = 10  # the ALBS list endpoint returns ~10 builds per page
+_BUILD_LIST_MAX_PAGES = 200  # safety cap so a misbehaving API cannot loop forever
+
+
+def fetch_recent_builds(
+    base_url: str = "https://build.almalinux.org",
+    *,
+    limit: int = 100,
+    progress: Callable[[str], None] | None = None,
+) -> list[BuildSummary]:
+    """Fetch the most recent ``limit`` ALBS builds, paging the list endpoint.
+
+    Pages 10 at a time until ``limit`` builds are collected, a short/empty page
+    signals the end, or the safety cap is hit. De-dupes by id, preserving the
+    newest-first order. The first page's error propagates (so the caller can
+    report "unavailable"); a later page's error ends paging with what was got.
+    """
+
+    collected: list[BuildSummary] = []
+    seen: set[int] = set()
+    for page in range(1, _BUILD_LIST_MAX_PAGES + 1):
+        if len(collected) >= limit:
+            break
+        try:
+            builds = fetch_build_list(base_url, page=page, progress=progress)
+        except ValueError:
+            if page == 1:
+                raise  # nothing fetched -> let the caller show "unavailable"
+            break  # a later page failed -> keep what we have
+        if not builds:
+            break
+        for build in builds:
+            if build.build_id not in seen:
+                seen.add(build.build_id)
+                collected.append(build)
+        if len(builds) < _BUILD_LIST_PAGE_SIZE:
+            break  # last page
+    if progress:
+        progress(f"Collected {len(collected)} recent builds")
+    return collected[:limit]
+
+
 def parse_build_metadata(data: dict[str, Any]) -> AlbsBuildMetadata:
     first_task = _first_task(data)
     first_ref = first_task.get("ref", {}) if first_task else {}

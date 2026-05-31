@@ -27,14 +27,18 @@ class BuildCatalog:
         self.path = path or (default_cache_root() / "build-catalog.json")
 
     def load(self) -> list[BuildSummary]:
-        """All known builds, newest id first; empty on a missing/corrupt file."""
+        """All known builds, newest build first; empty on a missing/corrupt file.
+
+        Sorted by build time (``created_at``) descending, falling back to the
+        build id (which tracks time) when a recorded build carries no timestamp.
+        """
 
         try:
             raw = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return []
         builds = [BuildSummary.from_dict(item) for item in raw if isinstance(item, dict)]
-        return sorted(builds, key=lambda build: build.build_id, reverse=True)
+        return sorted(builds, key=lambda build: (build.created_at or "", build.build_id), reverse=True)
 
     def build_ids(self) -> list[int]:
         return [build.build_id for build in self.load()]
