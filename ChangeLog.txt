@@ -19,7 +19,15 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   fix(gui): clicking a node actually scrolls the Gantt to it (D127).
+- (this)   feat(gui): Rich colour in the subprocess console dialog (D128). The
+           CLI already uses Rich; the workbench's ConsoleProcessDialog (run.sh /
+           inspect-rpm) showed it plain because a QProcess is a pipe. It now runs
+           with FORCE_COLOR=1 so Rich emits ANSI, and renders it as coloured HTML
+           (<pre> + spans) via a new pure gui/ansi.py::ansi_to_html (SGR ->
+           HTML, strips cursor/clear/CR/OSC). +7 cases. Suite 432 -> 439.
+           decisions.md D128.
+
+- d6b390b  fix(gui): clicking a node actually scrolls the Gantt to it (D127).
            The D124 centerOn ran while the Gantt was the hidden sub-view (size 0)
            / a non-active tab, so it never took. The Gantt now keeps a
            node-id->row map + a _pending_node re-applied via ensureVisible on

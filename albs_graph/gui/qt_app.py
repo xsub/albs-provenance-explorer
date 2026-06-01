@@ -29,6 +29,7 @@ from albs_graph.gui.inspect import (
 from albs_graph.pipeline import RunSpec
 from albs_graph.security.cve_feed import CveFeed
 from albs_graph.security.live_feeds import fetch_cve_feed_or_none
+from albs_graph.gui.ansi import ansi_to_html
 from albs_graph.gui.hitmap import EdgeRegion, NodeRegion, edge_at, node_at
 from albs_graph.gui.render import workbench_graph_rendering
 from albs_graph.services import (
@@ -300,13 +301,12 @@ class ConsoleProcessDialog(QtWidgets.QDialog):
         self.exit_code: int | None = None
         self.exit_status: QtCore.QProcess.ExitStatus | None = None
 
-        self.output = QtWidgets.QPlainTextEdit()
+        # A QTextEdit (HTML-capable) so the subprocess's Rich/ANSI colour is shown
+        # in colour rather than as escape codes (D128).
+        self.output = QtWidgets.QTextEdit()
         self.output.setReadOnly(True)
-        self.output.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
-        self.output.setTextInteractionFlags(
-            QtCore.Qt.TextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
-            | QtCore.Qt.TextInteractionFlag.TextSelectableByKeyboard
-        )
+        self.output.setLineWrapMode(QtWidgets.QTextEdit.LineWrapMode.NoWrap)
+        self._raw_output = ""  # accumulated raw (ANSI) text, re-rendered as HTML
 
         self.ok_button = QtWidgets.QPushButton("OK")
         self.ok_button.setEnabled(False)
@@ -323,6 +323,10 @@ class ConsoleProcessDialog(QtWidgets.QDialog):
         layout.addWidget(self.output)
         layout.addLayout(buttons)
 
+        # Make the CLI (Rich) emit ANSI colour even though a QProcess is a pipe,
+        # so the dialog can render it in colour (D128).
+        environment.insert("FORCE_COLOR", "1")
+        environment.insert("COLUMNS", "160")
         self.process = QtCore.QProcess(self)
         self.process.setWorkingDirectory(str(cwd))
         self.process.setProcessEnvironment(environment)
@@ -367,11 +371,17 @@ class ConsoleProcessDialog(QtWidgets.QDialog):
         self.ok_button.setEnabled(True)
 
     def _append(self, text: str) -> None:
-        cursor = self.output.textCursor()
-        cursor.movePosition(QtGui.QTextCursor.End)
-        cursor.insertText(text)
-        self.output.setTextCursor(cursor)
-        self.output.ensureCursorVisible()
+        # Accumulate the raw (ANSI) output and re-render it as coloured HTML,
+        # keeping the view pinned to the bottom (D128).
+        self._raw_output += text
+        body = ansi_to_html(self._raw_output)
+        self.output.setHtml(
+            '<pre style="font-family:Menlo,Consolas,monospace;font-size:12px;'
+            f'color:#c8ccd4;white-space:pre">{body}</pre>'
+        )
+        scrollbar = self.output.verticalScrollBar()
+        if scrollbar is not None:
+            scrollbar.setValue(scrollbar.maximum())
 
 
 def _describe_build(build: BuildSummary) -> str:

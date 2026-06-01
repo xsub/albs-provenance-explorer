@@ -3461,6 +3461,27 @@ clicked, so the scroll never took. Reworked to be reliable:
 
 ---
 
+## D128 - Rich colour in the GUI subprocess console dialog
+
+"Use Rich everywhere there is console output." The CLI (`cli/main.py`,
+`demo_verbose.py`) already does -- `console.print` + Rich tables + markup for
+humans, plain `json.dumps` to stdout for pipes. The gap was the **workbench's
+`ConsoleProcessDialog`** (run.sh / inspect-rpm / inspect-binary): a `QProcess`
+is a pipe, so Rich dropped the colour and the dialog showed plain text.
+
+Now the dialog runs the subprocess with **`FORCE_COLOR=1`** (Rich emits ANSI
+even down a pipe) and `COLUMNS=160`, switches its widget to a `QTextEdit`, and
+renders the accumulated output as **coloured HTML** inside a `<pre>` via a new
+pure `gui/ansi.py::ansi_to_html`. That converter turns SGR sequences (reset,
+bold, italic, underline, the 16 basic foreground colours + 256/truecolour) into
+`<span>`s, HTML-escapes the text, and strips other control sequences (cursor
+moves, line clears, `\r`, OSC) so progress redraws do not pile up. +7 cases
+(the converter: basic colours / reset+attrs / HTML-escape / stripping /
+256+truecolour / plain passthrough; the dialog forces colour + renders ANSI as
+HTML). Suite 432 -> 439.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

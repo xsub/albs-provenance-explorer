@@ -22,7 +22,7 @@ from PyQt5 import QtCore, QtWidgets
 
 from albs_graph.adapters.albs import BuildSummary
 from albs_graph.fixtures import SYNTHETIC_RPM_ID, build_synthetic_fixture_graph
-from albs_graph.gui.qt_app import WorkbenchWindow
+from albs_graph.gui.qt_app import ConsoleProcessDialog, WorkbenchWindow
 from albs_graph.model import Node, NodeType, ProvenanceGraph
 from albs_graph.pipeline import AnalysisPipeline, RunSpec
 from albs_graph.provenance import universe_from_dot
@@ -840,6 +840,27 @@ def test_cas_and_almalinux_badges_appear_on_an_almalinux_host(
         assert window._errata_source_label() == "NET+DNF"
     finally:
         window.close()
+
+
+def test_console_dialog_forces_colour_and_renders_ansi_as_html(
+    qapp: QtWidgets.QApplication,
+) -> None:
+    # The subprocess console dialog forces Rich colour (FORCE_COLOR) and renders
+    # the ANSI it emits as coloured HTML rather than escape codes (D128).
+    env = QtCore.QProcessEnvironment.systemEnvironment()
+    dialog = ConsoleProcessDialog(
+        title="t", program="true", arguments=[], cwd=Path("."), environment=env, intro="intro"
+    )
+    try:
+        assert dialog.process.processEnvironment().value("FORCE_COLOR") == "1"
+        dialog._append("\x1b[36mcoloured\x1b[0m")
+        rendered = dialog.output.toHtml()
+        assert "coloured" in rendered
+        assert "#56b6c2" in rendered  # the cyan span colour, not the escape code
+        assert "\x1b" not in rendered  # no raw escape codes leaked through
+    finally:
+        dialog.process.kill()
+        dialog.deleteLater()
 
 
 def test_run_analysis_switches_to_the_log_tab(
