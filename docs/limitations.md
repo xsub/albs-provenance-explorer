@@ -345,6 +345,14 @@ The PyQt5 investigation workbench is a read-only frontend over the same
   persists the dependency filters + the universe store/favourites alongside the
   inputs and selection. The `--build-id` path fetches live (no metadata-cache
   reuse) -- re-open a cached `--source` JSON to work offline.
+- **The Git tab is Gitea-specific and network-dependent (D144).** It queries the
+  public `git.almalinux.org` Gitea API for a `git_commit` node's message +
+  changed files and its raw `.diff`; a non-Gitea repo URL, the
+  `unknown-albs-source:<pkg>` placeholder, or an offline server yields just the
+  web link. The per-file diff is **sliced client-side** from the whole-commit
+  diff by the `b/` path, so a file that does not appear in that diff (or an
+  unusual rename) falls back to showing the entire commit diff. Read-only: it
+  shows commits, it does not check them out.
 
 ---
 

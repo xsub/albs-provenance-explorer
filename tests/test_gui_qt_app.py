@@ -940,6 +940,88 @@ def test_cve_auto_fetch_triggers_on_selection(qapp: QtWidgets.QApplication) -> N
     assert captured == ["CVE-2024-0002"]
 
 
+def test_git_commit_view_lists_files_and_pops_up_a_diff(qapp: QtWidgets.QApplication) -> None:
+    # The Git tab enables for a commit, emits commitRequested on the button,
+    # lists changed files, emits diffRequested on a file click, and opens a diff
+    # pop-up (D144).
+    from albs_graph.adapters.git_source import GitCommit, GitFileChange
+    from albs_graph.gui.git_commit import GitCommitView
+
+    view = GitCommitView()
+    view.set_commit("", "", "")
+    assert not view.button.isEnabled()  # no commit -> disabled
+    view.set_commit("https://git.almalinux.org/rpms/nginx.git", "911945c71710aa", "nginx")
+    assert view.button.isEnabled()
+    assert "nginx" in view.header.text()
+
+    commits: list[tuple[str, str]] = []
+    view.commitRequested.connect(lambda url, sha: commits.append((url, sha)))
+    view.button.click()
+    assert commits == [("https://git.almalinux.org/rpms/nginx.git", "911945c71710aa")]
+
+    view.show_commit(
+        GitCommit(
+            sha="911945c71710aa",
+            message="Update to 1.20.1\n\nRebase.",
+            files=(GitFileChange("SPECS/nginx.spec", "modified"),),
+        )
+    )
+    assert view.files.count() == 1
+    assert "Update to 1.20.1" in view.message.toHtml()
+
+    diffs: list[tuple[str, str, str]] = []
+    view.diffRequested.connect(lambda url, sha, path: diffs.append((url, sha, path)))
+    view.files.itemClicked.emit(view.files.item(0))
+    assert diffs == [("https://git.almalinux.org/rpms/nginx.git", "911945c71710aa", "SPECS/nginx.spec")]
+
+    view.show_diff("SPECS/nginx.spec", "diff --git a/SPECS/nginx.spec b/SPECS/nginx.spec\n+Version: 1.20.1")
+    assert view._dialog is not None
+    assert "SPECS/nginx.spec" in view._dialog.windowTitle()
+    view._dialog.close()
+
+
+def test_render_diff_html_colours_additions_and_removals() -> None:
+    from albs_graph.gui.git_commit import render_diff_html
+
+    html_out = render_diff_html("@@ -1 +1 @@\n-old\n+new\n context")
+    assert "#1a7f37" in html_out  # an addition is green
+    assert "#cf222e" in html_out  # a removal is red
+    assert "#0969da" in html_out  # the hunk header is blue
+    assert "No diff" in render_diff_html("")  # empty -> graceful note
+
+
+def test_git_commit_node_selects_the_git_tab_and_renders(qapp: QtWidgets.QApplication) -> None:
+    # Selecting a git_commit node points the Git tab at its repo + sha, raises the
+    # tab, and the result/failure/diff slots render into it (D144).
+    from albs_graph.adapters.git_source import GitCommit, GitFileChange
+
+    graph = build_synthetic_fixture_graph()
+    result = AnalysisService(pipeline=AnalysisPipeline(steps=())).analyze_graph(graph, RunSpec())
+    window = WorkbenchWindow()
+    try:
+        tabs = [window.inspector_tabs.tabText(i) for i in range(window.inspector_tabs.count())]
+        assert "Git" in tabs
+        window._analysis_finished(result)
+        window._show_node("commit:synthetic:abc123")
+        assert window.inspector_tabs.currentWidget() is window.git_commit_view
+        assert window.git_commit_view.button.isEnabled()  # synthetic repo url parses
+        assert "abc123" in window.git_commit_view.header.text()
+
+        window._on_git_commit(
+            GitCommit(sha="abc123", message="commit subject", files=(GitFileChange("a.spec", "modified"),))
+        )
+        assert window.git_commit_view.files.count() == 1
+        assert "commit subject" in window.git_commit_view.message.toHtml()
+        window._on_git_failed("boom")
+        assert "boom" in window.git_commit_view.message.toHtml()
+
+        window._on_git_diff("a.spec", "diff --git a/a.spec b/a.spec\n+x")
+        assert window.git_commit_view._dialog is not None
+        window.git_commit_view._dialog.close()
+    finally:
+        window.close()
+
+
 def test_about_dialog_shows_artwork_and_repo_link(qapp: QtWidgets.QApplication) -> None:
     # The About dialog ships the splash artwork and a repository link at the very
     # bottom; a Help menu opens it (D141).

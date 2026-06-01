@@ -24,6 +24,13 @@ from albs_graph.adapters.errata_source import (
     almalinux_major_version,
     redhat_advisory_url,
 )
+from albs_graph.adapters.git_source import (
+    GitCommit,
+    fetch_commit_diff,
+    fetch_git_commit,
+    file_diff_from,
+    parse_git_remote,
+)
 from albs_graph.adapters.package_info import PackageInfo, fetch_package_info
 from albs_graph.adapters.sbom import discover_build_sbom
 from albs_graph.gui.inspect import (
@@ -70,6 +77,7 @@ from albs_graph.services import (
 from albs_graph.gui.dependency_panel import DependencyPanel
 from albs_graph.gui.filtered_table import FilteredTable
 from albs_graph.gui.cve_details import CveDetailsView, cve_id_in
+from albs_graph.gui.git_commit import GitCommitView
 from albs_graph.gui.package_info import PackageInfoView
 from albs_graph.gui.security_panel import SecurityPanel
 from albs_graph.gui.timeline_panel import TimelinePanel
@@ -271,6 +279,57 @@ class PackageInfoWorker(QtCore.QRunnable):
             self.signals.failed.emit(str(exc))
             return
         self.signals.done.emit(info)
+
+
+class GitCommitSignals(QtCore.QObject):
+    done = QtCore.pyqtSignal(object)  # GitCommit
+    failed = QtCore.pyqtSignal(str)
+
+
+class GitCommitWorker(QtCore.QRunnable):
+    """Fetches one git commit's message + changed files off the UI thread (D144)."""
+
+    def __init__(self, repo_url: str, sha: str) -> None:
+        super().__init__()
+        self.repo_url = repo_url
+        self.sha = sha
+        self.signals = GitCommitSignals()
+
+    @QtCore.pyqtSlot()
+    def run(self) -> None:
+        try:
+            commit = fetch_git_commit(self.repo_url, self.sha)
+        except Exception as exc:  # worker boundary: never crash the pool
+            self.signals.failed.emit(str(exc))
+            return
+        self.signals.done.emit(commit)
+
+
+class GitDiffSignals(QtCore.QObject):
+    done = QtCore.pyqtSignal(str, str)  # path, diff text
+    failed = QtCore.pyqtSignal(str)
+
+
+class GitDiffWorker(QtCore.QRunnable):
+    """Fetches a commit's diff and slices out one file's section off the UI
+    thread; falls back to the whole diff if the file cannot be isolated (D144)."""
+
+    def __init__(self, repo_url: str, sha: str, path: str) -> None:
+        super().__init__()
+        self.repo_url = repo_url
+        self.sha = sha
+        self.path = path
+        self.signals = GitDiffSignals()
+
+    @QtCore.pyqtSlot()
+    def run(self) -> None:
+        try:
+            diff = fetch_commit_diff(self.repo_url, self.sha)
+            section = file_diff_from(diff, self.path) or diff
+        except Exception as exc:  # worker boundary: never crash the pool
+            self.signals.failed.emit(str(exc))
+            return
+        self.signals.done.emit(self.path, section)
 
 
 class GraphSvgWidget(QtSvg.QSvgWidget):
@@ -679,6 +738,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._active_worker: AnalysisWorker | None = None
         self._cve_worker: CveDetailsWorker | None = None
         self._package_worker: PackageInfoWorker | None = None
+        self._git_worker: GitCommitWorker | None = None
+        self._git_diff_worker: GitDiffWorker | None = None
         self._analysis_step_count = 0  # live step counter for the status bar
         # M3: a report-time CVE feed for the Security panel's Potential CVEs
         # column, cached by the source string it was loaded from.
@@ -825,6 +886,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.package_info_view = PackageInfoView()
         self.package_info_view.fetchRequested.connect(self._fetch_package_info)
         self.inspector_tabs.addTab(self.package_info_view, "Package")
+        self.git_commit_view = GitCommitView()
+        self.git_commit_view.commitRequested.connect(self._fetch_git_commit)
+        self.git_commit_view.diffRequested.connect(self._fetch_git_diff)
+        self.inspector_tabs.addTab(self.git_commit_view, "Git")
 
         self.findings_table = QtWidgets.QTableWidget(0, 4)
         self.findings_table.setHorizontalHeaderLabels(["Severity", "Code", "Subject", "Detail"])
@@ -2755,6 +2820,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self.cve_details_view.set_cve(None)
         package = self._package_node(node_id)  # RPM / source node -> Package tab (D140)
         self.package_info_view.set_package(*(package or (None, "")))
+        git = self._git_commit_node(node_id, view)  # git_commit node -> Git tab (D144)
+        self.git_commit_view.set_commit(*(git or ("", "", "")))
+        if git is not None:
+            self.inspector_tabs.setCurrentWidget(self.git_commit_view)
         self._select_slice_node(node_id)
         previous_edge = self.selected_edge_index
         self.selected_edge_index = None
@@ -2808,6 +2877,36 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         filename = str(node.metadata.get("filename") or node.metadata.get("artifact_name") or "")
         return name, (filename if filename.endswith(".rpm") else "")
 
+    def _git_commit_node(
+        self, node_id: str, view: InspectorView
+    ) -> tuple[str, str, str] | None:
+        # (repo url, commit sha, package) for a git_commit node, else None (D144).
+        if self.result is None or node_id not in self.result.graph.nodes:
+            return None
+        node = self.result.graph.nodes[node_id]
+        if node.type != NodeType.GIT_COMMIT:
+            return None
+        return self._git_repo_url(view), node.label, str(node.metadata.get("package") or "")
+
+    def _git_repo_url(self, view: InspectorView) -> str:
+        # The git URL to query for this commit. Prefer the repository node that
+        # POINTS_TO it whose label parses as a Gitea remote (ALBS also emits an
+        # "unknown-albs-source:<pkg>" placeholder repo that does not); else the
+        # source CAS attestation's git_url evidence; else any points_to label.
+        fallback = ""
+        for edge in view.incoming:
+            if edge.relation == "points_to":
+                if parse_git_remote(edge.other_label) is not None:
+                    return edge.other_label
+                fallback = fallback or edge.other_label
+        if self.result is not None:
+            for edge in view.outgoing:
+                if edge.relation == "authenticated_by":
+                    cas = self.result.graph.nodes.get(edge.other_id)
+                    if cas is not None and cas.metadata.get("git_url"):
+                        return str(cas.metadata["git_url"])
+        return fallback
+
     def _show_edge(self, edge_index: int, *, from_slice: bool) -> None:
         graph = self.current_slice.graph if from_slice and self.current_slice is not None else None
         if graph is None:
@@ -2823,6 +2922,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._populate_edges_table([])
         self.raw_inspector.setPlainText(raw_json(view))
         self.cve_details_view.set_cve(None)  # an edge is never a CVE node
+        self.git_commit_view.set_commit("", "", "")  # nor a git commit
         if from_slice:
             self.selected_edge_index = edge_index
             self.selected_node_id = None
@@ -3166,6 +3266,36 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
     def _on_package_failed(self, message: str) -> None:
         self.package_info_view.show_message(f"Could not fetch package info: {message}")
+
+    def _fetch_git_commit(self, repo_url: str, sha: str) -> None:
+        # Fetch the commit (message + changed files) off the UI thread from the
+        # ALBS Gitea server, then render it into the inspector's Git tab (D144).
+        worker = GitCommitWorker(repo_url, sha)
+        worker.signals.done.connect(self._on_git_commit)
+        worker.signals.failed.connect(self._on_git_failed)
+        self._git_worker = worker
+        self.thread_pool.start(worker)
+
+    def _on_git_commit(self, commit: GitCommit) -> None:
+        self.git_commit_view.show_commit(commit)
+
+    def _on_git_failed(self, message: str) -> None:
+        self.git_commit_view.show_message(f"Could not fetch commit: {message}")
+
+    def _fetch_git_diff(self, repo_url: str, sha: str, path: str) -> None:
+        # Fetch the commit's diff off the UI thread, slice out this file, then
+        # show it in a pop-up via the Git tab (D144).
+        worker = GitDiffWorker(repo_url, sha, path)
+        worker.signals.done.connect(self._on_git_diff)
+        worker.signals.failed.connect(self._on_git_diff_failed)
+        self._git_diff_worker = worker
+        self.thread_pool.start(worker)
+
+    def _on_git_diff(self, path: str, diff_text: str) -> None:
+        self.git_commit_view.show_diff(path, diff_text)
+
+    def _on_git_diff_failed(self, message: str) -> None:
+        self.git_commit_view.show_message(f"Could not fetch diff: {message}")
 
     def _show_error(self, message: str) -> None:
         QtWidgets.QMessageBox.warning(self, "Workbench", message)

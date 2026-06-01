@@ -3837,6 +3837,39 @@ out of scope: it lives inside a single bottom tab, not the main window frame.
 
 ---
 
+## D144 - "Git" inspector tab: commit message, changed files, per-file diff
+
+A `git_commit` node carried only its SHA -- to see *what* a commit actually
+changed you had to leave the workbench for a browser. ALBS source lives in a
+public **Gitea** instance (`git.almalinux.org/rpms/<pkg>.git`), which exposes a
+JSON commit API and a raw `.diff` route, so the workbench can show it inline.
+
+`adapters/git_source.py` is a new evidence adapter (not a resolver): it parses an
+ALBS git URL into a Gitea `(base, owner, repo)` coordinate -- tolerating https /
+scp-like / scheme-less forms and the `unknown-albs-source:<pkg>` placeholder ALBS
+emits when it has no repo -- and fetches the commit
+(`/api/v1/repos/{owner}/{repo}/git/commits/{sha}` -> message + `files[]`) and the
+whole-commit diff (`{base}/{owner}/{repo}/commit/{sha}.diff`), which
+`split_unified_diff` slices per file by the `b/` path. The fetcher is injectable
+and shares the CVE feed's `HttpCache` + macOS-safe GET, so no test hits the
+network.
+
+The inspector gains a **Git** tab (after Package, mirroring the CVE/Package
+pattern): selecting a `git_commit` node raises the tab and -- with *auto-fetch*
+ticked, or on the *Show commit* button -- fetches the message + changed-file list
+off the UI thread (`GitCommitWorker`). Clicking a file fetches the commit diff,
+isolates that file's section (`GitDiffWorker` -> `file_diff_from`, falling back to
+the whole diff), and shows it syntax-coloured in a modeless `GitDiffDialog`
+pop-up. The repo URL is recovered from the repository node that POINTS_TO the
+commit (preferring one that parses as a Gitea remote over the placeholder), with
+the source CAS attestation's `git_url` evidence as a fallback. Read-only and
+degrades gracefully: an unusable URL / offline server yields an empty record with
+just the web link. +20 cases (17 adapter: remote parsing, URL builders, commit /
+diff fetch + slicing; 3 GUI: the view's file list + diff pop-up, diff HTML
+colouring, and the node -> tab wiring). Suite 477 -> 497.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

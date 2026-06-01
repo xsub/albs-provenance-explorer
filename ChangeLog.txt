@@ -19,7 +19,18 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): remember the central panes' sash positions across runs.
+- (this)   feat(gui): "Git" inspector tab -- query the ALBS Gitea server for a
+           git_commit node and show its message + changed files, with a per-file
+           diff pop-up. New adapters/git_source.py parses the git URL into a Gitea
+           (base, owner, repo), fetches the commit JSON + whole-commit .diff
+           (injectable, shares the CVE HttpCache), and slices the diff per file.
+           The Git tab (after Package) raises on a git_commit selection, fetches
+           off the UI thread (auto-fetch or button), and a file click opens a
+           syntax-coloured GitDiffDialog. Read-only; degrades to just the web link
+           when offline / non-Gitea. +20 cases (17 adapter, 3 GUI). Suite
+           477 -> 497. D144.
+
+- 920517f  feat(gui): remember the central panes' sash positions across runs.
            QMainWindow.saveState() (D132) persists toolbars + docks but not the
            central widget, so the left/center/right panes and the graph-vs-slice
            split reset to defaults every launch. The two QSplitters now carry
