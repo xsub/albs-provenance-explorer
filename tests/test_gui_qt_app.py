@@ -530,6 +530,78 @@ def test_timeline_view_combo_is_not_clipped(qapp: QtWidgets.QApplication) -> Non
         window.close()
 
 
+def test_gantt_duration_scale_fits_the_majority_and_flags_clips() -> None:
+    # The Gantt time scale is a high percentile of the durations, so a few long
+    # tasks cannot squash the short majority into invisible slivers; the long
+    # tail is reported as clipped instead (D130).
+    from albs_graph.gui.timeline_panel import _duration_scale
+    from albs_graph.services import TimelineGanttRow
+
+    def row(duration: float) -> TimelineGanttRow:
+        return TimelineGanttRow(0, "build_step", "step", "", "", "", 0.0, duration)
+
+    cap, actual_max, clipped = _duration_scale([row(10.0)] * 9 + [row(1000.0)])
+    assert cap == 10.0  # scale fits the short bulk, not the 1000s outlier
+    assert actual_max == 1000.0
+    assert clipped == 1  # the long task clips
+
+    cap, _actual, clipped = _duration_scale([row(30.0)] * 5)
+    assert cap == 30.0 and clipped == 0  # uniform durations: nothing clips
+
+    cap, _actual, clipped = _duration_scale([row(0.0), row(0.0)])
+    assert cap == 1.0 and clipped == 0  # no timing: a safe non-zero cap
+
+
+def test_gantt_elides_long_stage_names(qapp: QtWidgets.QApplication) -> None:
+    # A long stage name is right-elided to its budget so it can never overwrite
+    # the status column; a short name that fits is left untouched (D130).
+    from albs_graph.gui.timeline_panel import _elided_text_item
+
+    scene = QtWidgets.QGraphicsScene()
+    long_name = "build_done_stats.packages_processing_with_a_very_long_trailing_name"
+    elided = _elided_text_item(scene, long_name, 60)
+    assert elided.toPlainText() != long_name
+    assert elided.toPlainText().endswith("…")
+    assert _elided_text_item(scene, "ok", 200).toPlainText() == "ok"
+
+
+def test_gantt_columns_do_not_overlap_and_bars_stay_in_band(
+    qapp: QtWidgets.QApplication,
+) -> None:
+    # Regression: long stage names used to bleed into the status column, and the
+    # bars overran the canvas. The name items must stay left of the status column
+    # and every bar must clip within the timeline band (D130).
+    from albs_graph.gui import timeline_panel as tp
+
+    window = WorkbenchWindow()
+    try:
+        window._analysis_finished(_fixture_result())
+        qapp.processEvents()
+        gantt = window.timeline_panel.gantt
+        gantt._relayout()
+        band_right = tp._BARS_LEFT + gantt._timeline_width()
+        names = [
+            item
+            for item in gantt._scene.items()
+            if isinstance(item, QtWidgets.QGraphicsTextItem)
+            and abs(item.pos().x() - tp._NAME_X) < 0.5
+            and item.pos().y() > tp._TOP  # exclude the top-of-axis clamp note
+        ]
+        assert names  # the fixture timeline produced rows
+        for item in names:
+            assert item.pos().x() + item.boundingRect().width() <= tp._DETAIL_X + 1
+        bars = [
+            item
+            for item in gantt._scene.items()
+            if isinstance(item, QtWidgets.QGraphicsPathItem)
+        ]
+        assert bars
+        for bar in bars:
+            assert bar.sceneBoundingRect().right() <= band_right + 1
+    finally:
+        window.close()
+
+
 def test_primary_analyze_is_context_sensitive(
     qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:

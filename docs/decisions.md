@@ -3499,6 +3499,38 @@ SVG->widget; the centre call is safe without a render). Suite 439 -> 442.
 
 ---
 
+## D130 - Gantt timeline: scale to the short majority, clip the long tail
+
+The build-task Gantt fitted its time scale to the *longest* row
+(`span = max(offset + duration)`), so a single long sign/build task squashed
+every few-minute step into an invisible sliver, and the stage-name text items
+(drawn onto the scene with no eliding) overran the status column. Reworked the
+`TimelineGanttView` rendering:
+
+- **Duration bars from a shared baseline.** Each row's bar now starts at the same
+  left edge and its width is the row's own duration, so the eye compares how long
+  each step took rather than where it sat on the absolute wall clock (the precise
+  start/finish stays in the Tree view and in the bar's tooltip).
+- **Scale fitted to the majority.** `_duration_scale` takes a high percentile
+  (`_SCALE_PERCENTILE = 0.90`) of the durations as the display cap, so ~90% of
+  the (short) tasks fill a readable share of the width. Bars longer than the cap
+  clip to the full width, are flagged with a "…", and show their real duration
+  past the end; the axis suffixes its last tick `+` and prints a note ("scale
+  fitted to X · N longer task(s) clipped (max Y)").
+- **Elided columns.** `_elided_text_item` right-elides the stage name and the
+  status to fixed pixel budgets, so a long `build_done_stats.*` label can never
+  overwrite the status column; the full text + timing moves to the row tooltip.
+- **Tracks the window.** The timeline width is derived from the viewport (not a
+  fixed 920px canvas) and the chart re-lays-out on show/resize, so it fills the
+  window instead of forcing a horizontal scroll. The reveal-on-click scroll
+  (D127) still re-applies after a relayout (the row is looked up by node id).
+
++3 cases (the percentile cap fits the bulk + flags the clip count; long names
+elide with "…"; the columns never cross into the status column and the bars stay
+in the band). Suite 442 -> 445.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

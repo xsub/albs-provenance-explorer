@@ -19,7 +19,16 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   docs(readme): re-level the lower half so the whole CLI/engine
+- (this)   feat(gui): rework the build-task Gantt so it scales to the short
+           majority instead of the longest task. Bars are now durations from a
+           shared baseline; the scale is capped at the 90th percentile of the
+           durations (long tasks clip to full width, flagged "…", real duration
+           shown, axis tick suffixed "+"); the stage-name / status columns are
+           elided so a long step name can no longer overwrite the status column;
+           and the chart tracks the viewport width (re-lays-out on show/resize).
+           +3 cases; suite 442 -> 445. D130.
+
+- fbfee04  docs(readme): re-level the lower half so the whole CLI/engine
            reference nests under one "engine underneath" <h2> (Demo / Scope /
            Install / CLI / Model / Identity / ... -> <h3>, their children
            -> <h4>) and the workbench/CLI-split section is promoted to a sibling
