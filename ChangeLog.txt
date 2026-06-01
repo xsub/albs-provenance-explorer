@@ -19,7 +19,12 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   docs(readme): make the demo play inline -- GitHub does not embed a
+- (this)   docs(readme): refresh the workbench screenshot to the current build
+           (krb5-libs trust path on 57810: errata ALSA-2026:19145 -> two CVEs,
+           the Security panel, and the identifier badges ALBS: 57810 / ERRATA:
+           NET (10) / SBOM) and update the caption. No code.
+
+- c3dcd62  docs(readme): make the demo play inline -- GitHub does not embed a
            <video> for a repo-hosted file (only user-attachments uploads), so it
            showed only a link. Added a 6.2 MB looping GIF teaser (the whole run
            at 6x, 760px/10fps via ffmpeg palettegen) that renders inline as an

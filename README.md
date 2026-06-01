@@ -12,7 +12,7 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Typed: mypy strict](https://img.shields.io/badge/mypy-strict-blue)](https://mypy-lang.org/)
 
-![ALBS Provenance Investigation Workbench: a build's source-to-artifact trust-path graph with errata/CVE, the per-RPM evidence matrix, and the live ALBS / SBOM / ERRATA source badges in the status bar (build 57810)](examples/demo-build-57810/pyqt-investigation-workbench.png)
+![ALBS Provenance Investigation Workbench: the krb5-libs trust-path graph (errata ALSA-2026:19145 fixing two CVEs), the Security panel (vendor-asserted CPE, errata three-state, addressed CVEs), and the live ALBS: 57810 / ERRATA: NET / SBOM identifier badges in the status bar (build 57810)](examples/demo-build-57810/pyqt-investigation-workbench.png)
 
 **Screen recording** — the workbench in action: fetching a build, exploring the trust path, the source badges, the timeline and the security panel. The animation below loops a sped-up run (GitHub plays it inline); for the full-resolution clip, [watch the mp4](examples/demo-build-57810/workbench-demo.mp4).
 
