@@ -12,24 +12,30 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Typed: mypy strict](https://img.shields.io/badge/mypy-strict-blue)](https://mypy-lang.org/)
 
+**Follow an AlmaLinux package from its source commit to the signed, shipped RPM — and see every SBOM, errata, CVE and CAS attestation behind it — as one click-through provenance graph.**
+
 ![ALBS Provenance Investigation Workbench: the krb5-libs trust-path graph (errata ALSA-2026:19145 fixing two CVEs), the Security panel (vendor-asserted CPE, errata three-state, addressed CVEs), and the live ALBS: 57810 / ERRATA: NET / SBOM identifier badges in the status bar (build 57810)](examples/demo-build-57810/pyqt-investigation-workbench-57810.png)
 
 **Screen recording** — the workbench in action: fetching a build, exploring the trust path, the source badges, the timeline and the security panel. The animation below loops a sped-up run (GitHub plays it inline); for the full-resolution clip, [watch the mp4](examples/demo-build-57810/workbench-demo.mp4).
 
 ![ALBS Provenance Investigation Workbench demo: fetching a build, the trust-path graph, the live source badges, the timeline and the security panel](examples/demo-build-57810/workbench-demo.gif)
 
-The **`InvestigationWorkbenchApp` branch is the GUI version of
-[`albs-provenance-explorer`](#albs-provenance-explorer).** It builds on the same
-analysis backend as the command-line tool — the shared `AnalysisPipeline` — and
-adds **live data inspection**, hence *Investigation Workbench*: a desktop app for
-navigating the many combined data sources (ALBS build metadata, RPM
-headers/payloads, SBOMs, errata/CVE, CAS, dependency reconciliation, the
-arch-wide universe store) in one place, searching them, and identifying the
-build-process tasks, actions, artifacts and metadata recorded across the
-AlmaLinux Build System ecosystem.
+Point it at a build id and the **Investigation Workbench** does the legwork:
+fetches the ALBS build metadata, auto-discovers the matching build SBOM,
+reconstructs the provenance graph, and drops you straight into it. Click any node to see where it came from, what signed
+it, which errata touch it, and how far each link can be trusted. The data sources
+that usually mean juggling a dozen separate tools — ALBS build metadata, RPM
+headers and payloads, SBOMs, errata/CVE, CAS attestation, dependency
+reconciliation, the arch-wide universe store — all sit behind one searchable
+graph here.
 
-Open a cached build or a live build id, the workbench runs the shared backend,
-then lets you explore the result without leaving the graph:
+It is a face, not a fork: under the hood the workbench runs the very same
+analysis engine as the [`albs-provenance-explorer`](#albs-provenance-explorer)
+CLI — the shared `AnalysisPipeline` — so every verdict on screen (trust path,
+coverage axes, reconciled dependencies, CPE identity) is the engine's, computed
+in exactly one place and never reimplemented for the GUI.
+
+Once a build is loaded you never leave the graph:
 
 - **Artifacts + focused slices** — trust path, dependency evidence, security
   context, node neighborhood (clickable SVG with Graphviz hit-testing).
@@ -43,8 +49,10 @@ then lets you explore the result without leaving the graph:
 - **Universe panel** — open a SQLite universe store, search packages, walk
   dependents / dependencies / reachable, render dependency paths, save
   favourites.
-- **Timeline** (tree + Gantt), **graph queries**, **finding drill-down**,
-  **build compare**, the full-inspection runner (`run.sh`), and session save/load.
+- **Timeline** (tree + Gantt; click a graph node to scroll the Gantt to where
+  that artifact was built), **graph queries**, **finding drill-down**, **build
+  compare**, the full-inspection runner (`run.sh`, with a colourised console),
+  and session save/load.
 - **Start launcher** — a bare launch (or `File ▸ Start…`) offers the entry
   points: open a saved session, inspect a build id (entered + **verified live**
   against ALBS, so a sparse-id 404 is caught up front), pick a build from the
@@ -52,9 +60,11 @@ then lets you explore the result without leaving the graph:
 - **Live source badges** — `ALBS: <id>` / `ERRATA: NET|DNF` / `SBOM: <id>` chips
   in the status bar that grey out when a source is stale or missing for the
   current build id; click one to fetch just that source, or type a build id and
-  press Enter to fetch everything the host can in one sweep. On an AlmaLinux host
-  a `CAS` badge (when the `cas` tool is present) and an `AlmaLinux` indicator
-  appear too.
+  press Enter to fetch everything the host can in one sweep. The `ERRATA` badge
+  says where the advisory data came from — the live feed (`NET`) or the host's
+  `dnf updateinfo` (`DNF`) — and you can pin either or cross-check both and have
+  the agreements marked. On an AlmaLinux host a `CAS` badge (when the `cas` tool
+  is present) and an `AlmaLinux` indicator round out the row.
 - **Build catalog** — a cached db of real ALBS build numbers: the `Builds` menu
   browses a filterable, build-time-sorted list (with a short description per
   build) and refreshes the last *N* (50/100/200/500); the build-id field
@@ -63,30 +73,30 @@ then lets you explore the result without leaving the graph:
 - **Export** — a slice as SVG/PNG, plus a JSON evidence bundle / HTML / Markdown
   report with a reproducibility appendix.
 
-### Backend parity and direction
+### What's in the workbench, and what still lives in the CLI
 
-The workbench is a **frontend over the same backend, not a second
-implementation**: the CLI calls `AnalysisPipeline().run(...)` directly and the
-GUI calls it through the thin [`albs_graph/services`](albs_graph/services)
-facade, so enrichment, reconciliation, coverage, vulnerability and identity
-logic are shared.
+The panels above cover the everyday investigation. A few of the heavier,
+native-AlmaLinux powers aren't wired into a panel yet — they're reached through
+the base [`albs-provenance-explorer`](#albs-provenance-explorer) CLI, and they're
+happiest on a real AlmaLinux host where their tools live:
 
-The working rule is **develop new logic in the CLI first, then backport it to the
-GUI when it is ready**, so the two always stay backed by an identical engine.
-Today the GUI surfaces the core investigation surface listed above; a few
-commands remain CLI-only and are not yet wired into a panel — `license`
-(compliance rollup), `slsa` (in-toto / SLSA export), `resolve` (triggering the
-native go/cargo/pip/maven/npm resolvers), `inspect-rpm` (an arbitrary local
-`.rpm`), **building** a universe store (`arch-universe`; the panel only *opens*
-one), and live CVE-feed matching. So the GUI is **not yet a 1:1 superset of the
-CLI**, but the backend underneath is the same.
+- **investigate an arbitrary local `.rpm`** (`inspect-rpm`) — header, payload,
+  ELF linkage and signatures, straight off disk;
+- **building** a repo-wide dependency universe (`arch-universe` / `universe`);
+  the GUI's Universe panel only *opens* a store someone already built;
+- the `license` compliance rollup, the `slsa` in-toto / SLSA export, the native
+  `resolve` runners (go / cargo / pip / maven / npm), and live CVE-feed matching.
 
-The end goal is **one application** with that backend exposed through an API that
-a frontend consumes — collapsing the current "CLI + desktop facade" into a single
-backend so there is no redundant logic to keep in sync between two front ends.
+That list is shrinking, not a design boundary. Both front ends call one engine —
+the CLI runs `AnalysisPipeline().run(...)` directly, the GUI through the thin
+[`albs_graph/services`](albs_graph/services) facade — so a verdict is computed in
+exactly one place. The working rule is **build it in the CLI first, then surface
+it in the workbench**; the destination is a single backend behind one API that
+the desktop app (and anything else) consumes, with no logic to keep in sync
+across two front ends.
 
-The full CLI reference — every command, the provenance backbone, and the live
-demo — follows below.
+The full CLI reference — every command, the provenance backbone, and an annotated
+live demo — is just below.
 
 Install once (the `gui` extra pulls in PyQt5):
 
@@ -115,9 +125,15 @@ albs-graph-workbench --build-id 57810 --build-sbom path/to/build.cyclonedx.json
 
 ---
 
-# albs-provenance-explorer
+<a id="albs-provenance-explorer"></a>
 
-`albs-provenance-explorer` is a read-only Python PoC that builds a provenance-aware graph over AlmaLinux Build System (ALBS), RPM, SBOM, CAS and errata data.
+## The engine underneath: `albs-provenance-explorer`
+
+Everything above rides on this. `albs-provenance-explorer` is a read-only Python
+PoC that builds a provenance-aware graph over AlmaLinux Build System (ALBS), RPM,
+SBOM, CAS and errata data; the workbench is just the comfortable way in. The rest
+of this README is the toolkit it's built on — the model, the full command
+surface, and a live end-to-end demo.
 
 It traces Enterprise Linux supply-chain lineage from source package to shipped artifact and layers a conflict-aware dependency model on top. Release context, errata linkage and build provenance sit next to the raw package relationships, so backported security fixes stay visible - a version that looks older than upstream can still carry the patch.
 
@@ -388,7 +404,7 @@ Status is tracked in three honest buckets. "Couldn't resolve" is a deliverable h
 ### Partial
 
 - PyPI dependencies can be resolved through pip's dry-run report, but higher-level frontends such as uv/Poetry are not wired yet
-- CPE verification and CVE-feed matching can consume supplied files or cached live NVD feeds; errata is matched per-RPM and turned on by a build-id fetch-all, defaulting to the host `dnf updateinfo` on an AlmaLinux box and the errata.almalinux.org HTTP feed elsewhere
+- CPE verification and CVE-feed matching can consume supplied files or cached live NVD feeds; errata is matched per-RPM and turned on by a build-id fetch-all, defaulting to the host `dnf updateinfo` on an AlmaLinux box and the errata.almalinux.org HTTP feed elsewhere, with an option to cross-check the two feeds and mark where they agree
 - vault URL reconstruction is a heuristic over known AlmaLinux repo layouts, not an exhaustive mirror map
 - SQLite is a deliberately lightweight persistence layer for the PoC, not the final production graph platform
 
