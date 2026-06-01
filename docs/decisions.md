@@ -3482,6 +3482,23 @@ HTML). Suite 432 -> 439.
 
 ---
 
+## D129 - Centre the graph on the highlighted node
+
+Mirrors the timeline reveal (D127) for the graph: when a node is highlighted
+(navigated to from a table / finding / search / slice list), the graph view
+**scrolls to centre it -- but only when the graph does not already fit the
+viewport**. `NodeRegion.center()` gives a region's centre in SVG coordinates;
+`GraphSvgWidget.node_center` maps it to widget coordinates (the inverse of the
+hit-test scaling); `_load_svg` then defers `_do_center_graph_on_selected_node`
+(via `singleShot(0)`, so the scroll area's scrollbar ranges have updated after
+the widget was resized), which `ensureVisible`s the node's centre with
+half-viewport margins (centred, clamped at the edges). It is a no-op when the
+graph fits, nothing is selected, or the widgets are gone (guarded for test
+teardown). +3 cases (`NodeRegion.center` rect/circle/poly; `node_center` maps
+SVG->widget; the centre call is safe without a render). Suite 439 -> 442.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

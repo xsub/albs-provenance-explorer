@@ -22,7 +22,8 @@ from PyQt5 import QtCore, QtWidgets
 
 from albs_graph.adapters.albs import BuildSummary
 from albs_graph.fixtures import SYNTHETIC_RPM_ID, build_synthetic_fixture_graph
-from albs_graph.gui.qt_app import ConsoleProcessDialog, WorkbenchWindow
+from albs_graph.gui.hitmap import NodeRegion
+from albs_graph.gui.qt_app import ConsoleProcessDialog, GraphSvgWidget, WorkbenchWindow
 from albs_graph.model import Node, NodeType, ProvenanceGraph
 from albs_graph.pipeline import AnalysisPipeline, RunSpec
 from albs_graph.provenance import universe_from_dot
@@ -838,6 +839,40 @@ def test_cas_and_almalinux_badges_appear_on_an_almalinux_host(
         assert window._errata_source_label() == "NET"
         window.errata_combo.setCurrentIndex(window.errata_combo.findData("both"))
         assert window._errata_source_label() == "NET+DNF"
+    finally:
+        window.close()
+
+
+def test_graph_widget_node_center_maps_svg_to_widget_coords(
+    qapp: QtWidgets.QApplication,
+) -> None:
+    # node_center maps a node's SVG-space centre to widget coords (the inverse of
+    # the hit-test), so the graph can be scrolled to a highlighted node (D129).
+    widget = GraphSvgWidget()
+    try:
+        svg = b'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50"></svg>'
+        widget.load(QtCore.QByteArray(svg))
+        widget.set_regions((NodeRegion("n", "rect", (20, 10, 40, 30)),), ())  # SVG centre (30,20)
+        widget.setFixedSize(200, 100)  # 2x the SVG default size (100x50)
+        center = widget.node_center("n")
+        assert center is not None
+        assert (round(center.x()), round(center.y())) == (60, 40)  # (30,20) scaled x2
+        assert widget.node_center("missing") is None
+    finally:
+        widget.deleteLater()
+
+
+def test_centering_graph_on_selected_node_is_safe_without_a_render(
+    qapp: QtWidgets.QApplication,
+) -> None:
+    # The deferred centre is a no-op when nothing is selected / no graph fits, and
+    # never raises (D129).
+    window = WorkbenchWindow()
+    try:
+        window.selected_node_id = None
+        window._do_center_graph_on_selected_node()  # no selection -> returns
+        window.selected_node_id = "rpm:missing"
+        window._do_center_graph_on_selected_node()  # unknown node -> returns, no crash
     finally:
         window.close()
 

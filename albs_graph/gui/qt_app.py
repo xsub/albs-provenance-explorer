@@ -272,6 +272,30 @@ class GraphSvgWidget(QtSvg.QSvgWidget):
         y = point.y() * size.height() / self.height()
         return node_at(self._node_regions, x, y)
 
+    def node_center(self, node_id: str) -> QtCore.QPointF | None:
+        """``node_id``'s centre in *widget* coordinates, for scrolling to it
+        (the inverse of the hit-test mapping, D129); ``None`` if not found."""
+
+        region = next((r for r in self._node_regions if r.node_id == node_id), None)
+        if region is None:
+            return None
+        renderer = self.renderer()
+        if renderer is None:
+            return None
+        size = renderer.defaultSize()
+        if (
+            not size.isValid()
+            or size.width() <= 0
+            or size.height() <= 0
+            or self.width() <= 0
+            or self.height() <= 0
+        ):
+            return None
+        cx, cy = region.center()
+        return QtCore.QPointF(
+            cx * self.width() / size.width(), cy * self.height() / size.height()
+        )
+
     def _edge_index_at(self, point: QtCore.QPoint) -> int | None:
         if not self._edge_regions:
             return None
@@ -2406,6 +2430,36 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.svg_default_size = size
         target = self._graph_target_size(size)
         self.svg_widget.setFixedSize(target)
+        # Keep the highlighted node in view: centre on it once the scroll area has
+        # re-laid-out for the new widget size (D129).
+        self._center_graph_on_selected_node()
+
+    def _center_graph_on_selected_node(self) -> None:
+        # Deferred so the scroll area's scrollbar ranges have updated after the
+        # widget was resized by the render.
+        QtCore.QTimer.singleShot(0, self._do_center_graph_on_selected_node)
+
+    def _do_center_graph_on_selected_node(self) -> None:
+        try:
+            node_id = self.selected_node_id
+            if not node_id:
+                return
+            center = self.svg_widget.node_center(node_id)
+            if center is None:
+                return
+            viewport = self.svg_scroll.viewport()
+            if viewport is None:
+                return
+            view_w, view_h = viewport.width(), viewport.height()
+            graph_w, graph_h = self.svg_widget.width(), self.svg_widget.height()
+            if view_w <= 0 or view_h <= 0:
+                return
+            if graph_w <= view_w and graph_h <= view_h:
+                return  # the graph fits in the viewport; nothing to scroll
+            # Margins of half the viewport centre the point (clamped at the edges).
+            self.svg_scroll.ensureVisible(int(center.x()), int(center.y()), view_w // 2, view_h // 2)
+        except RuntimeError:
+            pass  # the widgets were torn down before the deferred centre ran (tests)
 
     def _graph_target_size(self, size: QtCore.QSize) -> QtCore.QSize:
         viewport = _require(self.svg_scroll.viewport()).size()

@@ -54,3 +54,11 @@ def test_node_region_supports_rect_circle_and_polygon_hits() -> None:
     assert node_at(regions, 31, 31) == "circle"
     assert node_at(regions, 60, 60) == "poly"
     assert node_at(regions, 45, 45) is None
+
+
+def test_node_region_center_for_scrolling() -> None:
+    # The bbox/circle centre in SVG coords, used to scroll the graph to a node
+    # (D129).
+    assert NodeRegion("r", "rect", (2, 4, 12, 14)).center() == (7.0, 9.0)
+    assert NodeRegion("c", "circle", (30, 40, 5)).center() == (30.0, 40.0)
+    assert NodeRegion("p", "poly", (50, 50, 70, 50, 70, 70, 50, 70)).center() == (60.0, 60.0)

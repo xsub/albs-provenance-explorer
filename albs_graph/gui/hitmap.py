@@ -14,6 +14,17 @@ class NodeRegion:
     def contains(self, x: float, y: float) -> bool:
         return _contains(self.shape, self.coords, x, y)
 
+    def center(self) -> tuple[float, float]:
+        """The region's centre in SVG coordinates (for scrolling to it, D129)."""
+
+        if self.shape == "circle" and len(self.coords) >= 2:
+            return self.coords[0], self.coords[1]
+        xs = self.coords[0::2]
+        ys = self.coords[1::2]
+        if not xs or not ys:
+            return 0.0, 0.0
+        return (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+
 
 @dataclass(frozen=True)
 class EdgeRegion:

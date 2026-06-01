@@ -19,7 +19,14 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): Rich colour in the subprocess console dialog (D128). The
+- (this)   feat(gui): centre the graph on the highlighted node (D129). When a
+           node is navigated to (table / finding / search / slice list), the
+           graph scrolls to centre it -- but only when it does not already fit
+           the viewport. NodeRegion.center() + GraphSvgWidget.node_center() map
+           the node to widget coords; _load_svg defers ensureVisible with
+           half-viewport margins. +3 cases. Suite 439 -> 442. decisions.md D129.
+
+- f7e4252  feat(gui): Rich colour in the subprocess console dialog (D128). The
            CLI already uses Rich; the workbench's ConsoleProcessDialog (run.sh /
            inspect-rpm) showed it plain because a QProcess is a pipe. It now runs
            with FORCE_COLOR=1 so Rich emits ANSI, and renders it as coloured HTML
