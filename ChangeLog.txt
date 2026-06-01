@@ -19,7 +19,15 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   fix(gui): pin the About action to the Help menu. macOS Qt auto-merges
+- (this)   chore(gui): rename the macOS application menu from "Python" to "ALBS
+           Workbench". A python-launched app shows "Python" as the app-menu title
+           (macOS reads it from the bundle's CFBundleName); _name_macos_app() sets
+           CFBundleName via pyobjc before Qt builds the menu. Guarded no-op off
+           macOS and when pyobjc (the new opt-in `macos` extra) is absent -- the
+           menu then just stays "Python", which is harmless. +1 case (safe-noop
+           without pyobjc). Suite 475 -> 476. D142.
+
+- 268ce52  fix(gui): pin the About action to the Help menu. macOS Qt auto-merges
            any "About" action into the application menu ("Python ▸ About"), where
            it was hard to find; setMenuRole(NoRole) keeps it in Help ▸ About …
            everywhere. (The blank-artwork report was a stale process running from

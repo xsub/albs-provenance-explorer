@@ -41,7 +41,28 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _name_macos_app(name: str) -> None:
+    """Rename the macOS application menu (otherwise "Python") to ``name``. macOS
+    reads it from the bundle's ``CFBundleName``, so it must be set before Qt
+    builds the menu. A no-op off macOS or when pyobjc (the ``macos`` extra) is not
+    installed -- the menu then just stays "Python", which is harmless."""
+
+    if sys.platform != "darwin":
+        return
+    try:
+        from Foundation import NSBundle  # type: ignore[import-not-found]
+    except ImportError:
+        return
+    bundle = NSBundle.mainBundle()
+    if bundle is None:
+        return
+    info = bundle.localizedInfoDictionary() or bundle.infoDictionary()
+    if info is not None:
+        info["CFBundleName"] = name
+
+
 def main(argv: list[str] | None = None) -> int:
+    _name_macos_app("ALBS Workbench")  # rename the macOS app menu (else "Python")
     args = build_parser().parse_args(argv)
     try:
         from .qt_app import run

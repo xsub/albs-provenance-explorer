@@ -38,6 +38,12 @@ dev = [
 gui = [
   "PyQt5>=5.15"
 ]
+# macOS only: rename the application menu from "Python" to the app name (sets
+# CFBundleName before Qt builds the menu). Optional -- without it the menu just
+# stays "Python", which is harmless.
+macos = [
+  "pyobjc-framework-Cocoa>=10.0; sys_platform == 'darwin'"
+]
 # Rung-4 payload analysis of real el9 RPMs (zstd-compressed cpio). gzip/xz/bzip2
 # payloads work with the standard library; only zstd needs this extra.
 payload = [

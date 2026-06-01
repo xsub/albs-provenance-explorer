@@ -1,6 +1,6 @@
 # Test guide
 
-The suite has **475 tests** across `tests/`. They are **fully offline** — no test
+The suite has **476 tests** across `tests/`. They are **fully offline** — no test
 touches the network or a host RPM tool: network adapters are exercised through
 injected fetchers / a hand-built RPM byte structure, `dnf` / `rpmkeys` through
 injected runners, and the PyQt GUI headless under `QT_QPA_PLATFORM=offscreen`.
@@ -13,7 +13,7 @@ QT_QPA_PLATFORM=offscreen pytest         # required for the GUI tests
 ```
 
 The per-file counts below are a map, not a contract; the only cross-checked
-figure is the **475** total (`scripts/check-test-count.sh`).
+figure is the **476** total (`scripts/check-test-count.sh`).
 
 ---
 
@@ -140,4 +140,4 @@ figure is the **475** total (`scripts/check-test-count.sh`).
 | `test_gui_render.py` | 6 | `workbench_graph_to_dot` theming/label wrapping/clickable URLs + the cmapx-vs-SVG coordinate alignment (D112); `graph_background` matches the theme (D135). |
 | `test_gui_hitmap.py` | 4 | Parsing the Graphviz image map (cmapx) into node/edge hit regions + point-in-region testing, and the region centre used to scroll the graph to a node (D129). |
 | `test_gui_inspect.py` | 3 | The node/edge inspector view models. |
-| `test_gui_entry.py` | 2 | The `albs-graph-workbench` entry point argument handling. |
+| `test_gui_entry.py` | 3 | The `albs-graph-workbench` entry point argument handling; the macOS app-menu rename helper is a safe no-op without pyobjc (D142). |

@@ -3800,6 +3800,21 @@ menu opens it). Suite 474 -> 475.
 
 ---
 
+## D142 - Rename the macOS application menu ("Python")
+
+On macOS the leftmost application menu is named after the launching executable,
+so a `python`-run app shows **"Python"** — you cannot remove it (macOS requires
+an app menu), only rename it, and there is no pure-Qt way. macOS reads the name
+from the bundle's `CFBundleName`, so `entry.main` now sets it to **"ALBS
+Workbench"** via pyobjc **before** Qt builds the menu (`_name_macos_app`). It is
+guarded twice: a no-op off macOS, and a no-op when pyobjc is absent (the menu
+just stays "Python", which is harmless) — so it never becomes a hard dependency.
+The opt-in `macos` extra (`pip install -e '.[gui,macos]'`) pulls in
+`pyobjc-framework-Cocoa` (itself marked `sys_platform == 'darwin'`). +1 case (the
+helper is a safe no-op without pyobjc). Suite 475 -> 476.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
