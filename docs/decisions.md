@@ -3651,6 +3651,30 @@ colour; the a11y noise is filtered while a real warning passes). Suite 458 -> 46
 
 ---
 
+## D136 - Always-present CAS + host-OS status badges
+
+The `CAS` badge and the AlmaLinux indicator only appeared on a host that had the
+`cas` tool / was AlmaLinux-family, so on a non-AlmaLinux box (the dev's macOS)
+their *absence* was silent -- you could not tell whether CAS was unsupported or
+just not run. Both are now permanent:
+
+- **CAS** is always installed in the status bar; it greys out (state `missing`,
+  tooltip "cas tool not installed on this host") when `cas` is not on PATH, and
+  lights up with its verified-attestation count when it is. Clicking it on a host
+  without `cas` shows a plain message instead of silently doing nothing.
+- The **host-OS** badge is always the rightmost: **AlmaLinux OS** (highlighted, the
+  AlmaLinux blue) on an AlmaLinux/RHEL-family host, or **Non-AlmaLinux OS** (greyed)
+  elsewhere -- so it is obvious at a glance why the native dnf/rpm/cas powers are
+  or are not available.
+
+The actual CAS verification (`use_cas`) is still gated on the tool being present,
+so the always-on badge changes only the affordance, not behaviour. No new cases
+(the existing badge tests were updated to assert the always-present greyed CAS +
+"Non-AlmaLinux OS" on the baseline host and "AlmaLinux OS" on an AlmaLinux host).
+Suite stays 461.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

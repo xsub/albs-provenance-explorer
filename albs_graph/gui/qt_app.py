@@ -138,7 +138,7 @@ def _prepend_env_path(path: Path, existing: str) -> str:
 _SOURCE_ALBS = "ALBS"
 _SOURCE_ERRATA = "ERRATA"
 _SOURCE_SBOM = "SBOM"
-_SOURCE_CAS = "CAS"  # only when the `cas` tool is on the host (D125)
+_SOURCE_CAS = "CAS"  # always shown; greyed when the `cas` tool is absent (D125/D136)
 _SOURCE_BADGES: tuple[str, ...] = (_SOURCE_ALBS, _SOURCE_ERRATA, _SOURCE_SBOM)
 _SOURCE_ACTIVE_COLORS = {
     _SOURCE_ALBS: "#2F6FED",
@@ -1860,10 +1860,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         # only when the `cas` tool is on the host; an AlmaLinux indicator badge
         # sits last on the right when the host is AlmaLinux-family (D125).
         bar = _require(self.statusBar())
-        names = list(_SOURCE_BADGES)
-        if shutil.which("cas"):
-            names.append(_SOURCE_CAS)
-        for name in names:
+        for name in (*_SOURCE_BADGES, _SOURCE_CAS):  # CAS always shown (greyed if absent)
             badge = QtWidgets.QToolButton()
             badge.setText(name)
             badge.setAutoRaise(True)
@@ -1871,15 +1868,27 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             badge.clicked.connect(lambda _checked=False, source=name: self._fetch_source(source))
             bar.addPermanentWidget(badge)
             self._source_badges[name] = badge
-        if _is_almalinux_family_host():
-            host = QtWidgets.QLabel("AlmaLinux")
+        # The host-OS badge always sits last on the right: "AlmaLinux OS"
+        # (highlighted) on an AlmaLinux/RHEL-family host, else "Non-AlmaLinux OS"
+        # (greyed) -- so it is obvious why native dnf/rpm/cas inspection is or is
+        # not available here (D136).
+        alma = _is_almalinux_family_host()
+        host = QtWidgets.QLabel("AlmaLinux OS" if alma else "Non-AlmaLinux OS")
+        if alma:
             host.setToolTip("Running on an AlmaLinux / RHEL-family host (dnf, rpm, cas available).")
-            host.setStyleSheet(
-                f"QLabel{{background:{_ALMALINUX_BADGE_COLOR};color:#FFFFFF;border-radius:7px;"
-                "padding:1px 8px;margin:0 2px;font-size:11px;font-weight:600;}"
+            host_color, host_fg = _ALMALINUX_BADGE_COLOR, "#FFFFFF"
+        else:
+            host.setToolTip(
+                "Not an AlmaLinux / RHEL-family host -- native dnf / rpm / cas inspection is "
+                "unavailable here."
             )
-            bar.addPermanentWidget(host)  # added last -> rightmost
-            self._host_badge = host
+            host_color, host_fg = _BADGE_MISSING_COLOR, "#C9CFD6"
+        host.setStyleSheet(
+            f"QLabel{{background:{host_color};color:{host_fg};border-radius:7px;"
+            "padding:1px 8px;margin:0 2px;font-size:11px;font-weight:600;}"
+        )
+        bar.addPermanentWidget(host)  # added last -> rightmost
+        self._host_badge = host
         self._refresh_source_badges()
 
     def _refresh_source_badges(self) -> None:
@@ -2008,6 +2017,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             label = f"build-{build_id}.cyclonedx.json" if build_id else "build SBOM"
             return _STATE_MISSING, f"no build SBOM discovered ({label})"
         if name == _SOURCE_CAS:
+            if not shutil.which("cas"):  # greyed: the cas tool is not on this host
+                return _STATE_MISSING, "cas tool not installed on this host"
             uri = "cas authenticate (host) -- click to verify CAS attestations"
             return (_STATE_ACTIVE if self._cas_verified_count() else _STATE_MISSING), uri
         return _STATE_MISSING, name
@@ -2077,6 +2088,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         elif name == _SOURCE_SBOM:
             self.build_sbom_edit.clear()  # re-discover from the build-id convention
         elif name == _SOURCE_CAS:
+            if not shutil.which("cas"):
+                self._show_error("The `cas` tool is not installed on this host.")
+                return
             self._pending_cas = True  # verify CAS attestations on the next run
         self.run_analysis()
 

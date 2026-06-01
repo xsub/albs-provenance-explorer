@@ -19,7 +19,16 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   fix(gui): two polish items -- paint the graph's scroll-area/viewport
+- (this)   feat(gui): always show the CAS + host-OS status badges. CAS is now
+           permanent and greys out ("cas tool not installed") when `cas` is off
+           PATH (clicking it then shows a plain message), lighting up with its
+           verified count when present. The rightmost host badge is always there:
+           "AlmaLinux OS" (highlighted) on an AlmaLinux/RHEL-family host, else
+           "Non-AlmaLinux OS" (greyed). CAS verification is still gated on the
+           tool, so only the affordance changed. Existing badge tests updated;
+           suite stays 461. D136.
+
+- 53db686  fix(gui): two polish items -- paint the graph's scroll-area/viewport
            the graph's own background (render.graph_background, #171A1F dark) so
            there is no colour seam around the SVG; and install a Qt message
            handler in run() that drops the harmless macOS accessibility warnings

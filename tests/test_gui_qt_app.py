@@ -403,7 +403,7 @@ def test_source_badges_reflect_cache_state(
 
     window = WorkbenchWindow()
     try:
-        assert set(window._source_badges) == {"ALBS", "ERRATA", "SBOM"}
+        assert set(window._source_badges) == {"ALBS", "ERRATA", "SBOM", "CAS"}
         assert all(isinstance(b, QtWidgets.QToolButton) for b in window._source_badges.values())
 
         fresh = tmp_path / "build-57810" / "build-57810.albs.json"
@@ -1086,9 +1086,13 @@ def test_source_badges_show_identifiers(qapp: QtWidgets.QApplication) -> None:
         assert window._source_badge_text("ALBS", "57810", "missing") == "ALBS: 57810"
         assert window._source_badge_text("ALBS", None, "missing") == "ALBS"
         assert window._source_badge_text("ERRATA", "57810", "missing") == "ERRATA"
-        # Baseline host (no cas / not AlmaLinux): no CAS or AlmaLinux badge.
-        assert set(window._source_badges) == {"ALBS", "ERRATA", "SBOM"}
-        assert window._host_badge is None
+        # Baseline host (no cas / not AlmaLinux): the CAS badge is shown but greyed
+        # (no count), and the host badge reads "Non-AlmaLinux OS" (D136).
+        assert set(window._source_badges) == {"ALBS", "ERRATA", "SBOM", "CAS"}
+        assert window._source_badges["CAS"].text() == "CAS"  # greyed, no count
+        assert window._source_state("CAS", "57810")[0] == "missing"
+        assert window._host_badge is not None
+        assert window._host_badge.text() == "Non-AlmaLinux OS"
     finally:
         window.close()
 
@@ -1106,7 +1110,7 @@ def test_cas_and_almalinux_badges_appear_on_an_almalinux_host(
     try:
         assert "CAS" in window._source_badges  # the cas tool is present
         assert window._host_badge is not None
-        assert window._host_badge.text() == "AlmaLinux"  # rightmost host indicator
+        assert window._host_badge.text() == "AlmaLinux OS"  # rightmost host indicator
 
         window.errata_combo.setCurrentIndex(window.errata_combo.findData("dnf"))
         assert window._errata_source_label() == "DNF"
