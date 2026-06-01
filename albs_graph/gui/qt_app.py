@@ -32,7 +32,7 @@ from albs_graph.security.cve_feed import CveFeed
 from albs_graph.security.live_feeds import fetch_cve_feed_or_none
 from albs_graph.gui.ansi import ansi_to_html
 from albs_graph.gui.hitmap import EdgeRegion, NodeRegion, edge_at, node_at
-from albs_graph.gui.render import workbench_graph_rendering
+from albs_graph.gui.render import graph_background, workbench_graph_rendering
 from albs_graph.services import (
     AnalysisResult,
     AnalysisService,
@@ -1360,6 +1360,15 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             }}
             """
         )
+        # The frame the graph sits in should match the graph's own background so
+        # there is no colour seam around the SVG -- the global sheet would
+        # otherwise paint the scroll area / viewport the panel colour.
+        graph_bg = graph_background(self.dark_mode)
+        self.svg_scroll.setStyleSheet(f"QScrollArea {{ background: {graph_bg}; border: none; }}")
+        viewport = self.svg_scroll.viewport()
+        if viewport is not None:
+            viewport.setStyleSheet(f"background: {graph_bg};")
+        self.svg_widget.setStyleSheet(f"background: {graph_bg};")
 
     def _is_dark_palette(self) -> bool:
         return QtWidgets.QApplication.palette().color(QtGui.QPalette.Window).lightness() < 128
@@ -3072,6 +3081,29 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             event.accept()
 
 
+_QT_ACCESSIBILITY_NOISE = (
+    "QCocoaAccessibility",
+    "QAccessibleTable::child",
+    "qt.accessibility",
+    "Invalid child in QAccessibleEvent",
+)
+
+
+def _is_qt_accessibility_noise(message: str) -> bool:
+    """True for the macOS Qt accessibility warnings (a Qt bug, e.g. ``child:
+    -249``) that spam stderr on table/list selection -- harmless, so suppressed."""
+
+    return any(token in message for token in _QT_ACCESSIBILITY_NOISE)
+
+
+def _qt_message_handler(
+    _mode: QtCore.QtMsgType, _context: QtCore.QMessageLogContext, message: str | None
+) -> None:
+    if message is None or _is_qt_accessibility_noise(message):
+        return
+    sys.stderr.write(message + "\n")
+
+
 def run(
     *,
     source: Path | None = None,
@@ -3079,6 +3111,7 @@ def run(
     build_sbom: Path | None = None,
     base_url: str = "https://build.almalinux.org",
 ) -> int:
+    QtCore.qInstallMessageHandler(_qt_message_handler)  # drop the macOS a11y noise
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
     app.setApplicationName("ALBS Provenance Investigation Workbench")
     signal.signal(signal.SIGINT, lambda _signum, _frame: app.quit())

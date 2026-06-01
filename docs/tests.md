@@ -1,6 +1,6 @@
 # Test guide
 
-The suite has **458 tests** across `tests/`. They are **fully offline** — no test
+The suite has **461 tests** across `tests/`. They are **fully offline** — no test
 touches the network or a host RPM tool: network adapters are exercised through
 injected fetchers / a hand-built RPM byte structure, `dnf` / `rpmkeys` through
 injected runners, and the PyQt GUI headless under `QT_QPA_PLATFORM=offscreen`.
@@ -13,7 +13,7 @@ QT_QPA_PLATFORM=offscreen pytest         # required for the GUI tests
 ```
 
 The per-file counts below are a map, not a contract; the only cross-checked
-figure is the **458** total (`scripts/check-test-count.sh`).
+figure is the **461** total (`scripts/check-test-count.sh`).
 
 ---
 
@@ -135,8 +135,8 @@ figure is the **458** total (`scripts/check-test-count.sh`).
 | File | Cases | Covers |
 | --- | --: | --- |
 | `test_gui_ansi.py` | 6 | The ANSI→HTML console renderer (D128): basic colours → spans, reset + bold/italic/underline, HTML-escaping, stripping cursor/clear/CR/OSC, 256/truecolour, plain passthrough. |
-| `test_gui_qt_app.py` | 51 | Headless main-window smoke + interaction: construction, result-handling, slice render, inspector, the errata/CVE/CPE run-spec toggles, the Security/Dependency/Universe panels, Markdown/PNG export + session capture/restore, the two-toolbar layout, a real build loading into artifacts, the interactive cache-aware source badges (state probe + click-to-fetch), the build-id fetch-all host enrichments, the context-sensitive Analyze action, the host-aware errata default (dnf/http), the errata "both (cross-check)" option, the build-catalog refresh/browse + the filterable picker dialog (D120/D121), the start launcher + verified-build-id entry + identifier badges (D122), the missing-build "not found" routing (informational, not a failure), the un-clipped Timeline view switch + non-overlapping columns + reveal-node-on-click that scrolls the Gantt (D124/D127), the build-list fetch progress counter (D123), the Inspect-Build-Id menu action, the Inspect-Binary host-RPM gating, the Gantt scaled-to-the-short-majority duration bars + clip flag + elided columns (D130), the Gantt-as-default sub-view + the clip note clear of the axis labels + the status-bar analysis step counter (D131), the window geometry saved on close + restored by the next instance via QSettings (D132), the timeline search/filter that keeps only matching rows in both the Gantt and the Tree (D133), and the inspector CVE tab (Show CVE details button enables/requests/renders + the window wiring, D134). |
-| `test_gui_render.py` | 5 | `workbench_graph_to_dot` theming/label wrapping/clickable URLs + the cmapx-vs-SVG coordinate alignment (D112). |
+| `test_gui_qt_app.py` | 53 | Headless main-window smoke + interaction: construction, result-handling, slice render, inspector, the errata/CVE/CPE run-spec toggles, the Security/Dependency/Universe panels, Markdown/PNG export + session capture/restore, the two-toolbar layout, a real build loading into artifacts, the interactive cache-aware source badges (state probe + click-to-fetch), the build-id fetch-all host enrichments, the context-sensitive Analyze action, the host-aware errata default (dnf/http), the errata "both (cross-check)" option, the build-catalog refresh/browse + the filterable picker dialog (D120/D121), the start launcher + verified-build-id entry + identifier badges (D122), the missing-build "not found" routing (informational, not a failure), the un-clipped Timeline view switch + non-overlapping columns + reveal-node-on-click that scrolls the Gantt (D124/D127), the build-list fetch progress counter (D123), the Inspect-Build-Id menu action, the Inspect-Binary host-RPM gating, the Gantt scaled-to-the-short-majority duration bars + clip flag + elided columns (D130), the Gantt-as-default sub-view + the clip note clear of the axis labels + the status-bar analysis step counter (D131), the window geometry saved on close + restored by the next instance via QSettings (D132), the timeline search/filter that keeps only matching rows in both the Gantt and the Tree (D133), the inspector CVE tab (Show CVE details button enables/requests/renders + the window wiring, D134), the graph frame painted the graph background, and the macOS accessibility-noise filter (D135). |
+| `test_gui_render.py` | 6 | `workbench_graph_to_dot` theming/label wrapping/clickable URLs + the cmapx-vs-SVG coordinate alignment (D112); `graph_background` matches the theme (D135). |
 | `test_gui_hitmap.py` | 4 | Parsing the Graphviz image map (cmapx) into node/edge hit regions + point-in-region testing, and the region centre used to scroll the graph to a node (D129). |
 | `test_gui_inspect.py` | 3 | The node/edge inspector view models. |
 | `test_gui_entry.py` | 2 | The `albs-graph-workbench` entry point argument handling. |

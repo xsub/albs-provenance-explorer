@@ -3628,6 +3628,29 @@ fetch; the view enables/requests/renders; the window wires the CVE tab). Suite
 
 ---
 
+## D135 - Graph frame colour + quiet the macOS accessibility noise
+
+Two small GUI papercuts from real use:
+
+- **No colour seam around the graph.** The global stylesheet painted the graph's
+  `QScrollArea` (and its viewport) the panel colour, so a colour seam showed
+  around the SVG whenever the graph did not fill the view. `render.graph_background(dark)`
+  now exposes the graph canvas colour (`#171A1F` dark / `#FFFFFF` light, the
+  SVG's own `bgcolor`), and `_apply_style` paints the scroll area + viewport +
+  SVG widget that colour so the frame and the graph are one continuous surface.
+- **Quiet the macOS Qt accessibility warnings.** Clicking the Security/CVE tables
+  spammed stderr with `QCocoaAccessibility … invalid element` /
+  `QAccessibleTable::child: Invalid index at: -249` -- a known Qt 5 macOS
+  accessibility bug, harmless but noisy. `run()` installs a
+  `qInstallMessageHandler` that drops exactly those messages
+  (`_is_qt_accessibility_noise`) and forwards everything else, so real warnings
+  still show and the accessibility bridge stays enabled.
+
++3 cases (`graph_background` matches the theme; the frame is painted the graph
+colour; the a11y noise is filtered while a real warning passes). Suite 458 -> 461.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

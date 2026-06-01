@@ -60,3 +60,11 @@ def test_workbench_dot_marks_edges_clickable_and_highlights_selection() -> None:
 
     assert 'URL="edge:0"' in dot
     assert 'color="#2F6FED", penwidth=3.2' in dot
+
+
+def test_graph_background_matches_the_theme() -> None:
+    # The GUI paints the graph's frame this exact colour so there is no seam (D135).
+    from albs_graph.gui.render import graph_background
+
+    assert graph_background(True) == "#171A1F"
+    assert graph_background(False) == "#FFFFFF"

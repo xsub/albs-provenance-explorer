@@ -775,6 +775,36 @@ def test_workbench_has_cve_inspector_tab_and_renders(qapp: QtWidgets.QApplicatio
         window.close()
 
 
+def test_qt_accessibility_noise_is_filtered() -> None:
+    # The macOS Qt accessibility warnings (a Qt bug, e.g. child: -249) are
+    # dropped; real warnings pass through (D135).
+    from albs_graph.gui.qt_app import _is_qt_accessibility_noise
+
+    assert _is_qt_accessibility_noise("QAccessibleTable::child: Invalid index at: -249 0")
+    assert _is_qt_accessibility_noise(
+        "qt.accessibility.core: Invalid child in QAccessibleEvent: QListWidget(0x60) child: -249"
+    )
+    assert _is_qt_accessibility_noise(
+        "QCocoaAccessibility::notifyAccessibilityUpdate: invalid element"
+    )
+    assert not _is_qt_accessibility_noise("QObject::connect: No such signal Foo::bar()")
+
+
+def test_graph_frame_background_matches_the_graph(qapp: QtWidgets.QApplication) -> None:
+    # The scroll area behind the graph is painted the graph's own background, so
+    # there is no colour seam around the SVG (D135).
+    from albs_graph.gui.render import graph_background
+
+    window = WorkbenchWindow()
+    try:
+        bg = graph_background(window.dark_mode)
+        assert bg in window.svg_scroll.styleSheet()
+        viewport = window.svg_scroll.viewport()
+        assert viewport is not None and bg in viewport.styleSheet()
+    finally:
+        window.close()
+
+
 def test_primary_analyze_is_context_sensitive(
     qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -19,7 +19,15 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): on-demand CVE details in the inspector -- selecting a CVE
+- (this)   fix(gui): two polish items -- paint the graph's scroll-area/viewport
+           the graph's own background (render.graph_background, #171A1F dark) so
+           there is no colour seam around the SVG; and install a Qt message
+           handler in run() that drops the harmless macOS accessibility warnings
+           ("QCocoaAccessibility … invalid element", "QAccessibleTable::child …
+           -249") that spam stderr on table/list clicks, forwarding everything
+           else. +3 cases; suite 458 -> 461. D135.
+
+- 7357162  feat(gui): on-demand CVE details in the inspector -- selecting a CVE
            node opens a new "CVE" tab with a "Show CVE details" button; clicking
            fetches the description / CVSS / references off the UI thread and
            renders them (clickable links). New security/cve_details.py:

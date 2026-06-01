@@ -292,6 +292,13 @@ def _theme(dark: bool) -> dict[str, str]:
     }
 
 
+def graph_background(dark: bool) -> str:
+    """The graph canvas background colour (matches the SVG's ``bgcolor``), so the
+    GUI can paint the scroll area behind the graph the same colour -- no seam."""
+
+    return _theme(dark)["background"]
+
+
 def _escape(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', "'")
 
