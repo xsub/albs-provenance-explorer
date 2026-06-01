@@ -1243,6 +1243,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         help_menu = _require(menu_bar.addMenu("Help"))
         about_action = QtWidgets.QAction("About …", self)
+        # macOS Qt auto-merges an "About" action into the application menu, which
+        # makes it vanish from this Help menu; pin it here so it stays findable.
+        about_action.setMenuRole(QtWidgets.QAction.MenuRole.NoRole)
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
 

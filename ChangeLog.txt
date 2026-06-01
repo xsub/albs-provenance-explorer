@@ -19,7 +19,15 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   chore(gui): use the pixel-exact clean splash artwork for the About
+- (this)   fix(gui): pin the About action to the Help menu. macOS Qt auto-merges
+           any "About" action into the application menu ("Python ▸ About"), where
+           it was hard to find; setMenuRole(NoRole) keeps it in Help ▸ About …
+           everywhere. (The blank-artwork report was a stale process running from
+           before the about.png -> about-splash.png rename -- QPixmap loads the
+           file fine; a restart fixes it.) Test asserts About is in Help with
+           NoRole. Suite stays 475. D141.
+
+- e61f4b9  chore(gui): use the pixel-exact clean splash artwork for the About
            dialog / README (was a crop of the source composite) and rename it
            about.png -> about-splash.png to bust GitHub's image cache. No code.
 

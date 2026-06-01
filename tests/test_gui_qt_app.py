@@ -935,7 +935,12 @@ def test_about_dialog_shows_artwork_and_repo_link(qapp: QtWidgets.QApplication) 
     try:
         menu_bar = window.menuBar()
         assert menu_bar is not None
-        assert "Help" in [action.text() for action in menu_bar.actions()]
+        help_menu = next((a.menu() for a in menu_bar.actions() if a.text() == "Help"), None)
+        assert help_menu is not None
+        about = next((a for a in help_menu.actions() if "About" in a.text()), None)
+        # pinned in Help (NoRole), so macOS does not merge it into the app menu
+        assert about is not None
+        assert about.menuRole() == QtWidgets.QAction.MenuRole.NoRole
     finally:
         window.close()
 
