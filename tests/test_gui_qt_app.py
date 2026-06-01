@@ -689,6 +689,50 @@ def test_window_geometry_persists_across_instances(qapp: QtWidgets.QApplication)
         second.close()
 
 
+def test_timeline_gantt_filter_keeps_only_matching_rows(qapp: QtWidgets.QApplication) -> None:
+    # The Gantt filter is a case-insensitive, trimmed substring over the row's
+    # label/status/kind/node/detail (D133).
+    from albs_graph.gui import timeline_panel as tp
+    from albs_graph.services import TimelineGanttRow
+
+    def row(label: str) -> TimelineGanttRow:
+        return TimelineGanttRow(0, "build_step", label, "", "", "", 0.0, 10.0)
+
+    view = tp.TimelineGanttView()
+    view._rows = [row("compile glibc"), row("link nginx core"), row("sign rpm")]
+    view.set_filter("nginx")
+    assert [r.label for r in view._visible_rows()] == ["link nginx core"]
+    view.set_filter("  GLIBC ")  # case-insensitive + trimmed
+    assert [r.label for r in view._visible_rows()] == ["compile glibc"]
+    view.set_filter("")
+    assert len(view._visible_rows()) == 3
+
+
+def test_timeline_search_filters_both_views(qapp: QtWidgets.QApplication) -> None:
+    # The header search box (left of the Gantt/Tree combo) filters both views to
+    # the matching rows; clearing it restores everything (D133).
+    window = WorkbenchWindow()
+    try:
+        window._analysis_finished(_fixture_result())
+        qapp.processEvents()
+        panel = window.timeline_panel
+        total = len(panel.gantt._rows)
+        assert total > 0
+        # No match: every Gantt row and every top-level tree row is hidden.
+        panel.search.setText("zzz-no-such-row")
+        assert panel.gantt._visible_rows() == []
+        assert all(
+            panel.tree.topLevelItem(i).isHidden()
+            for i in range(panel.tree.topLevelItemCount())
+        )
+        # Clearing restores both views.
+        panel.search.clear()
+        assert len(panel.gantt._visible_rows()) == total
+        assert not panel.tree.topLevelItem(0).isHidden()
+    finally:
+        window.close()
+
+
 def test_primary_analyze_is_context_sensitive(
     qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:

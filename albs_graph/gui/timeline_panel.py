@@ -70,6 +70,7 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
         self._rows: list[TimelineGanttRow] = []
         self._dark = True
         self._last_layout_width = 0
+        self._filter = ""  # case-insensitive substring; "" shows every row
         self.setRenderHint(QtGui.QPainter.Antialiasing, True)
         self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
         self.setMinimumHeight(GANTT_MIN_HEIGHT)
@@ -83,6 +84,22 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
         self._pending_node = None
         self._relayout()
 
+    def set_filter(self, query: str) -> None:
+        """Show only rows whose label/status/kind/node id contains ``query``
+        (case-insensitive); an empty query shows everything."""
+
+        self._filter = query.strip().lower()
+        self._relayout()
+
+    def _visible_rows(self) -> list[TimelineGanttRow]:
+        if not self._filter:
+            return self._rows
+        return [row for row in self._rows if self._row_matches(row)]
+
+    def _row_matches(self, row: TimelineGanttRow) -> bool:
+        haystack = " ".join((row.label, row.status, row.kind, row.node_id, row.detail))
+        return self._filter in haystack.lower()
+
     def _viewport_width(self) -> int:
         viewport = self.viewport()
         return viewport.width() if viewport is not None else 0
@@ -95,16 +112,18 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
         self._scene.clear()
         self._node_items = {}
         self._last_layout_width = self._viewport_width()
-        rows = self._rows
+        rows = self._visible_rows()
         if not rows:
-            self._scene.addText("No timeline data")
+            empty = "No matching timeline rows" if self._filter else "No timeline data"
+            self._scene.addText(empty)
             return
         palette = _gantt_palette(self._dark)
         timeline_width = self._timeline_width()
         display_cap, actual_max, clipped = _duration_scale(rows)
         scale = timeline_width / display_cap
         self._draw_gantt_axis(
-            palette, timeline_width, display_cap, scale, actual_max=actual_max, clipped=clipped
+            palette, timeline_width, display_cap, scale,
+            actual_max=actual_max, clipped=clipped, row_count=len(rows),
         )
         for index, row in enumerate(rows):
             y = _TOP + 22 + index * _ROW_HEIGHT
@@ -173,10 +192,11 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
         *,
         actual_max: float,
         clipped: int,
+        row_count: int,
     ) -> None:
         pen = QtGui.QPen(palette["grid"])
         self._scene.addLine(_BARS_LEFT, _TOP, _BARS_LEFT + width, _TOP, pen)
-        bottom = _TOP + 48 + len(self._rows) * _ROW_HEIGHT
+        bottom = _TOP + 48 + row_count * _ROW_HEIGHT
         tick_count = 5
         for index in range(tick_count + 1):
             seconds = span * index / tick_count
@@ -283,6 +303,12 @@ class TimelinePanel(QtWidgets.QWidget):
         self.view_combo.setSizeAdjustPolicy(
             QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents
         )
+        # A live filter on the left of the header row: typing shows only the rows
+        # (in both Tree and Gantt) whose stage / status / node text matches.
+        self.search = QtWidgets.QLineEdit()
+        self.search.setPlaceholderText("Filter timeline…")
+        self.search.setClearButtonEnabled(True)
+        self.search.setMinimumWidth(200)
         self.gantt = TimelineGanttView()
         self.stack = QtWidgets.QStackedWidget()
         self.stack.addWidget(self.tree)
@@ -293,7 +319,7 @@ class TimelinePanel(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         header = QtWidgets.QHBoxLayout()
         header.setContentsMargins(6, 4, 6, 4)
-        header.addStretch(1)
+        header.addWidget(self.search, 1)  # fills the left; Gantt/Tree combo stays right
         header.addWidget(self.view_combo)
         layout.addLayout(header)
         layout.addWidget(self.stack)
@@ -301,6 +327,7 @@ class TimelinePanel(QtWidgets.QWidget):
         self.tree.itemActivated.connect(self._tree_activated)
         self.tree.itemDoubleClicked.connect(self._tree_activated)
         self.gantt.nodeActivated.connect(self._navigate)
+        self.search.textChanged.connect(self._apply_filter)
         self.view_combo.currentIndexChanged.connect(self.stack.setCurrentIndex)
         # The Gantt is the more useful default (the graph<->timeline jump lands
         # on it); selecting it here also switches the stacked view via the signal
@@ -320,6 +347,7 @@ class TimelinePanel(QtWidgets.QWidget):
         # Column 0 auto-fits via ResizeToContents; size the rest to their content.
         for column in range(1, self.tree.columnCount()):
             self.tree.resizeColumnToContents(column)
+        self._reset_filter()  # a fresh build starts unfiltered in both views
 
     def _tree_item(self, event: TimelineTreeItem) -> QtWidgets.QTreeWidgetItem:
         item = QtWidgets.QTreeWidgetItem(
@@ -342,6 +370,40 @@ class TimelinePanel(QtWidgets.QWidget):
         node_id = item.data(0, QtCore.Qt.ItemDataRole.UserRole)
         if node_id:
             self._navigate(str(node_id))
+
+    def _reset_filter(self) -> None:
+        self.search.blockSignals(True)
+        self.search.clear()
+        self.search.blockSignals(False)
+        self._apply_filter("")
+
+    def _apply_filter(self, text: str) -> None:
+        """Filter both views to rows matching ``text`` (case-insensitive). Tree
+        ancestors of a match stay visible so the match is not orphaned; the Gantt
+        draws only matching rows."""
+
+        query = text.strip().lower()
+        self.gantt.set_filter(query)
+        for index in range(self.tree.topLevelItemCount()):
+            item = self.tree.topLevelItem(index)
+            if item is not None:
+                self._filter_tree_item(item, query)
+
+    def _filter_tree_item(self, item: QtWidgets.QTreeWidgetItem, query: str) -> bool:
+        matched = (not query) or self._item_matches(item, query)
+        descendant_matched = False
+        for index in range(item.childCount()):
+            child = item.child(index)
+            if child is not None and self._filter_tree_item(child, query):
+                descendant_matched = True
+        visible = matched or descendant_matched
+        item.setHidden(not visible)
+        return visible
+
+    @staticmethod
+    def _item_matches(item: QtWidgets.QTreeWidgetItem, query: str) -> bool:
+        text = " ".join(item.text(column) for column in range(item.columnCount()))
+        return query in text.lower()
 
     def reveal_node(self, node_id: str) -> bool:
         """Reveal ``node_id`` in the timeline (D124/D127): select + scroll the

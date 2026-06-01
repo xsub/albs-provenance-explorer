@@ -19,7 +19,15 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): remember the window size/position (+ toolbar/dock layout)
+- (this)   feat(gui): add a live timeline search/filter -- a QLineEdit on the
+           left of the header row (at the height of the Gantt/Tree switch) filters
+           both views to the rows whose stage/status/kind/node text matches,
+           case-insensitively. The Gantt re-lays-out from the matching subset; the
+           Tree keeps a match's ancestors visible so a child step is not orphaned;
+           populate resets the filter for a fresh build. +2 cases; suite
+           449 -> 451. D133.
+
+- ec94239  feat(gui): remember the window size/position (+ toolbar/dock layout)
            across runs via QSettings -- _save_window_state on close, restore at
            the end of __init__; the toolbars/dock got objectNames so saveState
            can address them. IniFormat/UserScope keeps the store redirectable

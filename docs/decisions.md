@@ -3580,6 +3580,27 @@ run, a future version bump) are ignored, leaving the default geometry. +1 case
 
 ---
 
+## D133 - Timeline search/filter
+
+The build timeline can run to many hundreds of rows, so the panel got a live
+filter: a `QLineEdit` on the **left** of the header row (at the height of the
+Gantt/Tree switch, which stays on the right). Typing filters **both** views to the
+matching rows, case-insensitively, over each row's stage label / status / kind /
+node id / detail:
+
+- **Gantt:** `TimelineGanttView.set_filter` stores the query and re-lays-out from
+  `_visible_rows()` (the matching subset); the time scale is fitted to the visible
+  rows, and an empty result shows "No matching timeline rows".
+- **Tree:** `_filter_tree_item` recurses depth-first and hides a row unless it (or
+  a descendant) matches, so a matching child step keeps its parent task visible
+  rather than being orphaned under a hidden parent.
+
+`populate` resets the filter so a fresh build starts unfiltered. +2 cases (the
+Gantt keeps only matching rows, case-insensitive + trimmed; the panel search
+hides non-matches in both views and clearing restores them). Suite 449 -> 451.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
