@@ -606,6 +606,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         self.thread_pool = _require(QtCore.QThreadPool.globalInstance())
         self._active_worker: AnalysisWorker | None = None
+        self._analysis_step_count = 0  # live step counter for the status bar
         # M3: a report-time CVE feed for the Security panel's Potential CVEs
         # column, cached by the source string it was loaded from.
         self.cve_feed: CveFeed | None = None
@@ -1372,7 +1373,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self._show_error(str(exc))
             return
 
-        self.progress_label.setText("Analyzing...")
+        self._analysis_step_count = 0
+        self.progress_label.setText("Analyzing…")
         self.log.clear()
         self.output_tabs.setCurrentWidget(self.log)  # show the live log while fetching (D126)
         self._log("Starting analysis")
@@ -1380,6 +1382,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self._log(f"Using build SBOM {run_spec.build_sbom}")
         worker = AnalysisWorker(load_spec, run_spec)
         worker.signals.progress.connect(self._log)
+        worker.signals.progress.connect(self._analysis_progress)
         worker.signals.failed.connect(self._analysis_failed)
         worker.signals.build_not_found.connect(self._build_not_found)
         worker.signals.finished.connect(self._analysis_finished)
@@ -2938,6 +2941,17 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
     def _log(self, message: str) -> None:
         self.log.appendPlainText(message)
+
+    def _analysis_progress(self, message: str) -> None:
+        # Live step counter in the status bar, fed by the same progress stream
+        # the log gets, so a long fetch/enrich run shows movement instead of a
+        # frozen "Analyzing…". The message usually carries the quantity itself
+        # (e.g. "build SBOM matched 456 RPMs", "analyzed N ELF objects").
+        self._analysis_step_count += 1
+        short = " ".join(message.split())
+        if len(short) > 72:
+            short = short[:71] + "…"
+        self.progress_label.setText(f"Analyzing… step {self._analysis_step_count}: {short}")
 
     def _show_error(self, message: str) -> None:
         QtWidgets.QMessageBox.warning(self, "Workbench", message)

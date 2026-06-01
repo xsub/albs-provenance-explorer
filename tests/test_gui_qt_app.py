@@ -602,6 +602,63 @@ def test_gantt_columns_do_not_overlap_and_bars_stay_in_band(
         window.close()
 
 
+def test_timeline_defaults_to_the_gantt_view(qapp: QtWidgets.QApplication) -> None:
+    # The Gantt is the default sub-view, so the graph<->timeline jump lands on it
+    # straight away; the Tree stays one click away (D131).
+    window = WorkbenchWindow()
+    try:
+        panel = window.timeline_panel
+        assert panel.view_combo.currentText() == "Gantt"
+        assert panel.stack.currentWidget() is panel.gantt
+    finally:
+        window.close()
+
+
+def test_gantt_clip_note_does_not_overlap_the_axis_labels(
+    qapp: QtWidgets.QApplication,
+) -> None:
+    # Regression (D131): the "scale fitted to … clipped" note shared the top band
+    # with the axis tick labels and overwrote "0.00s". It now sits on its own top
+    # line, clear of the ticks.
+    from albs_graph.gui import timeline_panel as tp
+    from albs_graph.services import TimelineGanttRow
+
+    def row(duration: float) -> TimelineGanttRow:
+        return TimelineGanttRow(0, "build_step", "step", "", "", "", 0.0, duration)
+
+    view = tp.TimelineGanttView()
+    view._rows = [row(10.0)] * 9 + [row(1000.0)]  # forces a clip -> the note shows
+    view._relayout()
+    texts = [
+        item for item in view._scene.items() if isinstance(item, QtWidgets.QGraphicsTextItem)
+    ]
+    notes = [t for t in texts if t.toPlainText().startswith("scale fitted")]
+    ticks = [
+        t for t in texts if t.pos().y() < tp._TOP and t.toPlainText().rstrip("+").endswith("s")
+    ]
+    assert notes and ticks
+    note_rect = notes[0].sceneBoundingRect()
+    for tick in ticks:
+        assert not note_rect.intersects(tick.sceneBoundingRect())
+
+
+def test_status_bar_shows_a_step_counter_during_analysis(
+    qapp: QtWidgets.QApplication,
+) -> None:
+    # The status bar gets a live step counter from the progress stream (D131), so
+    # a long fetch shows movement instead of a frozen "Analyzing…".
+    window = WorkbenchWindow()
+    try:
+        window._analysis_step_count = 0
+        window._analysis_progress("Loading ALBS build metadata")
+        window._analysis_progress("build SBOM matched 456 RPMs")
+        text = window.progress_label.text()
+        assert "step 2" in text
+        assert "456 RPMs" in text
+    finally:
+        window.close()
+
+
 def test_primary_analyze_is_context_sensitive(
     qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:

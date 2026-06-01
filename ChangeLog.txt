@@ -19,7 +19,16 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): rework the build-task Gantt so it scales to the short
+- (this)   feat(gui): Gantt follow-ups from real-build use -- make the Gantt the
+           default timeline sub-view (the graph<->timeline jump lands on it; Tree
+           stays one click away), move the D130 clip note off the axis tick
+           labels onto its own top line (_TOP 42 -> 64) so it no longer overwrites
+           "0.00s", and feed the analysis progress stream to a status-bar step
+           counter ("Analyzing… step N: <latest>", which carries the RPM/ELF
+           counts) instead of a frozen "Analyzing…". +3 cases; suite 445 -> 448.
+           D131.
+
+- 31f01c3  feat(gui): rework the build-task Gantt so it scales to the short
            majority instead of the longest task. Bars are now durations from a
            shared baseline; the scale is capped at the 90th percentile of the
            durations (long tasks clip to full width, flagged "…", real duration

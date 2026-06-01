@@ -3531,6 +3531,35 @@ in the band). Suite 442 -> 445.
 
 ---
 
+## D131 - Gantt default, clip-note placement, and a status-bar step counter
+
+Follow-ups to D130 from using it on a real build:
+
+- **Gantt is the default timeline sub-view.** The graph<->timeline jump is the
+  main way the timeline is used (click a node on the graph and it scrolls the
+  Gantt to that task/step; click a Gantt bar and the graph navigates + centres on
+  the node), so the panel now opens on the Gantt instead of the Tree (which stays
+  one click away for exact per-step start/finish times). The reveal/jump wiring
+  was already two-way (`_graph_node_clicked` -> `reveal_node`; the Gantt's
+  `nodeActivated` -> `_navigate_to_node`); defaulting to the Gantt just makes it
+  land where the user is looking.
+- **Clip note moved off the axis labels.** D130's "scale fitted to X · N longer
+  task(s) clipped (max Y)" caption sat on the same band as the axis tick labels
+  and overwrote "0.00s". The top band was enlarged (`_TOP` 42 -> 64) so the note
+  gets its own line at the very top and the tick labels sit just above the axis
+  line, clear of it.
+- **Status-bar step counter.** A long fetch/enrich run showed a frozen
+  "Analyzing…". The window now also feeds the pipeline's `on_progress` stream
+  (the same one the log gets) to `_analysis_progress`, which keeps a running
+  count and shows "Analyzing… step N: <latest message>" -- and the messages
+  already carry the quantities ("build SBOM matched 456 RPMs", "analyzed N ELF
+  objects"), so the counter doubles as a processed-items readout.
+
++3 cases (the Gantt is the default sub-view; the clip note no longer intersects
+the tick labels; the status bar shows a growing step counter). Suite 445 -> 448.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

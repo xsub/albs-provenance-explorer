@@ -45,7 +45,7 @@ _NAME_BUDGET = _DETAIL_X - _NAME_X - 18  # px the stage name may use before stat
 _DETAIL_BUDGET = _BARS_LEFT - _DETAIL_X - 16  # px the status may use before bars
 _RIGHT_MARGIN = 100  # room for the duration label past a (clipped) bar
 _MIN_TIMELINE_WIDTH = 240
-_TOP = 42
+_TOP = 64  # axis baseline; the band above holds the clip note (top) + tick labels
 _ROW_HEIGHT = 28
 _BAR_HEIGHT = 16
 _SCALE_PERCENTILE = 0.90
@@ -187,7 +187,7 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
                 text += "+"  # the scale is capped; bars beyond it are clipped
             label = _scene_text(self._scene, text)
             label.setDefaultTextColor(palette["muted"])
-            label.setPos(x - 18, 12)
+            label.setPos(x - 18, 34)  # just above the axis line, below the note
         if clipped:
             note = _scene_text(
                 self._scene,
@@ -195,7 +195,7 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
                 f"{clipped} longer task(s) clipped (max {_format_seconds(actual_max)})",
             )
             note.setDefaultTextColor(palette["muted"])
-            note.setPos(_NAME_X, 8)
+            note.setPos(_NAME_X, 2)  # own line at the very top, clear of the ticks
 
     def _draw_gantt_row(
         self,
@@ -302,6 +302,12 @@ class TimelinePanel(QtWidgets.QWidget):
         self.tree.itemDoubleClicked.connect(self._tree_activated)
         self.gantt.nodeActivated.connect(self._navigate)
         self.view_combo.currentIndexChanged.connect(self.stack.setCurrentIndex)
+        # The Gantt is the more useful default (the graph<->timeline jump lands
+        # on it); selecting it here also switches the stacked view via the signal
+        # above. Tree stays one click away for exact per-step start/finish times.
+        gantt_index = self.view_combo.findText("Gantt")
+        if gantt_index >= 0:
+            self.view_combo.setCurrentIndex(gantt_index)
 
     def populate(
         self, graph: ProvenanceGraph, build_analysis: BuildAnalysis | None, *, dark: bool
