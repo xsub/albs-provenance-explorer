@@ -3787,6 +3787,19 @@ CVE auto-fetch on selection). Suite 467 -> 474.
 
 ---
 
+## D141 - About dialog
+
+A small **About** dialog (Help ▸ About …): the workbench splash artwork
+(`albs_graph/gui/resources/about.png` -- the AlmaLinux logo rendered as a mesh of
+provenance nodes), a one-line blurb, and the **repository link at the very
+bottom** (`AboutDialog`, `gui/about.py`). The artwork ships as a package
+resource loaded via a `__file__`-relative path and degrades gracefully if
+absent; the link uses `setOpenExternalLinks`. The same artwork is appended to the
+end of `README.md`. +1 case (the dialog shows the artwork + the repo link; a Help
+menu opens it). Suite 474 -> 475.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

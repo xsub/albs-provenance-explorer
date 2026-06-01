@@ -38,6 +38,7 @@ from albs_graph.pipeline import RunSpec
 from albs_graph.security.cve_details import CveDetails, fetch_cve_details
 from albs_graph.security.cve_feed import CveFeed
 from albs_graph.security.live_feeds import fetch_cve_feed_or_none
+from albs_graph.gui.about import AboutDialog
 from albs_graph.gui.ansi import ansi_to_html
 from albs_graph.gui.hitmap import EdgeRegion, NodeRegion, edge_at, node_at
 from albs_graph.gui.render import graph_background, workbench_graph_rendering
@@ -1239,6 +1240,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         view_menu.addAction(zoom_out_action)
         view_menu.addAction(fit_action)
         view_menu.addAction(reset_action)
+
+        help_menu = _require(menu_bar.addMenu("Help"))
+        about_action = QtWidgets.QAction("About …", self)
+        about_action.triggered.connect(self.show_about)
+        help_menu.addAction(about_action)
 
     def _relax_bottom_panel_minimums(self, bottom: QtWidgets.QTabWidget) -> None:
         for index in range(bottom.count()):
@@ -3154,6 +3160,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
     def _show_error(self, message: str) -> None:
         QtWidgets.QMessageBox.warning(self, "Workbench", message)
+
+    def show_about(self) -> None:
+        AboutDialog(self).exec_()
 
     def reload_program(self) -> None:
         self._log("Reloading workbench process")

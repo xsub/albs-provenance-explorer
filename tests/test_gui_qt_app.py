@@ -915,6 +915,31 @@ def test_cve_auto_fetch_triggers_on_selection(qapp: QtWidgets.QApplication) -> N
     assert captured == ["CVE-2024-0002"]
 
 
+def test_about_dialog_shows_artwork_and_repo_link(qapp: QtWidgets.QApplication) -> None:
+    # The About dialog ships the splash artwork and a repository link at the very
+    # bottom; a Help menu opens it (D141).
+    from albs_graph.gui.about import ABOUT_REPO_URL, AboutDialog, about_image_path
+
+    assert about_image_path().exists()  # the artwork ships as a package resource
+    assert ABOUT_REPO_URL.endswith("/InvestigationWorkbenchApp")
+
+    dialog = AboutDialog()
+    try:
+        pixmap = dialog.image.pixmap()
+        assert pixmap is not None and not pixmap.isNull()  # artwork rendered
+        assert ABOUT_REPO_URL in dialog.link.text()  # link at the bottom
+    finally:
+        dialog.close()
+
+    window = WorkbenchWindow()
+    try:
+        menu_bar = window.menuBar()
+        assert menu_bar is not None
+        assert "Help" in [action.text() for action in menu_bar.actions()]
+    finally:
+        window.close()
+
+
 def test_qt_accessibility_noise_is_filtered() -> None:
     # The macOS Qt accessibility warnings (a Qt bug, e.g. child: -249) are
     # dropped; real warnings pass through (D135).
