@@ -3815,6 +3815,28 @@ helper is a safe no-op without pyobjc). Suite 475 -> 476.
 
 ---
 
+## D143 - Persist the central panes' sash positions
+
+D132 remembers the window size/position and (via `QMainWindow.saveState`) the
+toolbar + dock layout, but `saveState` does **not** cover the central widget, so
+the workbench's three horizontal panes (artifact list / graph / inspector) and
+the vertical graph-vs-slice split reset to their stretch-factor defaults every
+launch. Each run a returning investigator had to re-drag the same sashes.
+
+The two central `QSplitter`s now carry stable object names
+(`MainPanesSplitter`, `GraphSliceSplitter`) and are collected in
+`self._pane_splitters`. `_save_window_state` writes each splitter's
+`saveState()` under `splitter/<objectName>`; `_restore_window_state` reads them
+back after the geometry/dock restore. `QSplitter.restoreState` self-validates —
+if the pane count ever changes it returns False and the stretch-factor defaults
+stand — so this is safe across future layout edits, and missing keys (first run)
+are simply ignored. The internal `universe_panel` splitter is intentionally
+out of scope: it lives inside a single bottom tab, not the main window frame.
++1 case (pane sash sizes round-trip across two window instances). Suite
+476 -> 477.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

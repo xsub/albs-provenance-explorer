@@ -757,6 +757,31 @@ def test_window_geometry_persists_across_instances(qapp: QtWidgets.QApplication)
         second.close()
 
 
+def test_window_pane_sizes_persist_across_instances(qapp: QtWidgets.QApplication) -> None:
+    # The central panes' sash positions are saved on close and restored by the
+    # next instance (D143). QMainWindow.saveState() only covers toolbars + docks,
+    # so the workbench persists its central-widget splitters itself.
+    # _isolate_qsettings redirects QSettings to a temp dir, so this never touches
+    # the real user preferences.
+    first = WorkbenchWindow()
+    main_splitter, graph_slice = first._pane_splitters
+    main_splitter.setSizes([220, 760, 360])  # left / center / right panes
+    graph_slice.setSizes([700, 200])  # graph vs. focused-slice list
+    expected_main = main_splitter.saveState()
+    expected_graph = graph_slice.saveState()
+    first.close()  # closeEvent persists the splitter states
+    saved = first._settings.value("splitter/MainPanesSplitter")
+    assert isinstance(saved, QtCore.QByteArray) and not saved.isEmpty()
+
+    second = WorkbenchWindow()
+    try:
+        restored_main, restored_graph = second._pane_splitters
+        assert restored_main.saveState() == expected_main  # left/center/right restored
+        assert restored_graph.saveState() == expected_graph  # graph/slice restored
+    finally:
+        second.close()
+
+
 def test_timeline_gantt_filter_keeps_only_matching_rows(qapp: QtWidgets.QApplication) -> None:
     # The Gantt filter is a case-insensitive, trimmed substring over the row's
     # label/status/kind/node/detail (D133).

@@ -19,7 +19,16 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   chore(gui): rename the macOS application menu from "Python" to "ALBS
+- (this)   feat(gui): remember the central panes' sash positions across runs.
+           QMainWindow.saveState() (D132) persists toolbars + docks but not the
+           central widget, so the left/center/right panes and the graph-vs-slice
+           split reset to defaults every launch. The two QSplitters now carry
+           object names and _save_window_state / _restore_window_state round-trip
+           their saveState() under splitter/<name>; restoreState self-validates,
+           so a future pane-count change just falls back to defaults. +1 case
+           (pane sizes round-trip across two instances). Suite 476 -> 477. D143.
+
+- 38b9e27  chore(gui): rename the macOS application menu from "Python" to "ALBS
            Workbench". A python-launched app shows "Python" as the app-menu title
            (macOS reads it from the bundle's CFBundleName); _name_macos_app() sets
            CFBundleName via pyobjc before Qt builds the menu. Guarded no-op off

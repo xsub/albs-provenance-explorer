@@ -1077,6 +1077,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         left_layout.addWidget(self.artifact_list)
 
         center = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+        center.setObjectName("GraphSliceSplitter")  # sash position persisted (D143)
         graph_panel = QtWidgets.QWidget()
         graph_layout = QtWidgets.QVBoxLayout(graph_panel)
         graph_layout.setContentsMargins(0, 0, 0, 0)
@@ -1099,6 +1100,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         right_layout.addWidget(self.inspector_tabs)
 
         split = QtWidgets.QSplitter()
+        split.setObjectName("MainPanesSplitter")  # left/center/right sash persisted (D143)
         split.addWidget(left)
         split.addWidget(center)
         split.addWidget(right)
@@ -1106,6 +1108,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         split.setStretchFactor(1, 4)
         split.setStretchFactor(2, 2)
         self.setCentralWidget(split)
+        # The central widget's splitters are not covered by QMainWindow.saveState()
+        # (which only persists toolbars + docks), so we save/restore their sash
+        # positions ourselves in _save_window_state / _restore_window_state (D143).
+        self._pane_splitters = (split, center)
 
         bottom = QtWidgets.QTabWidget()
         bottom.setMinimumHeight(BOTTOM_DOCK_MIN_HEIGHT)
@@ -3187,14 +3193,23 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         state = self._settings.value("windowState")
         if isinstance(state, QtCore.QByteArray):
             self.restoreState(state, self._WINDOW_STATE_VERSION)
+        # Restore the central panes' sash positions (D143). QSplitter.restoreState
+        # self-validates: if the pane count changed it returns False and the
+        # stretch-factor defaults stand, so this is safe across layout edits.
+        for splitter in self._pane_splitters:
+            sash = self._settings.value(f"splitter/{splitter.objectName()}")
+            if isinstance(sash, QtCore.QByteArray):
+                splitter.restoreState(sash)
 
     def _save_window_state(self) -> None:
         self._settings.setValue("geometry", self.saveGeometry())
         self._settings.setValue("windowState", self.saveState(self._WINDOW_STATE_VERSION))
+        for splitter in self._pane_splitters:
+            self._settings.setValue(f"splitter/{splitter.objectName()}", splitter.saveState())
         self._settings.sync()
 
     def closeEvent(self, event: QtGui.QCloseEvent | None) -> None:
-        self._save_window_state()  # remember size/position + dock layout (D132)
+        self._save_window_state()  # size/position + dock layout (D132) + panes (D143)
         # A running analysis worker cannot be interrupted mid-fetch; detach its
         # signals so a late emit does not target the half-destroyed window, then
         # drop queued work. We do not block the close on a network fetch.
