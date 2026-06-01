@@ -3758,6 +3758,35 @@ links in the CVE tab). Suite 465 -> 467.
 
 ---
 
+## D140 - On-demand package description in the inspector + auto-fetch toggle
+
+An RPM / SRPM / source node carries its NEVRA but no human-readable description.
+The inspector grew a **Package** tab (mirroring the CVE tab) that fetches one:
+
+- **Sources (`adapters/package_info.py`).** `fetch_package_info(name, *,
+  rpm_filename, dnf_runner, range_fetcher)` tries the host **`dnf repoquery
+  --info <name>`** first (no network; `parse_dnf_info` reads Summary / URL /
+  License / wrapped Description), then falls back to the package's own **RPM
+  header range-fetched** from the public AlmaLinux mirror/vault (no dnf -- works
+  on macOS): `rpm_header.py` now also extracts SUMMARY (1004), DESCRIPTION (1005)
+  and URL (1020), and `rpm_remote.default_range_fetcher()` exposes the cache-aware
+  Range fetcher. Both inputs are injectable, so the parser and the dnf-first /
+  header-fallback logic are tested fully offline.
+- **GUI (`gui/package_info.py` + `qt_app`).** `PackageInfoView` is a dumb widget
+  (emits `fetchRequested(name, rpm_filename)`, renders a `PackageInfo`); the
+  window runs the fetch in a `PackageInfoWorker` on the thread pool. Selecting a
+  binary RPM / SRPM / source node points the tab at it (without hijacking the
+  current inspector tab, unlike CVE -- RPM nodes are the common click).
+
+- **Auto-fetch toggle.** Both the CVE and Package tabs grew an `[x] auto-fetch`
+  checkbox: when ticked, selecting the node fetches immediately, no button click.
+
++7 cases (the header summary/description/url extraction; the dnf parser; the
+dnf-first + header-fallback + offline-degraded fetch; the Package tab wiring; the
+CVE auto-fetch on selection). Suite 467 -> 474.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

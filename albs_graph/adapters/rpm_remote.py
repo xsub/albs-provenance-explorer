@@ -297,6 +297,13 @@ def vault_candidate_urls(
     return urls
 
 
+def default_range_fetcher(*, http_cache: bool = True) -> RangeFetcher:
+    """A cache-aware HTTP Range fetcher for ad-hoc header reads (e.g. the GUI's
+    on-demand package-info path), matching ``enrich_graph_with_rpm_headers``."""
+
+    return cached_range_fetcher(HttpCache(enabled=http_cache), _requests_range_fetch)
+
+
 def _try_candidates(
     filename: str,
     candidates: list[str],

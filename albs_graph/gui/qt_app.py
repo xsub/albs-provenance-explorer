@@ -24,6 +24,7 @@ from albs_graph.adapters.errata_source import (
     almalinux_major_version,
     redhat_advisory_url,
 )
+from albs_graph.adapters.package_info import PackageInfo, fetch_package_info
 from albs_graph.adapters.sbom import discover_build_sbom
 from albs_graph.gui.inspect import (
     InspectorEdge,
@@ -32,6 +33,7 @@ from albs_graph.gui.inspect import (
     inspector_view,
     raw_json,
 )
+from albs_graph.model import NodeType
 from albs_graph.pipeline import RunSpec
 from albs_graph.security.cve_details import CveDetails, fetch_cve_details
 from albs_graph.security.cve_feed import CveFeed
@@ -67,6 +69,7 @@ from albs_graph.services import (
 from albs_graph.gui.dependency_panel import DependencyPanel
 from albs_graph.gui.filtered_table import FilteredTable
 from albs_graph.gui.cve_details import CveDetailsView, cve_id_in
+from albs_graph.gui.package_info import PackageInfoView
 from albs_graph.gui.security_panel import SecurityPanel
 from albs_graph.gui.timeline_panel import TimelinePanel
 from albs_graph.gui.universe_panel import UniversePanel
@@ -243,6 +246,30 @@ class CveDetailsWorker(QtCore.QRunnable):
             self.signals.failed.emit(str(exc))
             return
         self.signals.done.emit(details)
+
+
+class PackageInfoSignals(QtCore.QObject):
+    done = QtCore.pyqtSignal(object)  # PackageInfo
+    failed = QtCore.pyqtSignal(str)
+
+
+class PackageInfoWorker(QtCore.QRunnable):
+    """Fetches one package's description off the UI thread (D140)."""
+
+    def __init__(self, name: str, rpm_filename: str) -> None:
+        super().__init__()
+        self.name = name
+        self.rpm_filename = rpm_filename
+        self.signals = PackageInfoSignals()
+
+    @QtCore.pyqtSlot()
+    def run(self) -> None:
+        try:
+            info = fetch_package_info(self.name, rpm_filename=self.rpm_filename or None)
+        except Exception as exc:  # worker boundary: never crash the pool
+            self.signals.failed.emit(str(exc))
+            return
+        self.signals.done.emit(info)
 
 
 class GraphSvgWidget(QtSvg.QSvgWidget):
@@ -650,6 +677,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.thread_pool = _require(QtCore.QThreadPool.globalInstance())
         self._active_worker: AnalysisWorker | None = None
         self._cve_worker: CveDetailsWorker | None = None
+        self._package_worker: PackageInfoWorker | None = None
         self._analysis_step_count = 0  # live step counter for the status bar
         # M3: a report-time CVE feed for the Security panel's Potential CVEs
         # column, cached by the source string it was loaded from.
@@ -793,6 +821,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.cve_details_view = CveDetailsView()
         self.cve_details_view.fetchRequested.connect(self._fetch_cve_details)
         self.inspector_tabs.addTab(self.cve_details_view, "CVE")
+        self.package_info_view = PackageInfoView()
+        self.package_info_view.fetchRequested.connect(self._fetch_package_info)
+        self.inspector_tabs.addTab(self.package_info_view, "Package")
 
         self.findings_table = QtWidgets.QTableWidget(0, 4)
         self.findings_table.setHorizontalHeaderLabels(["Severity", "Code", "Subject", "Detail"])
@@ -2707,6 +2738,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 self.cve_details_view.set_cve(None)
         else:
             self.cve_details_view.set_cve(None)
+        package = self._package_node(node_id)  # RPM / source node -> Package tab (D140)
+        self.package_info_view.set_package(*(package or (None, "")))
         self._select_slice_node(node_id)
         previous_edge = self.selected_edge_index
         self.selected_edge_index = None
@@ -2748,6 +2781,17 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             references=tuple(references),
             source="almalinux errata (mirrors RHEL)",
         )
+
+    def _package_node(self, node_id: str) -> tuple[str, str] | None:
+        # (name, rpm filename) for an RPM / SRPM / source node, else None (D140).
+        if self.result is None or node_id not in self.result.graph.nodes:
+            return None
+        node = self.result.graph.nodes[node_id]
+        if node.type not in (NodeType.BINARY_RPM, NodeType.SRPM, NodeType.SOURCE_PACKAGE):
+            return None
+        name = str(node.metadata.get("name") or node.label)
+        filename = str(node.metadata.get("filename") or node.metadata.get("artifact_name") or "")
+        return name, (filename if filename.endswith(".rpm") else "")
 
     def _show_edge(self, edge_index: int, *, from_slice: bool) -> None:
         graph = self.current_slice.graph if from_slice and self.current_slice is not None else None
@@ -3093,6 +3137,21 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _on_cve_failed(self, message: str) -> None:
         self.cve_details_view.show_message(f"Could not fetch CVE details: {message}")
 
+    def _fetch_package_info(self, name: str, rpm_filename: str) -> None:
+        # Fetch the package description off the UI thread (host dnf -> RPM header),
+        # then render it into the inspector's Package tab (D140).
+        worker = PackageInfoWorker(name, rpm_filename)
+        worker.signals.done.connect(self._on_package_info)
+        worker.signals.failed.connect(self._on_package_failed)
+        self._package_worker = worker
+        self.thread_pool.start(worker)
+
+    def _on_package_info(self, info: PackageInfo) -> None:
+        self.package_info_view.show_info(info)
+
+    def _on_package_failed(self, message: str) -> None:
+        self.package_info_view.show_message(f"Could not fetch package info: {message}")
+
     def _show_error(self, message: str) -> None:
         QtWidgets.QMessageBox.warning(self, "Workbench", message)
 
@@ -3139,6 +3198,12 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                     pass
         if self._cve_worker is not None:
             for signal_ in (self._cve_worker.signals.done, self._cve_worker.signals.failed):
+                try:
+                    signal_.disconnect()
+                except (TypeError, RuntimeError):
+                    pass
+        if self._package_worker is not None:
+            for signal_ in (self._package_worker.signals.done, self._package_worker.signals.failed):
                 try:
                     signal_.disconnect()
                 except (TypeError, RuntimeError):

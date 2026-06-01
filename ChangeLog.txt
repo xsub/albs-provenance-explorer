@@ -19,7 +19,18 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   feat(security): AlmaLinux errata is downstream of RHEL -- surface the
+- (this)   feat(gui): on-demand package description in the inspector + auto-fetch.
+           A new "Package" tab (like the CVE tab) fetches an RPM/SRPM/source
+           node's summary/description/license/url: host `dnf repoquery --info`
+           first (parse_dnf_info), else the package's own RPM header range-fetched
+           from the AlmaLinux mirror/vault (rpm_header now reads SUMMARY/
+           DESCRIPTION/URL; rpm_remote.default_range_fetcher) -- works on macOS,
+           no dnf. Both the CVE and Package tabs gained an [x] auto-fetch checkbox:
+           when ticked, selecting the node fetches immediately. New
+           adapters/package_info.py + gui/package_info.py, injectable + offline-
+           tested. +7 cases; suite 467 -> 474. D140.
+
+- 784d6ea  feat(security): AlmaLinux errata is downstream of RHEL -- surface the
            upstream. CVE-details references now include the Red Hat CVE page
            (upstream authority). Selecting an errata (ALSA) node drives the CVE
            tab: it shows the AlmaLinux errata page (almalinux_advisory_url, e.g.

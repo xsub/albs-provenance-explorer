@@ -69,6 +69,9 @@ def _build_rpm(
     release: str = "16.el9_4.1",
     arch: str = "x86_64",
     license: str = "BSD-2-Clause",
+    summary: str | None = None,
+    description: str | None = None,
+    url: str | None = None,
     requires: list[tuple[str, int, str]] | None = None,
 ) -> bytes:
     reqs = requires if requires is not None else _REQUIRES
@@ -79,20 +82,26 @@ def _build_rpm(
     # Signature header with one short string tag, forcing 8-byte padding.
     sig = _section([(62, _STRING, "sig")])
     sig += b"\x00" * ((8 - (len(sig) % 8)) % 8)
-    main = _section(
-        [
-            (1000, _STRING, name),
-            (1001, _STRING, version),
-            (1002, _STRING, release),
-            (1014, _STRING, license),  # RPMTAG_LICENSE
-            (1022, _STRING, arch),
-            (1049, _STRING_ARRAY, names),
-            (1048, _INT32, flags),
-            (1050, _STRING_ARRAY, versions),
-        ]
-    )
+    entries: list[tuple[int, int, object]] = [
+        (1000, _STRING, name),
+        (1001, _STRING, version),
+        (1002, _STRING, release),
+        (1014, _STRING, license),  # RPMTAG_LICENSE
+        (1022, _STRING, arch),
+    ]
+    if summary is not None:
+        entries.append((1004, _STRING, summary))  # RPMTAG_SUMMARY
+    if description is not None:
+        entries.append((1005, _STRING, description))  # RPMTAG_DESCRIPTION
+    if url is not None:
+        entries.append((1020, _STRING, url))  # RPMTAG_URL
+    entries += [
+        (1049, _STRING_ARRAY, names),
+        (1048, _INT32, flags),
+        (1050, _STRING_ARRAY, versions),
+    ]
     payload = b"\x1f\x8b" + b"\x00" * 64  # token "compressed payload"
-    return lead + sig + main + payload
+    return lead + sig + _section(entries) + payload
 
 
 def _range_fetcher(blob: bytes) -> Callable[[str, int, int], bytes]:
@@ -308,3 +317,17 @@ def test_requests_range_fetch_rejects_range_ignoring_200_so_httpcache_is_not_poi
             cached_range_fetcher(cache, _requests_range_fetch)("https://example/rpm", 0, 99)
 
     assert list((tmp_path / "cache").rglob("*")) == []  # nothing cached
+
+
+def test_parse_rpm_header_extracts_summary_description_url() -> None:
+    # The header carries the package description fields (D140): SUMMARY (1004),
+    # DESCRIPTION (1005) and URL (1020).
+    blob = _build_rpm(
+        summary="nginx HTTP and proxy server core files",
+        description="The nginx-core package contains the core files.\nMore detail.",
+        url="https://nginx.org/",
+    )
+    header = parse_rpm_header(blob)
+    assert header.summary == "nginx HTTP and proxy server core files"
+    assert header.description == "The nginx-core package contains the core files.\nMore detail."
+    assert header.url == "https://nginx.org/"

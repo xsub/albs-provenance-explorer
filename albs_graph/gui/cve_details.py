@@ -39,6 +39,8 @@ class CveDetailsView(QtWidgets.QWidget):
         self._cve_id: str | None = None
         self.header = QtWidgets.QLabel("Select a CVE node to see its details.")
         self.header.setWordWrap(True)
+        self.auto_fetch = QtWidgets.QCheckBox("auto-fetch")
+        self.auto_fetch.setToolTip("Fetch automatically when a CVE node is selected.")
         self.button = QtWidgets.QPushButton("Show CVE details")
         self.button.setEnabled(False)
         self.button.clicked.connect(self._request)
@@ -48,6 +50,7 @@ class CveDetailsView(QtWidgets.QWidget):
         top = QtWidgets.QHBoxLayout()
         top.setContentsMargins(0, 0, 0, 0)
         top.addWidget(self.header, 1)
+        top.addWidget(self.auto_fetch)
         top.addWidget(self.button)
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(6, 6, 6, 6)
@@ -65,6 +68,8 @@ class CveDetailsView(QtWidgets.QWidget):
             self.header.setText("Select a CVE node to see its details.")
         else:
             self.header.setText(f"{cve_id} — click “Show CVE details” to fetch it.")
+            if self.auto_fetch.isChecked():  # D140: fetch immediately when ticked
+                self._request()
 
     def _request(self) -> None:
         if self._cve_id:

@@ -878,6 +878,43 @@ def test_errata_node_shows_alsa_and_redhat_links(
         window.close()
 
 
+def test_workbench_has_package_tab_and_renders(qapp: QtWidgets.QApplication) -> None:
+    # The inspector has a "Package" tab; its result/failure slots render into the
+    # view, and both detail tabs carry an auto-fetch checkbox (D140).
+    from albs_graph.adapters.package_info import PackageInfo
+
+    window = WorkbenchWindow()
+    try:
+        tabs = [window.inspector_tabs.tabText(i) for i in range(window.inspector_tabs.count())]
+        assert "Package" in tabs
+        assert window.package_info_view.auto_fetch is not None
+        assert window.cve_details_view.auto_fetch is not None
+        window._on_package_info(
+            PackageInfo(name="nginx-core", summary="core files", license="BSD-2-Clause")
+        )
+        body = window.package_info_view.body.toHtml()
+        assert "core files" in body and "BSD-2-Clause" in body
+        window._on_package_failed("boom")
+        assert "boom" in window.package_info_view.body.toHtml()
+    finally:
+        window.close()
+
+
+def test_cve_auto_fetch_triggers_on_selection(qapp: QtWidgets.QApplication) -> None:
+    # With auto-fetch ticked, selecting a CVE node fetches immediately -- no
+    # button click (D140).
+    from albs_graph.gui.cve_details import CveDetailsView
+
+    view = CveDetailsView()
+    captured: list[str] = []
+    view.fetchRequested.connect(captured.append)
+    view.set_cve("CVE-2024-0001")  # auto-fetch off -> just enables the button
+    assert captured == []
+    view.auto_fetch.setChecked(True)
+    view.set_cve("CVE-2024-0002")  # auto-fetch on -> fetch immediately
+    assert captured == ["CVE-2024-0002"]
+
+
 def test_qt_accessibility_noise_is_filtered() -> None:
     # The macOS Qt accessibility warnings (a Qt bug, e.g. child: -249) are
     # dropped; real warnings pass through (D135).

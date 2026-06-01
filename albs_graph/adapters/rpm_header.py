@@ -27,6 +27,10 @@ _TAG_VERSION = 1001
 _TAG_RELEASE = 1002
 _TAG_LICENSE = 1014
 _TAG_ARCH = 1022
+_TAG_SUMMARY = 1004
+_TAG_DESCRIPTION = 1005
+_TAG_URL = 1020
+_TAG_VENDOR = 1011
 _TAG_SOURCERPM = 1044
 _TAG_PROVIDENAME = 1047
 _TAG_REQUIREFLAGS = 1048
@@ -77,6 +81,10 @@ class RpmHeader:
     payload_format: str | None = None  # e.g. "cpio"
     payload_compressor: str | None = None  # e.g. "zstd", "gzip", "xz"
     license: str | None = None  # RPMTAG_LICENSE (1014), e.g. "BSD-2-Clause"
+    summary: str | None = None  # RPMTAG_SUMMARY (1004)
+    description: str | None = None  # RPMTAG_DESCRIPTION (1005)
+    url: str | None = None  # RPMTAG_URL (1020)
+    vendor: str | None = None  # RPMTAG_VENDOR (1011)
 
     @property
     def soname_requires(self) -> tuple[RpmDependency, ...]:
@@ -159,6 +167,10 @@ def parse_rpm_header(data: bytes) -> RpmHeader:
         payload_format=_as_string(tags.get(_TAG_PAYLOADFORMAT)),
         payload_compressor=_as_string(tags.get(_TAG_PAYLOADCOMPRESSOR)),
         license=_as_string(tags.get(_TAG_LICENSE)),
+        summary=_as_string(tags.get(_TAG_SUMMARY)),
+        description=_as_string(tags.get(_TAG_DESCRIPTION)),
+        url=_as_string(tags.get(_TAG_URL)),
+        vendor=_as_string(tags.get(_TAG_VENDOR)),
     )
 
 

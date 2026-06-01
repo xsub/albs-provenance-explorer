@@ -154,7 +154,7 @@ RPM header already carries `DT_NEEDED` sonames - no payload, no ELF parse needed
   queries, finding drill-down, and a classic-CLI runner. SBOM auto-discovery
   (D78) and the errata three-state (D79) are surfaced through it. The full
   design and milestone roadmap live in `docs/plan-pyqt5-investigation-workbench-app.md`.
-- ✅ Offline tests for all of the above (467 tests; ruff + mypy --strict clean),
+- ✅ Offline tests for all of the above (474 tests; ruff + mypy --strict clean),
   including multi-build coverage confirming the pipeline is not specific to any
   single build. The PyQt5 GUI tests run headless (`QT_QPA_PLATFORM=offscreen`),
   including a workbench-window smoke test that exercises construction +
