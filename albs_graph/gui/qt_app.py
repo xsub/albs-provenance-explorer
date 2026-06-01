@@ -602,7 +602,17 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     ) -> None:
         super().__init__()
         self.setWindowTitle("ALBS Provenance Investigation Workbench")
-        self.resize(1500, 930)
+        self.resize(1500, 930)  # default size on first run; restored below if saved
+        # Remember the window size/position (+ toolbar/dock layout) across runs.
+        # IniFormat keeps the store redirectable so the tests can point it at a
+        # temp dir; in production it persists on macOS under ~/Library/Preferences
+        # and on Linux under ~/.config.
+        self._settings = QtCore.QSettings(
+            QtCore.QSettings.Format.IniFormat,
+            QtCore.QSettings.Scope.UserScope,
+            "albs-provenance-explorer",
+            "InvestigationWorkbench",
+        )
 
         self.thread_pool = _require(QtCore.QThreadPool.globalInstance())
         self._active_worker: AnalysisWorker | None = None
@@ -837,12 +847,14 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._connect_signals()
         self._apply_style()
         self._update_input_tooltips()
+        self._restore_window_state()  # size/position + dock layout from last run
 
         if initial_build_id is not None or (initial_source is not None and initial_source.exists()):
             QtCore.QTimer.singleShot(50, self.run_analysis)
 
     def _build_ui(self) -> None:
         toolbar = QtWidgets.QToolBar("Workbench")
+        toolbar.setObjectName("WorkbenchToolBar")  # named so saveState() can persist it
         toolbar.setMovable(False)
         self.addToolBar(toolbar)
 
@@ -983,6 +995,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         # the primary inputs above never overflow into the toolbar extension menu.
         self.addToolBarBreak()
         security_toolbar = QtWidgets.QToolBar("Security sources")
+        security_toolbar.setObjectName("SecuritySourcesToolBar")  # for saveState()
         security_toolbar.setMovable(False)
         self.addToolBar(security_toolbar)
         security_toolbar.addWidget(QtWidgets.QLabel("Errata"))
@@ -1051,6 +1064,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         bottom.addTab(self.log, "Log")
         self._relax_bottom_panel_minimums(bottom)
         dock = QtWidgets.QDockWidget("Investigation Output")
+        dock.setObjectName("InvestigationOutputDock")  # for saveState()
         dock.setMinimumHeight(BOTTOM_DOCK_MIN_HEIGHT)
         dock.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Ignored)
         dock.setWidget(bottom)
@@ -2964,7 +2978,26 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             return
         self.close()
 
+    _WINDOW_STATE_VERSION = 1  # bump if the toolbar/dock structure changes
+
+    def _restore_window_state(self) -> None:
+        # Restore the window size/position + toolbar/dock layout saved last run.
+        # Missing/foreign values (first run, type mismatch) are ignored, so the
+        # default geometry stands.
+        geometry = self._settings.value("geometry")
+        if isinstance(geometry, QtCore.QByteArray):
+            self.restoreGeometry(geometry)
+        state = self._settings.value("windowState")
+        if isinstance(state, QtCore.QByteArray):
+            self.restoreState(state, self._WINDOW_STATE_VERSION)
+
+    def _save_window_state(self) -> None:
+        self._settings.setValue("geometry", self.saveGeometry())
+        self._settings.setValue("windowState", self.saveState(self._WINDOW_STATE_VERSION))
+        self._settings.sync()
+
     def closeEvent(self, event: QtGui.QCloseEvent | None) -> None:
+        self._save_window_state()  # remember size/position + dock layout (D132)
         # A running analysis worker cannot be interrupted mid-fetch; detach its
         # signals so a late emit does not target the half-destroyed window, then
         # drop queued work. We do not block the close on a network fetch.

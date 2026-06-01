@@ -69,6 +69,17 @@ def _isolate_cache(
 
 
 @pytest.fixture(autouse=True)
+def _isolate_qsettings(tmp_path_factory: pytest.TempPathFactory) -> None:
+    # Keep the window-geometry persistence (QSettings, D132) out of the real user
+    # preferences by redirecting the IniFormat/UserScope store to a temp dir.
+    QtCore.QSettings.setPath(
+        QtCore.QSettings.Format.IniFormat,
+        QtCore.QSettings.Scope.UserScope,
+        str(tmp_path_factory.mktemp("qsettings")),
+    )
+
+
+@pytest.fixture(autouse=True)
 def _baseline_host(monkeypatch: pytest.MonkeyPatch) -> None:
     # Deterministic host at window construction: no host tools on PATH, so the
     # CAS / AlmaLinux badges (D125) and the real _is_almalinux_family_host stay
@@ -657,6 +668,25 @@ def test_status_bar_shows_a_step_counter_during_analysis(
         assert "456 RPMs" in text
     finally:
         window.close()
+
+
+def test_window_geometry_persists_across_instances(qapp: QtWidgets.QApplication) -> None:
+    # The window size is saved on close and restored by the next instance (D132).
+    # _isolate_qsettings redirects QSettings to a temp dir, so this never touches
+    # the real user preferences.
+    first = WorkbenchWindow()
+    first.resize(1280, 800)
+    expected = first.size()
+    assert expected != QtCore.QSize(1500, 930)  # the resize actually took effect
+    first.close()  # closeEvent persists the geometry
+    saved = first._settings.value("geometry")
+    assert isinstance(saved, QtCore.QByteArray) and not saved.isEmpty()
+
+    second = WorkbenchWindow()
+    try:
+        assert second.size() == expected  # restored from the saved geometry
+    finally:
+        second.close()
 
 
 def test_primary_analyze_is_context_sensitive(

@@ -3560,6 +3560,26 @@ the tick labels; the status bar shows a growing step counter). Suite 445 -> 448.
 
 ---
 
+## D132 - Remember the window size/position across runs
+
+The workbench opened at a fixed default size every launch. It now persists its
+geometry with `QSettings`: `_save_window_state` writes `saveGeometry()` +
+`saveState()` in `closeEvent`, and `_restore_window_state` (called at the end of
+`__init__`, after the toolbars/dock exist) restores them, so the size, position,
+maximised/fullscreen state and the toolbar/dock layout come back on the next
+launch. The two toolbars and the bottom dock were given `objectName`s so
+`saveState()` can address them; the state carries a version (`_WINDOW_STATE_VERSION`)
+to bump if that structure changes.
+
+`QSettings` is constructed with `IniFormat` / `UserScope` so the store is
+redirectable -- on macOS it lands under `~/Library/Preferences`, on Linux under
+`~/.config`, and the tests point it at a temp dir (`_isolate_qsettings`) so a run
+never touches the developer's real preferences. Missing or foreign values (first
+run, a future version bump) are ignored, leaving the default geometry. +1 case
+(geometry saved on close is restored by the next instance). Suite 448 -> 449.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

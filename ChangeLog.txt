@@ -19,7 +19,14 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): Gantt follow-ups from real-build use -- make the Gantt the
+- (this)   feat(gui): remember the window size/position (+ toolbar/dock layout)
+           across runs via QSettings -- _save_window_state on close, restore at
+           the end of __init__; the toolbars/dock got objectNames so saveState
+           can address them. IniFormat/UserScope keeps the store redirectable
+           (macOS ~/Library/Preferences, Linux ~/.config; tests point it at a temp
+           dir). +1 case; suite 448 -> 449. D132.
+
+- 2c4cea7  feat(gui): Gantt follow-ups from real-build use -- make the Gantt the
            default timeline sub-view (the graph<->timeline jump lands on it; Tree
            stays one click away), move the D130 clip note off the axis tick
            labels onto its own top line (_TOP 42 -> 64) so it no longer overwrites
