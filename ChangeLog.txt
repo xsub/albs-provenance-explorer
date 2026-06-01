@@ -16,10 +16,20 @@ Conventions:
     via `git log main --oneline` if needed.
 
 ----------------------------------------------------------------------
+2026-06-01
+----------------------------------------------------------------------
+
+- (this)   docs(readme): add a screen-recording demo under the screenshot. The
+           204 MB macOS .mov was compressed with ffmpeg to a 3.5 MB 1280-wide
+           H.264 mp4 (examples/demo-build-57810/workbench-demo.mp4) and embedded
+           with a <video> tag (download-link fallback) so it plays inline on
+           GitHub. No code.
+
+----------------------------------------------------------------------
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   ci: test on Python 3.14 too (CI matrix is now 3.11-3.14). Verified
+- f4978cd  ci: test on Python 3.14 too (CI matrix is now 3.11-3.14). Verified
            locally on 3.14.5 -- the full 442-case suite (incl. the headless
            PyQt5 GUI tests), ruff and mypy are all green, and PyQt5 5.15.11
            installs cleanly. requires-python ">=3.11" already permits it; the

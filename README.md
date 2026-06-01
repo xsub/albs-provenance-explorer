@@ -14,6 +14,14 @@
 
 ![ALBS Provenance Investigation Workbench: a build's source-to-artifact trust-path graph with errata/CVE, the per-RPM evidence matrix, and the live ALBS / SBOM / ERRATA source badges in the status bar (build 57810)](examples/demo-build-57810/pyqt-investigation-workbench.png)
 
+**Screen recording** — the workbench in action (fetching a build, exploring the trust path, the source badges, the timeline and the security panel):
+
+<video src="examples/demo-build-57810/workbench-demo.mp4" controls muted width="100%">
+  Your browser does not render embedded video — <a href="examples/demo-build-57810/workbench-demo.mp4">download / view the demo (mp4)</a>.
+</video>
+
+> If the player above does not load on GitHub, [watch the recording here](examples/demo-build-57810/workbench-demo.mp4).
+
 The **`InvestigationWorkbenchApp` branch is the GUI version of
 [`albs-provenance-explorer`](#albs-provenance-explorer).** It builds on the same
 analysis backend as the command-line tool — the shared `AnalysisPipeline` — and
