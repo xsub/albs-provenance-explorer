@@ -38,6 +38,11 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
         super().__init__()
         self._scene = QtWidgets.QGraphicsScene(self)
         self.setScene(self._scene)
+        # node id -> its row label item, and a pending "scroll to this node" that
+        # is (re)applied on show/resize so it lands even when the Gantt was the
+        # hidden sub-view at click time (D127).
+        self._node_items: dict[str, QtWidgets.QGraphicsItem] = {}
+        self._pending_node: str | None = None
         self.setRenderHint(QtGui.QPainter.Antialiasing, True)
         self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
         self.setMinimumHeight(GANTT_MIN_HEIGHT)
@@ -48,6 +53,8 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
     ) -> None:
         rows = timeline_gantt_rows(graph, build_analysis)
         self._scene.clear()
+        self._node_items = {}
+        self._pending_node = None
         if not rows:
             self._scene.addText("No timeline data")
             return
@@ -67,6 +74,7 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
         self._scene.setSceneRect(0, 0, left + timeline_width + 180, top + 48 + len(rows) * row_height)
 
     def mousePressEvent(self, event: QtGui.QMouseEvent | None) -> None:
+        self._pending_node = None  # the user is navigating; stop auto-recentring
         if event is None:
             super().mousePressEvent(event)
             return
@@ -79,14 +87,34 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
             item = item.parentItem()
         super().mousePressEvent(event)
 
-    def reveal_node(self, node_id: str) -> bool:
-        """Centre the Gantt on the row for ``node_id`` (D124). Returns a hit."""
+    def find_node(self, node_id: str) -> bool:
+        return node_id in self._node_items
 
-        for item in self._scene.items():
-            if str(item.data(0) or "") == node_id:
-                self.centerOn(item)
-                return True
-        return False
+    def scroll_to_node(self, node_id: str) -> bool:
+        """Bring ``node_id``'s row into view (D124/D127). Records it as pending so
+        the scroll re-applies on show/resize -- it lands even when the Gantt was
+        the hidden sub-view (size 0) at click time. Returns whether it was found."""
+
+        if node_id not in self._node_items:
+            return False
+        self._pending_node = node_id
+        self._apply_pending_scroll()
+        return True
+
+    def _apply_pending_scroll(self) -> None:
+        if self._pending_node is None:
+            return
+        item = self._node_items.get(self._pending_node)
+        if item is not None:
+            self.ensureVisible(item, 80, 40)
+
+    def showEvent(self, event: QtGui.QShowEvent | None) -> None:
+        super().showEvent(event)
+        self._apply_pending_scroll()
+
+    def resizeEvent(self, event: QtGui.QResizeEvent | None) -> None:
+        super().resizeEvent(event)
+        self._apply_pending_scroll()
 
     def _draw_gantt_axis(
         self,
@@ -124,6 +152,7 @@ class TimelineGanttView(QtWidgets.QGraphicsView):
         label.setPos(8, y - 7)
         if row.node_id:
             label.setData(0, row.node_id)
+            self._node_items[row.node_id] = label  # for scroll_to_node (D127)
         detail = _scene_text(self._scene, row.status or row.kind)
         detail.setDefaultTextColor(palette["muted"])
         detail.setPos(label_width - 120, y - 7)
@@ -231,8 +260,10 @@ class TimelinePanel(QtWidgets.QWidget):
             self._navigate(str(node_id))
 
     def reveal_node(self, node_id: str) -> bool:
-        """Select + scroll the tree *and* centre the Gantt on ``node_id`` (D124),
-        so clicking a graph node reveals it in the timeline. Returns a hit."""
+        """Reveal ``node_id`` in the timeline (D124/D127): select + scroll the
+        tree, and -- when the Gantt has the row -- switch to the Gantt sub-view
+        and scroll it to the row (the scroll re-applies on show so it lands even
+        if the Gantt was hidden). Returns whether the node was found."""
 
         if not node_id:
             return False
@@ -242,7 +273,12 @@ class TimelinePanel(QtWidgets.QWidget):
             self.tree.scrollToItem(
                 item, QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter
             )
-        found_in_gantt = self.gantt.reveal_node(node_id)
+        found_in_gantt = self.gantt.find_node(node_id)
+        if found_in_gantt:
+            gantt_index = self.stack.indexOf(self.gantt)
+            if gantt_index >= 0:
+                self.view_combo.setCurrentIndex(gantt_index)  # show the Gantt sub-view
+            self.gantt.scroll_to_node(node_id)
         return item is not None or found_in_gantt
 
     def _find_tree_item(self, node_id: str) -> QtWidgets.QTreeWidgetItem | None:

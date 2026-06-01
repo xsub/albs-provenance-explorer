@@ -19,7 +19,16 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   fix: show the log while fetching; errata "checked-clean"; dedup CVE
+- (this)   fix(gui): clicking a node actually scrolls the Gantt to it (D127).
+           The D124 centerOn ran while the Gantt was the hidden sub-view (size 0)
+           / a non-active tab, so it never took. The Gantt now keeps a
+           node-id->row map + a _pending_node re-applied via ensureVisible on
+           show/resize; reveal_node switches the Tree/Gantt switch to Gantt and
+           _graph_node_clicked brings the Timeline tab forward. The reveal test
+           was strengthened; no net test-count change. Suite 432. decisions.md
+           D127.
+
+- daca60a  fix: show the log while fetching; errata "checked-clean"; dedup CVE
            edges (D126). run_analysis switches to the Log tab so progress is
            visible. The ERRATA badge is active once errata was *consulted*
            (_errata_consulted), reading "ERRATA: NET (clean)" / "(3)", so a clean

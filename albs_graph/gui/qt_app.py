@@ -2478,8 +2478,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _graph_node_clicked(self, node_id: str) -> None:
         self._show_node(node_id)
         # Also reveal it in the timeline (tree + Gantt), if it appears there, so a
-        # build task / step clicked in the graph is located on the timeline (D124).
-        self.timeline_panel.reveal_node(node_id)
+        # build task / step clicked in the graph is located on the timeline; bring
+        # the Timeline tab forward so the Gantt scroll is actually visible (D127).
+        if self.timeline_panel.reveal_node(node_id):
+            self.output_tabs.setCurrentWidget(self.timeline_panel)
 
     def _graph_edge_clicked(self, edge_index: int) -> None:
         self._show_edge(edge_index, from_slice=True)

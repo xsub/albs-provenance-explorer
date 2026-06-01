@@ -489,7 +489,9 @@ def test_timeline_tree_first_column_does_not_overlap(qapp: QtWidgets.QApplicatio
 
 
 def test_clicking_a_node_reveals_it_in_the_timeline(qapp: QtWidgets.QApplication) -> None:
-    # Clicking a graph node also selects + scrolls to it in the timeline (D124).
+    # Clicking a graph node selects + scrolls the tree, switches to the Gantt
+    # sub-view, records the Gantt scroll, and brings the Timeline tab forward so
+    # the scroll is actually visible (D124/D127).
     window = WorkbenchWindow()
     try:
         window._analysis_finished(_fixture_result())
@@ -500,9 +502,17 @@ def test_clicking_a_node_reveals_it_in_the_timeline(qapp: QtWidgets.QApplication
         current = panel.tree.currentItem()
         assert current is not None
         assert str(current.data(0, QtCore.Qt.ItemDataRole.UserRole)) == "build:albs:123456"
+        # The Gantt sub-view is shown and the scroll target recorded (re-applied
+        # on show/resize so it lands even if the Gantt was hidden at click time).
+        assert panel.view_combo.currentText() == "Gantt"
+        assert panel.gantt._pending_node == "build:albs:123456"
 
         assert panel.reveal_node("rpm:not-on-timeline") is False  # no hit, no crash
-        window._graph_node_clicked(SYNTHETIC_RPM_ID)  # a real node not on the timeline: safe
+        # Clicking a timeline node via the wired path brings the Timeline tab up.
+        window.output_tabs.setCurrentWidget(window.findings_table)
+        window._graph_node_clicked("build:albs:123456")
+        assert window.output_tabs.currentWidget() is window.timeline_panel
+        window._graph_node_clicked(SYNTHETIC_RPM_ID)  # off-timeline node: safe, no switch
     finally:
         window.close()
 

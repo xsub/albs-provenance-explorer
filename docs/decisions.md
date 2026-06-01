@@ -3442,6 +3442,25 @@ Three field-reported fixes.
 
 ---
 
+## D127 - Clicking a node actually scrolls the Gantt to it
+
+The D124 reveal centred the Gantt with `centerOn` -- but the Gantt was usually
+the hidden sub-view (size 0) or in a non-active bottom tab when a graph node was
+clicked, so the scroll never took. Reworked to be reliable:
+
+- the Gantt keeps a `node id -> row-label item` map and a **`_pending_node`**
+  that is (re)applied via `ensureVisible` on **`showEvent` / `resizeEvent`**, so
+  the scroll lands once the view gets its real size;
+- `TimelinePanel.reveal_node` now **switches the Tree/Gantt switch to Gantt** and
+  calls `scroll_to_node` (recording the pending target);
+- `_graph_node_clicked` **brings the Timeline tab forward** when the node is on
+  the timeline, so the Gantt is visible for the scroll. A Gantt mouse press
+  clears `_pending_node` (the user is navigating), so a later window resize does
+  not yank the view back. The D124 reveal test was strengthened (sub-view switch
+  + pending target + the wired tab-forward); no net test-count change.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
