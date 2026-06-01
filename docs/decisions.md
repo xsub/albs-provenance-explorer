@@ -3727,6 +3727,37 @@ rows). Suite 463 -> 465.
 
 ---
 
+## D139 - AlmaLinux security errata is downstream of RHEL: surface the upstream
+
+AlmaLinux is a 1:1 RHEL rebuild, so its **security errata is inherited from
+upstream Red Hat**: a CVE is tracked first at Red Hat (e.g.
+`access.redhat.com/security/cve/CVE-2026-25679`) and shipped via an RHSA, and
+AlmaLinux re-publishes the *same advisory number* as an ALSA -- RHSA-2026:21378
+↔ ALSA-2026-21378, the "doubled" advisory. AlmaLinux's own errata pages are
+terse, so the upstream Red Hat record is the richer source. Implication: a CVE
+can be real for an AlmaLinux RPM while AlmaLinux's own errata is sparse or only
+reachable via the upstream RHSA. The workbench now reflects this:
+
+- **CVE references (`security/cve_details.py`).** The CVE-details tab always
+  appends the **Red Hat CVE page** (`access.redhat.com/security/cve/<id>`)
+  alongside the NVD and AlmaLinux links, since Red Hat is the upstream authority
+  for AlmaLinux.
+- **Errata (ALSA) nodes (`adapters/errata_source.py` + `gui`).** Selecting an
+  errata node in the graph now drives the same CVE tab (D134): it shows the
+  **AlmaLinux errata page** -- `almalinux_advisory_url("ALSA-2026:19158", "10")`
+  -> `errata.almalinux.org/10/ALSA-2026-19158.html` (the page path hyphenates the
+  colon id and needs the major version) -- the **upstream Red Hat advisory** it
+  mirrors -- `redhat_advisory_url` -> `access.redhat.com/errata/RHSA-2026:19158`
+  (`ALSA`->`RHSA`, `ALBA`->`RHBA`, `ALEA`->`RHEA`) -- and the CVEs it fixes (read
+  off the advisory's `FIXES` edges), each linked to its Red Hat CVE page. No
+  network fetch: the links are derived from the advisory id, so it works offline.
+
+The URL/id helpers are pure and unit-tested; the errata-node path is a GUI test.
++2 cases (the advisory-URL helpers; the errata node renders the ALSA + RHSA + CVE
+links in the CVE tab). Suite 465 -> 467.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

@@ -18,10 +18,16 @@ from albs_graph.adapters.albs import (
     fetch_build_summary,
     fetch_recent_builds,
 )
-from albs_graph.adapters.errata_source import almalinux_errata_feed_url, almalinux_major_version
+from albs_graph.adapters.errata_source import (
+    almalinux_advisory_url,
+    almalinux_errata_feed_url,
+    almalinux_major_version,
+    redhat_advisory_url,
+)
 from albs_graph.adapters.sbom import discover_build_sbom
 from albs_graph.gui.inspect import (
     InspectorEdge,
+    InspectorView,
     edge_inspector_view,
     inspector_view,
     raw_json,
@@ -2689,9 +2695,18 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._populate_edges_table(view.incoming + view.outgoing)
         self.raw_inspector.setPlainText(raw_json(view))
         cve_id = cve_id_in(node_id)
-        self.cve_details_view.set_cve(cve_id)
-        if cve_id is not None:  # a CVE node: bring its details tab forward (D134)
+        if cve_id is not None:  # a CVE node: enable the fetch + bring the tab up (D134)
+            self.cve_details_view.set_cve(cve_id)
             self.inspector_tabs.setCurrentWidget(self.cve_details_view)
+        elif node_id.startswith("errata:"):  # an errata (ALSA) node: show its links (D139)
+            details = self._errata_details(node_id, view)
+            if details is not None:
+                self.cve_details_view.show_errata(details)
+                self.inspector_tabs.setCurrentWidget(self.cve_details_view)
+            else:
+                self.cve_details_view.set_cve(None)
+        else:
+            self.cve_details_view.set_cve(None)
         self._select_slice_node(node_id)
         previous_edge = self.selected_edge_index
         self.selected_edge_index = None
@@ -2700,6 +2715,39 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             self.selected_node_id = node_id
             if render_graph and (previous != node_id or previous_edge is not None):
                 self._render_current_svg()
+
+    def _errata_details(self, node_id: str, view: InspectorView) -> CveDetails | None:
+        # The CVE-tab record for an errata (ALSA) node: the AlmaLinux errata page,
+        # the upstream Red Hat advisory it mirrors, and the CVEs it fixes (D139).
+        # No network fetch -- AlmaLinux errata is downstream of RHEL and the links
+        # are derived from the advisory id.
+        if self.result is None or node_id not in self.result.graph.nodes:
+            return None
+        node = self.result.graph.nodes[node_id]
+        advisory_id = node.label
+        major = almalinux_major_version(self.result.graph)
+        cves = [
+            edge.other_label
+            for edge in view.outgoing
+            if edge.relation == "fixes" and edge.other_id.startswith("cve:")
+        ]
+        references: list[str] = []
+        alma = almalinux_advisory_url(advisory_id, major)
+        if alma is not None:
+            references.append(alma)
+        redhat = redhat_advisory_url(advisory_id)
+        if redhat is not None:
+            references.append(redhat)
+        references.extend(f"https://access.redhat.com/security/cve/{cve}" for cve in cves)
+        severity_value = node.metadata.get("severity")
+        advisory_type = str(node.metadata.get("type") or "security")
+        return CveDetails(
+            id=advisory_id,
+            description=f"AlmaLinux {advisory_type} advisory — fixes {', '.join(cves) or 'no linked CVEs'}.",
+            severity=str(severity_value) if severity_value else None,
+            references=tuple(references),
+            source="almalinux errata (mirrors RHEL)",
+        )
 
     def _show_edge(self, edge_index: int, *, from_slice: bool) -> None:
         graph = self.current_slice.graph if from_slice and self.current_slice is not None else None

@@ -77,6 +77,14 @@ class CveDetailsView(QtWidgets.QWidget):
         self.header.setText(details.id)
         self.body.setHtml(render_cve_html(details))
 
+    def show_errata(self, details: CveDetails) -> None:
+        # An errata (ALSA) node: no per-CVE fetch -- render the advisory's links
+        # (AlmaLinux page + upstream Red Hat) and the CVEs it fixes (D139).
+        self._cve_id = None
+        self.button.setEnabled(False)
+        self.header.setText(details.id)
+        self.body.setHtml(render_cve_html(details))
+
     def show_message(self, message: str) -> None:
         self.button.setEnabled(self._cve_id is not None)
         self.body.setHtml(f"<p style='color:#c0392b'>{html.escape(message)}</p>")

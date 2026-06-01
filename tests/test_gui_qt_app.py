@@ -843,6 +843,41 @@ def test_workbench_has_cve_inspector_tab_and_renders(qapp: QtWidgets.QApplicatio
         window.close()
 
 
+def test_errata_node_shows_alsa_and_redhat_links(
+    qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Selecting an errata (ALSA) node renders the AlmaLinux errata page + the
+    # upstream Red Hat advisory + the CVEs it fixes in the CVE tab (D139).
+    from albs_graph.gui import qt_app
+    from albs_graph.model import Node, NodeType, Relation
+
+    graph = build_synthetic_fixture_graph()
+    graph.add_node(
+        Node(
+            "errata:ALSA-2026:19158",
+            NodeType.ERRATA,
+            "ALSA-2026:19158",
+            {"type": "security", "severity": "Important"},
+        )
+    )
+    graph.add_node(Node("cve:CVE-2026-2291", NodeType.CVE, "CVE-2026-2291", {}))
+    graph.add_edge("errata:ALSA-2026:19158", "cve:CVE-2026-2291", Relation.FIXES)
+    monkeypatch.setattr(qt_app, "almalinux_major_version", lambda _graph: "10")
+
+    result = AnalysisService(pipeline=AnalysisPipeline(steps=())).analyze_graph(graph, RunSpec())
+    window = WorkbenchWindow()
+    try:
+        window._analysis_finished(result)
+        window._show_node("errata:ALSA-2026:19158")
+        body = window.cve_details_view.body.toHtml()
+        assert "errata.almalinux.org/10/ALSA-2026-19158.html" in body
+        assert "access.redhat.com/errata/RHSA-2026:19158" in body  # upstream advisory
+        assert "CVE-2026-2291" in body  # the CVE it fixes
+        assert window.inspector_tabs.currentWidget() is window.cve_details_view
+    finally:
+        window.close()
+
+
 def test_qt_accessibility_noise_is_filtered() -> None:
     # The macOS Qt accessibility warnings (a Qt bug, e.g. child: -249) are
     # dropped; real warnings pass through (D135).

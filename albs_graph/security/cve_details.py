@@ -24,6 +24,7 @@ Fetcher = Callable[[str], bytes]
 NVD_CVE_API = "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={id}"
 OSV_VULN_API = "https://api.osv.dev/v1/vulns/{id}"
 NVD_PAGE = "https://nvd.nist.gov/vuln/detail/{id}"
+REDHAT_CVE_PAGE = "https://access.redhat.com/security/cve/{id}"  # upstream authority for AlmaLinux
 ALMALINUX_PAGE = "https://errata.almalinux.org/?cve={id}"
 
 __all__ = ["CveDetails", "fetch_cve_details", "parse_nvd_cve", "parse_osv_vuln"]
@@ -133,7 +134,11 @@ def _nvd_cvss(metrics: dict[str, Any]) -> tuple[float | None, str | None, str | 
 
 def _with_canonical_links(cve_id: str, references: tuple[str, ...]) -> tuple[str, ...]:
     links = list(references)
-    for page in (NVD_PAGE.format(id=cve_id), ALMALINUX_PAGE.format(id=cve_id)):
+    for page in (
+        NVD_PAGE.format(id=cve_id),
+        REDHAT_CVE_PAGE.format(id=cve_id),  # AlmaLinux inherits its CVE fixes from RHEL
+        ALMALINUX_PAGE.format(id=cve_id),
+    ):
         if page not in links:
             links.append(page)
     return tuple(links)

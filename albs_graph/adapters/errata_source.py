@@ -61,6 +61,42 @@ def almalinux_errata_feed_url(version: str | int) -> str:
     return ALMALINUX_ERRATA_FEED_URL.format(version=version)
 
 
+_ADVISORY_ID = re.compile(r"^AL([SBE]A)-(\d{4})[:-](\d+)$")
+
+
+def almalinux_advisory_url(advisory_id: str, major_version: str | None) -> str | None:
+    """The AlmaLinux errata HTML page for an ALSA/ALBA/ALEA advisory id, e.g.
+    ``ALSA-2026:19158`` + major ``10`` -> ``https://errata.almalinux.org/10/
+    ALSA-2026-19158.html``. The page path uses hyphens (the feed id uses a colon),
+    so it needs the AlmaLinux major version; ``None`` when either is missing or
+    the id is not an AlmaLinux advisory."""
+
+    match = _ADVISORY_ID.match(advisory_id.strip())
+    if not match or not major_version:
+        return None
+    page_id = f"AL{match.group(1)}-{match.group(2)}-{match.group(3)}"
+    return f"https://errata.almalinux.org/{major_version}/{page_id}.html"
+
+
+def redhat_advisory_id(advisory_id: str) -> str | None:
+    """The upstream Red Hat advisory an AlmaLinux advisory mirrors. AlmaLinux
+    rebuilds RHEL and keeps the same advisory number, so ``ALSA-2026:19158``
+    corresponds to ``RHSA-2026:19158`` (``ALBA``->``RHBA``, ``ALEA``->``RHEA``);
+    ``None`` for a non-AlmaLinux id."""
+
+    match = _ADVISORY_ID.match(advisory_id.strip())
+    if not match:
+        return None
+    return f"RH{match.group(1)}-{match.group(2)}:{match.group(3)}"
+
+
+def redhat_advisory_url(advisory_id: str) -> str | None:
+    """The Red Hat errata page for the upstream advisory (see ``redhat_advisory_id``)."""
+
+    rhsa = redhat_advisory_id(advisory_id)
+    return f"https://access.redhat.com/errata/{rhsa}" if rhsa else None
+
+
 def almalinux_major_version(graph: ProvenanceGraph) -> str | None:
     """Infer the distro major version (``8`` / ``9`` / ``10``) from the build.
 

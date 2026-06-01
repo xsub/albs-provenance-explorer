@@ -74,6 +74,7 @@ def test_fetch_cve_details_prefers_nvd_and_appends_canonical_links() -> None:
     assert details.source == "nvd"
     assert details.description == "A buffer overflow in foo."
     assert any("nvd.nist.gov/vuln/detail" in url for url in details.references)
+    assert any("access.redhat.com/security/cve" in url for url in details.references)  # upstream
     assert any("errata.almalinux.org" in url for url in details.references)
 
 

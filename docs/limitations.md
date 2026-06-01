@@ -355,3 +355,27 @@ by serving a hand-built RPM byte structure through a fake range fetcher, so the
 parser, incremental fetch loop, and claim generation are covered - but **live
 vault/mirror behavior** (redirects, `Accept-Ranges` quirks, 404s, throttling) is
 only validated manually, not in CI.
+
+## AlmaLinux security errata is downstream of RHEL
+
+AlmaLinux is a 1:1 RHEL rebuild, so its security fixes and advisories are
+**inherited from upstream Red Hat**. A CVE is tracked first at Red Hat
+(`access.redhat.com/security/cve/<id>`) and shipped via an **RHSA**; AlmaLinux
+re-publishes the same advisory number as an **ALSA** (RHSA-2026:21378 ↔
+ALSA-2026-21378 -- the same advisory, "doubled"). AlmaLinux's own errata pages
+are terse, and a CVE can be real for an AlmaLinux RPM while AlmaLinux's own
+errata is sparse or only fully described upstream.
+
+Consequences for this tool:
+
+- A *missing ALSA* does not mean "not affected" -- check the upstream RHSA / Red
+  Hat CVE record. The workbench surfaces both: CVE nodes link the Red Hat CVE
+  page, and an errata (ALSA) node links its AlmaLinux errata page **and** the
+  corresponding upstream `RHSA` advisory + the CVEs it fixes (D139).
+- The `ALSA`↔`RHSA` mapping is a number-preserving prefix swap
+  (`ALSA`/`ALBA`/`ALEA` ↔ `RHSA`/`RHBA`/`RHEA`); it is a heuristic over the
+  documented AlmaLinux ↔ RHEL correspondence, not a fetched cross-reference, so a
+  hypothetical renumbered advisory would not resolve.
+- We do **not** fetch the Red Hat security-data API; the upstream links are
+  derived locally (offline-safe). Pulling the authoritative Red Hat record
+  (affected packages, fix state) is a possible future enrichment.

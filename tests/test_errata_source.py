@@ -470,3 +470,32 @@ def test_errata_step_both_routes_to_cross_check(monkeypatch) -> None:
 
     assert result.corroborated == 1  # both sources agreed on ALSA-1
     assert graph.nodes["errata:ALSA-1"].metadata["cross_checked"] is True
+
+
+def test_almalinux_and_redhat_advisory_urls() -> None:
+    # The AlmaLinux errata page uses hyphens + the major version (the feed id uses
+    # a colon); AlmaLinux mirrors RHEL so the same number maps to a RHSA (D139).
+    from albs_graph.adapters.errata_source import (
+        almalinux_advisory_url,
+        redhat_advisory_id,
+        redhat_advisory_url,
+    )
+
+    assert (
+        almalinux_advisory_url("ALSA-2026:19158", "10")
+        == "https://errata.almalinux.org/10/ALSA-2026-19158.html"
+    )
+    assert (
+        almalinux_advisory_url("ALSA-2026-19158", "9")
+        == "https://errata.almalinux.org/9/ALSA-2026-19158.html"
+    )
+    assert almalinux_advisory_url("ALSA-2026:19158", None) is None  # no major version
+    assert almalinux_advisory_url("RHSA-2026:19158", "10") is None  # not an AlmaLinux id
+
+    assert redhat_advisory_id("ALSA-2026:19158") == "RHSA-2026:19158"
+    assert redhat_advisory_id("ALBA-2026:19158") == "RHBA-2026:19158"
+    assert redhat_advisory_id("not-an-advisory") is None
+    assert (
+        redhat_advisory_url("ALSA-2026:19158")
+        == "https://access.redhat.com/errata/RHSA-2026:19158"
+    )
