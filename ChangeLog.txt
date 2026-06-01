@@ -19,8 +19,12 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): add an About dialog (Help ▸ About …) -- the workbench splash
-           artwork (albs_graph/gui/resources/about.png, the AlmaLinux logo as a
+- (this)   chore(gui): use the pixel-exact clean splash artwork for the About
+           dialog / README (was a crop of the source composite) and rename it
+           about.png -> about-splash.png to bust GitHub's image cache. No code.
+
+- 84512fc  feat(gui): add an About dialog (Help ▸ About …) -- the workbench splash
+           artwork (albs_graph/gui/resources/about-splash.png, the AlmaLinux logo as a
            mesh of provenance nodes), a one-line blurb, and the repository link at
            the very bottom (gui/about.py). The same artwork is appended to the end
            of README.md. +1 case; suite 474 -> 475. D141.

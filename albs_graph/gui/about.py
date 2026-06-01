@@ -16,7 +16,7 @@ __all__ = ["ABOUT_REPO_URL", "AboutDialog", "about_image_path"]
 def about_image_path() -> Path:
     """The bundled splash artwork shown in the About dialog (and the README)."""
 
-    return Path(__file__).resolve().parent / "resources" / "about.png"
+    return Path(__file__).resolve().parent / "resources" / "about-splash.png"
 
 
 class AboutDialog(QtWidgets.QDialog):

@@ -651,4 +651,4 @@ The tests focus on graph correctness, trust-path semantics, SBOM import and rend
 
 ---
 
-![AlmaLinux Build System Provenance Investigation Workbench — Powered by ALBS. Verified Provenance.](albs_graph/gui/resources/about.png)
+![AlmaLinux Build System Provenance Investigation Workbench — Powered by ALBS. Verified Provenance.](albs_graph/gui/resources/about-splash.png)
