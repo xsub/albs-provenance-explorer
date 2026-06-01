@@ -19,7 +19,13 @@ Conventions:
 2026-05-31
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): centre the graph on the highlighted node (D129). When a
+- (this)   ci: test on Python 3.14 too (CI matrix is now 3.11-3.14). Verified
+           locally on 3.14.5 -- the full 442-case suite (incl. the headless
+           PyQt5 GUI tests), ruff and mypy are all green, and PyQt5 5.15.11
+           installs cleanly. requires-python ">=3.11" already permits it; the
+           ruff/mypy targets stay at the 3.11 floor.
+
+- 4f2c943  feat(gui): centre the graph on the highlighted node (D129). When a
            node is navigated to (table / finding / search / slice list), the
            graph scrolls to centre it -- but only when it does not already fit
            the viewport. NodeRegion.center() + GraphSvgWidget.node_center() map
