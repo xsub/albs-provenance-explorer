@@ -19,7 +19,18 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): "Git" inspector tab -- query the ALBS Gitea server for a
+- (this)   feat(gui): make auto-fetch one shared+persisted preference across the
+           CVE/Package/Git tabs, and reproduce git's diff-highlight in the diff
+           pop-up. The three auto-fetch checkboxes are kept in lock-step and saved
+           in QSettings (inspector/auto_fetch), so ticking it anywhere makes a
+           git_commit selection fetch on its own -- not only when the Git box is
+           ticked -- and it sticks across runs. render_diff_html now emphasises
+           the changed token within each removed/added line pair (common
+           prefix/suffix), computed from the fetched diff text (no local git
+           checkout to shell out to), on a self-contained light theme. +2 cases.
+           Suite 497 -> 499. D145.
+
+- de4c52c  feat(gui): "Git" inspector tab -- query the ALBS Gitea server for a
            git_commit node and show its message + changed files, with a per-file
            diff pop-up. New adapters/git_source.py parses the git URL into a Gitea
            (base, owner, repo), fetches the commit JSON + whole-commit .diff

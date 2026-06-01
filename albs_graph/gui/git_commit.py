@@ -149,6 +149,7 @@ class GitDiffDialog(QtWidgets.QDialog):
         self.resize(820, 560)
         self.browser = QtWidgets.QTextBrowser()
         self.browser.setLineWrapMode(QtWidgets.QTextEdit.LineWrapMode.NoWrap)
+        self.browser.setStyleSheet(f"QTextBrowser {{ background: {_DIFF_BG}; }}")
         self.browser.setHtml(render_diff_html(diff_text))
         buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Close)
         buttons.rejected.connect(self.reject)
@@ -180,15 +181,113 @@ def render_commit_html(commit: GitCommit) -> str:
     return "".join(parts)
 
 
+# A self-contained light diff theme (GitHub-ish) so the colours stay legible
+# regardless of the app's overall style.
+_DIFF_BG = "#ffffff"
+_DIFF_FG = "#24292f"
+_REMOVED_FG = "#cf222e"  # red text on a removed line
+_ADDED_FG = "#1a7f37"  # green text on an added line
+_REMOVED_HL = "#f9c8c8"  # background behind the changed token of a removed line
+_ADDED_HL = "#aceebb"  # background behind the changed token of an added line
+
+
 def render_diff_html(diff_text: str) -> str:
+    """Render a unified diff as HTML, reproducing git's ``diff-highlight``: each
+    adjacent removed/added line pair gets the differing token (between the common
+    prefix and suffix) emphasised, not just the whole line. We cannot shell out to
+    git here -- there is no local checkout, only the diff text fetched from Gitea
+    -- so the intra-line emphasis is computed directly from that text."""
+
     if not diff_text.strip():
         return "<p><i>No diff was available for this file.</i></p>"
+    lines = diff_text.splitlines()
     rows: list[str] = []
-    for line in diff_text.splitlines():
-        escaped = html.escape(line) or "&nbsp;"
-        color = _diff_line_color(line)
-        rows.append(f"<span style='color:{color}'>{escaped}</span>" if color else escaped)
-    return "<pre style='font-family:monospace; white-space:pre'>" + "\n".join(rows) + "</pre>"
+    i = 0
+    while i < len(lines):
+        if _is_removed(lines[i]):
+            removed: list[str] = []
+            while i < len(lines) and _is_removed(lines[i]):
+                removed.append(lines[i])
+                i += 1
+            added: list[str] = []
+            while i < len(lines) and _is_added(lines[i]):
+                added.append(lines[i])
+                i += 1
+            if added:  # a replacement block -> highlight the changed tokens
+                rows.extend(_render_change_block(removed, added))
+                continue
+            rows.extend(_render_signed_row(line, _REMOVED_FG) for line in removed)
+            continue
+        rows.append(_render_context_row(lines[i]))
+        i += 1
+    return (
+        f"<pre style='font-family:monospace; white-space:pre; "
+        f"background:{_DIFF_BG}; color:{_DIFF_FG}; padding:6px'>"
+        + "\n".join(rows)
+        + "</pre>"
+    )
+
+
+def _is_removed(line: str) -> bool:
+    return line.startswith("-") and not line.startswith("---")
+
+
+def _is_added(line: str) -> bool:
+    return line.startswith("+") and not line.startswith("+++")
+
+
+def _render_change_block(removed: list[str], added: list[str]) -> list[str]:
+    # Pair removed[i] with added[i] for intra-line highlighting (extras render
+    # plain); emit all removed lines, then all added -- git's diff-highlight order.
+    pairs = min(len(removed), len(added))
+    highlighted = [_intraline(removed[idx], added[idx]) for idx in range(pairs)]
+    old_rows = [hl[0] for hl in highlighted]
+    old_rows += [_render_signed_row(removed[idx], _REMOVED_FG) for idx in range(pairs, len(removed))]
+    new_rows = [hl[1] for hl in highlighted]
+    new_rows += [_render_signed_row(added[idx], _ADDED_FG) for idx in range(pairs, len(added))]
+    return old_rows + new_rows
+
+
+def _intraline(old_line: str, new_line: str) -> tuple[str, str]:
+    prefix, suffix = _common_affixes(old_line[1:], new_line[1:])
+    old_inner = _affix_html(old_line[:1], old_line[1:], prefix, suffix, _REMOVED_HL)
+    new_inner = _affix_html(new_line[:1], new_line[1:], prefix, suffix, _ADDED_HL)
+    return (
+        f"<span style='color:{_REMOVED_FG}'>{old_inner}</span>",
+        f"<span style='color:{_ADDED_FG}'>{new_inner}</span>",
+    )
+
+
+def _affix_html(sign: str, text: str, prefix: int, suffix: int, highlight: str) -> str:
+    end = max(len(text) - suffix, prefix)  # the changed span is [prefix:end]
+    pre = html.escape(sign + text[:prefix])
+    mid = html.escape(text[prefix:end])
+    suf = html.escape(text[end:])
+    mid_html = f"<span style='background:{highlight}'>{mid}</span>" if mid else ""
+    return f"{pre}{mid_html}{suf}" or "&nbsp;"
+
+
+def _common_affixes(a: str, b: str) -> tuple[int, int]:
+    prefix = 0
+    shortest = min(len(a), len(b))
+    while prefix < shortest and a[prefix] == b[prefix]:
+        prefix += 1
+    suffix = 0
+    while (
+        suffix < len(a) - prefix and suffix < len(b) - prefix and a[-1 - suffix] == b[-1 - suffix]
+    ):
+        suffix += 1
+    return prefix, suffix
+
+
+def _render_signed_row(line: str, color: str) -> str:
+    return f"<span style='color:{color}'>{html.escape(line) or '&nbsp;'}</span>"
+
+
+def _render_context_row(line: str) -> str:
+    escaped = html.escape(line) or "&nbsp;"
+    color = _diff_line_color(line)
+    return f"<span style='color:{color}'>{escaped}</span>" if color else escaped
 
 
 def _diff_line_color(line: str) -> str:

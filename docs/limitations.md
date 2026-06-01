@@ -351,7 +351,10 @@ The PyQt5 investigation workbench is a read-only frontend over the same
   `unknown-albs-source:<pkg>` placeholder, or an offline server yields just the
   web link. The per-file diff is **sliced client-side** from the whole-commit
   diff by the `b/` path, so a file that does not appear in that diff (or an
-  unusual rename) falls back to showing the entire commit diff. Read-only: it
+  unusual rename) falls back to showing the entire commit diff. The pop-up
+  reproduces git's `diff-highlight` intra-line emphasis **in the renderer**
+  (common prefix/suffix on each removed/added pair) rather than shelling out to
+  git -- there is no local checkout, only the fetched diff text. Read-only: it
   shows commits, it does not check them out.
 
 ---

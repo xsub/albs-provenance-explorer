@@ -890,6 +890,13 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.git_commit_view.commitRequested.connect(self._fetch_git_commit)
         self.git_commit_view.diffRequested.connect(self._fetch_git_diff)
         self.inspector_tabs.addTab(self.git_commit_view, "Git")
+        # "auto-fetch" is one shared preference across the on-demand detail tabs
+        # (CVE / Package / Git): ticking it on any one ticks all, and it is
+        # persisted across runs (D145), so a git_commit selection auto-fetches
+        # whenever auto-fetch is on -- not only when the Git tab's own box is.
+        self._detail_views = (self.cve_details_view, self.package_info_view, self.git_commit_view)
+        for view in self._detail_views:
+            view.auto_fetch.toggled.connect(self._sync_auto_fetch)
 
         self.findings_table = QtWidgets.QTableWidget(0, 4)
         self.findings_table.setHorizontalHeaderLabels(["Severity", "Code", "Subject", "Detail"])
@@ -3330,13 +3337,27 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             sash = self._settings.value(f"splitter/{splitter.objectName()}")
             if isinstance(sash, QtCore.QByteArray):
                 splitter.restoreState(sash)
+        self._sync_auto_fetch(self._stored_auto_fetch())  # shared detail-tab pref (D145)
 
     def _save_window_state(self) -> None:
         self._settings.setValue("geometry", self.saveGeometry())
         self._settings.setValue("windowState", self.saveState(self._WINDOW_STATE_VERSION))
         for splitter in self._pane_splitters:
             self._settings.setValue(f"splitter/{splitter.objectName()}", splitter.saveState())
+        self._settings.setValue("inspector/auto_fetch", self.cve_details_view.auto_fetch.isChecked())
         self._settings.sync()
+
+    def _stored_auto_fetch(self) -> bool:
+        stored = self._settings.value("inspector/auto_fetch")
+        return stored is True or (isinstance(stored, str) and stored.lower() == "true")
+
+    def _sync_auto_fetch(self, checked: bool) -> None:
+        # Keep the CVE / Package / Git auto-fetch checkboxes in lock-step (D145).
+        for view in self._detail_views:
+            if view.auto_fetch.isChecked() != checked:
+                view.auto_fetch.blockSignals(True)
+                view.auto_fetch.setChecked(checked)
+                view.auto_fetch.blockSignals(False)
 
     def closeEvent(self, event: QtGui.QCloseEvent | None) -> None:
         self._save_window_state()  # size/position + dock layout (D132) + panes (D143)

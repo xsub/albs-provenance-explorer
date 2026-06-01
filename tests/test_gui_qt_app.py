@@ -1022,6 +1022,37 @@ def test_git_commit_node_selects_the_git_tab_and_renders(qapp: QtWidgets.QApplic
         window.close()
 
 
+def test_render_diff_html_highlights_intraline_changes() -> None:
+    # The diff renderer reproduces git's diff-highlight: the changed token between
+    # the common prefix and suffix is emphasised, not just the whole line (D145).
+    from albs_graph.gui.git_commit import render_diff_html
+
+    out = render_diff_html("@@ -1 +1 @@\n-Version: 1.20.0\n+Version: 1.20.1")
+    assert "Version: 1.20." in out  # the common prefix is kept un-highlighted
+    assert "background:#f9c8c8'>0</span>" in out  # only the changed digit is emphasised
+    assert "background:#aceebb'>1</span>" in out
+
+
+def test_inspector_auto_fetch_is_shared_and_persists(qapp: QtWidgets.QApplication) -> None:
+    # "auto-fetch" is one preference shared across the CVE / Package / Git tabs and
+    # remembered across runs (D145). _isolate_qsettings keeps this off the real
+    # user preferences.
+    first = WorkbenchWindow()
+    assert not first.git_commit_view.auto_fetch.isChecked()
+    first.cve_details_view.auto_fetch.setChecked(True)  # ticking one ticks all
+    assert first.package_info_view.auto_fetch.isChecked()
+    assert first.git_commit_view.auto_fetch.isChecked()
+    first.close()  # persists the shared preference
+
+    second = WorkbenchWindow()
+    try:
+        assert second.git_commit_view.auto_fetch.isChecked()  # restored on the next run
+        assert second.cve_details_view.auto_fetch.isChecked()
+        assert second.package_info_view.auto_fetch.isChecked()
+    finally:
+        second.close()
+
+
 def test_about_dialog_shows_artwork_and_repo_link(qapp: QtWidgets.QApplication) -> None:
     # The About dialog ships the splash artwork and a repository link at the very
     # bottom; a Help menu opens it (D141).

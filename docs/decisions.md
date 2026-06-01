@@ -3870,6 +3870,33 @@ colouring, and the node -> tab wiring). Suite 477 -> 497.
 
 ---
 
+## D145 - Shared/persisted auto-fetch + git-style intra-line diff highlight
+
+Two follow-ups to the Git tab (D144).
+
+**Shared, persisted auto-fetch.** Each on-demand detail tab (CVE D134, Package /
+Git D140/D144) carried its *own* `auto-fetch` checkbox, default-off, so ticking
+it on CVE did nothing for Git -- a `git_commit` selection still required the
+button. "auto-fetch" is now **one preference**: the three checkboxes are kept in
+lock-step (`_sync_auto_fetch`, signals blocked to avoid loops) and the state is
+persisted in `QSettings` under `inspector/auto_fetch` alongside the window
+geometry, restored on the next run. Ticking it anywhere makes every detail tab
+fetch on selection, and it sticks.
+
+**git-style intra-line diff highlight.** The diff pop-up coloured whole lines
+red/green; git's `diff-highlight` additionally emphasises the *changed token*
+within a line. We cannot shell out to git -- there is no local checkout, only the
+diff text fetched from Gitea -- so `render_diff_html` reproduces it directly:
+each adjacent removed/added line pair is reduced to its common prefix + suffix,
+and only the differing middle gets a background (red on the `-` line, green on
+the `+` line). The pop-up uses a self-contained light theme so the colours stay
+legible regardless of the app style. Pure additions/removals (no pair) stay
+plain-coloured, matching diff-highlight. +2 cases (the intra-line emphasis; the
+shared+persisted auto-fetch round-tripping across two window instances). Suite
+497 -> 499.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
