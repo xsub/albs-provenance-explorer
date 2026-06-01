@@ -68,6 +68,7 @@ from albs_graph.gui.universe_panel import UniversePanel
 RECIPE_COMBO_WIDTH = 136
 RECIPE_POPUP_MIN_WIDTH = 460
 BOTTOM_DOCK_MIN_HEIGHT = 96
+ARTIFACT_LIST_MIN_WIDTH = 170  # the left artifact list never shrinks below this
 BOTTOM_PAGE_MIN_HEIGHT = 0
 INSPECTION_TMP_ROOT = Path("/private/tmp/albs-provenance-workbench")
 
@@ -1000,19 +1001,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             reset_action=reset_action,
         )
 
-        toolbar.addAction(open_action)
-        toolbar.addAction(run_action)
-        toolbar.addSeparator()
-        toolbar.addWidget(QtWidgets.QLabel("Build id"))
-        self.build_id_edit.setFixedWidth(90)
-        toolbar.addWidget(self.build_id_edit)
-        toolbar.addWidget(QtWidgets.QLabel("Source"))
-        self.source_edit.setFixedWidth(240)
-        toolbar.addWidget(self.source_edit)
-        toolbar.addAction(build_sbom_action)
-        self.build_sbom_edit.setFixedWidth(180)
-        toolbar.addWidget(self.build_sbom_edit)
-        toolbar.addSeparator()
+        # The toolbar is view-only (D137): loading moved to the menu (File ▸ Open /
+        # Inspect Build Id… / SBOM) and the Start launcher, so only the graph-view
+        # controls remain -- Mode + Recipes + Layers + graph search + Tests. The
+        # build-id / source / SBOM line edits stay as hidden backing fields the
+        # launcher and menu populate (the badges + run/analyze still read them).
         toolbar.addWidget(QtWidgets.QLabel("Mode"))
         toolbar.addWidget(self.mode_combo)
         toolbar.addWidget(self.recipe_combo)
@@ -1043,7 +1036,6 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         left_layout.addWidget(self.artifact_header)
         left_layout.addWidget(self.artifact_filter)
         left_layout.addWidget(self.artifact_list)
-        left_layout.addWidget(self.coverage_label)
 
         center = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
         graph_panel = QtWidgets.QWidget()
@@ -1101,7 +1093,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.output_tabs = bottom
         self.output_dock = dock
         self.addDockWidget(QtCore.Qt.DockWidgetArea.BottomDockWidgetArea, dock)
-        _require(self.statusBar()).addWidget(self.progress_label)
+        status = _require(self.statusBar())
+        status.addWidget(self.coverage_label)  # short graph coverage, left of the status text (D137)
+        status.addWidget(self.progress_label)
         self._install_source_badges()
         self._update_build_completer()  # seed build-id autocomplete from the cached catalog
 
@@ -2187,6 +2181,14 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             item.setData(QtCore.Qt.ItemDataRole.UserRole + 1, f"{name} {arch} {summary.id}".casefold())
             item.setToolTip(summary.id)
             self.artifact_list.addItem(item)
+        self._fit_artifact_list_width()
+
+    def _fit_artifact_list_width(self) -> None:
+        # Size the artifact list to its widest row -- wide enough for the longest
+        # "name [arch]" but no wider (D137).
+        content = self.artifact_list.sizeHintForColumn(0)
+        scrollbar = _require(self.artifact_list.verticalScrollBar()).sizeHint().width()
+        self.artifact_list.setFixedWidth(max(ARTIFACT_LIST_MIN_WIDTH, content + scrollbar + 24))
 
     def _filter_artifacts(self, text: str) -> None:
         needle = text.casefold().strip()
@@ -2396,7 +2398,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             f"{axis.name}: {axis.covered}/{axis.total}"
             for axis in self.result.coverage.axes()
         ]
-        self.coverage_label.setText("\n".join(parts))
+        self.coverage_label.setText(" · ".join(parts))  # one line for the status bar (D137)
 
     def _artifact_changed(self, current: QtWidgets.QListWidgetItem | None) -> None:
         if current is None:

@@ -3675,6 +3675,32 @@ Suite stays 461.
 
 ---
 
+## D137 - Declutter the toolbar; coverage to the status bar; artifact list to its content
+
+A pass over the top line and the left rail from the screenshots:
+
+- **View-only toolbar.** The primary toolbar dropped its two icons (Open, Analyze)
+  and the Build id / Source / SBOM line edits, leaving just the graph-view
+  controls (Mode, Recipes, Layers, graph search, Tests). Every removed item has a
+  menu / launcher equivalent (File ▸ Open / Inspect Build Id… / SBOM, and the
+  Start launcher), so nothing was lost -- the line edits stay as **hidden backing
+  fields** the launcher and menu populate (the badges + Analyze still read them),
+  which keeps the whole badge / fetch / session machinery untouched.
+- **Coverage to the status bar.** The five coverage axes were a multi-line label
+  in the left rail; they now render as one ` · `-joined line in the status bar
+  next to the progress text ("resolution: 6/251 · linkage: 29/456 · … · Analysis
+  complete"), so the left rail is just the artifact list.
+- **Artifact list fits its content.** `_fit_artifact_list_width` pins the list to
+  its widest "name [arch]" row (`sizeHintForColumn(0)` + scrollbar + padding,
+  floored at `ARTIFACT_LIST_MIN_WIDTH`) on every populate -- wide enough for the
+  longest entry, no wider.
+
++2 cases net (the toolbar test was rewritten to assert the view-only toolbar +
+backing fields + the security inputs still on their own row; new cases for the
+one-line status coverage and the content-fitted list). Suite 461 -> 463.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

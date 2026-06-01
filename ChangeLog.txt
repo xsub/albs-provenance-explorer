@@ -19,7 +19,17 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): always show the CAS + host-OS status badges. CAS is now
+- (this)   feat(gui): declutter the top line + left rail. The primary toolbar is
+           view-only now -- dropped the Open/Analyze icons and the Build id /
+           Source / SBOM line edits (all have menu/launcher equivalents; the
+           edits stay as hidden backing fields the launcher/menu populate),
+           leaving Mode / Recipes / Layers / graph search / Tests. The five
+           coverage axes moved from a multi-line left-rail label to one " · "
+           line in the status bar next to "Analysis complete"; and the artifact
+           list is now fixed to its widest "name [arch]" row. +2 cases; suite
+           461 -> 463. D137.
+
+- ac29e6d  feat(gui): always show the CAS + host-OS status badges. CAS is now
            permanent and greys out ("cas tool not installed") when `cas` is off
            PATH (clicking it then shows a plain message), lighting up with its
            verified count when present. The rightmost host badge is always there:

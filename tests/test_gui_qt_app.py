@@ -336,22 +336,47 @@ def test_workbench_cpe_verify_run_spec_and_cve_feed_panel(
         window.close()
 
 
-def test_workbench_security_inputs_live_on_a_second_toolbar(
+def test_toolbar_is_view_only_and_security_inputs_are_separate(
     qapp: QtWidgets.QApplication,
 ) -> None:
-    # Regression: the errata/CPE/CVE feed inputs overflowed the single toolbar
-    # into the ">>" extension menu. They now live on a separate toolbar row so
-    # the primary inputs above never overflow.
+    # The primary toolbar is view-only now (D137): the build-id / source / SBOM
+    # line edits became hidden backing fields (no toolbar parent), while the
+    # graph-view controls (Mode) and the security feeds (CVE) stay on toolbars.
     window = WorkbenchWindow()
     try:
         toolbars = window.findChildren(QtWidgets.QToolBar)
-        assert len(toolbars) >= 2  # primary + security-sources rows
-        owners = {id(tb): tb for tb in toolbars}
-        build_id_tb = id(window.build_id_edit.parent())
-        cve_tb = id(window.cve_feed_edit.parent())
-        # The CVE feed input is not on the same toolbar as the build-id input.
-        assert build_id_tb in owners and cve_tb in owners
-        assert build_id_tb != cve_tb
+        assert len(toolbars) >= 2  # primary (view) + security-sources rows
+        owners = {id(tb) for tb in toolbars}
+        assert window.build_id_edit.parent() is None  # backing field, off the toolbar
+        assert id(window.cve_feed_edit.parent()) in owners  # CVE feed still on a toolbar
+        assert id(window.mode_combo.parent()) in owners  # the view controls remain
+    finally:
+        window.close()
+
+
+def test_coverage_summary_moves_to_the_status_bar_as_one_line(
+    qapp: QtWidgets.QApplication,
+) -> None:
+    # The coverage axes were a multi-line label in the left panel; they now read as
+    # a single status-bar line (D137).
+    window = WorkbenchWindow()
+    try:
+        window._analysis_finished(_fixture_result())
+        text = window.coverage_label.text()
+        assert "\n" not in text and ":" in text  # one line, axis: covered/total
+    finally:
+        window.close()
+
+
+def test_artifact_list_is_sized_to_its_content(qapp: QtWidgets.QApplication) -> None:
+    # The left artifact list is fixed to the width of its widest row -- no wider
+    # (D137); setFixedWidth pins min == max.
+    window = WorkbenchWindow()
+    try:
+        window._analysis_finished(_fixture_result())
+        qapp.processEvents()
+        assert window.artifact_list.minimumWidth() == window.artifact_list.maximumWidth()
+        assert window.artifact_list.maximumWidth() >= 170  # the configured floor
     finally:
         window.close()
 
