@@ -15,6 +15,7 @@ from typing import Callable
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+from albs_graph.gui.filtered_table import filter_table_rows
 from albs_graph.model import ProvenanceGraph
 from albs_graph.services import dependency_rows
 
@@ -61,6 +62,9 @@ class DependencyPanel(QtWidgets.QWidget):
             self.scope_combo.addItem(label, facet)
         self.only_conflicts = QtWidgets.QCheckBox("Only conflicts")
         self.only_unresolved = QtWidgets.QCheckBox("Only unresolved")
+        self.search = QtWidgets.QLineEdit()
+        self.search.setPlaceholderText("Filter dependencies…")
+        self.search.setClearButtonEnabled(True)
         self.table = QtWidgets.QTableWidget(0, len(_COLUMNS))
         self.table.setHorizontalHeaderLabels(_COLUMNS)
         header = self.table.horizontalHeader()
@@ -78,13 +82,14 @@ class DependencyPanel(QtWidgets.QWidget):
         header_row.addWidget(self.scope_combo)
         header_row.addWidget(self.only_conflicts)
         header_row.addWidget(self.only_unresolved)
-        header_row.addStretch(1)
+        header_row.addWidget(self.search, 1)
         layout.addLayout(header_row)
         layout.addWidget(self.table)
 
         self.scope_combo.currentIndexChanged.connect(lambda _index: self._refresh())
         self.only_conflicts.toggled.connect(lambda _checked: self._refresh())
         self.only_unresolved.toggled.connect(lambda _checked: self._refresh())
+        self.search.textChanged.connect(lambda _text: self._apply_text_filter())
         self.table.itemActivated.connect(self._activated)
         self.table.itemDoubleClicked.connect(self._activated)
 
@@ -140,6 +145,10 @@ class DependencyPanel(QtWidgets.QWidget):
                 _tint_cell(item, column, value)
                 self.table.setItem(row, column, item)
         self.table.resizeColumnsToContents()
+        self._apply_text_filter()
+
+    def _apply_text_filter(self) -> None:
+        filter_table_rows(self.table, self.search.text())
 
     def _activated(self, item: QtWidgets.QTableWidgetItem) -> None:
         node_id = item.data(QtCore.Qt.ItemDataRole.UserRole)

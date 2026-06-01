@@ -16,6 +16,7 @@ from typing import Callable
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+from albs_graph.gui.filtered_table import filter_table_rows
 from albs_graph.model import ProvenanceGraph
 from albs_graph.security.cve_feed import CveFeed
 from albs_graph.services import security_rows
@@ -48,6 +49,10 @@ class SecurityPanel(QtWidgets.QWidget):
         self._navigate = navigate
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        self.search = QtWidgets.QLineEdit()
+        self.search.setPlaceholderText("Filter security…")
+        self.search.setClearButtonEnabled(True)
+        self.search.textChanged.connect(self._apply_filter)
         self.table = QtWidgets.QTableWidget(0, len(_COLUMNS))
         self.table.setHorizontalHeaderLabels(_COLUMNS)
         header = self.table.horizontalHeader()
@@ -58,6 +63,7 @@ class SecurityPanel(QtWidgets.QWidget):
         self.table.setAlternatingRowColors(True)
         self.table.itemActivated.connect(self._activated)
         self.table.itemDoubleClicked.connect(self._activated)
+        layout.addWidget(self.search)
         layout.addWidget(self.table)
 
     def populate(self, graph: ProvenanceGraph, *, cve_feed: CveFeed | None = None) -> None:
@@ -81,6 +87,10 @@ class SecurityPanel(QtWidgets.QWidget):
                 _tint_cell(item, column, value)
                 self.table.setItem(row, column, item)
         self.table.resizeColumnsToContents()
+        self._apply_filter()
+
+    def _apply_filter(self, _text: str = "") -> None:
+        filter_table_rows(self.table, self.search.text())
 
     def _activated(self, item: QtWidgets.QTableWidgetItem) -> None:
         node_id = item.data(QtCore.Qt.ItemDataRole.UserRole)

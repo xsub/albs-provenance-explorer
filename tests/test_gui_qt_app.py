@@ -381,6 +381,49 @@ def test_artifact_list_is_sized_to_its_content(qapp: QtWidgets.QApplication) -> 
         window.close()
 
 
+def test_filter_table_rows_hides_non_matching(qapp: QtWidgets.QApplication) -> None:
+    # The shared row filter hides rows that don't match any cell, case-insensitively
+    # (D138).
+    from albs_graph.gui.filtered_table import filter_table_rows
+
+    table = QtWidgets.QTableWidget(3, 2)
+    for row, (name, arch) in enumerate(
+        [("nginx", "x86_64"), ("glibc", "aarch64"), ("openssl", "x86_64")]
+    ):
+        table.setItem(row, 0, QtWidgets.QTableWidgetItem(name))
+        table.setItem(row, 1, QtWidgets.QTableWidgetItem(arch))
+    assert filter_table_rows(table, "NGINX") == 1  # case-insensitive
+    assert not table.isRowHidden(0) and table.isRowHidden(1) and table.isRowHidden(2)
+    assert filter_table_rows(table, "x86_64") == 2  # matches in any cell
+    assert filter_table_rows(table, "") == 3  # cleared -> every row visible
+
+
+def test_bottom_row_tables_and_panels_are_filterable(qapp: QtWidgets.QApplication) -> None:
+    # Every row table tab is wrapped in a search box, and the Security/Dependency
+    # panels carry their own filter; typing a non-match hides the rows (D138).
+    from albs_graph.gui.filtered_table import FilteredTable
+
+    window = WorkbenchWindow()
+    try:
+        tabs = window.output_tabs
+        for label in ("Evidence", "Findings", "Source", "Compare"):
+            index = next(i for i in range(tabs.count()) if tabs.tabText(i) == label)
+            assert isinstance(tabs.widget(index), FilteredTable), label
+        assert window.security_panel.search.placeholderText().startswith("Filter")
+        assert window.dependency_panel.search.placeholderText().startswith("Filter")
+
+        window._analysis_finished(_fixture_result())
+        qapp.processEvents()
+        rows = window.security_panel.table.rowCount()
+        if rows:
+            window.security_panel.search.setText("zzz-no-such-package")
+            assert all(window.security_panel.table.isRowHidden(r) for r in range(rows))
+            window.security_panel.search.clear()
+            assert not all(window.security_panel.table.isRowHidden(r) for r in range(rows))
+    finally:
+        window.close()
+
+
 def test_workbench_loads_a_real_build_json_into_artifacts(
     qapp: QtWidgets.QApplication,
 ) -> None:
@@ -546,7 +589,7 @@ def test_clicking_a_node_reveals_it_in_the_timeline(qapp: QtWidgets.QApplication
 
         assert panel.reveal_node("rpm:not-on-timeline") is False  # no hit, no crash
         # Clicking a timeline node via the wired path brings the Timeline tab up.
-        window.output_tabs.setCurrentWidget(window.findings_table)
+        window.output_tabs.setCurrentWidget(window.log)
         window._graph_node_clicked("build:albs:123456")
         assert window.output_tabs.currentWidget() is window.timeline_panel
         window._graph_node_clicked(SYNTHETIC_RPM_ID)  # off-timeline node: safe, no switch
@@ -1211,7 +1254,7 @@ def test_run_analysis_switches_to_the_log_tab(
     try:
         window.build_id_edit.setText("57810")
         monkeypatch.setattr(window.thread_pool, "start", lambda _worker: None)
-        window.output_tabs.setCurrentWidget(window.findings_table)  # start elsewhere
+        window.output_tabs.setCurrentWidget(window.log)  # start elsewhere
         window.run_analysis()
         assert window.output_tabs.currentWidget() is window.log
     finally:

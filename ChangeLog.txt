@@ -19,7 +19,16 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): declutter the top line + left rail. The primary toolbar is
+- (this)   feat(gui): make the bottom output row tables filterable. New
+           gui/filtered_table.py: filter_table_rows hides a QTableWidget's rows
+           that don't match (case-insensitive, any cell), and FilteredTable wraps
+           a bare table with a search box. The Evidence / Findings / Coverage /
+           Source / Compare / Finding-Detail tabs are now those wrappers; the
+           Security and Dependency panels grew their own search box (re-applied
+           after each repopulate). Timeline/Universe already filter; Queries/Log
+           are not row tables. +2 cases; suite 463 -> 465. D138.
+
+- 59aa9b7  feat(gui): declutter the top line + left rail. The primary toolbar is
            view-only now -- dropped the Open/Analyze icons and the Build id /
            Source / SBOM line edits (all have menu/launcher equivalents; the
            edits stay as hidden backing fields the launcher/menu populate),

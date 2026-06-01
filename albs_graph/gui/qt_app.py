@@ -59,6 +59,7 @@ from albs_graph.services import (
     source_evidence_rows,
 )
 from albs_graph.gui.dependency_panel import DependencyPanel
+from albs_graph.gui.filtered_table import FilteredTable
 from albs_graph.gui.cve_details import CveDetailsView, cve_id_in
 from albs_graph.gui.security_panel import SecurityPanel
 from albs_graph.gui.timeline_panel import TimelinePanel
@@ -1071,16 +1072,19 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         bottom = QtWidgets.QTabWidget()
         bottom.setMinimumHeight(BOTTOM_DOCK_MIN_HEIGHT)
         bottom.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Ignored)
-        bottom.addTab(self.findings_table, "Findings")
-        bottom.addTab(self.coverage_table, "Coverage")
-        bottom.addTab(self.evidence_table, "Evidence")
+        # The row tables are wrapped in a search box so every one is filterable
+        # (D138); Security/Dependencies carry their own filter; Timeline/Universe
+        # already do; Queries/Log are not row tables.
+        bottom.addTab(FilteredTable(self.findings_table, placeholder="Filter findings…"), "Findings")
+        bottom.addTab(FilteredTable(self.coverage_table, placeholder="Filter coverage…"), "Coverage")
+        bottom.addTab(FilteredTable(self.evidence_table, placeholder="Filter evidence…"), "Evidence")
         bottom.addTab(self.security_panel, "Security")
         bottom.addTab(self.dependency_panel, "Dependencies")
-        bottom.addTab(self.source_table, "Source")
+        bottom.addTab(FilteredTable(self.source_table, placeholder="Filter source…"), "Source")
         bottom.addTab(self.query_panel, "Queries")
-        bottom.addTab(self.finding_detail_table, "Finding Detail")
+        bottom.addTab(FilteredTable(self.finding_detail_table, placeholder="Filter detail…"), "Finding Detail")
         bottom.addTab(self.timeline_panel, "Timeline")
-        bottom.addTab(self.compare_table, "Compare")
+        bottom.addTab(FilteredTable(self.compare_table, placeholder="Filter compare…"), "Compare")
         bottom.addTab(self.universe_panel, "Universe")
         bottom.addTab(self.log, "Log")
         self._relax_bottom_panel_minimums(bottom)

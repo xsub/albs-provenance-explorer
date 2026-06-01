@@ -3701,6 +3701,32 @@ one-line status coverage and the content-fitted list). Suite 461 -> 463.
 
 ---
 
+## D138 - Filterable bottom output tables
+
+The build timeline already had a search box (D133); the other row tables in the
+Investigation Output dock did not. A reusable filter (`gui/filtered_table.py`)
+makes every row table filterable the same way:
+
+- **`filter_table_rows(table, query)`** hides the rows of a `QTableWidget` whose
+  cells do not contain `query` (case-insensitive, any column); an empty query
+  shows everything.
+- **`FilteredTable`** wraps a bare table with a search box above it. The
+  Evidence / Findings / Coverage / Source / Compare / Finding-Detail tabs are now
+  these wrappers -- only the *tab page* changes, so the tables (and all the code
+  that populates them / connects their signals) are untouched.
+- The custom **Security** and **Dependency** panels reuse `filter_table_rows`
+  directly: each grew a search box (the Dependency one sits next to its existing
+  scope / only-conflicts / only-unresolved filters), and re-applies the text
+  filter after every (re)populate so it survives a re-render.
+- Queries (a query builder) and Log (free text) are not row tables, and
+  Timeline/Universe already filter themselves.
+
++2 cases (the shared row filter hides non-matches case-insensitively; the row
+tabs are FilteredTable wrappers and the Security/Dependency panels filter their
+rows). Suite 463 -> 465.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
