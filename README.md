@@ -73,7 +73,7 @@ Once a build is loaded you never leave the graph:
 - **Export** — a slice as SVG/PNG, plus a JSON evidence bundle / HTML / Markdown
   report with a reproducibility appendix.
 
-### What's in the workbench, and what still lives in the CLI
+## What's in the workbench, and what still lives in the CLI
 
 The panels above cover the everyday investigation. A few of the heavier,
 native-AlmaLinux powers aren't wired into a panel yet — they're reached through
@@ -154,7 +154,7 @@ source package
   -> errata / CVE
 ```
 
-## Demo: full feature run on build 57810 (AlmaLinux 10)
+### Demo: full feature run on build 57810 (AlmaLinux 10)
 
 `example--full.sh` runs almost the whole feature set end to end against a live build and writes README-ready artifacts. It defaults to AlmaLinux 10 build [`57810`](https://build.almalinux.org/build/57810) - a 13-source batch (buildah, crun, dnsmasq, grafana, grafana-pcp, krb5, nghttp2, nginx, opentelemetry-collector, rsync, rust-bootupd, skopeo, toolbox) of 456 binary RPMs - focused on `nginx-core`. One command, on a real AlmaLinux 10 host:
 
@@ -378,11 +378,11 @@ One level out, the whole **nginx** source package's build fan-out (`trust-path -
 
 Also produced: the [SLSA / in-toto attestation](examples/demo-build-57810/nginx-core.intoto.json) and the full [console log](examples/demo-build-57810/console.txt).
 
-## Scope
+### Scope
 
 Status is tracked in three honest buckets. "Couldn't resolve" is a deliverable here: the coverage report always names the unresolved residue rather than claiming 100%.
 
-### Implemented
+#### Implemented
 
 - provenance graph core with canonical ALBS/RPM node and edge types, plus the source-to-artifact trust path for binary RPMs
 - normalized, conflict-aware dependency **claim/reconcile** model: one claim per evidence source, reconciled into a verdict without discarding the losing claims, surfaced through a five-axis coverage report (`resolution`, `linkage`, `identity`, `provenance`, `security_context`)
@@ -401,14 +401,14 @@ Status is tracked in three honest buckets. "Couldn't resolve" is a deliverable h
 - consumer reports: `vuln` applicability (with file or cached live CVE-feed rpmvercmp range matching), the `license` rollup, and `slsa` in-toto / SLSA provenance export
 - PURL / CPE / CAS identities kept strictly separate; JSON, DOT and SVG rendering; a CLI covering all of the above
 
-### Partial
+#### Partial
 
 - PyPI dependencies can be resolved through pip's dry-run report, but higher-level frontends such as uv/Poetry are not wired yet
 - CPE verification and CVE-feed matching can consume supplied files or cached live NVD feeds; errata is matched per-RPM and turned on by a build-id fetch-all, defaulting to the host `dnf updateinfo` on an AlmaLinux box and the errata.almalinux.org HTTP feed elsewhere, with an option to cross-check the two feeds and mark where they agree
 - vault URL reconstruction is a heuristic over known AlmaLinux repo layouts, not an exhaustive mirror map
 - SQLite is a deliberately lightweight persistence layer for the PoC, not the final production graph platform
 
-### Future
+#### Future
 
 - real resolvers for **Gradle**, **uv** and **Poetry** behind the existing contract
 - sandboxed resolver execution; registry snapshot / cache invalidation (yanks, deletions) rather than age-based TTL
@@ -417,7 +417,7 @@ Status is tracked in three honest buckets. "Couldn't resolve" is a deliverable h
 
 Permanent non-goals: implementing our own SAT/backtracking solver (we delegate to native tools), write access to ALBS, a web platform, Kubernetes or service deployment, and replacing distro build or signing infrastructure.
 
-## Install
+### Install
 
 ```bash
 python3 -m venv .venv
@@ -433,7 +433,7 @@ dot -V
 
 Optional native tools unlock higher rungs and degrade gracefully when absent (every one is a no-op, never fatal): `dnf` / `rpmgraph` (rung 5 resolution, soname->package, `%{license}`), `rpmkeys` (GPG signature verification), `dot` (SVG), and AlmaLinux's [`alma-sbom`](https://github.com/AlmaLinux/alma-sbom) (`pipx install --system-site-packages git+https://github.com/AlmaLinux/alma-sbom.git`) to generate a real CycloneDX SBOM for a build. `alma-sbom` reads AlmaLinux's immudb anonymously (its wrapper ships default read credentials); the SBOMs it returns carry provenance (PURL/CPE/hash) but no per-component licenses, which is why licenses are read from the RPM evidence instead.
 
-## CLI
+### CLI
 
 List available commands and options:
 
@@ -462,7 +462,7 @@ albs-graph fetch --build-id 57810 --cache examples/live-build-57810/build-57810.
 albs-graph trust-path --build-id 57810 --cache examples/live-build-57810/build-57810.albs.json --format svg --verbose -o build-57810-derived-trust.svg
 ```
 
-### One comprehensive demo
+#### One comprehensive demo
 
 `example--full.sh` is the single end-to-end demo: it exercises every command and feature on one build (default el10 `57810` / `nginx-core`), each step gated so a missing tool, file, or network connection skips rather than fails. See the **Demo** section above for the annotated run; retarget with `BUILD_ID=<id> PACKAGE=<rpm> ./example--full.sh`.
 
@@ -500,7 +500,7 @@ albs-graph source-evidence sources/nginx --build-id 57810 --package nginx --form
 
 `source-evidence` starts from ALBS build metadata, attaches a hashed source-file inventory, parses RPM `.spec` files for `BuildRequires`, `Requires`, `Source` and `Patch`, and records detected ecosystem manifests such as `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `pom.xml` and Gradle build files. Manifest *detection* is evidence, not resolution; the separate `resolve` command runs native resolvers (Go, Cargo, PyPI, Maven and npm today) that consume those manifests and emit resolved dependency facts.
 
-## Coverage, enrichment and analysis
+### Coverage, enrichment and analysis
 
 The commands above build and inspect the provenance backbone; these realize the five coverage axes and the cost ladder, and project the graph for each consumer. All take either a live `--build-id` or a cached `--source` metadata JSON (shown here as `CACHE`).
 
@@ -565,7 +565,7 @@ albs-graph license --source CACHE --sbom sbom.json --sbom-subject nginx-core    
 albs-graph slsa nginx-core --source CACHE -o nginx-core.intoto.json
 ```
 
-## Model
+### Model
 
 Canonical node types include:
 
@@ -577,7 +577,7 @@ Canonical edge types include:
 
 Provenance edges (`built_by`, `produces`, `signed_as`, `released_to`, `authenticated_by`, `derived_from`) are primary; runtime relationships like `requires_runtime` are facts the graph carries alongside them.
 
-## Dependency Intelligence Model
+### Dependency Intelligence Model
 
 The dependency model is a typed contract with real resolvers behind it for RPM (`dnf`/`rpmgraph`), Go, Cargo, PyPI, Maven and npm, and the same contract ready for the rest. It carries:
 
@@ -590,7 +590,7 @@ Pip markers, Poetry extras, Maven scopes, Gradle configurations, npm optional de
 
 Current adapters populate this model from RPM `requires`/`provides`, RPM header and payload ELF facts, `dnf repoquery`/`repograph`/`rpmgraph` output, native Go/Cargo/PyPI/Maven/npm resolvers, Python requirements and imports, SPDX/CycloneDX components and source `.spec` declarations. Source manifest detection records ecosystem evidence wherever a corresponding file (`package.json`, `pom.xml`, Gradle build files, and so on) exists in the source tree. Remaining resolver adapters such as Gradle, uv and Poetry plug into the same contract without changing the ALBS provenance graph.
 
-## Identity Model: PURL vs CPE vs ALBS/CAS
+### Identity Model: PURL vs CPE vs ALBS/CAS
 
 The graph keeps package identity, security matching identity and provenance evidence separate:
 
@@ -600,7 +600,7 @@ The graph keeps package identity, security matching identity and provenance evid
 
 PURL answers "which package coordinate is this?", CPE answers "which security product record might apply?", and ALBS/CAS answers "what build/source/artifact evidence produced this thing?".
 
-## Unified Graph Strategy
+### Unified Graph Strategy
 
 The system separates three concerns that are often conflated in dependency graph tools:
 
@@ -610,7 +610,7 @@ The system separates three concerns that are often conflated in dependency graph
 
 The current code implements the provenance layer, RPM/SBOM/header/ELF evidence, source evidence discovery, and real resolution for the Enterprise Linux (RPM) case plus Go, Cargo, PyPI, Maven and npm. Remaining resolvers such as Gradle, uv and Poetry consume the same detected project manifests and lockfiles, run their native resolution strategies behind the same contract, and emit resolved dependency facts back into this graph.
 
-## Trust Semantics
+### Trust Semantics
 
 Trust-path reports separate source-to-artifact provenance from security context completeness:
 
@@ -619,13 +619,13 @@ Trust-path reports separate source-to-artifact provenance from security context 
 
 `complete` is only true when both categories are complete. This keeps the live `nginx-core` demo honest: the ALBS provenance path is present, while SBOM and errata context remain explicit missing evidence until those inputs are attached.
 
-## SBOM And CAS Attestation
+### SBOM And CAS Attestation
 
 The SBOM adapter imports SPDX JSON and CycloneDX JSON as provenance evidence using `sbom` nodes and `described_by` edges. ALBS source and RPM artifact trust evidence is modeled as `cas_attestation` nodes connected with `authenticated_by` edges, matching the Codenotary CAS/BOM shape used by AlmaLinux SBOM integration.
 
 For live ALBS builds, the adapter preserves `alma_commit_cas_hash` on the source commit path and artifact `cas_hash` values on SRPM/RPM outputs. These fields are CAS evidence as reported by ALBS; a verification step marks them externally verified when it succeeds - `coverage --use-cas` for CAS hashes, or `coverage --verify-signatures` for GPG signatures.
 
-## Layout
+### Layout
 
 ```text
 albs_graph/
@@ -641,7 +641,7 @@ albs_graph/
 tests/
 ```
 
-## Development
+### Development
 
 ```bash
 pytest

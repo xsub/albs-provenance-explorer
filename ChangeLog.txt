@@ -19,7 +19,15 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   docs(readme): restructure the top of the README for flow -- lead with
+- (this)   docs(readme): re-level the lower half so the whole CLI/engine
+           reference nests under one "engine underneath" <h2> (Demo / Scope /
+           Install / CLI / Model / Identity / ... -> <h3>, their children
+           -> <h4>) and the workbench/CLI-split section is promoted to a sibling
+           <h2>. The README now has a single <h1> and two top-level pillars;
+           heading anchors are text-derived so none changed and the only
+           internal link (#albs-provenance-explorer) still resolves. No code.
+
+- 4cefdbe  docs(readme): restructure the top of the README for flow -- lead with
            the workbench as a short narrative pitch (TL;DR hook line + warmer
            intro), and demote the base albs-provenance-explorer from a second
            competing <h1> to an "engine underneath" <h2> (anchor preserved so
