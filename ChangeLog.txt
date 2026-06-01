@@ -19,7 +19,17 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): add a live timeline search/filter -- a QLineEdit on the
+- (this)   feat(gui): on-demand CVE details in the inspector -- selecting a CVE
+           node opens a new "CVE" tab with a "Show CVE details" button; clicking
+           fetches the description / CVSS / references off the UI thread and
+           renders them (clickable links). New security/cve_details.py:
+           fetch_cve_details tries NVD (CVE 2.0 API) first, falls back to OSV
+           (osv.dev, which carries AlmaLinux/ALSA), via the shared HttpCache;
+           canonical NVD + AlmaLinux links are always appended so even offline the
+           tab gives the user somewhere to go. The fetcher is injectable -> parsers
+           + fallback tested fully offline. +7 cases; suite 451 -> 458. D134.
+
+- 33df217  feat(gui): add a live timeline search/filter -- a QLineEdit on the
            left of the header row (at the height of the Gantt/Tree switch) filters
            both views to the rows whose stage/status/kind/node text matches,
            case-insensitively. The Gantt re-lays-out from the matching subset; the

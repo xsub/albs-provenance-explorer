@@ -3601,6 +3601,33 @@ hides non-matches in both views and clearing restores them). Suite 449 -> 451.
 
 ---
 
+## D134 - On-demand CVE details in the inspector
+
+A `cve` node carried only its id (+ a `severity` from errata). The inspector grew
+a **CVE** tab with a *Show CVE details* button: selecting a CVE node enables it
+(and brings the tab forward), and clicking fetches a human-readable record off the
+UI thread and renders the description, CVSS and references (clickable links).
+
+- **Source (`security/cve_details.py`).** `fetch_cve_details(cve_id, *, fetcher)`
+  tries the **NVD** CVE 2.0 API first (`parse_nvd_cve`: English description, CVSS
+  v3.1/3.0/2 score+severity+vector, references); when NVD has nothing usable it
+  falls back to **OSV** (osv.dev, `parse_osv_vuln`), which aggregates AlmaLinux
+  (ALSA) advisories and CVEs. Both route through the shared `HttpCache` and reuse
+  the live-feed GET (macOS-safe SSL + descriptive User-Agent). Canonical NVD +
+  AlmaLinux page links are always appended, so even fully offline the tab still
+  hands the user somewhere to go. The fetcher is injectable, so the parsers and
+  the NVD-first / OSV-fallback logic are tested entirely offline.
+- **GUI (`gui/cve_details.py` + `qt_app`).** `CveDetailsView` is a dumb widget
+  (emits `fetchRequested`, renders a `CveDetails`); the window runs the fetch in a
+  `CveDetailsWorker` (QRunnable on the thread pool) and feeds the result back,
+  detaching the worker's signals on close like the analysis worker.
+
++7 cases (the NVD/OSV parsers; NVD-preferred + OSV-fallback + offline-degraded
+fetch; the view enables/requests/renders; the window wires the CVE tab). Suite
+451 -> 458.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic

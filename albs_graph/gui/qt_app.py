@@ -27,6 +27,7 @@ from albs_graph.gui.inspect import (
     raw_json,
 )
 from albs_graph.pipeline import RunSpec
+from albs_graph.security.cve_details import CveDetails, fetch_cve_details
 from albs_graph.security.cve_feed import CveFeed
 from albs_graph.security.live_feeds import fetch_cve_feed_or_none
 from albs_graph.gui.ansi import ansi_to_html
@@ -58,6 +59,7 @@ from albs_graph.services import (
     source_evidence_rows,
 )
 from albs_graph.gui.dependency_panel import DependencyPanel
+from albs_graph.gui.cve_details import CveDetailsView, cve_id_in
 from albs_graph.gui.security_panel import SecurityPanel
 from albs_graph.gui.timeline_panel import TimelinePanel
 from albs_graph.gui.universe_panel import UniversePanel
@@ -210,6 +212,29 @@ class AnalysisWorker(QtCore.QRunnable):
             self.signals.failed.emit(str(exc))
             return
         self.signals.finished.emit(result)
+
+
+class CveDetailsSignals(QtCore.QObject):
+    done = QtCore.pyqtSignal(object)  # CveDetails
+    failed = QtCore.pyqtSignal(str)
+
+
+class CveDetailsWorker(QtCore.QRunnable):
+    """Fetches one CVE's details off the UI thread (D134)."""
+
+    def __init__(self, cve_id: str) -> None:
+        super().__init__()
+        self.cve_id = cve_id
+        self.signals = CveDetailsSignals()
+
+    @QtCore.pyqtSlot()
+    def run(self) -> None:
+        try:
+            details = fetch_cve_details(self.cve_id)
+        except Exception as exc:  # worker boundary: never crash the pool
+            self.signals.failed.emit(str(exc))
+            return
+        self.signals.done.emit(details)
 
 
 class GraphSvgWidget(QtSvg.QSvgWidget):
@@ -616,6 +641,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         self.thread_pool = _require(QtCore.QThreadPool.globalInstance())
         self._active_worker: AnalysisWorker | None = None
+        self._cve_worker: CveDetailsWorker | None = None
         self._analysis_step_count = 0  # live step counter for the status bar
         # M3: a report-time CVE feed for the Security panel's Potential CVEs
         # column, cached by the source string it was loaded from.
@@ -756,6 +782,9 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.inspector_tabs.addTab(self.metadata_table, "Metadata")
         self.inspector_tabs.addTab(self.edges_table, "Edges")
         self.inspector_tabs.addTab(self.raw_inspector, "Raw")
+        self.cve_details_view = CveDetailsView()
+        self.cve_details_view.fetchRequested.connect(self._fetch_cve_details)
+        self.inspector_tabs.addTab(self.cve_details_view, "CVE")
 
         self.findings_table = QtWidgets.QTableWidget(0, 4)
         self.findings_table.setHorizontalHeaderLabels(["Severity", "Code", "Subject", "Detail"])
@@ -2630,6 +2659,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._populate_key_value_table(self.metadata_table, view.metadata)
         self._populate_edges_table(view.incoming + view.outgoing)
         self.raw_inspector.setPlainText(raw_json(view))
+        cve_id = cve_id_in(node_id)
+        self.cve_details_view.set_cve(cve_id)
+        if cve_id is not None:  # a CVE node: bring its details tab forward (D134)
+            self.inspector_tabs.setCurrentWidget(self.cve_details_view)
         self._select_slice_node(node_id)
         previous_edge = self.selected_edge_index
         self.selected_edge_index = None
@@ -2653,6 +2686,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._populate_key_value_table(self.metadata_table, view.metadata)
         self._populate_edges_table([])
         self.raw_inspector.setPlainText(raw_json(view))
+        self.cve_details_view.set_cve(None)  # an edge is never a CVE node
         if from_slice:
             self.selected_edge_index = edge_index
             self.selected_node_id = None
@@ -2967,6 +3001,21 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             short = short[:71] + "…"
         self.progress_label.setText(f"Analyzing… step {self._analysis_step_count}: {short}")
 
+    def _fetch_cve_details(self, cve_id: str) -> None:
+        # Fetch the CVE record off the UI thread (NVD -> OSV fallback, cached),
+        # then render it into the inspector's CVE tab (D134).
+        worker = CveDetailsWorker(cve_id)
+        worker.signals.done.connect(self._on_cve_details)
+        worker.signals.failed.connect(self._on_cve_failed)
+        self._cve_worker = worker
+        self.thread_pool.start(worker)
+
+    def _on_cve_details(self, details: CveDetails) -> None:
+        self.cve_details_view.show_details(details)
+
+    def _on_cve_failed(self, message: str) -> None:
+        self.cve_details_view.show_message(f"Could not fetch CVE details: {message}")
+
     def _show_error(self, message: str) -> None:
         QtWidgets.QMessageBox.warning(self, "Workbench", message)
 
@@ -3009,6 +3058,12 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             ):
                 try:
                     sig.disconnect()
+                except (TypeError, RuntimeError):
+                    pass
+        if self._cve_worker is not None:
+            for signal_ in (self._cve_worker.signals.done, self._cve_worker.signals.failed):
+                try:
+                    signal_.disconnect()
                 except (TypeError, RuntimeError):
                     pass
         self.thread_pool.clear()

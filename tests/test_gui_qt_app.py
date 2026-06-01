@@ -733,6 +733,48 @@ def test_timeline_search_filters_both_views(qapp: QtWidgets.QApplication) -> Non
         window.close()
 
 
+def test_cve_details_view_enables_button_and_requests(qapp: QtWidgets.QApplication) -> None:
+    # The inspector CVE tab enables its button for a CVE id, emits fetchRequested
+    # on click, and renders the details it is handed (D134).
+    from albs_graph.gui.cve_details import CveDetailsView, cve_id_in
+    from albs_graph.security.cve_details import CveDetails
+
+    assert cve_id_in("cve:CVE-2024-1234 fixes a flaw") == "CVE-2024-1234"
+    assert cve_id_in("rpm:nginx-core") is None
+
+    view = CveDetailsView()
+    view.set_cve(None)
+    assert not view.button.isEnabled()
+    view.set_cve("CVE-2024-1234")
+    assert view.button.isEnabled()
+    captured: list[str] = []
+    view.fetchRequested.connect(captured.append)
+    view.button.click()
+    assert captured == ["CVE-2024-1234"]
+    view.show_details(
+        CveDetails(id="CVE-2024-1234", description="A flaw", cvss_score=7.5, references=("https://x.test",))
+    )
+    rendered = view.body.toHtml()
+    assert "A flaw" in rendered and "7.5" in rendered
+
+
+def test_workbench_has_cve_inspector_tab_and_renders(qapp: QtWidgets.QApplication) -> None:
+    # The main window wires a "CVE" inspector tab; its result/failure slots render
+    # into the view (D134).
+    from albs_graph.security.cve_details import CveDetails
+
+    window = WorkbenchWindow()
+    try:
+        tabs = [window.inspector_tabs.tabText(i) for i in range(window.inspector_tabs.count())]
+        assert "CVE" in tabs
+        window._on_cve_details(CveDetails(id="CVE-2020-0001", description="desc here"))
+        assert "desc here" in window.cve_details_view.body.toHtml()
+        window._on_cve_failed("boom")
+        assert "boom" in window.cve_details_view.body.toHtml()
+    finally:
+        window.close()
+
+
 def test_primary_analyze_is_context_sensitive(
     qapp: QtWidgets.QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
