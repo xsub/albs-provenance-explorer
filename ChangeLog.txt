@@ -19,11 +19,15 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   docs(readme): add a screen-recording demo under the screenshot. The
+- (this)   docs(readme): make the demo play inline -- GitHub does not embed a
+           <video> for a repo-hosted file (only user-attachments uploads), so it
+           showed only a link. Added a 6.2 MB looping GIF teaser (the whole run
+           at 6x, 760px/10fps via ffmpeg palettegen) that renders inline as an
+           image, with the full-res mp4 kept as a link. No code.
+
+- 28f0502  docs(readme): add a screen-recording demo under the screenshot. The
            204 MB macOS .mov was compressed with ffmpeg to a 3.5 MB 1280-wide
-           H.264 mp4 (examples/demo-build-57810/workbench-demo.mp4) and embedded
-           with a <video> tag (download-link fallback) so it plays inline on
-           GitHub. No code.
+           H.264 mp4 (examples/demo-build-57810/workbench-demo.mp4). No code.
 
 ----------------------------------------------------------------------
 2026-05-31
