@@ -19,7 +19,19 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   feat(gui): make auto-fetch one shared+persisted preference across the
+- (this)   docs(readme): refresh the workbench screenshot + screen recording to
+           the current build -- opentelemetry-collector on 57810: errata
+           ALSA-2026:19135 fanning out to the eight CVEs it fixes, the inspector
+           CVE tab (AlmaLinux errata page + upstream Red Hat RHSA + per-CVE
+           links), the Security panel and the new Git tab. The new 5.5-min, 243 MB
+           .mov was compressed with ffmpeg to a 5.0 MB 1280-wide H.264 mp4 + a
+           4.2 MB sped-up looping GIF teaser (20x, 900px/12fps via palettegen);
+           the 5420px screenshot was downscaled to 977 KB. New filenames
+           (albs-piw-57810.{png,mp4,gif}) bust GitHub's image proxy (Camo); the old
+           workbench-demo.* / pyqt-investigation-workbench-57810.png were removed.
+           No code.
+
+- cc302ae  feat(gui): make auto-fetch one shared+persisted preference across the
            CVE/Package/Git tabs, and reproduce git's diff-highlight in the diff
            pop-up. The three auto-fetch checkboxes are kept in lock-step and saved
            in QSettings (inspector/auto_fetch), so ticking it anywhere makes a
