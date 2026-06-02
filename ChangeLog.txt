@@ -19,7 +19,15 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   fix(gui): let the artifact pane shrink below its content-fit width.
+- (this)   docs(readme): swap the hero screenshot for one that shows the inspector
+           panel in full -- the previous shot clipped the tab labels (Su.. Me..
+           Ed..); this one renders the whole row (Summary / Metadata / Edges / Raw
+           / CVE / Package / Git). Same build 57810 / ALSA-2026:19135 view, 5420px
+           source downscaled to 1.0 MB; new filename (albs-piw-57810-inspector.png)
+           busts GitHub's image proxy (Camo), old albs-piw-57810.png removed. No
+           code.
+
+- d7a1a1e  fix(gui): let the artifact pane shrink below its content-fit width.
            D137 sized the left list with setFixedWidth (min == max), so the
            splitter could not drag it narrower. The content fit is now the default
            only: the list keeps a small floor (ARTIFACT_LIST_FLOOR = 72, entries

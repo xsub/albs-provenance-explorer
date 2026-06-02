@@ -14,7 +14,7 @@
 
 **Follow an AlmaLinux package from its source commit to the signed, shipped RPM — and see every SBOM, errata, CVE and CAS attestation behind it — as one click-through provenance graph.**
 
-![ALBS Provenance Investigation Workbench: the opentelemetry-collector trust-path graph for build 57810, errata ALSA-2026:19135 fanning out to the eight CVEs it fixes; the inspector's CVE tab showing the advisory's AlmaLinux errata page, the upstream Red Hat (RHSA) advisory and per-CVE links; the Security panel (vendor-asserted CPE, errata three-state, addressed CVEs); and the live ALBS: 57810 / ERRATA: NET (10) / SBOM / CAS / host-OS badges in the status bar](examples/demo-build-57810/albs-piw-57810.png)
+![ALBS Provenance Investigation Workbench: the opentelemetry-collector trust-path graph for build 57810, errata ALSA-2026:19135 fanning out to the eight CVEs it fixes; the inspector's full tab row (Summary / Metadata / Edges / Raw / CVE / Package / Git) with the CVE tab showing the advisory's AlmaLinux errata page, the upstream Red Hat (RHSA) advisory and per-CVE links; the Security panel (vendor-asserted CPE, errata three-state, addressed CVEs); and the live ALBS: 57810 / ERRATA: NET (10) / SBOM / CAS / host-OS badges in the status bar](examples/demo-build-57810/albs-piw-57810-inspector.png)
 
 **Screen recording** — the workbench in action: fetching a build, walking the trust path, the live source/identifier badges, the timeline, the security panel and the per-commit Git diff. The animation below loops a sped-up run (GitHub plays it inline); for the full-length clip, [watch the mp4](examples/demo-build-57810/albs-piw-57810.mp4).
 
