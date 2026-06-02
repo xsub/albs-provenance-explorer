@@ -368,17 +368,40 @@ def test_coverage_summary_moves_to_the_status_bar_as_one_line(
         window.close()
 
 
-def test_artifact_list_is_sized_to_its_content(qapp: QtWidgets.QApplication) -> None:
-    # The left artifact list is fixed to the width of its widest row -- no wider
-    # (D137); setFixedWidth pins min == max.
+def test_artifact_list_defaults_to_content_width_but_can_shrink(
+    qapp: QtWidgets.QApplication,
+) -> None:
+    # The artifact pane auto-fits its widest row by default (D137) but is no longer
+    # pinned: the list keeps a small floor with the rest elided, so the splitter can
+    # drag it below the fit-all width (D146). The old setFixedWidth pinned min==max.
+    from albs_graph.gui.qt_app import ARTIFACT_LIST_FLOOR
+
     window = WorkbenchWindow()
     try:
         window._analysis_finished(_fixture_result())
         qapp.processEvents()
-        assert window.artifact_list.minimumWidth() == window.artifact_list.maximumWidth()
-        assert window.artifact_list.maximumWidth() >= 170  # the configured floor
+        assert window.artifact_list.minimumWidth() == ARTIFACT_LIST_FLOOR  # shrinkable
+        assert window.artifact_list.maximumWidth() > 1000  # not pinned to the content width
+        assert window.artifact_list.textElideMode() == QtCore.Qt.TextElideMode.ElideRight
     finally:
         window.close()
+
+
+def test_artifact_pane_user_size_pins_and_persists(qapp: QtWidgets.QApplication) -> None:
+    # Dragging the main splitter pins the artifact-pane width (stops the per-build
+    # auto-fit) and the choice is remembered across runs (D146). _isolate_qsettings
+    # keeps this off the real user preferences.
+    first = WorkbenchWindow()
+    assert first._artifact_pane_user_sized is False  # auto-fit until the user resizes
+    first._on_main_splitter_moved(120, 1)  # simulate a user drag of the handle
+    assert first._artifact_pane_user_sized is True
+    first.close()  # persists the flag
+
+    second = WorkbenchWindow()
+    try:
+        assert second._artifact_pane_user_sized is True  # restored -> auto-fit stays off
+    finally:
+        second.close()
 
 
 def test_filter_table_rows_hides_non_matching(qapp: QtWidgets.QApplication) -> None:

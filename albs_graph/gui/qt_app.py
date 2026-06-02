@@ -87,7 +87,8 @@ from albs_graph.gui.universe_panel import UniversePanel
 RECIPE_COMBO_WIDTH = 136
 RECIPE_POPUP_MIN_WIDTH = 460
 BOTTOM_DOCK_MIN_HEIGHT = 96
-ARTIFACT_LIST_MIN_WIDTH = 170  # the left artifact list never shrinks below this
+ARTIFACT_LIST_MIN_WIDTH = 170  # the content auto-fit (default width) never goes below this
+ARTIFACT_LIST_FLOOR = 72  # but the user may drag the artifact pane down to this (entries elide)
 BOTTOM_PAGE_MIN_HEIGHT = 0
 INSPECTION_TMP_ROOT = Path("/private/tmp/albs-provenance-workbench")
 
@@ -740,6 +741,12 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._package_worker: PackageInfoWorker | None = None
         self._git_worker: GitCommitWorker | None = None
         self._git_diff_worker: GitDiffWorker | None = None
+        # Artifact-pane width: auto-fit to content by default, but once the user
+        # drags the main splitter we stop auto-fitting and respect their size,
+        # including a shrink below the fit-all width (D146). _applying_artifact_width
+        # guards our own setSizes from being mistaken for a user drag.
+        self._artifact_pane_user_sized = False
+        self._applying_artifact_width = False
         self._analysis_step_count = 0  # live step counter for the status bar
         # M3: a report-time CVE feed for the Security panel's Potential CVEs
         # column, cached by the source string it was loaded from.
@@ -845,6 +852,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self.artifact_filter.setPlaceholderText("Filter artifacts")
         self.artifact_list = QtWidgets.QListWidget()
         self.artifact_list.setSpacing(2)
+        # Shrinkable: a small floor (entries elide when narrow) rather than the old
+        # fixed content width, so the splitter can drag it below the fit-all width
+        # (D146). The content width is still applied as the *default* (D137).
+        self.artifact_list.setMinimumWidth(ARTIFACT_LIST_FLOOR)
+        self.artifact_list.setTextElideMode(QtCore.Qt.TextElideMode.ElideRight)
         self.slice_nodes = QtWidgets.QTableWidget(0, 3)
         self.slice_nodes.setHorizontalHeaderLabels(["Type", "Label", "Node id"])
         _require(self.slice_nodes.horizontalHeader()).setStretchLastSection(True)
@@ -1184,6 +1196,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         # (which only persists toolbars + docks), so we save/restore their sash
         # positions ourselves in _save_window_state / _restore_window_state (D143).
         self._pane_splitters = (split, center)
+        self.main_splitter = split  # left/center/right; drives the artifact-pane width (D146)
+        split.splitterMoved.connect(self._on_main_splitter_moved)
 
         bottom = QtWidgets.QTabWidget()
         bottom.setMinimumHeight(BOTTOM_DOCK_MIN_HEIGHT)
@@ -2312,11 +2326,36 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._fit_artifact_list_width()
 
     def _fit_artifact_list_width(self) -> None:
-        # Size the artifact list to its widest row -- wide enough for the longest
-        # "name [arch]" but no wider (D137).
+        # Default the artifact pane to its widest row -- wide enough for the longest
+        # "name [arch]" but no wider (D137) -- via the splitter, so the user can
+        # still drag it narrower (entries elide) or wider. Once they have resized it
+        # we leave their width alone (D146).
+        if self._artifact_pane_user_sized:
+            return
         content = self.artifact_list.sizeHintForColumn(0)
         scrollbar = _require(self.artifact_list.verticalScrollBar()).sizeHint().width()
-        self.artifact_list.setFixedWidth(max(ARTIFACT_LIST_MIN_WIDTH, content + scrollbar + 24))
+        self._apply_artifact_pane_width(max(ARTIFACT_LIST_MIN_WIDTH, content + scrollbar + 24))
+
+    def _apply_artifact_pane_width(self, width: int) -> None:
+        # Resize the left pane to `width` and give the freed space to the other
+        # panes, without tripping the user-resize detector.
+        sizes = list(self.main_splitter.sizes())
+        if len(sizes) < 2 or sum(sizes) == 0:
+            return
+        total = sum(sizes)
+        width = max(ARTIFACT_LIST_FLOOR, min(width, total - 120))
+        rest = total - width
+        other_total = sum(sizes[1:]) or 1
+        new_sizes = [width] + [round(rest * size / other_total) for size in sizes[1:]]
+        self._applying_artifact_width = True
+        self.main_splitter.setSizes(new_sizes)
+        self._applying_artifact_width = False
+
+    def _on_main_splitter_moved(self, _pos: int, _index: int) -> None:
+        # A real user drag pins the artifact-pane width and stops auto-fitting
+        # (D146); our own _apply_artifact_pane_width is excluded via the guard.
+        if not self._applying_artifact_width:
+            self._artifact_pane_user_sized = True
 
     def _filter_artifacts(self, text: str) -> None:
         needle = text.casefold().strip()
@@ -3323,21 +3362,27 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _restore_window_state(self) -> None:
         # Restore the window size/position + toolbar/dock layout saved last run.
         # Missing/foreign values (first run, type mismatch) are ignored, so the
-        # default geometry stands.
-        geometry = self._settings.value("geometry")
-        if isinstance(geometry, QtCore.QByteArray):
-            self.restoreGeometry(geometry)
-        state = self._settings.value("windowState")
-        if isinstance(state, QtCore.QByteArray):
-            self.restoreState(state, self._WINDOW_STATE_VERSION)
-        # Restore the central panes' sash positions (D143). QSplitter.restoreState
-        # self-validates: if the pane count changed it returns False and the
-        # stretch-factor defaults stand, so this is safe across layout edits.
-        for splitter in self._pane_splitters:
-            sash = self._settings.value(f"splitter/{splitter.objectName()}")
-            if isinstance(sash, QtCore.QByteArray):
-                splitter.restoreState(sash)
-        self._sync_auto_fetch(self._stored_auto_fetch())  # shared detail-tab pref (D145)
+        # default geometry stands. The restore can emit splitterMoved, which must
+        # not be mistaken for a user resize, so it runs under the guard (D146).
+        self._applying_artifact_width = True
+        try:
+            geometry = self._settings.value("geometry")
+            if isinstance(geometry, QtCore.QByteArray):
+                self.restoreGeometry(geometry)
+            state = self._settings.value("windowState")
+            if isinstance(state, QtCore.QByteArray):
+                self.restoreState(state, self._WINDOW_STATE_VERSION)
+            # Restore the central panes' sash positions (D143). QSplitter.restoreState
+            # self-validates: if the pane count changed it returns False and the
+            # stretch-factor defaults stand, so this is safe across layout edits.
+            for splitter in self._pane_splitters:
+                sash = self._settings.value(f"splitter/{splitter.objectName()}")
+                if isinstance(sash, QtCore.QByteArray):
+                    splitter.restoreState(sash)
+        finally:
+            self._applying_artifact_width = False
+        self._artifact_pane_user_sized = self._stored_flag("layout/artifact_pane_user_sized")
+        self._sync_auto_fetch(self._stored_flag("inspector/auto_fetch"))  # shared detail tab pref (D145)
 
     def _save_window_state(self) -> None:
         self._settings.setValue("geometry", self.saveGeometry())
@@ -3345,10 +3390,11 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         for splitter in self._pane_splitters:
             self._settings.setValue(f"splitter/{splitter.objectName()}", splitter.saveState())
         self._settings.setValue("inspector/auto_fetch", self.cve_details_view.auto_fetch.isChecked())
+        self._settings.setValue("layout/artifact_pane_user_sized", self._artifact_pane_user_sized)
         self._settings.sync()
 
-    def _stored_auto_fetch(self) -> bool:
-        stored = self._settings.value("inspector/auto_fetch")
+    def _stored_flag(self, key: str) -> bool:
+        stored = self._settings.value(key)
         return stored is True or (isinstance(stored, str) and stored.lower() == "true")
 
     def _sync_auto_fetch(self, checked: bool) -> None:

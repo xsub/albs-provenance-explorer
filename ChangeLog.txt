@@ -19,7 +19,17 @@ Conventions:
 2026-06-01
 ----------------------------------------------------------------------
 
-- (this)   docs(readme): refresh the workbench screenshot + screen recording to
+- (this)   fix(gui): let the artifact pane shrink below its content-fit width.
+           D137 sized the left list with setFixedWidth (min == max), so the
+           splitter could not drag it narrower. The content fit is now the default
+           only: the list keeps a small floor (ARTIFACT_LIST_FLOOR = 72, entries
+           elide) and the fit is applied through the splitter, so the pane opens
+           auto-fitted but is draggable below the fit-all width. A user drag pins
+           the width (stops the per-build auto-fit) and persists across runs
+           (layout/artifact_pane_user_sized); our own setSizes is excluded from
+           the resize detector. +1 case. Suite 499 -> 500. D146.
+
+- 4060101  docs(readme): refresh the workbench screenshot + screen recording to
            the current build -- opentelemetry-collector on 57810: errata
            ALSA-2026:19135 fanning out to the eight CVEs it fixes, the inspector
            CVE tab (AlmaLinux errata page + upstream Red Hat RHSA + per-CVE

@@ -3897,6 +3897,30 @@ shared+persisted auto-fetch round-tripping across two window instances). Suite
 
 ---
 
+## D146 - The artifact pane is shrinkable below its content-fit width
+
+D137 sized the left artifact list to its widest entry via
+`QListWidget.setFixedWidth`, which pins *min == max* -- so the splitter could not
+drag the pane any narrower (nor wider). A user who wanted more room for the graph
+could not reclaim it.
+
+The content fit is now the **default**, not a lock. The list keeps a small hard
+floor (`ARTIFACT_LIST_FLOOR = 72`, entries elide right when narrow) instead of a
+fixed width, and the fit is applied through the **splitter** (`_apply_artifact_
+pane_width` sets the left pane to the widest-entry width and gives the freed space
+to the other panes) rather than by freezing the widget. So the pane opens
+auto-fitted (D137 preserved) but can be dragged below the fit-all width.
+
+Once the user drags the main splitter, `_on_main_splitter_moved` sets
+`_artifact_pane_user_sized` and the per-build auto-fit stops deferring to their
+width; the flag is persisted (`layout/artifact_pane_user_sized`) so the choice
+survives a restart. Our own `setSizes` is excluded from the user-resize detector
+via an `_applying_artifact_width` guard (which also wraps the D143 splitter
+restore, since that can emit `splitterMoved`). +1 case (the list is shrinkable
+not pinned; a user drag pins + persists). Suite 499 -> 500.
+
+---
+
 ## Cross-cutting decisions
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
