@@ -3,9 +3,9 @@ name: CodeQL
 
 on:
   push:
-    branches: ["InvestigationWorkbenchApp"]
+    branches: ["main", "InvestigationWorkbenchApp"]
   pull_request:
-    branches: ["InvestigationWorkbenchApp"]
+    branches: ["main", "InvestigationWorkbenchApp"]
   schedule:
     - cron: "41 3 * * 1"   # weekly, Monday 03:41 UTC
 

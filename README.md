@@ -1,9 +1,9 @@
 # ALBS Provenance Explorer — Investigation Workbench (GUI)
 
-[![CI](https://github.com/xsub/albs-provenance-explorer/actions/workflows/python-app.yml/badge.svg?branch=InvestigationWorkbenchApp)](https://github.com/xsub/albs-provenance-explorer/actions/workflows/python-app.yml)
-[![CodeQL](https://github.com/xsub/albs-provenance-explorer/actions/workflows/codeql.yml/badge.svg?branch=InvestigationWorkbenchApp)](https://github.com/xsub/albs-provenance-explorer/actions/workflows/codeql.yml)
+[![CI](https://github.com/xsub/albs-provenance-explorer/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/xsub/albs-provenance-explorer/actions/workflows/python-app.yml)
+[![CodeQL](https://github.com/xsub/albs-provenance-explorer/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/xsub/albs-provenance-explorer/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/xsub/albs-provenance-explorer/badge)](https://scorecard.dev/viewer/?uri=github.com/xsub/albs-provenance-explorer)
-[![codecov](https://codecov.io/gh/xsub/albs-provenance-explorer/branch/InvestigationWorkbenchApp/graph/badge.svg)](https://codecov.io/gh/xsub/albs-provenance-explorer)
+[![codecov](https://codecov.io/gh/xsub/albs-provenance-explorer/branch/main/graph/badge.svg)](https://codecov.io/gh/xsub/albs-provenance-explorer)
 
 [![Built for AlmaLinux](https://img.shields.io/badge/built_for-AlmaLinux-0D597F?logo=almalinux&logoColor=white)](https://almalinux.org)
 [![GUI: PyQt5](https://img.shields.io/badge/GUI-PyQt5-41CD52?logo=qt&logoColor=white)](https://pypi.org/project/PyQt5/)

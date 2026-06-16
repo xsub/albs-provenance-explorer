@@ -1082,7 +1082,7 @@ def test_about_dialog_shows_artwork_and_repo_link(qapp: QtWidgets.QApplication) 
     from albs_graph.gui.about import ABOUT_REPO_URL, AboutDialog, about_image_path
 
     assert about_image_path().exists()  # the artwork ships as a package resource
-    assert ABOUT_REPO_URL.endswith("/InvestigationWorkbenchApp")
+    assert ABOUT_REPO_URL.endswith("/main")
 
     dialog = AboutDialog()
     try:

@@ -3921,7 +3921,29 @@ not pinned; a user drag pins + persists). Suite 499 -> 500.
 
 ---
 
-## Cross-cutting decisions
+## D147 - InvestigationWorkbenchApp promoted to the default branch (main)
+
+The workbench line outgrew its feature-branch status: it is a functional
+**superset** of the old `main` (every `albs_graph` module on `main` also exists
+here; `main` lacked the entire `gui/` + `services/` layer). So the branches were
+restructured rather than perpetually merged:
+
+- The previous headless `main` (commit `5867211`) is snapshotted unchanged as
+  **`explorer-headless`** -- its 18 unique commits (the headless CLI feature
+  line: SQLite store, native resolvers, live CVE/errata feeds, arch-universe,
+  SBOM auto-discovery) live on there.
+- **`main`** is force-moved to the workbench commit. The default-branch *name*
+  stays `main`, so no GitHub default-branch change is needed; nothing functional
+  is lost (it is preserved in `explorer-headless`).
+- **`InvestigationWorkbenchApp`** is kept pointing at the same commit as `main`
+  -- an alias so existing links (`/tree/InvestigationWorkbenchApp`, shared
+  references) keep resolving; CI runs on both.
+
+In-repo references were repointed to `main`: the CI + CodeQL workflows now
+trigger on `["main", "InvestigationWorkbenchApp"]` (otherwise pushes to the new
+`main` would run no CI), the README CI/CodeQL/codecov badges use `?branch=main`,
+and the About dialog links `/tree/main` (its test updated to match). Suite stays
+500 (an assertion string changed, no case added).
 
 - **Layering.** `adapters → provenance.reconcile` was confirmed acyclic
   (`provenance` imports no adapters), so the header adapter may emit claims

@@ -8,9 +8,9 @@ name: CI
 
 on:
   push:
-    branches: ["InvestigationWorkbenchApp"]
+    branches: ["main", "InvestigationWorkbenchApp"]
   pull_request:
-    branches: ["InvestigationWorkbenchApp"]
+    branches: ["main", "InvestigationWorkbenchApp"]
   workflow_dispatch: {}
 
 permissions:

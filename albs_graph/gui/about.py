@@ -7,7 +7,7 @@ from pathlib import Path
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-ABOUT_REPO_URL = "https://github.com/xsub/albs-provenance-explorer/tree/InvestigationWorkbenchApp"
+ABOUT_REPO_URL = "https://github.com/xsub/albs-provenance-explorer/tree/main"
 _ABOUT_WIDTH = 560
 
 __all__ = ["ABOUT_REPO_URL", "AboutDialog", "about_image_path"]
